@@ -20,6 +20,7 @@ use App\Livewire\Customer\ShopShow;
 use App\Livewire\Seller\Auth\PhoneAuth;
 use App\Livewire\Seller\CategoryManager;
 use App\Livewire\Seller\Home;
+use App\Livewire\Seller\OrdersPage as SellerOrdersPage;
 use App\Livewire\Seller\ProductForm;
 use App\Livewire\Seller\ShopEdit;
 use App\Livewire\Seller\ShopIndex;
@@ -72,6 +73,9 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/products/create', ProductForm::class)->name('products.create');
         Route::get('/products/{product}/edit', ProductForm::class)->name('products.edit');
         Route::get('/categories', CategoryManager::class)->name('categories');
+
+        // ── Phase 5: shop orders (read-only) ──
+        Route::get('/orders', SellerOrdersPage::class)->name('orders');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });

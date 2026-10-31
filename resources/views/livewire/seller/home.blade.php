@@ -192,12 +192,16 @@
             </div>
         @endif
 
-        {{-- ── orders teaser (Phase 5) ── --}}
-        <div class="mt-6 flex items-start gap-2.5 rounded-2xl border border-slate-200 bg-white p-3.5 text-xs leading-6 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-            <x-icon name="bag" class="mt-0.5 size-4 shrink-0 text-slate-400" />
-            <span>
-                <b class="text-slate-700 dark:text-slate-200">سفارش‌ها و کیف پول</b> به‌زودی در فاز ۵ فعال می‌شوند؛ همین‌جا خلاصه فروش روزانه را خواهید دید.
+        {{-- ── orders shortcut (real link — Phase 5) ── --}}
+        <a href="{{ route('seller.orders') }}" wire:navigate
+           class="mt-6 flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-3.5 text-xs leading-6 text-slate-500 shadow-sm transition hover:border-primary-300 active:scale-[0.99] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-primary-800">
+            <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+                <x-icon name="bag" class="size-4" />
             </span>
-        </div>
+            <span class="min-w-0 flex-1">
+                <b class="text-slate-700 dark:text-slate-200">سفارش‌های فروشگاه</b> — سفارش‌های مشتریان را پیگیری کنید.
+            </span>
+            <x-icon name="chevron-left" class="size-4 shrink-0 text-slate-400" />
+        </a>
     </div>
 </div>
