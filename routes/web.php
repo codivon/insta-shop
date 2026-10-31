@@ -16,6 +16,10 @@ Route::view('/', 'landing')->name('landing');
 */
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::view('/', 'admin.dashboard')->name('dashboard');
+
+    // Livewire full-page: appearance & theme customization
+    Route::get('/settings/appearance', \App\Livewire\Admin\AppearanceSettings::class)
+        ->name('settings.appearance');
 });
 
 /*

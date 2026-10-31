@@ -3,7 +3,58 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+/* ── InstaShop: class-based dark mode (toggled on <html>) ── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── InstaShop: admin-editable palette mapped to runtime CSS variables ── */
+@theme inline {
+    --font-sans: 'Vazirmatn', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+    --color-primary: var(--ip-primary);
+    --color-primary-50: var(--ip-primary-50);
+    --color-primary-100: var(--ip-primary-100);
+    --color-primary-200: var(--ip-primary-200);
+    --color-primary-300: var(--ip-primary-300);
+    --color-primary-400: var(--ip-primary-400);
+    --color-primary-500: var(--ip-primary-500);
+    --color-primary-600: var(--ip-primary-600);
+    --color-primary-700: var(--ip-primary-700);
+    --color-primary-800: var(--ip-primary-800);
+    --color-primary-900: var(--ip-primary-900);
+    --color-primary-950: var(--ip-primary-950);
+}
+
+/* ── Base ── */
+html {
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    @apply font-sans antialiased;
+}
+
+/* ── Slim scrollbars for panel lists ── */
+.scroll-slim {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(148 163 184 / 0.5) transparent;
+}
+.scroll-slim::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: rgb(148 163 184 / 0.5);
+}
+.scroll-slim::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* ── SPA-ish page transitions (used with wire:navigate / turbo-like swaps) ── */
+@keyframes ip-fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.ip-fade-up {
+    animation: ip-fade-up 0.28s ease-out both;
 }
