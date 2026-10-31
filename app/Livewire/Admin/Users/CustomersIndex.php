@@ -43,7 +43,7 @@ class CustomersIndex extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 12;
+        $this->perPage += 12;
     }
 
     public function toggleBlock(int $customerId): void
@@ -66,8 +66,8 @@ class CustomersIndex extends Component
         $byStatus = Customer::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return [
-            'all'     => (int) $byStatus->sum(),
-            'active'  => (int) ($byStatus['active'] ?? 0),
+            'all' => (int) $byStatus->sum(),
+            'active' => (int) ($byStatus['active'] ?? 0),
             'blocked' => (int) ($byStatus['blocked'] ?? 0),
         ];
     }
@@ -85,7 +85,7 @@ class CustomersIndex extends Component
             ->latest('id');
 
         $total = (clone $query)->count();
-        $rows  = $query->limit($this->perPage)->get();
+        $rows = $query->limit($this->perPage)->get();
 
         $this->hasMore = $total > $this->perPage;
 
@@ -96,9 +96,9 @@ class CustomersIndex extends Component
     {
         return view('livewire.admin.users.customers-index', [
             'customers' => $this->customers,
-            'stats'     => $this->stats,
-            'hasMore'   => $this->hasMore,
+            'stats' => $this->stats,
+            'hasMore' => $this->hasMore,
         ])->title('مدیریت مشتریان')
-          ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — کاربران']);
+            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — کاربران']);
     }
 }

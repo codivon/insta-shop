@@ -22,11 +22,11 @@ class PaymentService
 {
     /** Gateways selectable from the admin panel (Phase 6 UI). */
     public const GATEWAYS = [
-        'local'       => 'درگاه آزمایشی (محلی)',
-        'zarinpal'    => 'زرین‌پال',
-        'zibal'       => 'زیبال',
+        'local' => 'درگاه آزمایشی (محلی)',
+        'zarinpal' => 'زرین‌پال',
+        'zibal' => 'زیبال',
         'behpardakht' => 'بانک ملت',
-        'sep'         => 'درگاه سپ',
+        'sep' => 'درگاه سپ',
     ];
 
     /**
@@ -35,11 +35,11 @@ class PaymentService
      * Anything left empty falls back to config/payment.php (i.e. .env).
      */
     public const CREDENTIAL_FIELDS = [
-        'local'       => [],
-        'zarinpal'    => ['merchantId' => 'مرچنت‌کد زرین‌پال'],
-        'zibal'       => ['merchantId' => 'مرچنت‌کد زیبال'],
+        'local' => [],
+        'zarinpal' => ['merchantId' => 'مرچنت‌کد زرین‌پال'],
+        'zibal' => ['merchantId' => 'مرچنت‌کد زیبال'],
         'behpardakht' => ['terminalId' => 'شماره ترمینال', 'username' => 'نام کاربری', 'password' => 'رمز عبور'],
-        'sep'         => ['terminalId' => 'شماره ترمینال'],
+        'sep' => ['terminalId' => 'شماره ترمینال'],
     ];
 
     public static function activeGateway(): string

@@ -54,7 +54,7 @@ class ProductsIndex extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 12;
+        $this->perPage += 12;
     }
 
     public function deleteProduct(int $productId): void
@@ -83,9 +83,9 @@ class ProductsIndex extends Component
         $byStatus = Product::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return [
-            'all'       => (int) $byStatus->sum(),
+            'all' => (int) $byStatus->sum(),
             'published' => (int) ($byStatus['published'] ?? 0),
-            'draft'     => (int) ($byStatus['draft'] ?? 0),
+            'draft' => (int) ($byStatus['draft'] ?? 0),
         ];
     }
 
@@ -109,7 +109,7 @@ class ProductsIndex extends Component
             ->latest('id');
 
         $total = (clone $query)->count();
-        $rows  = $query->limit($this->perPage)->get();
+        $rows = $query->limit($this->perPage)->get();
 
         $this->hasMore = $total > $this->perPage;
 
@@ -119,11 +119,11 @@ class ProductsIndex extends Component
     public function render()
     {
         return view('livewire.admin.products-index', [
-            'products'    => $this->products,
-            'stats'       => $this->stats,
+            'products' => $this->products,
+            'stats' => $this->stats,
             'shopOptions' => $this->shopOptions,
-            'hasMore'     => $this->hasMore,
+            'hasMore' => $this->hasMore,
         ])->title('مدیریت محصولات')
-          ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — محصولات']);
+            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — محصولات']);
     }
 }

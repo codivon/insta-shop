@@ -51,7 +51,7 @@ class SellersIndex extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 12;
+        $this->perPage += 12;
     }
 
     // ── Actions ──────────────────────────────────────────────────────
@@ -91,9 +91,9 @@ class SellersIndex extends Component
         $byStatus = Seller::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return [
-            'all'       => (int) $byStatus->sum(),
-            'pending'   => (int) ($byStatus['pending'] ?? 0),
-            'approved'  => (int) ($byStatus['approved'] ?? 0),
+            'all' => (int) $byStatus->sum(),
+            'pending' => (int) ($byStatus['pending'] ?? 0),
+            'approved' => (int) ($byStatus['approved'] ?? 0),
             'suspended' => (int) ($byStatus['suspended'] ?? 0),
         ];
     }
@@ -113,7 +113,7 @@ class SellersIndex extends Component
             ->latest('id');
 
         $total = (clone $query)->count();
-        $rows  = $query->limit($this->perPage)->get();
+        $rows = $query->limit($this->perPage)->get();
 
         $this->hasMore = $total > $this->perPage;
 
@@ -124,9 +124,9 @@ class SellersIndex extends Component
     {
         return view('livewire.admin.users.sellers-index', [
             'sellers' => $this->sellers,
-            'stats'   => $this->stats,
+            'stats' => $this->stats,
             'hasMore' => $this->hasMore,
         ])->title('مدیریت فروشندگان')
-          ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — کاربران']);
+            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — کاربران']);
     }
 }

@@ -16,7 +16,7 @@ class Customer extends Authenticatable
     {
         return [
             'phone_verified_at' => 'datetime',
-            'last_login_at'     => 'datetime',
+            'last_login_at' => 'datetime',
         ];
     }
 

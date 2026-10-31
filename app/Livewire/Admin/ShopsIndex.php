@@ -43,7 +43,7 @@ class ShopsIndex extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 12;
+        $this->perPage += 12;
     }
 
     public function toggleStatus(int $shopId): void
@@ -63,7 +63,7 @@ class ShopsIndex extends Component
         $byStatus = Shop::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return [
-            'all'    => (int) $byStatus->sum(),
+            'all' => (int) $byStatus->sum(),
             'active' => (int) ($byStatus['active'] ?? 0),
             'paused' => (int) ($byStatus['paused'] ?? 0),
         ];
@@ -85,7 +85,7 @@ class ShopsIndex extends Component
             ->latest('id');
 
         $total = (clone $query)->count();
-        $rows  = $query->limit($this->perPage)->get();
+        $rows = $query->limit($this->perPage)->get();
 
         $this->hasMore = $total > $this->perPage;
 
@@ -95,10 +95,10 @@ class ShopsIndex extends Component
     public function render()
     {
         return view('livewire.admin.shops-index', [
-            'shops'   => $this->shops,
-            'stats'   => $this->stats,
+            'shops' => $this->shops,
+            'stats' => $this->stats,
             'hasMore' => $this->hasMore,
         ])->title('مدیریت فروشگاه‌ها')
-          ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — فروشگاه‌ها']);
+            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — فروشگاه‌ها']);
     }
 }

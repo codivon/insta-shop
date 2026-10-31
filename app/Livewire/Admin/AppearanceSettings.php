@@ -21,8 +21,8 @@ class AppearanceSettings extends Component
     {
         $theme = Theme::resolve();
 
-        $this->preset      = $theme['preset'];
-        $this->primary     = $theme['primary'];
+        $this->preset = $theme['preset'];
+        $this->primary = $theme['primary'];
         $this->defaultMode = $theme['default_mode'];
     }
 
@@ -37,7 +37,7 @@ class AppearanceSettings extends Component
     {
         if (Color::isHex($value)) {
             $this->primary = Color::normalize($value);
-            $this->preset  = 'custom';
+            $this->preset = 'custom';
         }
     }
 
@@ -51,8 +51,8 @@ class AppearanceSettings extends Component
     public function save(): void
     {
         $this->validate([
-            'preset'      => ['nullable', 'in:'.implode(',', array_keys(Theme::PRESETS)).',custom'],
-            'primary'     => ['required', 'string'],
+            'preset' => ['nullable', 'in:'.implode(',', array_keys(Theme::PRESETS)).',custom'],
+            'primary' => ['required', 'string'],
             'defaultMode' => ['required', 'in:light,dark'],
         ]);
 
@@ -63,8 +63,8 @@ class AppearanceSettings extends Component
         }
 
         Setting::setMany([
-            'theme.preset'       => $this->preset,
-            'theme.primary'      => Color::normalize($this->primary),
+            'theme.preset' => $this->preset,
+            'theme.primary' => Color::normalize($this->primary),
             'theme.default_mode' => $this->defaultMode,
         ]);
 
@@ -73,13 +73,13 @@ class AppearanceSettings extends Component
 
     public function resetTheme(): void
     {
-        $this->preset      = Theme::DEFAULTS['theme.preset'];
-        $this->primary     = Theme::DEFAULTS['theme.primary'];
+        $this->preset = Theme::DEFAULTS['theme.preset'];
+        $this->primary = Theme::DEFAULTS['theme.primary'];
         $this->defaultMode = Theme::DEFAULTS['theme.default_mode'];
 
         Setting::setMany([
-            'theme.preset'       => $this->preset,
-            'theme.primary'      => $this->primary,
+            'theme.preset' => $this->preset,
+            'theme.primary' => $this->primary,
             'theme.default_mode' => $this->defaultMode,
         ]);
 

@@ -2,10 +2,11 @@
 
 namespace App\Livewire\Admin\Settings;
 
-use App\Models\SmsLog;
 use App\Models\Setting;
+use App\Models\SmsLog;
 use App\Support\Phone;
 use App\Support\Sms\SmsManager;
+use App\Support\Sms\SmsMessage;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -43,10 +44,10 @@ class SmsSettings extends Component
     {
         return collect(app(SmsManager::class)->drivers())
             ->map(fn ($driver) => [
-                'name'        => $driver->name(),
-                'label'       => $driver->label(),
-                'fields'      => $driver->settingsFields(),
-                'is_active'   => $driver->name() === Setting::get('sms.driver', 'log'),
+                'name' => $driver->name(),
+                'label' => $driver->label(),
+                'fields' => $driver->settingsFields(),
+                'is_active' => $driver->name() === Setting::get('sms.driver', 'log'),
             ]);
     }
 
@@ -77,10 +78,10 @@ class SmsSettings extends Component
     {
         $this->validate([
             'testPhone' => ['required'],
-            'testText'  => ['required', 'min:2', 'max:200'],
+            'testText' => ['required', 'min:2', 'max:200'],
         ], [
             'testPhone.required' => 'شماره موبایل تست را وارد کنید.',
-            'testText.required'  => 'متن پیام تست را وارد کنید.',
+            'testText.required' => 'متن پیام تست را وارد کنید.',
         ]);
 
         $normalized = Phone::normalize($this->testPhone);
@@ -93,7 +94,7 @@ class SmsSettings extends Component
 
         // Send through the currently SELECTED driver (not necessarily the
         // saved active one) so the admin can test before saving.
-        $message = \App\Support\Sms\SmsMessage::make($normalized)
+        $message = SmsMessage::make($normalized)
             ->text($this->testText)
             ->panel('admin');
 
@@ -116,8 +117,8 @@ class SmsSettings extends Component
     {
         return view('livewire.admin.settings.sms-settings', [
             'drivers' => $this->driverList(),
-            'logs'    => $this->logs,
+            'logs' => $this->logs,
         ])->title('تنظیمات پیامک')
-          ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — تنظیمات پیامک']);
+            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — تنظیمات پیامک']);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Models\Order;
 use App\Models\PaymentLog;
+use App\Support\Fmt;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -34,12 +35,12 @@ class OrderShow extends Component
     public function eventLabel(string $event): string
     {
         return match ($event) {
-            'purchase'         => 'درخواست پرداخت',
-            'redirect'         => 'هدایت به درگاه',
-            'precheck_failed'  => 'عدم تأیید مقدماتی',
-            'verify_ok'        => 'تأیید پرداخت',
-            'verify_failed'    => 'خطای تأیید',
-            default            => $event,
+            'purchase' => 'درخواست پرداخت',
+            'redirect' => 'هدایت به درگاه',
+            'precheck_failed' => 'عدم تأیید مقدماتی',
+            'verify_ok' => 'تأیید پرداخت',
+            'verify_failed' => 'خطای تأیید',
+            default => $event,
         };
     }
 
@@ -47,7 +48,7 @@ class OrderShow extends Component
     {
         return view('livewire.admin.order-show', [
             'logs' => $this->logs,
-        ])->title('سفارش #'.\App\Support\Fmt::fa($this->order->id))
-          ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — جزئیات سفارش']);
+        ])->title('سفارش #'.Fmt::fa($this->order->id))
+            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — جزئیات سفارش']);
     }
 }

@@ -50,7 +50,7 @@ class OrdersIndex extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 12;
+        $this->perPage += 12;
     }
 
     // ── Computed data ────────────────────────────────────────────────
@@ -83,7 +83,7 @@ class OrdersIndex extends Component
             ->latest('id');
 
         $total = (clone $query)->count();
-        $rows  = $query->limit($this->perPage)->get();
+        $rows = $query->limit($this->perPage)->get();
 
         $this->hasMore = $total > $this->perPage;
 
@@ -93,10 +93,10 @@ class OrdersIndex extends Component
     public function render()
     {
         return view('livewire.admin.orders-index', [
-            'orders'  => $this->orders,
-            'stats'   => $this->stats,
+            'orders' => $this->orders,
+            'stats' => $this->stats,
             'hasMore' => $this->hasMore,
         ])->title('مدیریت سفارش‌ها')
-          ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — سفارش‌ها']);
+            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — سفارش‌ها']);
     }
 }

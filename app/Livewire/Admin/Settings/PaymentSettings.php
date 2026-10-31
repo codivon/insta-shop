@@ -60,12 +60,12 @@ class PaymentSettings extends Component
     public function eventLabel(string $event): string
     {
         return match ($event) {
-            'purchase'        => 'درخواست پرداخت',
-            'redirect'        => 'هدایت به درگاه',
+            'purchase' => 'درخواست پرداخت',
+            'redirect' => 'هدایت به درگاه',
             'precheck_failed' => 'عدم تأیید مقدماتی',
-            'verify_ok'       => 'تأیید پرداخت',
-            'verify_failed'   => 'خطای تأیید',
-            default           => $event,
+            'verify_ok' => 'تأیید پرداخت',
+            'verify_failed' => 'خطای تأیید',
+            default => $event,
         };
     }
 
@@ -73,9 +73,9 @@ class PaymentSettings extends Component
     {
         return view('livewire.admin.settings.payment-settings', [
             'gateways' => PaymentService::GATEWAYS,
-            'fields'   => PaymentService::CREDENTIAL_FIELDS,
-            'logs'     => $this->logs,
+            'fields' => PaymentService::CREDENTIAL_FIELDS,
+            'logs' => $this->logs,
         ])->title('تنظیمات درگاه پرداخت')
-          ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — تنظیمات درگاه']);
+            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — تنظیمات درگاه']);
     }
 }
