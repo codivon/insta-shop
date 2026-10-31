@@ -5,6 +5,7 @@ use App\Livewire\Admin\AppearanceSettings;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\Home as CustomerHome;
+use App\Livewire\Customer\ProductShow;
 use App\Livewire\Customer\ShopShow;
 use App\Livewire\Seller\Auth\PhoneAuth;
 use App\Livewire\Seller\CategoryManager;
@@ -81,6 +82,7 @@ Route::prefix('shop')->name('shop.')->group(function () {
 
         // ── Phase 4: customer storefront ──
         Route::get('/s/{slug}', ShopShow::class)->name('store.show');
+        Route::get('/product/{productId}', ProductShow::class)->name('product.show');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });
