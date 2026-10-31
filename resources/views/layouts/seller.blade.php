@@ -3,7 +3,7 @@
   RTL, sticky header + bottom tab bar + safe-area support.
 ═════════════════════════════════════════════════════════════ --}}
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="fa" dir="rtl" data-panel="seller">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">

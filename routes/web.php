@@ -64,4 +64,11 @@ if (app()->isLocal()) {
     Route::get('/admin/__probe', $probe('admin'));
     Route::get('/seller/__probe', $probe('seller'));
     Route::get('/shop/__probe', $probe('customer'));
+
+    // Simulates a Livewire AJAX call: panel is resolved from the
+    // X-Instashop-Panel header or the Referer path (not from the URI).
+    Route::get('/livewire/__probe', fn () => response()->json([
+        'cookie' => config('session.cookie'),
+        'table'  => config('session.table'),
+    ]));
 }

@@ -16,3 +16,16 @@ document.addEventListener('click', (event) => {
 
     window.dispatchEvent(new CustomEvent('ip-mode-changed', { detail: { dark: isDark } }));
 });
+
+// ── Panel-aware Livewire requests ────────────────────────────────────
+// Livewire AJAX goes to the prefix-less /livewire/update endpoint. The
+// backend (ResolvePanel middleware) resolves the panel session from this
+// header so auth stays inside the panel the user is actually browsing.
+document.addEventListener('livewire:init', () => {
+    Livewire.hook('request', ({ options }) => {
+        options.headers = {
+            ...(options.headers || {}),
+            'X-Instashop-Panel': document.documentElement.dataset.panel || 'landing',
+        };
+    });
+});
