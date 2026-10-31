@@ -12,6 +12,7 @@ use App\Livewire\Admin\ProductsIndex;
 use App\Livewire\Admin\ShopsIndex;
 use App\Livewire\Admin\Users\CustomersIndex;
 use App\Livewire\Admin\Users\SellersIndex;
+use App\Livewire\Admin\Settings\SmsSettings;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\CartPage;
 use App\Livewire\Customer\CategoriesPage;
@@ -68,6 +69,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Livewire full-page: appearance & theme customization
         Route::get('/settings/appearance', AppearanceSettings::class)
             ->name('settings.appearance');
+
+        // ── Settings: SMS provider ──
+        Route::get('/settings/sms', SmsSettings::class)->name('settings.sms');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });
