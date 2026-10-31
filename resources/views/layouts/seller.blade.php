@@ -42,11 +42,12 @@
             <div class="grid grid-cols-5">
                 @foreach ($sellerTabs as $tab)
                     @php
-                        $active = request()->routeIs($tab['route']);
+                        $active = request()->routeIs($tab['route'], $tab['route'].'.*');
                         // routes that don't exist yet fall back gracefully
-                        $href = in_array($tab['route'], ['seller.home']) ? route($tab['route']) : '#';
+                        $href = \Illuminate\Support\Facades\Route::has($tab['route']) ? route($tab['route']) : '#';
                     @endphp
-                    <a href="{{ $href }}" aria-current="{{ $active ? 'page' : 'false' }}"
+                    <a href="{{ $href }}" @if ($href !== '#') wire:navigate @endif
+                       aria-current="{{ $active ? 'page' : 'false' }}"
                        class="flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold transition
                               {{ $active ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300' }}">
                         <span class="grid h-8 w-14 place-items-center rounded-full transition {{ $active ? 'bg-primary-100 dark:bg-primary-950' : '' }}">
