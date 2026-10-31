@@ -7,6 +7,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use InstaShop\Installer\Http\Middleware\HandleInstallerAccess;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,6 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Resolve the current panel (and its isolated session config)
         // BEFORE StartSession / EncryptCookies run.
         $middleware->prepend(ResolvePanel::class);
+
+        // Installer guard must run BEFORE ResolvePanel: pre-install there is
+        // no DB (no panel session tables), and every non-wizard route has to
+        // funnel into /install. Registered by the instashop/installer package.
+        $middleware->prepend(HandleInstallerAccess::class);
 
         // Panel-scoped auth middleware (each panel guards with its own guard)
         $middleware->alias([

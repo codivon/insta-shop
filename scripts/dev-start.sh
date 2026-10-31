@@ -18,10 +18,14 @@ php artisan migrate --force || true
 echo "── [3/3] Laravel dev server :8000 ────────────"
 # stop previous instance if any
 if [ -f /tmp/instashop-serve.pid ] && kill -0 "$(cat /tmp/instashop-serve.pid)" 2>/dev/null; then
-  kill "$(cat /tmp/instashop-serve.pid)" || true
+  kill "$(cat /tmp/instashop-serve.pid)" 2>/dev/null || true
   sleep 1
 fi
-setsid nohup php artisan serve --host=0.0.0.0 --port=8000 > "$APP_DIR/serve.log" 2>&1 &
+# Plain `php -S` with the framework router instead of `artisan serve`:
+# the ServeCommand wrapper polls .env mtime and dies while the installer
+# phase has a missing/blank .env. php -S behaves like a real host.
+# The framework router uses getcwd() as the public path → run from public/.
+setsid nohup bash -c "cd '$APP_DIR/public' && exec php -d variables_order=EGPCS -S 0.0.0.0:8000 '$APP_DIR/vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php'" > "$APP_DIR/serve.log" 2>&1 &
 echo $! > /tmp/instashop-serve.pid
 sleep 3
 

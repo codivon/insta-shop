@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Support\PanelContext;
 use Closure;
 use Illuminate\Http\Request;
+use InstaShop\Installer\Support\InstallerState;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -23,6 +24,12 @@ class ResolvePanel
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // قبل از تکمیل نصب، جدول‌های session وجود ندارند؛ درایور فایل (که
+        // توسط InstallerServiceProvider ست شده) باید بماند و سواپ پنل انجام نشود.
+        if (! InstallerState::isInstalled()) {
+            return $next($request);
+        }
+
         $key = $this->detect($request);
         $ctx = PanelContext::make($key);
 

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "245d4041158cba7332cbe97ddef0e6c8",
+    "content-hash": "47ee14daf1b2a8b40824511e79f00689",
     "packages": [
         {
             "name": "brick/math",
@@ -1215,6 +1215,44 @@
             ],
             "time": "2026-08-24T17:13:02+00:00",
             "published-time": "2026-08-24T17:13:22+00:00"
+        },
+        {
+            "name": "instashop/installer",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/instashop/installer",
+                "reference": "8fc234b2939ff22f9bd1743aa75811434ab3d86b"
+            },
+            "require": {
+                "php": "^8.3"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "InstaShop\\Installer\\InstallerServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "InstaShop\\Installer\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "InstaShop"
+                }
+            ],
+            "description": "InstaShop web installer — RTL Persian wizard with requirement/permission checks, DB connection test, .env + APP_KEY generation, and crash-proof batched migrations/seeders with a live progress bar. No SSH or exec() needed.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "laravel/framework",
