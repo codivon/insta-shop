@@ -30,6 +30,11 @@ class Customer extends Authenticatable
         return $this->hasMany(Favorite::class);
     }
 
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class)->latest('id');
+    }
+
     /** Favorite product ids (cheap lookup for heart toggles). */
     public function favoriteProductIds(): array
     {
