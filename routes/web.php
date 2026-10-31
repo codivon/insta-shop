@@ -5,6 +5,10 @@ use App\Livewire\Admin\AppearanceSettings;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Seller\Auth\PhoneAuth;
+use App\Livewire\Seller\CategoryManager;
+use App\Livewire\Seller\ProductForm;
+use App\Livewire\Seller\ShopEdit;
+use App\Livewire\Seller\ShopIndex;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -47,6 +51,13 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
     Route::middleware('panel.auth')->group(function () {
         Route::view('/', 'seller.home')->name('home');
+
+        // ── Phase 3: My Shop (catalog management) ──
+        Route::get('/shop', ShopIndex::class)->name('shop');
+        Route::get('/shop/edit', ShopEdit::class)->name('shop.edit');
+        Route::get('/products/create', ProductForm::class)->name('products.create');
+        Route::get('/products/{product}/edit', ProductForm::class)->name('products.edit');
+        Route::get('/categories', CategoryManager::class)->name('categories');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });
