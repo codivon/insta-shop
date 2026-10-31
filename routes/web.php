@@ -5,9 +5,11 @@ use App\Livewire\Admin\AppearanceSettings;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\CartPage;
+use App\Livewire\Customer\CategoriesPage;
 use App\Livewire\Customer\FavoritesPage;
 use App\Livewire\Customer\Home as CustomerHome;
 use App\Livewire\Customer\ProductShow;
+use App\Livewire\Customer\ProfilePage;
 use App\Livewire\Customer\ShopShow;
 use App\Livewire\Seller\Auth\PhoneAuth;
 use App\Livewire\Seller\CategoryManager;
@@ -87,6 +89,8 @@ Route::prefix('shop')->name('shop.')->group(function () {
         Route::get('/product/{productId}', ProductShow::class)->name('product.show');
         Route::get('/cart', CartPage::class)->name('cart');
         Route::get('/favorites', FavoritesPage::class)->name('favorites');
+        Route::get('/categories', CategoriesPage::class)->name('categories');
+        Route::get('/profile', ProfilePage::class)->name('profile');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });
