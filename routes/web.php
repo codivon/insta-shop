@@ -1,13 +1,19 @@
 <?php
 
 use App\Http\Controllers\Auth\PanelLogout;
+use App\Http\Controllers\Shop\PaymentCallback;
+use App\Http\Controllers\Shop\PaymentRedirect;
 use App\Livewire\Admin\AppearanceSettings;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\CartPage;
 use App\Livewire\Customer\CategoriesPage;
+use App\Livewire\Customer\CheckoutPage;
 use App\Livewire\Customer\FavoritesPage;
 use App\Livewire\Customer\Home as CustomerHome;
+use App\Livewire\Customer\OrderDetailPage;
+use App\Livewire\Customer\OrderResultPage;
+use App\Livewire\Customer\OrdersPage;
 use App\Livewire\Customer\ProductShow;
 use App\Livewire\Customer\ProfilePage;
 use App\Livewire\Customer\ShopShow;
@@ -92,8 +98,22 @@ Route::prefix('shop')->name('shop.')->group(function () {
         Route::get('/categories', CategoriesPage::class)->name('categories');
         Route::get('/profile', ProfilePage::class)->name('profile');
 
+        // ── Phase 5: checkout & orders ──
+        Route::get('/checkout', CheckoutPage::class)->name('checkout');
+        Route::get('/orders', OrdersPage::class)->name('orders');
+        Route::get('/orders/{order}', OrderDetailPage::class)->name('orders.show');
+        Route::get('/payment/{order}/go', PaymentRedirect::class)->name('payment.go');
+        Route::get('/payment/{order}/result', OrderResultPage::class)->name('payment.result');
+
         Route::post('/logout', PanelLogout::class)->name('logout');
     });
+
+    /*
+     | Gateway callback — public (banks POST/redirect from outside our
+     | panel.auth flow; the order is identified by its gateway reference,
+     | not by the session). Same browser keeps the customer cookie anyway.
+     */
+    Route::match(['get', 'post'], '/payment/callback', PaymentCallback::class)->name('payment.callback');
 });
 
 /*

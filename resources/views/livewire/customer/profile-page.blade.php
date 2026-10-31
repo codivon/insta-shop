@@ -31,25 +31,35 @@
         </div>
 
         {{-- ── stats ── --}}
-        <div class="mt-4 grid grid-cols-2 gap-3">
+        <div class="mt-4 grid grid-cols-3 gap-3">
             <a href="{{ route('shop.favorites') }}" wire:navigate
-               class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:border-rose-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-rose-800">
+               class="flex flex-col items-center gap-1.5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-rose-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-rose-800">
                 <span class="grid size-10 place-items-center rounded-xl bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
                     <x-icon name="heart" class="size-5" />
                 </span>
-                <div>
+                <div class="text-center">
                     <div class="text-sm font-extrabold">{{ \App\Support\Fmt::toFa($stats['favorites']) }}</div>
-                    <div class="text-[10px] text-slate-400">علاقه‌مندی</div>
+                    <div class="text-[9px] text-slate-400">علاقه‌مندی</div>
                 </div>
             </a>
             <a href="{{ route('shop.cart') }}" wire:navigate
-               class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:border-primary-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-800">
+               class="flex flex-col items-center gap-1.5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-primary-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-800">
                 <span class="grid size-10 place-items-center rounded-xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
                     <x-icon name="cart" class="size-5" />
                 </span>
-                <div>
+                <div class="text-center">
                     <div class="text-sm font-extrabold">{{ \App\Support\Fmt::toFa($stats['cart']) }}</div>
-                    <div class="text-[10px] text-slate-400">در سبد خرید</div>
+                    <div class="text-[9px] text-slate-400">سبد خرید</div>
+                </div>
+            </a>
+            <a href="{{ route('shop.orders') }}" wire:navigate
+               class="flex flex-col items-center gap-1.5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-800">
+                <span class="grid size-10 place-items-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                    <x-icon name="inbox" class="size-5" />
+                </span>
+                <div class="text-center">
+                    <div class="text-sm font-extrabold">{{ \App\Support\Fmt::toFa($stats['orders']) }}</div>
+                    <div class="text-[9px] text-slate-400">سفارش‌ها</div>
                 </div>
             </a>
         </div>
@@ -71,6 +81,19 @@
 
         {{-- ── settings rows ── --}}
         <div class="mt-4 divide-y divide-slate-100 overflow-hidden rounded-3xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+            <a href="{{ route('shop.orders') }}" wire:navigate
+               class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <span class="flex items-center gap-2.5 text-xs font-bold">
+                    <span class="grid size-9 place-items-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                        <x-icon name="file-text" class="size-4.5" />
+                    </span>
+                    سفارش‌های من
+                </span>
+                <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                    {{ \App\Support\Fmt::toFa($stats['orders']) }} سفارش
+                    <x-icon name="chevron-left" class="size-3.5" />
+                </span>
+            </a>
             <button type="button" data-theme-toggle
                     class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <span class="flex items-center gap-2.5 text-xs font-bold">
@@ -96,8 +119,8 @@
 
         {{-- ── about ── --}}
         <div class="mt-4 mb-2 flex items-center justify-between rounded-2xl bg-slate-100/70 px-4 py-3 text-[10px] text-slate-400 dark:bg-slate-900">
-            <span>InstaShop — نسخه ۰٫۴</span>
-            <span>پرداخت آنلاین به‌زودی (فاز ۵)</span>
+            <span>InstaShop — نسخه ۰٫۵</span>
+            <span>پرداخت آنلاین فعال ✅</span>
         </div>
     </div>
 

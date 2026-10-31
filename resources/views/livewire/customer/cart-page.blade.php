@@ -1,27 +1,40 @@
 <div class="ip-fade-up">
     {{-- ───────── Sticky in-feed header ───────── --}}
     <div class="sticky top-0 z-20 border-b border-slate-200/80 bg-slate-50/95 px-4 py-3 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/95">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-                <span class="grid size-10 place-items-center rounded-2xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
-                    <x-icon name="cart" class="size-5" />
-                </span>
-                <div>
-                    <div class="text-sm font-extrabold leading-5">سبد خرید</div>
-                    <div class="text-[11px] text-slate-400">{{ \App\Support\Fmt::toFa($units) }} کالا از {{ \App\Support\Fmt::toFa($validItems->count()) }} محصول</div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <span class="grid size-10 place-items-center rounded-2xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+                            <x-icon name="cart" class="size-5" />
+                        </span>
+                        <div>
+                            <div class="text-sm font-extrabold leading-5">سبد خرید</div>
+                            <div class="text-[11px] text-slate-400">{{ \App\Support\Fmt::toFa($units) }} کالا از {{ \App\Support\Fmt::toFa($validItems->count()) }} محصول</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <a href="{{ route('shop.orders') }}" wire:navigate
+                           class="grid size-10 place-items-center rounded-xl text-slate-400 transition hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-950/40"
+                           aria-label="سفارش‌های من" title="سفارش‌های من">
+                            <x-icon name="file-text" class="size-4.5" />
+                        </a>
+                        @if ($items->isNotEmpty())
+                            <button type="button" wire:click="clearCart" wire:confirm="کل سبد خرید خالی شود؟"
+                                    class="grid size-10 place-items-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/40"
+                                    aria-label="خالی کردن سبد">
+                                <x-icon name="trash" class="size-4.5" />
+                            </button>
+                        @endif
+                    </div>
                 </div>
-            </div>
-            @if ($items->isNotEmpty())
-                <button type="button" wire:click="clearCart" wire:confirm="کل سبد خرید خالی شود؟"
-                        class="grid size-10 place-items-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/40"
-                        aria-label="خالی کردن سبد">
-                    <x-icon name="trash" class="size-4.5" />
-                </button>
-            @endif
-        </div>
     </div>
 
     <div class="px-4 pt-4">
+        @if (session('checkout-error'))
+            <div class="mb-3 rounded-2xl border border-rose-200 bg-rose-50/70 p-3 text-[11px] font-bold leading-5 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-400">
+                {{ session('checkout-error') }}
+            </div>
+        @endif
+
         @if ($items->isEmpty())
             {{-- ── empty cart ── --}}
             <div class="mt-10 rounded-3xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
@@ -113,12 +126,13 @@
                     <span>هزینه ارسال</span>
                     <span>در مرحله بعد محاسبه می‌شود</span>
                 </div>
-                <button type="button" disabled
-                        class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-200 py-3 text-xs font-extrabold text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                        title="پرداخت در فاز ۵ فعال می‌شود">
+                <a href="{{ route('shop.checkout') }}" wire:navigate
+                   @disabled($validItems->isEmpty())
+                   class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-xs font-extrabold transition active:scale-[0.98] disabled:pointer-events-none disabled:bg-slate-200 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-400
+                          {{ $validItems->isNotEmpty() ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/30 hover:bg-primary-700' : '' }}">
                     <x-icon name="credit-card" class="size-4" />
-                    ادامه و پرداخت (به‌زودی — فاز ۵)
-                </button>
+                    ادامه و پرداخت
+                </a>
             </div>
 
             <div class="pb-2"></div>

@@ -24,6 +24,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'panel.auth' => AuthenticatePanel::class,
             'panel.guest' => RedirectIfPanelAuthenticated::class,
         ]);
+
+        // Payment gateway callbacks post/redirect from OUTSIDE the app
+        // (local test gateway form, bank gateways) — no CSRF token.
+        $middleware->validateCsrfTokens(except: [
+            'shop/payment/callback',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

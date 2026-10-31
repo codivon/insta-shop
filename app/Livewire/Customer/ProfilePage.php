@@ -52,6 +52,7 @@ class ProfilePage extends Component
         return [
             'favorites' => $customer ? $customer->favorites()->count() : 0,
             'cart'      => $customer && $customer->cart ? $customer->cart->items()->count() : 0,
+            'orders'    => $customer ? $customer->orders()->count() : 0,
         ];
     }
 
