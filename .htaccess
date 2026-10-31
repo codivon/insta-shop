@@ -1,0 +1,45 @@
+# ═══════════════════════════════════════════════════════════════
+# InstaShop — root .htaccess (shared-hosting friendly deployment)
+#
+# Point the domain/subdomain to the project ROOT (not /public) and
+# this file transparently forwards every request into public/ while
+# blocking sensitive files. If your host already points to public/,
+# this file simply stays unused and harmless.
+# ═══════════════════════════════════════════════════════════════
+
+Options -Indexes -MultiViews
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # ── Block dotfiles (.env, .git, ...) except ACME challenges ──
+    RewriteRule (^|/)\.(?!well-known) - [F,L]
+
+    # ── Force HTTPS (enable on production host if desired) ──────
+    # RewriteCond %{HTTPS} off
+    # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # ── Forward everything into public/ ─────────────────────────
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# ── Deny direct access to sensitive files (belt & suspenders) ──
+<FilesMatch "^(\.env|\.env\.|\.gitignore|\.gitattributes|\.editorconfig|composer\.(json|lock)|package\.json|vite\.config\..*|artisan|.*\.stub)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# ── Security headers ───────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
