@@ -12,7 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Resolve the current panel (and its isolated session config)
+        // BEFORE StartSession / EncryptCookies run.
+        $middleware->prepend(\App\Http\Middleware\ResolvePanel::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
