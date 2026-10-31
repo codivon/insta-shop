@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\PanelLogout;
 use App\Livewire\Admin\AppearanceSettings;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Customer\Auth\PhoneLogin;
+use App\Livewire\Customer\Home as CustomerHome;
 use App\Livewire\Seller\Auth\PhoneAuth;
 use App\Livewire\Seller\CategoryManager;
 use App\Livewire\Seller\Home;
@@ -75,7 +76,7 @@ Route::prefix('shop')->name('shop.')->group(function () {
     });
 
     Route::middleware('panel.auth')->group(function () {
-        Route::view('/', 'customer.home')->name('home');
+        Route::get('/', CustomerHome::class)->name('home');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });

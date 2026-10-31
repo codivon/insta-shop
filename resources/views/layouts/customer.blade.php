@@ -30,22 +30,30 @@
         {{-- ───────── Bottom tab bar ───────── --}}
         @php
             $customerTabs = [
-                ['route' => 'shop.home',          'icon' => 'home',   'label' => 'خانه'],
-                ['route' => 'shop.categories',    'icon' => 'package','label' => 'دسته‌بندی'],
-                ['route' => 'shop.cart',          'icon' => 'cart',   'label' => 'سبد خرید'],
-                ['route' => 'shop.favorites',     'icon' => 'heart',  'label' => 'علاقه‌مندی'],
-                ['route' => 'shop.profile',       'icon' => 'user',   'label' => 'پروفایل'],
+                ['route' => 'shop.home',      'icon' => 'home',   'label' => 'خانه'],
+                ['route' => 'shop.categories','icon' => 'package','label' => 'دسته‌بندی'],
+                ['route' => 'shop.cart',      'icon' => 'cart',   'label' => 'سبد خرید'],
+                ['route' => 'shop.favorites', 'icon' => 'heart',  'label' => 'علاقه‌مندی'],
+                ['route' => 'shop.profile',   'icon' => 'user',   'label' => 'پروفایل'],
             ];
+
+            $cartBadgeCount = 0;
+            if ($customer = auth('customer')->user()) {
+                $cartBadgeCount = \App\Models\CartItem::query()
+                    ->whereHas('cart', fn ($q) => $q->where('customer_id', $customer->id))
+                    ->count();
+            }
         @endphp
         <nav class="fixed bottom-0 z-30 w-full max-w-[430px] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95 lg:absolute lg:bottom-0"
              aria-label="تب‌های اصلی فروشگاه">
             <div class="grid grid-cols-5">
                 @foreach ($customerTabs as $tab)
                     @php
-                        $active = request()->routeIs($tab['route']);
-                        $href = in_array($tab['route'], ['shop.home']) ? route($tab['route']) : '#';
+                        $active = request()->routeIs($tab['route'], $tab['route'].'.*');
+                        $href = \Illuminate\Support\Facades\Route::has($tab['route']) ? route($tab['route']) : '#';
                     @endphp
-                    <a href="{{ $href }}" aria-current="{{ $active ? 'page' : 'false' }}"
+                    <a href="{{ $href }}" @if ($href !== '#') wire:navigate @endif
+                       aria-current="{{ $active ? 'page' : 'false' }}"
                        class="relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold transition
                               {{ $active ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300' }}">
                         <span class="grid h-8 w-14 place-items-center rounded-full transition {{ $active ? 'bg-primary-100 dark:bg-primary-950' : '' }}">
@@ -53,7 +61,9 @@
                         </span>
                         {{ $tab['label'] }}
                         @if ($tab['route'] === 'shop.cart')
-                            <span class="absolute right-6 top-1 grid size-4 place-items-center rounded-full bg-primary-600 text-[9px] font-bold text-white">۲</span>
+                            <span id="cart-badge"
+                                  class="absolute right-5 top-0.5 grid min-w-4 place-items-center rounded-full bg-primary-600 px-1 text-[9px] font-bold text-white shadow {{ $cartBadgeCount === 0 ? 'hidden' : '' }}"
+                                  data-count="{{ $cartBadgeCount }}">{{ \App\Support\Fmt::toFa($cartBadgeCount) }}</span>
                         @endif
                     </a>
                 @endforeach

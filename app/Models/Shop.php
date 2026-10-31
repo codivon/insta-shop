@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -66,5 +67,12 @@ class Shop extends Model
     public function isPublic(): bool
     {
         return $this->status === 'active' && $this->seller?->status === 'approved';
+    }
+
+    /** Query scope: shops the customer app is allowed to show. */
+    public function scopePubliclyVisible(Builder $query): Builder
+    {
+        return $query->where('status', 'active')
+            ->whereHas('seller', fn (Builder $q) => $q->where('status', 'approved'));
     }
 }

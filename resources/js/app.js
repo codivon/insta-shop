@@ -29,3 +29,18 @@ document.addEventListener('livewire:init', () => {
         };
     });
 });
+
+// ── Cart badge live update (customer app) ────────────────────────────
+// Livewire cart actions dispatch a browser event; the tab-bar badge
+// updates without a full page reload. Listener lives in app.js because
+// wire:navigate does not re-execute page-level inline scripts.
+document.addEventListener('cart-changed', (event) => {
+    const badge = document.getElementById('cart-badge');
+    if (!badge) return;
+
+    const count = Number(event.detail?.count ?? badge.dataset.count ?? 0);
+
+    badge.dataset.count = String(count);
+    badge.textContent = count.toLocaleString('fa-IR');
+    badge.classList.toggle('hidden', count <= 0);
+});
