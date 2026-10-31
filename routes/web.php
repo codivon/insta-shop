@@ -6,6 +6,8 @@ use App\Http\Controllers\Shop\PaymentRedirect;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\AppearanceSettings;
 use App\Livewire\Admin\Auth\Login;
+use App\Livewire\Admin\OrdersIndex;
+use App\Livewire\Admin\OrderShow;
 use App\Livewire\Admin\ProductsIndex;
 use App\Livewire\Admin\ShopsIndex;
 use App\Livewire\Admin\Users\CustomersIndex;
@@ -58,6 +60,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ── Catalog management (shops & products) ──
         Route::get('/shops', ShopsIndex::class)->name('shops');
         Route::get('/products', ProductsIndex::class)->name('products');
+
+        // ── Orders management ──
+        Route::get('/orders', OrdersIndex::class)->name('orders');
+        Route::get('/orders/{order}', OrderShow::class)->name('orders.show');
 
         // Livewire full-page: appearance & theme customization
         Route::get('/settings/appearance', AppearanceSettings::class)
