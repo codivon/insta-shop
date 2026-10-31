@@ -195,6 +195,13 @@ resources/views/{landing,admin,seller,customer}
 
 ## 9️⃣ گزارش‌های به‌روزرسانی (جدید در بالا)
 
+### 2026-10-31 — فاز 2 (احراز هویت OTP) — توسط ایجنت Z.ai
+- معماری SMS درایور-محور (۵ پروایدر + audit در sms_logs) + OtpService با throttle کامل
+- سه صفحه ورود (مشتری OTP، فروشنده OTP+اینستاگرام، ادمین ایمیل) + میدل‌ورهای panel.auth/panel.guest + خروج
+- رفع حیاتی: تشخیص پنل برای اندپوینت هش‌دار livewire v4 (هدر X-Instashop-Panel + Referer)
+- رفع ۲ باگ از تست E2E: purpose/code در verify فروشنده، cookie-race از wire:poll
+- کامیت‌ها: 81305f7، 5427892، ec56f26، ee70325، 044099d (+ docs)
+
 ### 2026-10-31 — فاز 1 (هسته سه‌پنله) — توسط ایجنت Z.ai
 - سه guard + سه سشن مستقل (ResolvePanel قبل از StartSession) — با curl تأیید شد
 - سیستم تنظیمات دیتابیس‌محور (Setting) + سیستم تم 50-950 با ۱۱ پریست + روشن/تیره
