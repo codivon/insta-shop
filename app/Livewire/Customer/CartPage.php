@@ -4,6 +4,7 @@ namespace App\Livewire\Customer;
 
 use App\Models\Cart;
 use App\Models\Customer;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 

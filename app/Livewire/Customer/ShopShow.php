@@ -155,7 +155,9 @@ class ShopShow extends Component
 
     private function publishedQuery(): \Illuminate\Database\Eloquent\Builder
     {
-        return $this->shop->products()->where('status', 'published');
+        return \App\Models\Product::query()
+            ->where('shop_id', $this->shop->id)
+            ->where('status', 'published');
     }
 
     private function productQuery(): \Illuminate\Database\Eloquent\Builder

@@ -31,10 +31,10 @@ document.addEventListener('livewire:init', () => {
 });
 
 // ── Cart badge live update (customer app) ────────────────────────────
-// Livewire cart actions dispatch a browser event; the tab-bar badge
-// updates without a full page reload. Listener lives in app.js because
-// wire:navigate does not re-execute page-level inline scripts.
-document.addEventListener('cart-changed', (event) => {
+// Livewire cart actions dispatch a browser event (on window); the tab-bar
+// badge updates without a full page reload. Listener lives in app.js
+// because wire:navigate does not re-execute page-level inline scripts.
+window.addEventListener('cart-changed', (event) => {
     const badge = document.getElementById('cart-badge');
     if (!badge) return;
 
