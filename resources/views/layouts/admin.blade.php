@@ -52,37 +52,28 @@
         {{-- nav --}}
         <nav class="scroll-slim mt-4 flex-1 space-y-1 overflow-y-auto px-3 pb-4" aria-label="منوی اصلی مدیریت">
             @php
+                $pendingSellers = \App\Models\Seller::query()->where('status', 'pending')->count();
+                $pendingOrders  = \App\Models\Order::query()->where('status', 'pending')->count();
+
                 $navItems = [
-                    ['route' => 'admin.dashboard',           'icon' => 'chart',       'label' => 'عمومی',            'badge' => '۲'],
-                    ['route' => 'admin.dashboard',           'icon' => 'info',        'label' => 'صفحه درباره ما',   'badge' => 'بزودی'],
-                    ['route' => 'admin.dashboard',           'icon' => 'download',    'label' => 'مرکز خروجی‌ها',    'badge' => 'فعال'],
-                    ['route' => 'admin.dashboard',           'icon' => 'headset',     'label' => 'تیکت‌های پشتیبانی','badge' => 'فعال'],
-                    ['route' => 'admin.settings.appearance', 'icon' => 'settings',    'label' => 'تنظیمات',         'badge' => null, 'active' => true],
-                    ['route' => 'admin.dashboard',           'icon' => 'megaphone',   'label' => 'اطلاعیه‌ها',       'badge' => 'فعال'],
-                    ['route' => 'admin.dashboard',           'icon' => 'bell',        'label' => 'تنبیهات',          'badge' => null],
-                    ['route' => 'admin.dashboard',           'icon' => 'message',     'label' => 'قالب‌های پیامک',   'badge' => 'فعال'],
-                    ['route' => 'admin.dashboard',           'icon' => 'clock',       'label' => 'لاگ پیامک‌ها',     'badge' => 'پیامک'],
-                    ['route' => 'admin.dashboard',           'icon' => 'star',        'label' => 'نظرسنجی و امتیاز', 'badge' => 'پیش'],
-                    ['route' => 'admin.dashboard',           'icon' => 'package',     'label' => 'مجوز سفارش‌ها',    'badge' => 'پیش'],
-                    ['route' => 'admin.dashboard',           'icon' => 'message',     'label' => 'چت و پاسخ‌دهی',    'badge' => 'KPI'],
-                    ['route' => 'admin.dashboard',           'icon' => 'clock',       'label' => 'ساعت کاری',       'badge' => 'خانه'],
-                    ['route' => 'admin.dashboard',           'icon' => 'credit-card', 'label' => 'درگاه پرداخت',    'badge' => 'درگاه'],
-                    ['route' => 'admin.dashboard',           'icon' => 'users',       'label' => 'کاربران گرفتنی‌ها', 'badge' => 'خبر'],
-                    ['route' => 'admin.dashboard',           'icon' => 'trending-up', 'label' => 'Realtime',         'badge' => 'پویا'],
-                    ['route' => 'admin.dashboard',           'icon' => 'bell',        'label' => 'اعلان‌ها و پوش',   'badge' => 'مکا'],
-                    ['route' => 'admin.dashboard',           'icon' => 'users',       'label' => 'بازاریابی معرفی',  'badge' => null],
-                    ['route' => 'admin.dashboard',           'icon' => 'upload',      'label' => 'آپلود و فضای‌دسازی','badge' => null],
-                    ['route' => 'admin.dashboard',           'icon' => 'qr-code',     'label' => 'QR شبکه‌ها',       'badge' => null],
-                    ['route' => 'admin.dashboard',           'icon' => 'megaphone',   'label' => 'بات تلگرام',       'badge' => null],
-                    ['route' => 'admin.dashboard',           'icon' => 'sparkles',    'label' => 'قابلیت‌ها و امنیت','badge' => null],
+                    ['route' => 'admin.dashboard',           'icon' => 'chart',       'label' => 'داشبورد',         'match' => 'admin.dashboard',                'badge' => null],
+                    ['route' => 'admin.orders',              'icon' => 'bag',         'label' => 'سفارش‌ها',        'match' => 'admin.orders.*',                 'badge' => $pendingOrders],
+                    ['route' => 'admin.shops',               'icon' => 'store',       'label' => 'فروشگاه‌ها',      'match' => 'admin.shops',                    'badge' => null],
+                    ['route' => 'admin.products',            'icon' => 'package',     'label' => 'محصولات',         'match' => 'admin.products',                 'badge' => null],
+                    ['route' => 'admin.users.sellers',       'icon' => 'users',       'label' => 'فروشندگان',       'match' => 'admin.users.sellers',            'badge' => $pendingSellers],
+                    ['route' => 'admin.users.customers',     'icon' => 'user',        'label' => 'مشتریان',         'match' => 'admin.users.customers',          'badge' => null],
+                ];
+
+                $settingsItems = [
+                    ['route' => 'admin.settings.appearance', 'icon' => 'palette',     'label' => 'ظاهر و رنگ‌بندی', 'match' => 'admin.settings.appearance'],
+                    ['route' => 'admin.settings.sms',        'icon' => 'message',     'label' => 'پیامک',           'match' => 'admin.settings.sms'],
+                    ['route' => 'admin.settings.payment',    'icon' => 'credit-card', 'label' => 'درگاه پرداخت',    'match' => 'admin.settings.payment'],
                 ];
             @endphp
 
             @foreach ($navItems as $item)
-                @php
-                    $isActive = ($item['active'] ?? false) && request()->routeIs($item['route']);
-                @endphp
-                <a href="{{ route($item['route']) }}"
+                @php $isActive = request()->routeIs($item['match']); @endphp
+                <a href="{{ route($item['route']) }}" wire:navigate
                    class="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition
                           {{ $isActive
                               ? 'bg-primary-600 font-bold text-white shadow-md shadow-primary-600/25'
@@ -91,27 +82,28 @@
                         <x-icon name="{{ $item['icon'] }}" class="size-4.5 {{ $isActive ? 'text-white' : 'text-slate-400' }}" />
                         {{ $item['label'] }}
                     </span>
-                    @if ($item['badge'] ?? null)
-                        <span class="rounded-md px-1.5 py-0.5 text-[10px] font-semibold
-                                     {{ $isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' }}">
-                            {{ $item['badge'] }}
+                    @if ($item['badge'] > 0)
+                        <span class="rounded-md px-1.5 py-0.5 text-[10px] font-bold
+                                     {{ $isActive ? 'bg-white text-primary-700' : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400' }}">
+                            {{ \App\Support\Fmt::fa($item['badge']) }}
                         </span>
                     @endif
                 </a>
             @endforeach
 
-            {{-- sub sections --}}
-            <div class="pt-3">
-                @foreach ([['icon' => 'file-text', 'label' => 'مرکز پیامک (بتن‌ها)'], ['icon' => 'sparkles', 'label' => 'نمایش لاگ سیستمی'], ['icon' => 'globe', 'label' => 'کلیدهای وب‌سرویس'], ['icon' => 'settings', 'label' => 'سنسورهای فعال'], ['icon' => 'settings', 'label' => 'ساخت سیستم']] as $sub)
-                    <button type="button" class="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300">
-                        <span class="flex items-center gap-2.5">
-                            <x-icon name="{{ $sub['icon'] }}" class="size-4.5" />
-                            {{ $sub['label'] }}
-                        </span>
-                        <x-icon name="chevron-down" class="size-3.5" />
-                    </button>
-                @endforeach
-            </div>
+            {{-- settings group --}}
+            <p class="px-3 pb-1 pt-5 text-[10px] font-bold uppercase tracking-wide text-slate-400">تنظیمات</p>
+            @foreach ($settingsItems as $item)
+                @php $isActive = request()->routeIs($item['match']); @endphp
+                <a href="{{ route($item['route']) }}" wire:navigate
+                   class="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition
+                          {{ $isActive
+                              ? 'bg-primary-600 font-bold text-white shadow-md shadow-primary-600/25'
+                              : 'font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}">
+                    <x-icon name="{{ $item['icon'] }}" class="size-4.5 {{ $isActive ? 'text-white' : 'text-slate-400' }}" />
+                    {{ $item['label'] }}
+                </a>
+            @endforeach
         </nav>
 
         {{-- manager card --}}
