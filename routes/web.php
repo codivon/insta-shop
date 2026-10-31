@@ -3,8 +3,11 @@
 use App\Http\Controllers\Auth\PanelLogout;
 use App\Http\Controllers\Shop\PaymentCallback;
 use App\Http\Controllers\Shop\PaymentRedirect;
+use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\AppearanceSettings;
 use App\Livewire\Admin\Auth\Login;
+use App\Livewire\Admin\Users\CustomersIndex;
+use App\Livewire\Admin\Users\SellersIndex;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\CartPage;
 use App\Livewire\Customer\CategoriesPage;
@@ -44,7 +47,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
     });
 
     Route::middleware('panel.auth')->group(function () {
-        Route::view('/', 'admin.dashboard')->name('dashboard');
+        Route::get('/', Dashboard::class)->name('dashboard');
+
+        // ── Users management ──
+        Route::get('/users/sellers', SellersIndex::class)->name('users.sellers');
+        Route::get('/users/customers', CustomersIndex::class)->name('users.customers');
 
         // Livewire full-page: appearance & theme customization
         Route::get('/settings/appearance', AppearanceSettings::class)

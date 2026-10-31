@@ -45,4 +45,17 @@ class Customer extends Authenticatable
     {
         return $this->phone;
     }
+
+    /** Human-friendly status label for the admin panel. */
+    public function statusLabel(): string
+    {
+        return $this->status === 'blocked' ? 'مسدود' : 'فعال';
+    }
+
+    public function statusClasses(): string
+    {
+        return $this->status === 'blocked'
+            ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'
+            : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400';
+    }
 }

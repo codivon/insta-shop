@@ -1,8 +1,12 @@
-{{-- thin wrapper: mounts Livewire full-page component inside the admin layout --}}
+{{-- ─────────────────────────────────────────────────────────
+  Thin wrapper: mounts Livewire full-page components inside
+  the admin desktop layout. The page title flows through
+  render()->title('...') as the $title layout variable.
+──────────────────────────────────────────────────────────── --}}
 @extends('layouts.admin')
 
-@section('title', 'تنظیمات — ظاهر و رنگ‌بندی')
-@section('breadcrumb', 'مدیریت کل — تنظیمات')
+@section('title', $title ?? 'پنل مدیریت')
+@section('breadcrumb', $breadcrumb ?? 'مدیریت کل')
 
 @section('content')
     {{ $slot }}
