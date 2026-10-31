@@ -147,8 +147,12 @@ class ShopIndex extends Component
 
     public function render()
     {
-        return view('livewire.seller.shop-index')
-            ->title('فروشگاه من');
+        return view('livewire.seller.shop-index', [
+            'shop'       => $this->shop,
+            'stats'      => $this->stats,
+            'categories' => $this->categories,
+            'products'   => $this->products,
+        ])->title('فروشگاه من');
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

@@ -155,8 +155,9 @@ class ShopEdit extends Component
 
     public function render()
     {
-        return view('livewire.seller.shop-edit')
-            ->title('ویرایش فروشگاه');
+        return view('livewire.seller.shop-edit', [
+            'shop' => $this->shop,
+        ])->title('ویرایش فروشگاه');
     }
 
     // ── Computed ─────────────────────────────────────────────────────

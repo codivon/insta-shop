@@ -67,7 +67,7 @@
                     @if ($shop->instagram_username)
                         <span class="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-slate-500 dark:bg-slate-800 dark:text-slate-300" dir="ltr">
                             <x-icon name="instagram" class="size-3" />
-                            @{{ $shop->instagram_username }}
+                            {{ '@'.$shop->instagram_username }}
                         </span>
                     @endif
                     <span class="rounded-full px-2 py-1 {{ $shop->seller->status === 'approved'

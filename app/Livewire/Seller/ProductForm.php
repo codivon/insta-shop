@@ -172,8 +172,9 @@ class ProductForm extends Component
 
     public function render()
     {
-        return view('livewire.seller.product-form')
-            ->title($this->productId ? 'ویرایش محصول' : 'افزودن محصول');
+        return view('livewire.seller.product-form', [
+            'existingImages' => $this->existingImages,
+        ])->title($this->productId ? 'ویرایش محصول' : 'افزودن محصول');
     }
 
     // ── Computed ─────────────────────────────────────────────────────
