@@ -209,8 +209,12 @@
 
             post('/install/database', payload)
                 .then(function () {
-                    goStep(4);
-                    return runInstall(null);
+                    // Writing .env reboots the app's runtime config (APP_NAME,
+                    // session cookie name, …). Reloading re-establishes a clean
+                    // session and the boot resume path (data-resume="1")
+                    // automatically opens step 4 and starts the pipeline.
+                    btn.textContent = 'در حال آماده‌سازی نصب…';
+                    window.location.reload();
                 })
                 .catch(function (e) {
                     el.dbError.textContent = e.message || 'اتصال به دیتابیس برقرار نشد.';

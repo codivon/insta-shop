@@ -2,7 +2,7 @@
     "name": "instashop/installer",
     "description": "InstaShop web installer — RTL Persian wizard with requirement/permission checks, DB connection test, .env + APP_KEY generation, and crash-proof batched migrations/seeders with a live progress bar. No SSH or exec() needed.",
     "type": "library",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "license": "MIT",
     "authors": [
         {

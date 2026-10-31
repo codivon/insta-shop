@@ -17,6 +17,12 @@ class InstallerServiceProvider extends ServiceProvider
         if (! InstallerState::isInstalled()) {
             config([
                 'session.driver' => 'file',
+                // The default session cookie name is derived from APP_NAME,
+                // which CHANGES the moment the wizard writes .env (Laravel →
+                // InstaShop). A renamed cookie means a brand-new empty session
+                // and the CSRF token dies mid-install → 419 on the very next
+                // batch. Pin the cookie name until the app is installed.
+                'session.cookie' => 'instashop_install_session',
                 'cache.default' => 'file',
                 'queue.default' => 'sync',
                 'app.key' => InstallerState::provisionalKey(),
