@@ -6,6 +6,8 @@ use App\Http\Controllers\Shop\PaymentRedirect;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\AppearanceSettings;
 use App\Livewire\Admin\Auth\Login;
+use App\Livewire\Admin\ProductsIndex;
+use App\Livewire\Admin\ShopsIndex;
 use App\Livewire\Admin\Users\CustomersIndex;
 use App\Livewire\Admin\Users\SellersIndex;
 use App\Livewire\Customer\Auth\PhoneLogin;
@@ -52,6 +54,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ── Users management ──
         Route::get('/users/sellers', SellersIndex::class)->name('users.sellers');
         Route::get('/users/customers', CustomersIndex::class)->name('users.customers');
+
+        // ── Catalog management (shops & products) ──
+        Route::get('/shops', ShopsIndex::class)->name('shops');
+        Route::get('/products', ProductsIndex::class)->name('products');
 
         // Livewire full-page: appearance & theme customization
         Route::get('/settings/appearance', AppearanceSettings::class)
