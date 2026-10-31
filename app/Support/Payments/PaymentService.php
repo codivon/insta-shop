@@ -29,11 +29,44 @@ class PaymentService
         'sep'         => 'درگاه سپ',
     ];
 
+    /**
+     * Credential fields per gateway, editable from the admin panel
+     * (stored in settings as "payment.{gateway}.{field}").
+     * Anything left empty falls back to config/payment.php (i.e. .env).
+     */
+    public const CREDENTIAL_FIELDS = [
+        'local'       => [],
+        'zarinpal'    => ['merchantId' => 'مرچنت‌کد زرین‌پال'],
+        'zibal'       => ['merchantId' => 'مرچنت‌کد زیبال'],
+        'behpardakht' => ['terminalId' => 'شماره ترمینال', 'username' => 'نام کاربری', 'password' => 'رمز عبور'],
+        'sep'         => ['terminalId' => 'شماره ترمینال'],
+    ];
+
     public static function activeGateway(): string
     {
         $gateway = (string) Setting::get('payment.gateway', 'local');
 
         return array_key_exists($gateway, self::GATEWAYS) ? $gateway : 'local';
+    }
+
+    /**
+     * Build the "drivers" config block with credentials from the settings
+     * merged over config/payment.php (env-backed defaults). We must pass
+     * the WHOLE drivers map because shetabit's config() replaces keys.
+     */
+    public static function runtimeDriversConfig(string $gateway): array
+    {
+        $drivers = (array) config('payment.drivers', []);
+
+        foreach (self::CREDENTIAL_FIELDS[$gateway] ?? [] as $field => $label) {
+            $value = trim((string) Setting::get("payment.{$gateway}.{$field}", ''));
+
+            if ($value !== '') {
+                $drivers[$gateway] = array_merge($drivers[$gateway] ?? [], [$field => $value]);
+            }
+        }
+
+        return ['drivers' => $drivers];
     }
 
     /**
@@ -52,8 +85,11 @@ class PaymentService
 
         // One shared manager instance: purchase() and pay() must see the
         // same invoice — the container binds a fresh instance per resolve,
-        // so never split this chain across facade calls.
-        $manager = Payment::via($gateway)->callbackUrl(self::callbackUrl($order));
+        // so never split this chain across facade calls. The runtime
+        // drivers config carries credentials saved from the admin panel.
+        $manager = Payment::config(self::runtimeDriversConfig($gateway))
+            ->via($gateway)
+            ->callbackUrl(self::callbackUrl($order));
 
         try {
             $manager->purchase($invoice, function ($driver, string $transactionId) use ($order, $gateway): void {
@@ -90,7 +126,8 @@ class PaymentService
         $gateway = $order->gateway ?: self::activeGateway();
 
         try {
-            $receipt = Payment::via($gateway)
+            $receipt = Payment::config(self::runtimeDriversConfig($gateway))
+                ->via($gateway)
                 ->amount($order->total_amount)
                 ->transactionId((string) $order->gateway_ref)
                 ->verify();

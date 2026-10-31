@@ -12,6 +12,7 @@ use App\Livewire\Admin\ProductsIndex;
 use App\Livewire\Admin\ShopsIndex;
 use App\Livewire\Admin\Users\CustomersIndex;
 use App\Livewire\Admin\Users\SellersIndex;
+use App\Livewire\Admin\Settings\PaymentSettings;
 use App\Livewire\Admin\Settings\SmsSettings;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\CartPage;
@@ -72,6 +73,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // ── Settings: SMS provider ──
         Route::get('/settings/sms', SmsSettings::class)->name('settings.sms');
+
+        // ── Settings: payment gateway ──
+        Route::get('/settings/payment', PaymentSettings::class)->name('settings.payment');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });
