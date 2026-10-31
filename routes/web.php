@@ -6,6 +6,7 @@ use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Seller\Auth\PhoneAuth;
 use App\Livewire\Seller\CategoryManager;
+use App\Livewire\Seller\Home;
 use App\Livewire\Seller\ProductForm;
 use App\Livewire\Seller\ShopEdit;
 use App\Livewire\Seller\ShopIndex;
@@ -50,7 +51,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
     });
 
     Route::middleware('panel.auth')->group(function () {
-        Route::view('/', 'seller.home')->name('home');
+        Route::get('/', Home::class)->name('home');
 
         // ── Phase 3: My Shop (catalog management) ──
         Route::get('/shop', ShopIndex::class)->name('shop');
