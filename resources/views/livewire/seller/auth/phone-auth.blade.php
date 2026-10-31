@@ -98,20 +98,48 @@
                     <x-icon name="arrow-left" class="size-3.5" />
                     تغییر اطلاعات
                 </button>
+                {{-- client-side countdown (no wire:poll — a concurrent poll request can
+                     revert the rotated session cookie right after login) --}}
                 <div class="text-slate-400">
-                    @if ($resendIn > 0)
-                        <span wire:poll.1000ms="tick">
-                            ارسال مجدد تا <b class="text-primary-600 dark:text-primary-400" dir="ltr">{{ $resendIn }}</b> ثانیه
-                        </span>
-                    @else
-                        <button type="button" wire:click="sendOtp"
-                                class="text-primary-600 transition hover:text-primary-700 dark:text-primary-400"
-                                wire:loading.attr="disabled" wire:target="sendOtp">
-                            ارسال مجدد کد
-                        </button>
-                    @endif
+                    <span class="otp-wait">ارسال مجدد تا <b class="otp-cd text-primary-600 dark:text-primary-400" dir="ltr">۶۰</b> ثانیه</span>
+                    <button type="button" wire:click="sendOtp"
+                            class="otp-resend hidden text-primary-600 transition hover:text-primary-700 dark:text-primary-400"
+                            wire:loading.attr="disabled" wire:target="sendOtp">
+                        ارسال مجدد کد
+                    </button>
                 </div>
             </div>
         </form>
     @endif
 </div>
+
+@once
+    @push('scripts')
+        <script>
+            document.addEventListener('otp-countdown', (event) => {
+                let seconds = event.detail?.seconds ?? 0;
+                const wait   = document.querySelector('.otp-wait');
+                const resend = document.querySelector('.otp-resend');
+                const num    = document.querySelector('.otp-cd');
+                if (!wait || !resend) return;
+
+                const fa = (n) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+                wait.classList.remove('hidden');
+                resend.classList.add('hidden');
+                num && (num.textContent = fa(seconds));
+
+                clearInterval(window.__otpCd);
+                window.__otpCd = setInterval(() => {
+                    seconds--;
+                    if (seconds <= 0) {
+                        clearInterval(window.__otpCd);
+                        wait.classList.add('hidden');
+                        resend.classList.remove('hidden');
+                    } else {
+                        num && (num.textContent = fa(seconds));
+                    }
+                }, 1000);
+            });
+        </script>
+    @endpush
+@endonce

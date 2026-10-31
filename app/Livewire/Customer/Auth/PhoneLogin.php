@@ -67,6 +67,7 @@ class PhoneLogin extends Component
             if ($result['retry_after'] !== null) {
                 $this->resendIn = $result['retry_after'];
                 $this->step = 'code';
+                $this->dispatch('otp-countdown', seconds: $result['retry_after']);
             } else {
                 $this->addError('phone', $result['error'] ?? 'ارسال کد ناموفق بود.');
             }
@@ -79,6 +80,7 @@ class PhoneLogin extends Component
         $this->resendIn = OtpService::RESEND_SECONDS;
         $this->step = 'code';
         $this->code = '';
+        $this->dispatch('otp-countdown', seconds: OtpService::RESEND_SECONDS);
     }
 
     /** Step 2 — verify & login (or auto-register) */
@@ -87,7 +89,7 @@ class PhoneLogin extends Component
         $this->resetErrorBag();
         $this->validate();
 
-        $result = app(OtpService::class)->verify($this->phone, 'customer', $this->code);
+        $result = app(OtpService::class)->verify($this->phone, 'customer', $this->code, 'login');
 
         if (! $result['ok']) {
             $this->addError('code', $result['error'] ?? 'کد نامعتبر است.');
@@ -125,14 +127,6 @@ class PhoneLogin extends Component
         $this->devCode = null;
         $this->resendIn = 0;
         $this->resetErrorBag();
-    }
-
-    /** Countdown tick (wire:poll.1000ms) for the resend window */
-    public function tick(): void
-    {
-        if ($this->resendIn > 0) {
-            $this->resendIn--;
-        }
     }
 
     public function render()

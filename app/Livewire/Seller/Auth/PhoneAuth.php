@@ -103,6 +103,7 @@ class PhoneAuth extends Component
             if ($result['retry_after'] !== null) {
                 $this->resendIn = $result['retry_after'];
                 $this->step = 'code';
+                $this->dispatch('otp-countdown', seconds: $result['retry_after']);
             } else {
                 $this->addError('phone', $result['error'] ?? 'ارسال کد ناموفق بود.');
             }
@@ -115,6 +116,7 @@ class PhoneAuth extends Component
         $this->resendIn = OtpService::RESEND_SECONDS;
         $this->step = 'code';
         $this->code = '';
+        $this->dispatch('otp-countdown', seconds: OtpService::RESEND_SECONDS);
     }
 
     /** Step 2 — verify; on register also create the seller record */
@@ -124,7 +126,7 @@ class PhoneAuth extends Component
         $this->validate();
 
         $purpose = $this->mode === 'register' ? 'register' : 'login';
-        $result = app(OtpService::class)->verify($this->phone, 'seller', $purpose);
+        $result = app(OtpService::class)->verify($this->phone, 'seller', $this->code, $purpose);
 
         if (! $result['ok']) {
             $this->addError('code', $result['error'] ?? 'کد نامعتبر است.');

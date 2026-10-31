@@ -20,7 +20,9 @@ use App\Support\Sms\SmsMessage;
 class OtpService
 {
     public const EXPIRY_MINUTES = 5;
-    public const MAX_ATTEMPTS   = 5;
+
+    public const MAX_ATTEMPTS = 5;
+
     public const RESEND_SECONDS = 60;
 
     public function __construct(protected SmsManager $sms) {}
@@ -48,13 +50,13 @@ class OtpService
         $code = (string) random_int(100000, 999999);
 
         $otp = OtpCode::create([
-            'phone'        => $phone,
-            'code'         => $code,
-            'purpose'      => $purpose,
-            'panel'        => $panel,
-            'attempts'     => 0,
+            'phone' => $phone,
+            'code' => $code,
+            'purpose' => $purpose,
+            'panel' => $panel,
+            'attempts' => 0,
             'max_attempts' => self::MAX_ATTEMPTS,
-            'expires_at'   => now()->addMinutes(self::EXPIRY_MINUTES),
+            'expires_at' => now()->addMinutes(self::EXPIRY_MINUTES),
         ]);
 
         $result = $this->sms->send(
@@ -70,19 +72,26 @@ class OtpService
         }
 
         return [
-            'ok'         => true,
+            'ok' => true,
             'retry_after' => null,
-            'dev_code'   => $this->devCodeEnabled() ? $code : null,
-            'error'      => null,
+            'dev_code' => $this->devCodeEnabled() ? $code : null,
+            'error' => null,
         ];
     }
 
     /**
      * Verify the code. Consumes it on success; counts an attempt on failure.
+     * When $purpose is given, only codes issued for that purpose match.
      */
-    public function verify(string $phone, string $panel, string $code): array
+    public function verify(string $phone, string $panel, string $code, ?string $purpose = null): array
     {
-        $otp = OtpCode::activeFor($phone, $panel)->first();
+        $query = OtpCode::activeFor($phone, $panel);
+
+        if ($purpose !== null) {
+            $query->where('purpose', $purpose);
+        }
+
+        $otp = $query->first();
 
         if (! $otp) {
             return ['ok' => false, 'error' => 'کدی یافت نشد. دوباره درخواست کد بدهید.'];
@@ -98,8 +107,8 @@ class OtpService
             $left = $otp->max_attempts - $otp->attempts;
 
             return [
-                'ok'       => false,
-                'error'    => $left > 0
+                'ok' => false,
+                'error' => $left > 0
                     ? 'کد وارد شده نادرست است ('.$left.' تلاش باقی مانده).'
                     : 'کد نادرست وارد شد؛ حساب موقتاً قفل شد. کد جدید بگیرید.',
             ];
