@@ -3,6 +3,7 @@
 namespace App\Livewire\Seller\Auth;
 
 use App\Models\Seller;
+use App\Models\Shop;
 use App\Services\OtpService;
 use App\Support\Phone;
 use Illuminate\Support\Facades\Auth;
@@ -162,6 +163,10 @@ class PhoneAuth extends Component
 
         Auth::guard('seller')->login($seller, remember: true);
         session()->regenerate();
+
+        // Every seller owns exactly one shop — create it on first login
+        // (sellers may build their catalog while still pending approval).
+        Shop::ensureForSeller($seller);
 
         $this->redirect(route('seller.home'), navigate: true);
     }
