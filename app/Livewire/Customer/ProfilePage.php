@@ -64,9 +64,7 @@ class ProfilePage extends Component
             return '';
         }
 
-        return \App\Support\Fmt::toFa(
-            $customer->created_at->locale('fa')->translatedFormat('Y/m/d'),
-        );
+        return \App\Support\JDate::date($customer->created_at);
     }
 
     public function render()

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\Fmt;
+use App\Support\JDate;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -168,14 +170,14 @@ class Order extends Model
         };
     }
 
-    /** Persian creation date, e.g. «۱۴۰۵/۰۸/۱۰ — ۲۳:۴۵». */
+    /** Persian (Jalali) creation date, e.g. «۱۴۰۵/۰۸/۰۹ — ۲۳:۲۱». */
     public function dateFa(): string
     {
-        return Fmt::toFa($this->created_at?->locale('fa')->translatedFormat('Y/m/d — H:i') ?? '');
+        return $this->created_at ? JDate::dateTime($this->created_at) : '';
     }
 
     public function paidAtFa(): string
     {
-        return Fmt::toFa($this->paid_at?->locale('fa')->translatedFormat('Y/m/d — H:i') ?? '');
+        return $this->paid_at ? JDate::dateTime($this->paid_at) : '';
     }
 }

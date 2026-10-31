@@ -82,7 +82,9 @@ class OrdersPage extends Component
     public function render()
     {
         return view('livewire.seller.orders-page', [
-            'shop' => $this->shop(),
+            'shop'    => $this->shop(),
+            'orders'  => $this->orders,
+            'hasMore' => $this->hasMore,
         ])->title('سفارش‌های فروشگاه');
     }
 }
