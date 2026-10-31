@@ -30,10 +30,10 @@ class ResolvePanel
 
         // Swap session storage for this panel before StartSession runs.
         config([
-            'session.driver'    => 'database',
-            'session.cookie'    => $ctx->sessionCookie(),
-            'session.table'     => $ctx->sessionTable(),
-            'session.lifetime'  => $ctx->sessionLifetime(),
+            'session.driver' => 'database',
+            'session.cookie' => $ctx->sessionCookie(),
+            'session.table' => $ctx->sessionTable(),
+            'session.lifetime' => $ctx->sessionLifetime(),
             'session.same_site' => 'lax',
         ]);
 
@@ -44,9 +44,10 @@ class ResolvePanel
     {
         $path = $request->path();
 
-        // Livewire endpoints are panel-less; inherit the panel context of
-        // the page the component is mounted on (header → referer → landing).
-        if ($path === 'livewire' || str_starts_with($path, 'livewire/')) {
+        // Livewire endpoints (livewire/update in v3, livewire-{hash}/update
+        // in v4) are panel-less; inherit the panel context of the page the
+        // component is mounted on (header → referer → landing).
+        if (str_starts_with($path, 'livewire')) {
             return $this->panelFromHeader($request)
                 ?? $this->panelFromReferer($request)
                 ?? 'landing';

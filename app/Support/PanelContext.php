@@ -73,4 +73,26 @@ class PanelContext
     {
         return 'App\\Http\\Controllers\\'.Str::studly($this->key);
     }
+
+    /** Named route of the panel's login page (shop panel lives under /shop). */
+    public function loginRoute(): string
+    {
+        return match ($this->key) {
+            'admin' => 'admin.login',
+            'seller' => 'seller.login',
+            'customer' => 'shop.login',
+            default => 'landing',
+        };
+    }
+
+    /** Named route the panel lands on after authentication. */
+    public function homeRoute(): string
+    {
+        return match ($this->key) {
+            'admin' => 'admin.dashboard',
+            'seller' => 'seller.home',
+            'customer' => 'shop.home',
+            default => 'landing',
+        };
+    }
 }

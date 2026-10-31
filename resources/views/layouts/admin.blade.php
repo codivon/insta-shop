@@ -118,15 +118,20 @@
         <div class="border-t border-slate-200 p-4 dark:border-slate-800">
             <div class="flex items-center justify-between rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
                 <div class="flex items-center gap-2.5">
-                    <span class="grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-bold text-white">م</span>
+                    <span class="grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-bold text-white">
+                        {{ mb_substr(auth('admin')->user()?->name ?? 'م', 0, 1) }}
+                    </span>
                     <span>
-                        <span class="block text-xs font-bold">مدیر</span>
-                        <span class="block text-[11px] text-slate-400" dir="ltr">admin@caffeinet.ir</span>
+                        <span class="block text-xs font-bold">{{ auth('admin')->user()?->name ?? 'مدیر' }}</span>
+                        <span class="block text-[11px] text-slate-400" dir="ltr">{{ auth('admin')->user()?->email ?? 'admin@caffeinet.ir' }}</span>
                     </span>
                 </div>
-                <button type="button" class="grid size-8 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30" aria-label="خروج">
-                    <x-icon name="log-out" class="size-4" />
-                </button>
+                <form method="POST" action="{{ route('admin.logout') }}">
+                    @csrf
+                    <button type="submit" class="grid size-8 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition hover:bg-primary-700" aria-label="خروج از حساب">
+                        <x-icon name="log-out" class="size-4" />
+                    </button>
+                </form>
             </div>
         </div>
     </aside>

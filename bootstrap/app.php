@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\AuthenticatePanel;
+use App\Http\Middleware\RedirectIfPanelAuthenticated;
+use App\Http\Middleware\ResolvePanel;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,7 +17,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Resolve the current panel (and its isolated session config)
         // BEFORE StartSession / EncryptCookies run.
-        $middleware->prepend(\App\Http\Middleware\ResolvePanel::class);
+        $middleware->prepend(ResolvePanel::class);
+
+        // Panel-scoped auth middleware (each panel guards with its own guard)
+        $middleware->alias([
+            'panel.auth' => AuthenticatePanel::class,
+            'panel.guest' => RedirectIfPanelAuthenticated::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

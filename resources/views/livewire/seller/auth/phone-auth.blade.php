@@ -1,0 +1,117 @@
+<div class="mx-auto flex w-full max-w-sm flex-1 flex-col">
+
+    {{-- ───────── mode tabs ───────── --}}
+    <div class="grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900" role="tablist">
+        <button type="button" wire:click="setMode('login')" role="tab" aria-selected="{{ $mode === 'login' }}"
+                class="rounded-xl py-2.5 text-xs font-extrabold transition {{ $mode === 'login' ? 'bg-white text-primary-600 shadow dark:bg-slate-800 dark:text-primary-400' : 'text-slate-500' }}">
+            ورود
+        </button>
+        <button type="button" wire:click="setMode('register')" role="tab" aria-selected="{{ $mode === 'register' }}"
+                class="rounded-xl py-2.5 text-xs font-extrabold transition {{ $mode === 'register' ? 'bg-white text-primary-600 shadow dark:bg-slate-800 dark:text-primary-400' : 'text-slate-500' }}">
+            ثبت‌نام فروشنده
+        </button>
+    </div>
+
+    @if ($step === 'phone')
+        <h1 class="mt-6 text-xl font-extrabold">
+            {{ $mode === 'login' ? 'خوش برگشتید! 👋' : 'فروشگاهت را بساز' }}
+        </h1>
+        <p class="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            {{ $mode === 'login'
+                ? 'با شماره موبایل و کد تأیید وارد پنل فروشندگی شوید.'
+                : 'شماره موبایل و شناسه اینستاگرام فروشگاه را وارد کنید؛ کد تأیید پیامک می‌شود.' }}
+        </p>
+
+        <form wire:submit="sendOtp" class="mt-6 space-y-4">
+            <div>
+                <label for="phone" class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-300">شماره موبایل</label>
+                <div class="relative">
+                    <span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-slate-400">
+                        <x-icon name="phone" class="size-4.5" />
+                    </span>
+                    <input id="phone" type="tel" inputmode="tel" dir="ltr" autocomplete="tel"
+                           placeholder="0912 345 6789"
+                           class="w-full rounded-2xl border border-slate-300 bg-white py-3.5 pl-11 pr-4 text-left text-sm font-bold tracking-wider shadow-sm outline-none transition placeholder:text-slate-300 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/15 dark:border-slate-700 dark:bg-slate-900 dark:placeholder:text-slate-600"
+                           wire:model="phone" required autofocus>
+                </div>
+                @error('phone') <p class="mt-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+            </div>
+
+            @if ($mode === 'register')
+                <div>
+                    <label for="instagram" class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-300">شناسه اینستاگرام فروشگاه</label>
+                    <div class="relative">
+                        <span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-slate-400">
+                            <x-icon name="instagram" class="size-4.5" />
+                        </span>
+                        <input id="instagram" type="text" dir="ltr" autocomplete="username"
+                               placeholder="@my_shop"
+                               class="w-full rounded-2xl border border-slate-300 bg-white py-3.5 pl-11 pr-4 text-left text-sm font-bold shadow-sm outline-none transition placeholder:text-slate-300 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/15 dark:border-slate-700 dark:bg-slate-900 dark:placeholder:text-slate-600"
+                               wire:model.live.debounce.400ms="instagram" required>
+                    </div>
+                    @error('instagram') <p class="mt-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                    <p class="mt-1.5 text-[10px] leading-5 text-slate-400">آدرس فروشگاه شما: <span dir="ltr">instashop.ir/s/{{ $instagram ?: 'shop' }}</span></p>
+                </div>
+            @endif
+
+            <button type="submit"
+                    class="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-primary-600/25 transition hover:bg-primary-700 active:scale-[.98] disabled:opacity-60"
+                    wire:loading.attr="disabled" wire:target="sendOtp">
+                <span wire:loading wire:target="sendOtp" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                {{ $mode === 'login' ? 'دریافت کد ورود' : 'ادامه و دریافت کد' }}
+            </button>
+        </form>
+    @endif
+
+    @if ($step === 'code')
+        <h1 class="mt-6 text-xl font-extrabold">کد تأیید</h1>
+        <p class="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            کد ۶ رقمی ارسال‌شده به شماره {{ \App\Support\Phone::pretty($phone) }} را وارد کنید.
+        </p>
+
+        <form wire:submit="verify" class="mt-6 space-y-4">
+            <div>
+                <label for="code" class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-300">کد تأیید</label>
+                <input id="code" type="text" inputmode="numeric" dir="ltr" maxlength="6" autocomplete="one-time-code"
+                       placeholder="······"
+                       class="w-full rounded-2xl border border-slate-300 bg-white py-4 text-center text-2xl font-black tracking-[.6em] text-slate-800 shadow-sm outline-none transition placeholder:tracking-[.6em] placeholder:text-slate-300 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-600"
+                       wire:model="code" required autofocus>
+                @error('code') <p class="mt-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+            </div>
+
+            @if ($devCode)
+                <div class="flex items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300" dir="ltr">
+                    <x-icon name="info" class="size-4 shrink-0" />
+                    <span>DEV OTP: <b class="text-base tracking-widest">{{ $devCode }}</b> (driver = log)</span>
+                </div>
+            @endif
+
+            <button type="submit"
+                    class="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-primary-600/25 transition hover:bg-primary-700 active:scale-[.98] disabled:opacity-60"
+                    wire:loading.attr="disabled" wire:target="verify">
+                <span wire:loading wire:target="verify" class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                {{ $mode === 'login' ? 'ورود به پنل فروشنده' : 'ثبت‌نام و ورود' }}
+            </button>
+
+            <div class="flex items-center justify-between text-[11px] font-bold">
+                <button type="button" wire:click="backToPhone" class="flex items-center gap-1 text-slate-500 transition hover:text-slate-700 dark:hover:text-slate-300">
+                    <x-icon name="arrow-left" class="size-3.5" />
+                    تغییر اطلاعات
+                </button>
+                <div class="text-slate-400">
+                    @if ($resendIn > 0)
+                        <span wire:poll.1000ms="tick">
+                            ارسال مجدد تا <b class="text-primary-600 dark:text-primary-400" dir="ltr">{{ $resendIn }}</b> ثانیه
+                        </span>
+                    @else
+                        <button type="button" wire:click="sendOtp"
+                                class="text-primary-600 transition hover:text-primary-700 dark:text-primary-400"
+                                wire:loading.attr="disabled" wire:target="sendOtp">
+                            ارسال مجدد کد
+                        </button>
+                    @endif
+                </div>
+            </div>
+        </form>
+    @endif
+</div>

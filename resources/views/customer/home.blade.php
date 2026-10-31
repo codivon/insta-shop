@@ -18,6 +18,12 @@
             <button type="button" class="grid size-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="جستجو">
                 <x-icon name="search" class="size-5" />
             </button>
+            <form method="POST" action="{{ route('shop.logout') }}">
+                @csrf
+                <button type="submit" class="grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800" aria-label="خروج از حساب">
+                    <x-icon name="log-out" class="size-5" />
+                </button>
+            </form>
         </div>
     </div>
 @endsection

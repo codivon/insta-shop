@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Controllers\Auth\PanelLogout;
+use App\Livewire\Admin\AppearanceSettings;
+use App\Livewire\Admin\Auth\Login;
+use App\Livewire\Customer\Auth\PhoneLogin;
+use App\Livewire\Seller\Auth\PhoneAuth;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,11 +20,19 @@ Route::view('/', 'landing')->name('landing');
 |--------------------------------------------------------------------------
 */
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::view('/', 'admin.dashboard')->name('dashboard');
+    Route::middleware('panel.guest')->group(function () {
+        Route::get('/login', Login::class)->name('login');
+    });
 
-    // Livewire full-page: appearance & theme customization
-    Route::get('/settings/appearance', \App\Livewire\Admin\AppearanceSettings::class)
-        ->name('settings.appearance');
+    Route::middleware('panel.auth')->group(function () {
+        Route::view('/', 'admin.dashboard')->name('dashboard');
+
+        // Livewire full-page: appearance & theme customization
+        Route::get('/settings/appearance', AppearanceSettings::class)
+            ->name('settings.appearance');
+
+        Route::post('/logout', PanelLogout::class)->name('logout');
+    });
 });
 
 /*
@@ -28,7 +41,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('seller')->name('seller.')->group(function () {
-    Route::view('/', 'seller.home')->name('home');
+    Route::middleware('panel.guest')->group(function () {
+        Route::get('/login', PhoneAuth::class)->name('login');
+    });
+
+    Route::middleware('panel.auth')->group(function () {
+        Route::view('/', 'seller.home')->name('home');
+
+        Route::post('/logout', PanelLogout::class)->name('logout');
+    });
 });
 
 /*
@@ -37,7 +58,15 @@ Route::prefix('seller')->name('seller.')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('shop')->name('shop.')->group(function () {
-    Route::view('/', 'customer.home')->name('home');
+    Route::middleware('panel.guest')->group(function () {
+        Route::get('/login', PhoneLogin::class)->name('login');
+    });
+
+    Route::middleware('panel.auth')->group(function () {
+        Route::view('/', 'customer.home')->name('home');
+
+        Route::post('/logout', PanelLogout::class)->name('logout');
+    });
 });
 
 /*
@@ -48,16 +77,16 @@ Route::prefix('shop')->name('shop.')->group(function () {
 if (app()->isLocal()) {
     $probe = fn (string $panel) => function () use ($panel) {
         $prev = session('probe');
-        $now  = 'hit-'.substr((string) microtime(true), -6);
+        $now = 'hit-'.substr((string) microtime(true), -6);
 
         session(['probe' => $now]);
 
         return response()->json([
-            'panel'        => $panel,
-            'cookie'       => config('session.cookie'),
-            'table'        => config('session.table'),
+            'panel' => $panel,
+            'cookie' => config('session.cookie'),
+            'table' => config('session.table'),
             'previous_hit' => $prev,
-            'this_hit'     => $now,
+            'this_hit' => $now,
         ]);
     };
 
@@ -69,6 +98,6 @@ if (app()->isLocal()) {
     // X-Instashop-Panel header or the Referer path (not from the URI).
     Route::get('/livewire/__probe', fn () => response()->json([
         'cookie' => config('session.cookie'),
-        'table'  => config('session.table'),
+        'table' => config('session.table'),
     ]));
 }

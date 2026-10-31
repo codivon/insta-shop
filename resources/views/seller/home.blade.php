@@ -3,6 +3,7 @@
 @section('title', 'خانه فروشنده')
 
 @section('header')
+    @php $me = auth('seller')->user(); @endphp
     <div class="flex items-center justify-between px-4 py-3">
         <div class="flex items-center gap-2.5">
             <span class="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-lg shadow-primary-600/30">
@@ -12,31 +13,49 @@
                 <div class="text-sm font-extrabold leading-5">فروشگاه شما</div>
                 <div class="flex items-center gap-1 text-[11px] text-slate-400">
                     <x-icon name="instagram" class="size-3" />
-                    <span dir="ltr">@your_shop</span>
-                    <span class="mx-0.5">·</span>
-                    <span class="text-emerald-500">فعال</span>
+                    <span dir="ltr">{{ '@'.($me?->instagram_username ?? 'your_shop') }}</span>
+                    @if ($me?->status === 'pending')
+                        <span class="mx-0.5">·</span>
+                        <span class="font-bold text-amber-500">در انتظار تأیید</span>
+                    @elseif ($me?->status === 'approved')
+                        <span class="mx-0.5">·</span>
+                        <span class="text-emerald-500">فعال</span>
+                    @endif
                 </div>
             </div>
         </div>
         <div class="flex items-center gap-1">
             <x-theme-toggle class="size-10 text-slate-500" />
-            <button type="button" class="relative grid size-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="اعلان‌ها">
-                <x-icon name="bell" class="size-5" />
-                <span class="absolute right-2.5 top-2.5 size-2 rounded-full bg-primary-500 ring-2 ring-white dark:ring-slate-900"></span>
-            </button>
+            <form method="POST" action="{{ route('seller.logout') }}">
+                @csrf
+                <button type="submit" class="grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800" aria-label="خروج از حساب">
+                    <x-icon name="log-out" class="size-5" />
+                </button>
+            </form>
         </div>
     </div>
 @endsection
 
 @section('content')
     <div class="ip-fade-up px-4 pt-4">
+        {{-- ── pending approval banner ── --}}
+        @if ($me?->status === 'pending')
+            <div class="mb-4 flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-xs leading-6 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+                <x-icon name="clock" class="mt-0.5 size-4 shrink-0" />
+                <span>
+                    <b>فروشگاه شما در انتظار تأیید است.</b>
+                    تا زمان تأیید توسط مدیر می‌توانید فروشگاه و محصولات را بسازید؛ اما نمایش عمومی پس از تأیید فعال می‌شود.
+                </span>
+            </div>
+        @endif
+
         {{-- ── greeting hero ── --}}
         <div class="relative overflow-hidden rounded-3xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-5 text-white shadow-xl shadow-primary-600/25">
             <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
                 <div class="absolute -top-8 left-6 size-40 rounded-full bg-white/30 blur-2xl"></div>
                 <div class="absolute -bottom-12 right-10 size-48 rounded-full bg-white/20 blur-2xl"></div>
             </div>
-            <p class="relative text-xs text-primary-100">سلام پویا عزیز، امروز چیکار می‌کنیم؟ ☀️</p>
+            <p class="relative text-xs text-primary-100">سلام {{ $me?->full_name ?? 'فروشنده' }} عزیز، امروز چیکار می‌کنیم؟ ☀️</p>
             <h2 class="relative mt-1.5 text-lg font-extrabold">فروشگاهت آماده فروشه!</h2>
 
             {{-- mini stats --}}
@@ -101,9 +120,7 @@
         <div class="mt-6 mb-4 flex items-start gap-2.5 rounded-2xl border border-primary-200 bg-primary-50/70 p-3.5 text-xs leading-6 text-primary-800 dark:border-primary-900 dark:bg-primary-950/40 dark:text-primary-300">
             <x-icon name="info" class="mt-0.5 size-4 shrink-0" />
             <span>
-                <b>حالت پیش‌نمایش فاز ۱:</b> داده‌ها نمایشی هستند. در فاز ۲ ورود با OTP و در
-                فاز ۳ صفحه کامل «فروشگاه من» (کارت محصول، فیلترها، دسته‌بندی‌ها و دکمه شناور
-                افزودن محصول) فعال می‌شود.
+                <b>حالت پیش‌نمایش فاز ۲:</b> ورود با OTP فعال شد (پیامک در حالت لاگ). داده‌های سفارش و درآمد نمایشی هستند؛ در فاز ۳ صفحه کامل «فروشگاه من» (کارت محصول، فیلترها، دسته‌بندی‌ها و دکمه شناور افزودن محصول) فعال می‌شود.
             </span>
         </div>
     </div>
