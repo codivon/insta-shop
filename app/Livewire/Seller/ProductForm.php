@@ -303,6 +303,22 @@ class ProductForm extends Component
         $this->specTemplateId = (int) $template->id;
     }
 
+    /* ══════════════════ specs modal ══════════════════ */
+
+    /** Whether the «مشخصات محصول» editor modal is open. */
+    public bool $specModalOpen = false;
+
+    public function openSpecModal(): void
+    {
+        $this->resetErrorBag(['specifications', 'specType']);
+        $this->specModalOpen = true;
+    }
+
+    public function closeSpecModal(): void
+    {
+        $this->specModalOpen = false;
+    }
+
     /* ══════════════════ variant modal ══════════════════ */
 
     public function openVariantModal(?int $index = null): void

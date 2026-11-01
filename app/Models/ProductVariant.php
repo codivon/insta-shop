@@ -68,7 +68,7 @@ class ProductVariant extends Model
         return $parts !== [] ? implode(' / ', $parts) : 'تنوع '.($this->sort + 1);
     }
 
-    public function valueForAttribute(int $attributeId): ?self
+    public function valueForAttribute(int $attributeId): ?ProductVariantValue
     {
         return $this->values->first(fn (ProductVariantValue $v) => (int) $v->shop_attribute_id === $attributeId);
     }
