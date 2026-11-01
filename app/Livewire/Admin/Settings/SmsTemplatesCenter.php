@@ -296,6 +296,6 @@ class SmsTemplatesCenter extends Component
             'counts'    => $this->counts(),
             'logs'      => $this->recentLogs(),
         ])->title('قالب‌های پیامک')
-            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — تنظیمات — قالب‌های پیامک']);
+            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — پیامک — قالب‌های پیامک']);
     }
 }

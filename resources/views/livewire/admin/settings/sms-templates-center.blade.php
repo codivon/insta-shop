@@ -31,7 +31,7 @@
     @endif
 
     {{-- ── header ── --}}
-    <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div class="flex items-start gap-3">
                 <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-lg shadow-primary-600/30">
@@ -87,7 +87,7 @@
     {{-- ── template cards ── --}}
     <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
         @forelse ($templates as $tpl)
-            <div class="flex flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900" wire:key="tpl-{{ $tpl->id }}" wire:loading.class="opacity-70" wire:target="toggleEnabled({{ $tpl->id }})">
+            <div class="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900" wire:key="tpl-{{ $tpl->id }}" wire:loading.class="opacity-70" wire:target="toggleEnabled({{ $tpl->id }})">
                 {{-- top row --}}
                 <div class="flex items-start justify-between gap-2">
                     <div class="flex min-w-0 items-center gap-2">
@@ -136,7 +136,7 @@
                 </div>
             </div>
         @empty
-            <div class="rounded-3xl border border-dashed border-slate-300 p-12 text-center md:col-span-2 2xl:col-span-3 dark:border-slate-700">
+            <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center md:col-span-2 2xl:col-span-3 dark:border-slate-700">
                 <x-icon name="megaphone" class="mx-auto size-10 text-slate-300" />
                 <p class="mt-3 text-xs font-bold text-slate-400">قالبی مطابق فیلتر فعلی یافت نشد.</p>
                 <p class="mt-1 text-[11px] text-slate-400">قالب‌ها با اجرای مایگریشن‌ها و سیدر جدید به‌صورت خودکار ساخته می‌شوند.</p>
@@ -145,7 +145,7 @@
     </div>
 
     {{-- ── recent sms logs ── --}}
-    <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
             <h3 class="flex items-center gap-2 text-sm font-extrabold">
                 <x-icon name="file-text" class="size-4 text-primary-500" />
@@ -191,11 +191,11 @@
 
     {{-- ═══════════════════ EDIT MODAL ═══════════════════ --}}
     <div x-cloak x-show="editOpen" x-on:click.self="editOpen = false; $wire.closeEdit()"
-         class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+         class="fixed inset-0 z-[70] flex overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"
          role="dialog" aria-modal="true" aria-labelledby="tpl-edit-title"
          x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-        <div class="scroll-slim max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+        <div class="scroll-slim m-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
              x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="translate-y-4 opacity-0" x-transition:enter-end="translate-y-0 opacity-100">
 
             <div class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
@@ -287,11 +287,11 @@
 
     {{-- ═══════════════════ TEST MODAL ═══════════════════ --}}
     <div x-cloak x-show="testOpen" x-on:click.self="testOpen = false; $wire.closeTest()"
-         class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+         class="fixed inset-0 z-[80] flex overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"
          role="dialog" aria-modal="true" aria-labelledby="tpl-test-title"
          x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-        <div class="scroll-slim max-h-[92vh] w-full max-w-md overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+        <div class="scroll-slim m-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
 
             <div class="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
                 <h3 id="tpl-test-title" class="text-sm font-extrabold">تست «{{ $this->testTitle() }}»</h3>

@@ -17,7 +17,7 @@
     <div x-data="{ tab: 'cron' }" class="space-y-5">
 
         {{-- ── tabs ── --}}
-        <div class="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="scroll-slim flex gap-1 overflow-x-auto border-b border-slate-100 px-2 pt-2 dark:border-slate-800" role="tablist" aria-label="تنظیمات برنامه‌نویس">
                 <button type="button" role="tab" :aria-selected="tab === 'cron'" x-on:click="tab = 'cron'"
                         class="ap-dev-tab relative whitespace-nowrap" :class="tab === 'cron' ? 'is-active' : ''">

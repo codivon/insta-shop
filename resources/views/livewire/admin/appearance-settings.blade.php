@@ -9,7 +9,7 @@
     @endif
 
     {{-- ── page card ── --}}
-    <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
 
         <div class="flex items-start justify-between gap-4">
             <div>
@@ -20,8 +20,7 @@
                     ظاهر و رنگ‌بندی
                 </h2>
                 <p class="mt-2 max-w-xl text-xs leading-6 text-slate-500 dark:text-slate-400">
-                    رنگ اصلی می‌تواند یک رنگ مشخص باشد. با یک کلیک روی هر پالت، همه چیز — از منوها تا
-                    دکمه‌ها — با کلیک روی دکمه ذخیره، در همه صفحه‌ها همزمان تغییر می‌کند.
+                    یک پالت آماده انتخاب کنید یا با «شخصی‌سازی» رنگ دلخواه خود را بسازید؛ با ذخیره، همه چیز — از منوها تا دکمه‌ها — در همه صفحه‌ها همزمان تغییر می‌کند.
                 </p>
             </div>
             <span class="hidden rounded-full bg-primary-50 px-3 py-1.5 text-[11px] font-bold text-primary-700 sm:inline dark:bg-primary-950 dark:text-primary-300">
@@ -66,47 +65,98 @@
             </button>
         </div>
 
-        {{-- ── custom color + preview ── --}}
-        <div class="mt-6 rounded-2xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
-            <h3 class="text-sm font-extrabold">رنگ اصلی</h3>
-            <p class="mt-1 text-[11px] text-slate-400">کد HEX را وارد کنید یا انتخابگر رنگ را باز کنید؛ با تغییر، «شخصی‌سازی» فعال می‌شود.</p>
-
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-                <input type="color" wire:model.live="primary" wire:debounce.300ms
-                       class="size-11 cursor-pointer rounded-xl border border-slate-200 bg-transparent p-1 dark:border-slate-700"
-                       aria-label="انتخابگر رنگ اصلی">
-                <input type="text" wire:model.live="primary" wire:debounce.300ms dir="ltr"
-                       class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-center text-sm font-bold shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900"
-                       placeholder="#D62976" aria-label="کد رنگ HEX">
-                @error('primary')
-                    <span class="text-xs font-semibold text-rose-600">{{ $message }}</span>
-                @enderror
-            </div>
-
-            {{-- shades preview (50 → 950) --}}
-            <div class="mt-4">
-                <div class="mb-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">طیف تولیدشده (۵۰ تا ۹۵۰) — در تمام اجزای سایت استفاده می‌شود:</div>
-                <div class="grid grid-cols-11 gap-1.5">
-                    @foreach ($this->shades as $step => $hex)
-                        <div class="flex flex-col items-center gap-1">
-                            <span class="h-9 w-full rounded-lg border border-black/5 shadow-sm" style="background: {{ $hex }};" title="{{ $step }} → {{ $hex }}"></span>
-                            <span class="text-[8.5px] font-bold text-slate-400">{{ $step }}</span>
-                        </div>
-                    @endforeach
+        {{-- ── preset tuning: warmth slider (فقط برای پالت‌های آماده) ── --}}
+        @if ($preset !== 'custom')
+            <div class="mt-6 rounded-2xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-extrabold">میزان گرمی و سردی پالت</h3>
+                        <p class="mt-1 text-[11px] text-slate-400">اسلایدر را بکشید: به سمت راست پالت گرم‌تر (نارنجی‌تر) و به سمت چپ سردتر (آبی‌تر) می‌شود.</p>
+                    </div>
+                    <button type="button" wire:click="resetWarmth" wire:loading.attr="disabled" wire:target="resetWarmth"
+                            class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-[11px] font-bold text-slate-500 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:text-slate-300 dark:hover:text-primary-300">
+                        <x-icon name="rotate" class="size-3.5" />
+                        پیش‌فرض
+                    </button>
                 </div>
-            </div>
 
-            {{-- mini preview UI --}}
-            <div class="mt-4 rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
-                <div class="mb-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">پیش‌نمایش زنده:</div>
-                <div class="flex flex-wrap items-center gap-2.5">
-                    <span class="rounded-xl px-4 py-2 text-xs font-bold text-white shadow-md" style="background: {{ $this->shades[600] ?? '#D62976' }};">دکمه اصلی</span>
-                    <span class="rounded-xl border px-4 py-2 text-xs font-bold" style="border-color: {{ $this->shades[300] ?? '#F3BFD6' }}; color: {{ $this->shades[700] ?? '#9A1E55' }};">دکمه خطی</span>
-                    <span class="rounded-full px-3 py-1 text-[10px] font-bold" style="background: {{ $this->shades[100] ?? '#FCEEF4' }}; color: {{ $this->shades[800] ?? '#7C1844' }};">برچسب</span>
-                    <span class="grid size-8 place-items-center rounded-full text-white shadow" style="background: {{ $this->shades[700] ?? '#9A1E55' }};">
-                        <x-icon name="store" class="size-4" />
+                <div class="mt-4 flex items-center gap-3">
+                    <span class="flex shrink-0 items-center gap-1 text-[10px] font-bold text-sky-500">
+                        <x-icon name="moon" class="size-3.5" />
+                        سردتر
+                    </span>
+                    <div class="relative flex-1">
+                        <input type="range" min="{{ \App\Livewire\Admin\AppearanceSettings::WARMTH_MIN }}" max="{{ \App\Livewire\Admin\AppearanceSettings::WARMTH_MAX }}" step="1"
+                               wire:model.live.debounce.250ms="warmth"
+                               class="w-full cursor-pointer appearance-none bg-transparent"
+                               style="accent-color: {{ $this->shades[600] ?? '#D62976' }};"
+                               aria-label="میزان گرمی و سردی پالت">
+                    </div>
+                    <span class="flex shrink-0 items-center gap-1 text-[10px] font-bold text-orange-500">
+                        گرم‌تر
+                        <x-icon name="sun" class="size-3.5" />
                     </span>
                 </div>
+
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5 dark:bg-slate-800/60">
+                    <span class="text-[11px] font-bold text-slate-500 dark:text-slate-300">
+                        {{ $warmth === 0
+                            ? 'حالت پیش‌فرض پالت'
+                            : ($warmth > 0
+                                ? '+'.\App\Support\Fmt::fa($warmth).' درجه گرم‌تر'
+                                : \App\Support\Fmt::fa(abs($warmth)).'− درجه سردتر') }}
+                    </span>
+                    <span class="flex items-center gap-2">
+                        <span class="size-5 rounded-full border border-black/10 shadow-sm" style="background: {{ $this->shades[600] ?? '#D62976' }};"></span>
+                        <code class="text-[11px] font-black text-slate-600 dark:text-slate-200" dir="ltr">{{ $this->shades[600] ?? '#D62976' }}</code>
+                    </span>
+                </div>
+            </div>
+        @endif
+
+        {{-- ── custom color (فقط وقتی پالت روی «شخصی‌سازی» است) ── --}}
+        @if ($preset === 'custom')
+            <div class="mt-6 rounded-2xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
+                <h3 class="text-sm font-extrabold">رنگ اصلی</h3>
+                <p class="mt-1 text-[11px] text-slate-400">کد HEX را وارد کنید یا انتخابگر رنگ را باز کنید.</p>
+
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                    <input type="color" wire:model.live="primary" wire:debounce.300ms
+                           class="size-11 cursor-pointer rounded-xl border border-slate-200 bg-transparent p-1 dark:border-slate-700"
+                           aria-label="انتخابگر رنگ اصلی">
+                    <input type="text" wire:model.live="primary" wire:debounce.300ms dir="ltr"
+                           class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-center text-sm font-bold shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900"
+                           placeholder="#D62976" aria-label="کد رنگ HEX">
+                    @error('primary')
+                        <span class="text-xs font-semibold text-rose-600">{{ $message }}</span>
+                    @enderror
+                </div>
+            </div>
+        @endif
+
+        {{-- ── shade scale (effective color) ── --}}
+        <div class="mt-6">
+            <div class="mb-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">طیف تولیدشده (۵۰ تا ۹۵۰) — در تمام اجزای سایت استفاده می‌شود:</div>
+            <div class="grid grid-cols-11 gap-1.5">
+                @foreach ($this->shades as $step => $hex)
+                    <div class="flex flex-col items-center gap-1">
+                        <span class="h-9 w-full rounded-lg border border-black/5 shadow-sm" style="background: {{ $hex }};" title="{{ $step }} → {{ $hex }}"></span>
+                        <span class="text-[8.5px] font-bold text-slate-400">{{ $step }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- ── mini preview ── --}}
+        <div class="mt-4 rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
+            <div class="mb-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">پیش‌نمایش زنده:</div>
+            <div class="flex flex-wrap items-center gap-2.5">
+                <span class="rounded-xl px-4 py-2 text-xs font-bold text-white shadow-md" style="background: {{ $this->shades[600] ?? '#D62976' }};">دکمه اصلی</span>
+                <span class="rounded-xl border px-4 py-2 text-xs font-bold" style="border-color: {{ $this->shades[300] ?? '#F3BFD6' }}; color: {{ $this->shades[700] ?? '#9A1E55' }};">دکمه خطی</span>
+                <span class="rounded-full px-3 py-1 text-[10px] font-bold" style="background: {{ $this->shades[100] ?? '#FCEEF4' }}; color: {{ $this->shades[800] ?? '#7C1844' }};">برچسب</span>
+                <span class="grid size-8 place-items-center rounded-full text-white shadow" style="background: {{ $this->shades[700] ?? '#9A1E55' }};">
+                    <x-icon name="store" class="size-4" />
+                </span>
             </div>
         </div>
 

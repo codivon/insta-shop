@@ -9,7 +9,7 @@
     @endif
 
     {{-- ── toolbar ── --}}
-    <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-800 dark:bg-slate-900">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-800 dark:bg-slate-900">
         <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div class="relative w-full xl:max-w-xs">
                 <x-icon name="search" class="absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -49,10 +49,10 @@
     </div>
 
     {{-- ── table ── --}}
-    <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         @if ($products->isEmpty())
             <div class="flex flex-col items-center gap-3 py-16 text-center">
-                <span class="grid size-14 place-items-center rounded-3xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+                <span class="grid size-14 place-items-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
                     <x-icon name="package" class="size-7" />
                 </span>
                 <p class="text-sm font-bold text-slate-500">محصولی یافت نشد</p>

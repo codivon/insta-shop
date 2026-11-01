@@ -91,9 +91,13 @@ class RolesIndex extends Component
             'roleName.required' => 'نام نقش را وارد کنید.',
         ]);
 
-        $permissions = array_keys(array_filter(
-            $this->permissionSelection,
-            fn ($checked) => (bool) $checked,
+        // Keep only registered permission slugs that are checked — guards
+        // against any stray/nested keys the checkbox UI could ever send.
+        $registered = AdminPermissions::all();
+
+        $permissions = array_values(array_filter(
+            array_keys(array_filter($this->permissionSelection, fn ($checked) => (bool) $checked)),
+            fn ($slug) => is_string($slug) && array_key_exists($slug, $registered),
         ));
 
         $role = $this->roleId

@@ -12,7 +12,7 @@
 
     {{-- ── summary strip ── --}}
     <div class="grid gap-4 sm:grid-cols-3">
-        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-slate-400">شماره سفارش</span>
                 <x-icon name="bag" class="size-4 text-primary-500" />
@@ -20,7 +20,7 @@
             <div class="mt-3 text-2xl font-extrabold">#{{ \App\Support\Fmt::fa($order->id) }}</div>
             <div class="mt-1 text-[11px] text-slate-400">{{ $order->dateFa() }}</div>
         </div>
-        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-slate-400">مبلغ کل</span>
                 <x-icon name="wallet" class="size-4 text-emerald-500" />
@@ -28,7 +28,7 @@
             <div class="mt-3 text-xl font-extrabold">{{ \App\Support\Fmt::money($order->total_amount) }}</div>
             <div class="mt-1 text-[11px] text-slate-400">{{ \App\Support\Fmt::fa($order->items_count) }} کالا</div>
         </div>
-        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-slate-400">پرداخت</span>
                 <x-icon name="credit-card" class="size-4 text-primary-500" />
@@ -45,7 +45,7 @@
     <div class="grid gap-5 xl:grid-cols-3">
 
         {{-- ── items ── --}}
-        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2 dark:border-slate-800 dark:bg-slate-900">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2 dark:border-slate-800 dark:bg-slate-900">
             <h3 class="flex items-center gap-2 text-sm font-extrabold">
                 <x-icon name="package" class="size-4 text-primary-500" />
                 اقلام سفارش
@@ -82,7 +82,7 @@
 
         <div class="space-y-5">
             {{-- ── customer & delivery ── --}}
-            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <h3 class="flex items-center gap-2 text-sm font-extrabold">
                     <x-icon name="user" class="size-4 text-primary-500" />
                     مشتری و تحویل
@@ -118,7 +118,7 @@
             </div>
 
             {{-- ── payment logs ── --}}
-            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <h3 class="flex items-center gap-2 text-sm font-extrabold">
                     <x-icon name="file-text" class="size-4 text-primary-500" />
                     لاگ پرداخت

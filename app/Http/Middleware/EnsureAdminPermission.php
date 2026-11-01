@@ -54,6 +54,14 @@ class EnsureAdminPermission
             return $next($request);
         }
 
+        // The SMS template center is a standalone page reached from the
+        // «پیامک و پرووایدر» section — the SMS section permission also
+        // unlocks it (its dedicated permission is optional but honored).
+        if ($routeName === 'admin.settings.sms.templates'
+            && $admin->hasPermission('admin.settings.sms')) {
+            return $next($request);
+        }
+
         return response()->view('errors.admin-403', [
             'permission' => $routeName !== '' ? AdminPermissions::label($routeName) : null,
         ], 403);

@@ -16,6 +16,8 @@ use App\Livewire\Admin\ProductsIndex;
 use App\Livewire\Admin\ShopsIndex;
 use App\Livewire\Admin\Users\CustomersIndex;
 use App\Livewire\Admin\Users\SellersIndex;
+use App\Livewire\Admin\Settings\SmsSettings;
+use App\Livewire\Admin\Settings\SmsTemplatesCenter;
 use App\Livewire\Admin\Settings\SettingsHub;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\CartPage;
@@ -83,6 +85,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('settings.appearance');
         Route::get('/settings/sms', fn () => redirect()->route('admin.settings', ['tab' => 'sms']))
             ->name('settings.sms');
+
+        // ── SMS template center: STANDALONE page (outside the settings
+        //    hub sidebar) — reached only from «پیامک و پرووایدر» section.
+        Route::get('/settings/sms/templates', SmsTemplatesCenter::class)->name('settings.sms.templates');
         Route::get('/settings/payment', fn () => redirect()->route('admin.settings', ['tab' => 'payment']))
             ->name('settings.payment');
 

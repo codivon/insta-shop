@@ -12,7 +12,7 @@
     <div class="grid gap-5 xl:grid-cols-3">
 
         {{-- ── gateway selection ── --}}
-        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2 dark:border-slate-800 dark:bg-slate-900">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2 dark:border-slate-800 dark:bg-slate-900">
             <h2 class="flex items-center gap-2 text-sm font-extrabold">
                 <span class="grid size-9 place-items-center rounded-xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
                     <x-icon name="credit-card" class="size-4.5" />
@@ -86,7 +86,7 @@
         </div>
 
         {{-- ── help card ── --}}
-        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h2 class="flex items-center gap-2 text-sm font-extrabold">
                 <span class="grid size-9 place-items-center rounded-xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
                     <x-icon name="info" class="size-4.5" />
@@ -103,7 +103,7 @@
     </div>
 
     {{-- ── payment logs ── --}}
-    <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
             <h3 class="flex items-center gap-2 text-sm font-extrabold">
                 <x-icon name="file-text" class="size-4 text-primary-500" />

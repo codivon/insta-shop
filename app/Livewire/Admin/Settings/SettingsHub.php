@@ -12,11 +12,12 @@ use Livewire\Component;
 /**
  * Admin — Settings HUB («تنظیمات سیستم»).
  *
- * ONE sidebar menu; every section (عمومی / ظاهر / پیامک / قالب‌های پیامک /
- * درگاه پرداخت) is rendered INSIDE this page with an internal sidebar —
- * exactly like the reference design. Each section keeps its own permission
- * so roles can grant only some of them; tabs the admin cannot open are
- * hidden from the internal navigation.
+ * ONE sidebar menu; every section (عمومی / ظاهر / پیامک / درگاه پرداخت) is
+ * rendered INSIDE this page with an internal sidebar — exactly like the
+ * reference design. Each section keeps its own permission so roles can
+ * grant only some of them; tabs the admin cannot open are hidden from the
+ * internal navigation. (قالب‌های پیامک is a STANDALONE page reached from
+ * the «پیامک و پرووایدر» section — not part of this hub.)
  *
  * The section components are embedded Livewire children, so their state,
  * validation and permission guards stay untouched.
@@ -83,12 +84,6 @@ class SettingsHub extends Component
                 'icon'        => 'message',
                 'label'       => 'پیامک و پرووایدر',
                 'description' => 'پروایدر ارسال و اعتبارنامه‌ها',
-                'perm'        => 'admin.settings.sms',
-            ],
-            'sms-templates' => [
-                'icon'        => 'megaphone',
-                'label'       => 'قالب‌های پیامک',
-                'description' => 'متن رویدادها، متغیرها و کد پترن',
                 'perm'        => 'admin.settings.sms',
             ],
             'payment' => [

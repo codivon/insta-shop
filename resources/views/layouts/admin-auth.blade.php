@@ -18,7 +18,7 @@
     <main class="flex min-h-screen items-center justify-center px-4 py-10">
         <div class="w-full max-w-md">
             <div class="mb-6 text-center">
-                <span class="mx-auto grid size-14 place-items-center rounded-3xl bg-gradient-to-br from-primary-500 to-primary-800 text-white shadow-xl shadow-primary-600/30">
+                <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-800 text-white shadow-xl shadow-primary-600/30">
                     <x-icon name="shield" class="size-7" />
                 </span>
                 <h1 class="mt-4 text-xl font-extrabold">پنل مدیریت InstaShop</h1>

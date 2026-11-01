@@ -18,7 +18,7 @@
 
     {{-- ───────── Sidebar (right) ───────── --}}
     <aside id="admin-sidebar"
-           class="fixed inset-y-0 right-0 z-50 flex w-72 translate-x-full flex-col border-l border-slate-200 bg-white transition-transform duration-300 lg:translate-x-0 dark:border-slate-800 dark:bg-slate-900"
+           class="fixed inset-y-0 right-0 z-50 flex w-[260px] translate-x-full flex-col border-l border-slate-200 bg-white transition-transform duration-300 lg:translate-x-0 dark:border-slate-800 dark:bg-slate-900"
            aria-label="منوی مدیریت">
 
         {{-- brand --}}
@@ -230,7 +230,7 @@
     <div id="admin-sidebar-overlay" class="fixed inset-0 z-40 hidden bg-slate-950/40 backdrop-blur-sm lg:hidden"></div>
 
     {{-- ───────── Main area ───────── --}}
-    <div class="flex min-h-screen flex-col lg:mr-72">
+    <div class="flex min-h-screen flex-col lg:mr-[260px]">
         {{-- topbar --}}
         <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/90">
             <div class="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">

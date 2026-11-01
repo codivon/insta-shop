@@ -48,15 +48,28 @@ class Theme
     {
         $primary = Setting::get('theme.primary', self::DEFAULTS['theme.primary']);
         $preset  = Setting::get('theme.preset', self::DEFAULTS['theme.preset']);
+        $warmth  = (int) Setting::get('theme.warmth', 0);
 
-        // keep preset pointing to "custom" when hex no longer matches its preset
-        if ($preset !== 'custom' && ($hex = self::PRESETS[$preset]['hex'] ?? null) && strcasecmp($hex, $primary) !== 0) {
-            $preset = 'custom';
+        // warmth only applies to named presets
+        if ($preset === 'custom') {
+            $warmth = 0;
+        } elseif (($hex = self::PRESETS[$preset]['hex'] ?? null)) {
+            // keep preset only while the stored primary still matches the
+            // preset hex (warmth-shifted when warmth is active)
+            $expected = $warmth !== 0 ? Color::shiftHue($hex, $warmth) : $hex;
+
+            if (strcasecmp($expected, $primary) !== 0) {
+                $preset = 'custom';
+                $warmth = 0;
+            }
+        } else {
+            $warmth = 0;
         }
 
         return [
             'primary'       => Color::normalize($primary ?: self::DEFAULTS['theme.primary']),
             'preset'        => $preset,
+            'warmth'        => $warmth,
             'default_mode'  => Setting::get('theme.default_mode', self::DEFAULTS['theme.default_mode']),
             'app_name'      => Setting::get('theme.app_name', self::DEFAULTS['theme.app_name']),
         ];

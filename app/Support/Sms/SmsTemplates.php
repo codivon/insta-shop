@@ -25,12 +25,8 @@ class SmsTemplates
 
     /** Group registry: slug => [label, icon] (sidebar/filter chips). */
     public const GROUPS = [
-        'orders'  => ['سفارش‌ها', 'bag'],
-        'auth'    => ['ورود و احراز', 'message'],
-        'wallet'  => ['کیف پول', 'wallet'],
-        'notify'  => ['اعلان‌ها', 'bell'],
-        'tickets' => ['پشتیبانی', 'headset'],
-        'system'  => ['سیستم', 'settings'],
+        'orders' => ['سفارش‌ها', 'bag'],
+        'auth'   => ['ورود و احراز', 'message'],
     ];
 
     /** Legacy view fallback for keys that predate the templates table. */

@@ -1,7 +1,7 @@
 <div class="ip-fade-up space-y-6">
 
     {{-- ── welcome banner ── --}}
-    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-6 text-white shadow-xl shadow-primary-600/25 sm:p-8">
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-6 text-white shadow-xl shadow-primary-600/25 sm:p-8">
         <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
             <div class="absolute -top-10 left-10 size-56 rounded-full bg-white/30 blur-3xl"></div>
             <div class="absolute -bottom-16 right-24 size-64 rounded-full bg-white/20 blur-3xl"></div>
@@ -84,7 +84,7 @@
         @endphp
         @foreach ($cards as $card)
             <a href="{{ $card['href'] }}"
-               class="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+               class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
                 <div class="flex items-center justify-between">
                     <span class="grid size-11 place-items-center rounded-2xl {{ $card['tone'] }}">
                         <x-icon name="{{ $card['icon'] }}" class="size-5" />
@@ -101,7 +101,7 @@
     <div class="grid gap-6 xl:grid-cols-5">
 
         {{-- ── 7-day orders chart ── --}}
-        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2 dark:border-slate-800 dark:bg-slate-900">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2 dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center justify-between">
                 <h3 class="flex items-center gap-2 text-sm font-extrabold">
                     <span class="grid size-8 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
@@ -141,7 +141,7 @@
         </div>
 
         {{-- ── latest orders ── --}}
-        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3 dark:border-slate-800 dark:bg-slate-900">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3 dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center justify-between">
                 <h3 class="flex items-center gap-2 text-sm font-extrabold">
                     <span class="grid size-8 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400">

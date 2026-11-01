@@ -35,7 +35,7 @@
     {{-- ── roles cards ── --}}
     <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         @forelse ($roles as $role)
-            <div class="flex flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex items-center gap-2.5">
                         <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
@@ -86,7 +86,7 @@
                 @endif
             </div>
         @empty
-            <div class="rounded-3xl border border-dashed border-slate-300 p-10 text-center text-xs text-slate-400 md:col-span-2 xl:col-span-3 dark:border-slate-700">
+            <div class="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-xs text-slate-400 md:col-span-2 xl:col-span-3 dark:border-slate-700">
                 هنوز نقشی تعریف نشده است. با دکمه‌ی «افزودن نقش» اولین نقش را بسازید.
             </div>
         @endforelse
@@ -94,11 +94,11 @@
 
     {{-- ═══════════ add/edit role modal ═══════════ --}}
     <div x-cloak x-show="open" x-on:click.self="open = false; $wire.closeModal()"
-         class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+         class="fixed inset-0 z-[70] flex overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"
          role="dialog" aria-modal="true" aria-labelledby="role-modal-title"
          x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-        <div class="scroll-slim max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+        <div class="scroll-slim m-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
              x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="translate-y-4 opacity-0" x-transition:enter-end="translate-y-0 opacity-100">
 
             <div class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
@@ -135,20 +135,30 @@
                     <p class="mb-2 text-[11px] font-extrabold text-slate-600 dark:text-slate-300">دسترسی‌ها — صفحاتی که این نقش می‌تواند باز کند:</p>
                     <div class="scroll-slim max-h-80 space-y-3 overflow-y-auto rounded-2xl bg-slate-50/60 p-2 dark:bg-slate-800/40">
                         @foreach ($this->groups() as $groupKey => $group)
-                            <div class="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                            {{-- slugs are ASCII route names — single quotes keep the
+                                 HTML attribute intact (double-quoted JSON would break it) --}}
+                            <div class="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
+                                 x-data="{ slugs: {{ str_replace('"', "'", json_encode(array_keys($group['permissions']))) }} }">
                                 <div class="flex items-center justify-between gap-2">
                                     <span class="text-xs font-extrabold">{{ $group['label'] }}</span>
                                     <label class="inline-flex cursor-pointer items-center gap-1 text-[10px] font-bold text-slate-400">
-                                        <input type="checkbox" class="size-3.5" style="accent-color: var(--ip-primary)"
-                                               {{ $this->groupChecked($groupKey) ? 'checked' : '' }}
-                                               wire:click="{{ $this->groupChecked($groupKey) ? 'toggleGroup(\''.$groupKey.'\', false)' : 'toggleGroup(\''.$groupKey.'\', true)' }}">
+                                        {{-- «همه» — Alpine-managed: header state is computed
+                                             CLIENT-SIDE from the reactive selection (a
+                                             $wire method call would return a Promise) --}}
+                                        <input type="checkbox" class="size-3.5" style="accent-color: var(--ip-primary)" wire:ignore
+                                               :checked="slugs.every(s => $wire.permissionSelection[s])"
+                                               x-on:change="$wire.toggleGroup('{{ $groupKey }}', $event.target.checked)"
+                                               aria-label="انتخاب همه دسترسی‌های {{ $group['label'] }}">
                                         همه
                                     </label>
                                 </div>
                                 <div class="mt-2.5 grid gap-1.5 sm:grid-cols-2">
                                     @foreach ($group['permissions'] as $slug => $label)
                                         <label class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/60">
-                                            <input type="checkbox" wire:model="permissionSelection.{{ $slug }}" class="size-4 rounded" style="accent-color: var(--ip-primary)">
+                                            <input type="checkbox" wire:key="perm-{{ $slug }}" wire:ignore
+                                                   :checked="$wire.permissionSelection['{{ $slug }}']"
+                                                   x-on:change="$wire.permissionSelection['{{ $slug }}'] = $event.target.checked"
+                                                   class="size-4 rounded" style="accent-color: var(--ip-primary)">
                                             {{ $label }}
                                         </label>
                                     @endforeach

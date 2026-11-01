@@ -33,7 +33,7 @@
     </div>
 
     {{-- ── admins table ── --}}
-    <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div class="overflow-x-auto">
             <table class="w-full min-w-[680px] text-right text-sm">
                 <thead>
@@ -105,11 +105,11 @@
 
     {{-- ═══════════ add/edit modal ═══════════ --}}
     <div x-cloak x-show="open" x-on:click.self="open = false; $wire.closeModal()"
-         class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+         class="fixed inset-0 z-[70] flex overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"
          role="dialog" aria-modal="true" aria-labelledby="admin-modal-title"
          x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-        <div class="scroll-slim max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+        <div class="scroll-slim m-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
              x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="translate-y-4 opacity-0" x-transition:enter-end="translate-y-0 opacity-100">
 
             <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
@@ -188,11 +188,11 @@
 
     {{-- ═══════════ delete confirm modal ═══════════ --}}
     <div x-cloak x-show="deleteOpen" x-on:click.self="deleteOpen = false"
-         class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+         class="fixed inset-0 z-[70] flex overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"
          role="alertdialog" aria-modal="true" aria-label="حذف مدیر"
          x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-        <div class="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+        <div class="m-auto w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-2xl dark:border-slate-800 dark:bg-slate-900">
             <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-rose-50 text-rose-500 dark:bg-rose-950/40">
                 <x-icon name="trash" class="size-6" />
             </span>

@@ -17,7 +17,7 @@
     @endif
 
     {{-- ── header ── --}}
-    <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex items-center gap-3">
                 <span class="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg shadow-amber-500/25">
@@ -67,7 +67,7 @@
     </div>
 
     {{-- ── filters ── --}}
-    <div class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
+    <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
         {{-- level chips --}}
         <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="فیلتر سطح خطا">
             @php
@@ -101,13 +101,13 @@
 
     {{-- ── entries ── --}}
     @if ($file === '')
-        <div class="rounded-3xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
+        <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
             <x-icon name="file-text" class="mx-auto size-10 text-slate-300" />
             <p class="mt-3 text-xs font-bold text-slate-400">هیچ فایل لاگی یافت نشد.</p>
             <p class="mt-1 text-[11px] text-slate-400">به‌محض اولین خطا یا رویداد، فایل لاگ اینجا نمایش داده می‌شود.</p>
         </div>
     @elseif (count($entries) === 0)
-        <div class="rounded-3xl border border-dashed border-emerald-300 bg-emerald-50/50 p-12 text-center dark:border-emerald-800 dark:bg-emerald-950/30">
+        <div class="rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/50 p-12 text-center dark:border-emerald-800 dark:bg-emerald-950/30">
             <x-icon name="check-circle-2" class="mx-auto size-10 text-emerald-400" />
             <p class="mt-3 text-xs font-bold text-emerald-600 dark:text-emerald-300">ورودی‌ای مطابق فیلترهای فعلی نیست — همه‌چیز تمیز است.</p>
         </div>
@@ -161,11 +161,11 @@
 
     {{-- ═══════════ destructive confirm modal ═══════════ --}}
     <div x-cloak x-show="confirmOpen" x-on:click.self="confirmOpen = false; $wire.cancelAction()"
-         class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+         class="fixed inset-0 z-[70] flex overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"
          role="alertdialog" aria-modal="true" aria-label="تأیید عملیات حذف"
          x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-        <div class="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+        <div class="m-auto w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-2xl dark:border-slate-800 dark:bg-slate-900">
             <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-rose-50 text-rose-500 dark:bg-rose-950/40">
                 <x-icon name="alert" class="size-6" />
             </span>

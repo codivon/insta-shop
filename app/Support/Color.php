@@ -89,4 +89,79 @@ class Color
 
         return $luminance > 0.62 ? '#0F172A' : '#FFFFFF';
     }
+
+    /* ─────────────────────────── HSL / warmth ─────────────────────────── */
+
+    /** @return array{0: float, 1: float, 2: float} [h 0-360, s 0-1, l 0-1] */
+    public static function toHsl(string $hex): array
+    {
+        ['r' => $r, 'g' => $g, 'b' => $b] = self::toRgb($hex);
+        $r /= 255; $g /= 255; $b /= 255;
+
+        $max = max($r, $g, $b);
+        $min = min($r, $g, $b);
+        $l = ($max + $min) / 2;
+
+        if ($max === $min) {
+            return [0.0, 0.0, $l];
+        }
+
+        $d = $max - $min;
+        $s = $l > 0.5 ? $d / (2 - $max - $min) : $d / ($max + $min);
+
+        $h = match (true) {
+            $max === $r => (($g - $b) / $d) + ($g < $b ? 6 : 0),
+            $max === $g => (($b - $r) / $d) + 2,
+            default     => (($r - $g) / $d) + 4,
+        } * 60;
+
+        return [$h, $s, $l];
+    }
+
+    /** Build a hex from HSL ([h 0-360, s 0-1, l 0-1]). */
+    public static function fromHsl(float $h, float $s, float $l): string
+    {
+        $h = fmod($h + 360, 360);
+
+        $c = (1 - abs(2 * $l - 1)) * $s;
+        $x = $c * (1 - abs(fmod($h / 60, 2) - 1));
+        $m = $l - $c / 2;
+
+        [$r, $g, $b] = match (true) {
+            $h < 60  => [$c, $x, 0.0],
+            $h < 120 => [$x, $c, 0.0],
+            $h < 180 => [0.0, $c, $x],
+            $h < 240 => [0.0, $x, $c],
+            $h < 300 => [$x, 0.0, $c],
+            default  => [$c, 0.0, $x],
+        };
+
+        return self::toHex([
+            'r' => (int) round(($r + $m) * 255),
+            'g' => (int) round(($g + $m) * 255),
+            'b' => (int) round(($b + $m) * 255),
+        ]);
+    }
+
+    /**
+     * Rotate the hue of a hex color by $degrees (+ = toward warm/orange,
+     * − = toward cool/blue) keeping saturation & lightness — used by the
+     * «میزان گرمی و سردی پالت» slider in appearance settings.
+     */
+    public static function shiftHue(string $hex, int $degrees): string
+    {
+        $hex = self::normalize($hex);
+
+        if ($degrees === 0) {
+            return $hex;
+        }
+
+        [$h, $s, $l] = self::toHsl($hex);
+
+        if ($s <= 0.001) {
+            return $hex; // pure gray has no hue to shift
+        }
+
+        return self::fromHsl($h + $degrees, $s, $l);
+    }
 }
