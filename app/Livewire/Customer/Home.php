@@ -86,7 +86,14 @@ class Home extends Component
             return;
         }
 
-        if ($product->stock < 1) {
+        // Variant products need an explicit combination choice → product page.
+        if ($product->variants_count > 0) {
+            $this->redirect(route('shop.product.show', $productId), navigate: true);
+
+            return;
+        }
+
+        if ($product->type !== Product::TYPE_DOWNLOADABLE && $product->stock < 1) {
             $this->dispatch('home-toast', message: 'این محصول موجود نیست.');
 
             return;
@@ -125,6 +132,7 @@ class Home extends Component
 
         $rows = $this->productQuery()
             ->with(['mainImage', 'category', 'shop:id,name,slug'])
+            ->withCount(['variants as variants_count' => fn ($q) => $q->where('status', 'active')])
             ->limit($this->perPage)
             ->get();
 
@@ -159,7 +167,8 @@ class Home extends Component
     {
         return Product::query()
             ->where('status', 'published')
-            ->whereHas('shop', fn ($q) => $q->publiclyVisible());
+            ->whereHas('shop', fn ($q) => $q->publiclyVisible())
+            ->withCount(['variants as variants_count' => fn ($q) => $q->where('status', 'active')]);
     }
 
     /** Feed query with search + sort applied. */

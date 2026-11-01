@@ -83,6 +83,9 @@
                         </span>
                         <div class="min-w-0 flex-1">
                             <div class="truncate text-[11px] font-bold">{{ $item->product_name }}</div>
+                            @if ($item->variant_label)
+                                <div class="mt-0.5 truncate text-[9px] font-bold text-slate-500 dark:text-slate-400">{{ $item->variant_label }}</div>
+                            @endif
                             <div class="text-[9px] text-slate-400">{{ \App\Support\Fmt::moneyShort($item->unit_price) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
                         </div>
                         <div class="shrink-0 text-[11px] font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($item->lineTotal()) }}</div>

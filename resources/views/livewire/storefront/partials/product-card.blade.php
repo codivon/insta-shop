@@ -49,7 +49,7 @@
             </span>
         @endif
 
-        @if ($product->stock < 1)
+        @if ($product->type === \App\Models\Product::TYPE_PHYSICAL && $product->stock < 1)
             <span class="absolute inset-0 grid place-items-center bg-slate-950/55 text-[11px] font-extrabold text-white backdrop-blur-[2px]">
                 ناموجود
             </span>
@@ -84,11 +84,19 @@
                         aria-label="{{ $isFav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها' }}">
                     <x-icon name="heart" class="size-3.5 {{ $isFav ? 'fill-current' : '' }}" />
                 </button>
-                <button type="button" wire:click="addToCart({{ $product->id }})" @disabled($product->stock < 1)
-                        class="grid size-7 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition hover:bg-primary-700 active:scale-90 disabled:opacity-40 disabled:shadow-none"
-                        aria-label="افزودن به سبد خرید">
-                    <x-icon name="plus" class="size-3.5" />
-                </button>
+                @if ($product->variants_count > 0)
+                    <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate
+                       class="grid size-7 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition hover:bg-primary-700 active:scale-90"
+                       aria-label="مشاهده و انتخاب تنوع" title="انتخاب تنوع در صفحه محصول">
+                        <x-icon name="layers" class="size-3.5" />
+                    </a>
+                @else
+                    <button type="button" wire:click="addToCart({{ $product->id }})" @disabled($product->type === \App\Models\Product::TYPE_PHYSICAL && $product->stock < 1)
+                            class="grid size-7 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition hover:bg-primary-700 active:scale-90 disabled:opacity-40 disabled:shadow-none"
+                            aria-label="افزودن به سبد خرید">
+                        <x-icon name="plus" class="size-3.5" />
+                    </button>
+                @endif
             </div>
         </div>
     </div>

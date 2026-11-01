@@ -88,10 +88,18 @@
 
                             <div class="mt-0.5 truncate text-[10px] text-slate-400">از {{ $product?->shop?->name ?? '—' }}</div>
 
+                            @if ($item->variant_id > 0)
+                                <div class="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                                    <x-icon name="layers" class="size-2.5 shrink-0" />
+                                    <span class="truncate">{{ $item->variant?->label() ?? 'تنوع نامعتبر' }}</span>
+                                </div>
+                            @endif
+
                             @if ($valid)
                                 <div class="mt-2 flex items-center justify-between">
                                     <div class="flex items-center gap-1 rounded-xl border border-slate-200 p-0.5 dark:border-slate-700">
-                                        <button type="button" wire:click="incrementQty({{ $item->id }})" @disabled($item->quantity >= $product->stock)
+                                        @php $cap = min(\App\Models\Order::lineStock($item), (int) ($item->variant?->max_purchase ?? 0) ?: \App\Models\Order::lineStock($item)); @endphp
+                                        <button type="button" wire:click="incrementQty({{ $item->id }})" @disabled($item->quantity >= $cap)
                                                 class="grid size-7 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-slate-800"
                                                 aria-label="افزایش"><x-icon name="plus" class="size-3" /></button>
                                         <span class="w-7 text-center text-xs font-extrabold">{{ \App\Support\Fmt::toFa($item->quantity) }}</span>
@@ -101,7 +109,7 @@
                                     </div>
                                     <div class="text-left">
                                         @if ($item->quantity > 1)
-                                            <div class="text-[9px] text-slate-400">{{ \App\Support\Fmt::moneyShort($product->price) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
+                                            <div class="text-[9px] text-slate-400">{{ \App\Support\Fmt::moneyShort($item->unitPrice()) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
                                         @endif
                                         <div class="text-xs font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($item->lineTotal()) }}</div>
                                     </div>

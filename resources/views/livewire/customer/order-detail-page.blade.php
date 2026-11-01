@@ -48,6 +48,12 @@
                         </span>
                         <div class="min-w-0 flex-1">
                             <div class="truncate text-xs font-bold">{{ $item->product_name }}</div>
+                            @if ($item->variant_label)
+                                <div class="mt-0.5 inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                                    <x-icon name="layers" class="size-2.5 shrink-0" />
+                                    <span class="truncate">{{ $item->variant_label }}</span>
+                                </div>
+                            @endif
                             <div class="mt-0.5 text-[10px] text-slate-400">
                                 @if ($item->product?->shop?->name)
                                     از {{ $item->product->shop->name }} —

@@ -38,13 +38,13 @@ class Cart extends Model
         return (int) $this->items()->sum('quantity');
     }
 
-    /** Cart total in Toman: Σ (unit price × qty) for purchasable items only. */
+    /** Cart total in Toman: Σ (effective unit price × qty) for published products. */
     public function totalToman(): int
     {
         return (int) $this->items()
-            ->selectRaw('COALESCE(SUM(cart_items.quantity * products.price), 0) as total')
-            ->join('products', 'products.id', '=', 'cart_items.product_id')
-            ->where('products.status', 'published')
-            ->value('total');
+            ->with(['product:id,price,status', 'variant'])
+            ->get()
+            ->filter(fn ($item) => $item->product && $item->product->status === 'published')
+            ->sum(fn ($item) => $item->unitPrice() * $item->quantity);
     }
 }

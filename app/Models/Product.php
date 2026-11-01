@@ -99,6 +99,12 @@ class Product extends Model
         return $this->status === self::STATUS_PUBLISHED;
     }
 
+    /** The product sells through active variants (price/stock live per combination). */
+    public function hasVariants(): bool
+    {
+        return $this->activeVariants()->exists();
+    }
+
     /**
      * Sync the denormalized price/stock used by the customer app:
      * price = cheapest active variant/file, stock = summed variant stock.

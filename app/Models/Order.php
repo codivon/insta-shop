@@ -44,8 +44,10 @@ class Order extends Model
 
     /**
      * Build a pending order from the customer's cart.
-     * Only published & in-stock products are taken; quantities are capped
-     * to the current stock. Returns null when nothing is purchasable.
+     * Only published & in-stock lines are taken (per-variant stock when a
+     * variant was picked); quantities are capped to the current stock and
+     * the picked combination is snapshotted (id + human label).
+     * Returns null when nothing is purchasable.
      */
     public static function createFromCart(Customer $customer, array $delivery, string $gateway): ?self
     {
@@ -55,14 +57,18 @@ class Order extends Model
             return null;
         }
 
-        $lines = $cart->items()->with('product')->get()
-            ->filter(fn ($item) => $item->product && $item->product->status === 'published' && $item->product->stock > 0)
+        $lines = $cart->items()->with(['product', 'variant'])->get()
+            ->filter(fn ($item) => $item->product
+                && $item->product->status === 'published'
+                && self::lineStock($item) > 0)
             ->map(fn ($item) => [
-                'shop_id'      => $item->product->shop_id,
-                'product_id'   => $item->product->id,
-                'product_name' => $item->product->name,
-                'unit_price'   => (int) $item->product->price,
-                'quantity'     => min((int) $item->quantity, (int) $item->product->stock),
+                'shop_id'       => $item->product->shop_id,
+                'product_id'    => $item->product->id,
+                'product_name'  => $item->product->name,
+                'variant_id'    => (int) $item->variant_id,
+                'variant_label' => $item->variant_id > 0 ? $item->variant?->label() : null,
+                'unit_price'    => $item->unitPrice(),
+                'quantity'      => min((int) $item->quantity, self::lineStock($item)),
             ])
             ->values();
 
@@ -106,11 +112,30 @@ class Order extends Model
             }
 
             foreach ($order->items as $item) {
-                Product::query()
-                    ->whereKey($item->product_id)
-                    ->where('stock', '>=', $item->quantity)
-                    ->decrement('stock', $item->quantity);
+                if ($item->variant_id > 0) {
+                    ProductVariant::query()
+                        ->whereKey($item->variant_id)
+                        ->where('stock', '>=', $item->quantity)
+                        ->decrement('stock', $item->quantity);
+                } else {
+                    Product::query()
+                        ->whereKey($item->product_id)
+                        ->where('stock', '>=', $item->quantity)
+                        ->decrement('stock', $item->quantity);
+                }
             }
+
+            // Variant items drain per-variant stock → refresh the denormalized
+            // product price/stock aggregates once per affected product.
+            $order->items
+                ->filter(fn ($item) => $item->variant_id > 0)
+                ->map(fn ($item) => $item->product_id)
+                ->unique()
+                ->each(function ($productId) {
+                    $product = Product::query()->find($productId);
+
+                    $product?->syncAggregates();
+                });
 
             $order->forceFill([
                 'status'      => 'paid',
@@ -182,5 +207,22 @@ class Order extends Model
     public function paidAtFa(): string
     {
         return $this->paid_at ? JDate::dateTime($this->paid_at) : '';
+    }
+
+    /** Current purchasable stock of a cart line (variant-aware; 0 when the combination is gone). */
+    public static function lineStock(CartItem $item): int
+    {
+        if ((int) $item->variant_id > 0) {
+            $variant = $item->variant;
+
+            return ($variant && $variant->status === 'active') ? (int) $variant->stock : 0;
+        }
+
+        // Downloadable goods are never stock-limited.
+        if ($item->product && $item->product->type === Product::TYPE_DOWNLOADABLE) {
+            return 99;
+        }
+
+        return (int) ($item->product->stock ?? 0);
     }
 }

@@ -61,11 +61,19 @@
                                         <span class="mr-1 rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-500 dark:bg-rose-950/40">ناموجود</span>
                                     @endif
                                 </div>
-                                <button type="button" wire:click="addToCart({{ $product->id }})" @disabled($product->stock < 1)
-                                        class="grid size-7 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition active:scale-90 disabled:opacity-40 disabled:shadow-none"
-                                        aria-label="افزودن به سبد">
-                                    <x-icon name="plus" class="size-3.5" />
-                                </button>
+                                @if ($product->hasVariants())
+                                    <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate
+                                       class="grid size-7 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition active:scale-90"
+                                       aria-label="مشاهده و انتخاب تنوع" title="انتخاب تنوع در صفحه محصول">
+                                        <x-icon name="layers" class="size-3.5" />
+                                    </a>
+                                @else
+                                    <button type="button" wire:click="addToCart({{ $product->id }})" @disabled($product->stock < 1)
+                                            class="grid size-7 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition active:scale-90 disabled:opacity-40 disabled:shadow-none"
+                                            aria-label="افزودن به سبد">
+                                        <x-icon name="plus" class="size-3.5" />
+                                    </button>
+                                @endif
                             </div>
                         </div>
                     </div>

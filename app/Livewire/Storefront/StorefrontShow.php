@@ -126,7 +126,14 @@ class StorefrontShow extends Component
             return;
         }
 
-        if ($product->stock < 1) {
+        // Variant products need an explicit combination choice → product page.
+        if ($product->variants_count > 0) {
+            $this->redirect(route('shop.product.show', $productId), navigate: true);
+
+            return;
+        }
+
+        if ($product->type !== \App\Models\Product::TYPE_DOWNLOADABLE && $product->stock < 1) {
             $this->dispatch('storefront-toast', message: 'این محصول موجود نیست.');
 
             return;
@@ -181,7 +188,8 @@ class StorefrontShow extends Component
     {
         return Product::query()
             ->where('shop_id', $this->shop->id)
-            ->where('status', 'published');
+            ->where('status', 'published')
+            ->withCount(['variants as variants_count' => fn (Builder $q) => $q->where('status', 'active')]);
     }
 
     /** Categories ticked «نمایش در صفحه فروشگاه» that have published products. */

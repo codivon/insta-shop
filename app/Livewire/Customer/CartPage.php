@@ -4,6 +4,7 @@ namespace App\Livewire\Customer;
 
 use App\Models\Cart;
 use App\Models\Customer;
+use App\Models\Order;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -15,12 +16,21 @@ class CartPage extends Component
     {
         $item = $this->ownedItem($itemId);
 
-        if (! $item || $item->product->stock < 1) {
+        if (! $item || ! $item->product || $item->product->status !== 'published') {
             return;
         }
 
-        if ($item->quantity >= $item->product->stock) {
-            $this->dispatch('cart-toast', message: 'بیش از موجودی انبار نمی‌شود.');
+        $stock = Order::lineStock($item);
+
+        if ($stock < 1) {
+            return;
+        }
+
+        $maxPerOrder = (int) ($item->variant?->max_purchase ?? 0);
+        $cap = $maxPerOrder > 0 ? min($stock, $maxPerOrder) : $stock;
+
+        if ($item->quantity >= $cap) {
+            $this->dispatch('cart-toast', message: 'بیش از موجودی/سقف خرید نمی‌شود.');
 
             return;
         }
@@ -73,14 +83,16 @@ class CartPage extends Component
     public function getItemsProperty(): Collection
     {
         return $this->cart()
-            ? $this->cart()->items()->with(['product.mainImage', 'product.shop:id,name,slug'])->get()
+            ? $this->cart()->items()->with(['product.mainImage', 'product.shop:id,name,slug', 'variant.values.attribute', 'variant.values.value'])->get()
             : collect();
     }
 
     public function getValidItemsProperty(): Collection
     {
         return $this->items->filter(
-            fn ($item) => $item->product && $item->product->status === 'published' && $item->product->stock > 0,
+            fn ($item) => $item->product
+                && $item->product->status === 'published'
+                && Order::lineStock($item) > 0,
         );
     }
 

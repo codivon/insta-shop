@@ -30,7 +30,9 @@
             @yield('content')
         </main>
 
-        {{-- ───────── Bottom tab bar ───────── --}}
+        {{-- ───────── Bottom tab bar ─────────
+              Hidden on the single product page: there the fixed
+              add-to-cart bar (inside the page component) takes over. ───────── --}}
         @php
             $customerTabs = [
                 ['route' => 'shop.home',      'icon' => 'home',   'label' => 'خانه'],
@@ -46,9 +48,12 @@
                     ->whereHas('cart', fn ($q) => $q->where('customer_id', $customer->id))
                     ->count();
             }
+
+            $showTabBar = ! request()->routeIs('shop.product.show');
         @endphp
-        <nav class="shrink-0 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95"
-             aria-label="تب‌های اصلی فروشگاه">
+        @if ($showTabBar)
+            <nav class="shrink-0 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95"
+                 aria-label="تب‌های اصلی فروشگاه">
             <div class="grid grid-cols-5">
                 @foreach ($customerTabs as $tab)
                     @php
@@ -71,7 +76,8 @@
                     </a>
                 @endforeach
             </div>
-        </nav>
+            </nav>
+        @endif
     </div>
 
     @stack('scripts')

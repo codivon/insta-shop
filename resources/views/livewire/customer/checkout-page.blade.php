@@ -92,7 +92,10 @@
                             <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
                                 <div class="min-w-0">
                                     <div class="truncate text-[11px] font-bold">{{ $item->product->name }}</div>
-                                    <div class="text-[9px] text-slate-400">{{ \App\Support\Fmt::moneyShort($item->product->price) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
+                                    @if ($item->variant_id > 0)
+                                        <div class="mt-0.5 truncate text-[9px] font-bold text-slate-500 dark:text-slate-400">{{ $item->variant?->label() ?? 'تنوع نامعتبر' }}</div>
+                                    @endif
+                                    <div class="text-[9px] text-slate-400">{{ \App\Support\Fmt::moneyShort($item->unitPrice()) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
                                 </div>
                                 <div class="shrink-0 text-[11px] font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($item->lineTotal()) }}</div>
                             </div>

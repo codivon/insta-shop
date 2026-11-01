@@ -96,14 +96,16 @@ class CheckoutPage extends Component
         $cart = $this->customer()?->cart;
 
         return $cart
-            ? $cart->items()->with(['product.mainImage', 'product.shop:id,name,slug'])->get()
+            ? $cart->items()->with(['product.mainImage', 'product.shop:id,name,slug', 'variant.values.attribute', 'variant.values.value'])->get()
             : collect();
     }
 
     public function getValidItemsProperty(): Collection
     {
         return $this->items->filter(
-            fn ($item) => $item->product && $item->product->status === 'published' && $item->product->stock > 0,
+            fn ($item) => $item->product
+                && $item->product->status === 'published'
+                && Order::lineStock($item) > 0,
         );
     }
 

@@ -4,6 +4,7 @@ namespace App\Livewire\Customer;
 
 use App\Models\Cart;
 use App\Models\Customer;
+use App\Models\Product;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -30,7 +31,14 @@ class FavoritesPage extends Component
             return;
         }
 
-        if ($product->stock < 1) {
+        // Variant products need an explicit combination choice → product page.
+        if ($product->hasVariants()) {
+            $this->redirect(route('shop.product.show', $productId), navigate: true);
+
+            return;
+        }
+
+        if ($product->type !== Product::TYPE_DOWNLOADABLE && $product->stock < 1) {
             $this->dispatch('fav-toast', message: 'این محصول موجود نیست.');
 
             return;
