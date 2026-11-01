@@ -50,10 +50,13 @@ body {
     background: transparent;
 }
 
-/* ── SPA-ish page transitions (used with wire:navigate / turbo-like swaps) ── */
+/* ── SPA-ish page transitions (used with wire:navigate / turbo-like swaps) ──
+   FADE ONLY — deliberately no transform: `fill-mode: both` would keep an
+   identity transform on the wrapper after the animation, making it the
+   containing block for position:fixed modals and breaking their centering. */
 @keyframes ip-fade-up {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 .ip-fade-up {
     animation: ip-fade-up 0.28s ease-out both;

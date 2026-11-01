@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Admin\Developer;
 
-use App\Livewire\Admin\Concerns\GuardsPermissions;
+use App\Livewire\Admin\Concerns\GuardsSuperAdmin;
 use App\Models\Setting;
 use App\Support\MigrationInspector;
 use Illuminate\Support\Facades\Artisan;
@@ -35,9 +35,7 @@ use Livewire\Component;
 #[Title('تنظیمات برنامه‌نویس')]
 class DeveloperSettings extends Component
 {
-    use GuardsPermissions;
-
-    protected static string $permission = 'admin.developer.settings';
+    use GuardsSuperAdmin;
 
     /* ── Cron ── */
     public bool $sharedHostingCronEnabled = false;

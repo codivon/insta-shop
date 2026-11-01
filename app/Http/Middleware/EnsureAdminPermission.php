@@ -42,6 +42,18 @@ class EnsureAdminPermission
             return $next($request);
         }
 
+        // The settings HUB («admin/settings») is one page whose sections
+        // carry their own permissions — grant entry when the admin can open
+        // at least ONE section inside it (tabs stay individually guarded).
+        if ($routeName === 'admin.settings' && collect([
+            'admin.settings.general',
+            'admin.settings.appearance',
+            'admin.settings.sms',
+            'admin.settings.payment',
+        ])->contains(fn (string $p) => $admin->hasPermission($p))) {
+            return $next($request);
+        }
+
         return response()->view('errors.admin-403', [
             'permission' => $routeName !== '' ? AdminPermissions::label($routeName) : null,
         ], 403);

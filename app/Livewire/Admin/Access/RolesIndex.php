@@ -3,20 +3,20 @@
 namespace App\Livewire\Admin\Access;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
-use App\Models\Admin;
-use App\Models\AdminRole;
 use App\Support\AdminPermissions;
+use App\Models\AdminRole;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Admin — Roles & permissions («دسترسی‌ها»).
+ * Admin — «نقش‌ها» (زیرمنوی مدیران).
  *
- * Tabs: نقش‌ها (create/edit/delete roles with permission checkboxes,
- * grouped exactly like the sidebar sections) and مدیران (assign roles to
- * admins). Super admins bypass everything — they are marked in the list.
+ * Roles list + a fully MODAL add/edit dialog with grouped permission
+ * checkboxes (every admin page = a permission; developer pages are
+ * intentionally absent — they are super-admin only). System roles cannot
+ * be deleted.
  */
 #[Layout('layouts.admin-slot')]
 #[Title('نقش‌ها و دسترسی‌ها')]
@@ -26,11 +26,14 @@ class RolesIndex extends Component
 
     protected static string $permission = 'admin.access.roles';
 
-    public string $tab = 'roles'; // roles | admins
+    /* ── modal state ── */
+    public bool $modalOpen = false;
 
-    /* ── role form ── */
     public ?int $roleId = null;
 
+    public bool $editing = false;
+
+    /* ── role form ── */
     public string $roleName = '';
 
     public string $roleDescription = '';
@@ -38,42 +41,19 @@ class RolesIndex extends Component
     /** @var array<string, bool> permission slug => checked */
     public array $permissionSelection = [];
 
-    public bool $editing = false;
-
-    /* ── admin role matrix ── */
-    /** @var array<int, array<int, bool>> adminId => roleId => checked */
-    public array $assignments = [];
-
     public function mount(): void
     {
-        $this->resetSelection();
-        $this->loadAssignments();
+        $this->resetForm();
     }
 
-    protected function resetSelection(): void
-    {
-        $this->permissionSelection = array_fill_keys(array_keys(AdminPermissions::all()), false);
-    }
-
-    protected function loadAssignments(): void
-    {
-        $this->assignments = [];
-
-        foreach (Admin::query()->orderBy('id')->get() as $admin) {
-            $this->assignments[$admin->id] = [];
-        }
-
-        foreach (\DB::table('admin_role')->get() as $pivot) {
-            $this->assignments[$pivot->admin_id][$pivot->role_id] = true;
-        }
-    }
-
-    /* ── CRUD ── */
+    /* ── modal flow ── */
 
     public function createRole(): void
     {
         $this->resetForm();
-        $this->editing = true;
+        $this->editing   = false;
+        $this->roleId    = null;
+        $this->modalOpen = true;
     }
 
     public function editRole(int $id): void
@@ -92,7 +72,14 @@ class RolesIndex extends Component
             $this->permissionSelection[$slug] = true;
         }
 
-        $this->editing = true;
+        $this->editing   = true;
+        $this->modalOpen = true;
+    }
+
+    public function closeModal(): void
+    {
+        $this->modalOpen = false;
+        $this->resetForm();
     }
 
     public function saveRole(): void
@@ -123,8 +110,11 @@ class RolesIndex extends Component
 
         $role->save();
 
-        $this->editing = false;
+        $this->modalOpen = false;
         $this->resetForm();
+
+        // Close the dialog on the client too (Alpine state lives there).
+        $this->dispatch('roles-close-modal');
 
         session()->flash('admin-roles-flash', $this->roleId
             ? 'نقش با موفقیت بروزرسانی شد.'
@@ -144,8 +134,6 @@ class RolesIndex extends Component
         $role->admins()->detach();
         $role->delete();
 
-        $this->loadAssignments();
-
         session()->flash('admin-roles-flash', 'نقش حذف شد.');
     }
 
@@ -155,6 +143,12 @@ class RolesIndex extends Component
         $this->roleName        = '';
         $this->roleDescription = '';
         $this->resetSelection();
+        $this->resetErrorBag();
+    }
+
+    protected function resetSelection(): void
+    {
+        $this->permissionSelection = array_fill_keys(array_keys(AdminPermissions::all()), false);
     }
 
     protected function uniqueSlug(string $name): string
@@ -192,34 +186,13 @@ class RolesIndex extends Component
         return $slugs !== [] && collect($slugs)->every(fn ($s) => $this->permissionSelection[$s] ?? false);
     }
 
-    /* ── admin assignments ── */
-
-    public function saveAssignments(): void
-    {
-        foreach ($this->assignments as $adminId => $roleMap) {
-            $admin = Admin::query()->find($adminId);
-
-            if (! $admin || $admin->isSuper()) {
-                continue; // super admins keep full access
-            }
-
-            $roleIds = array_keys(array_filter($roleMap ?? [], fn ($v) => $v));
-
-            $admin->roles()->sync($roleIds);
-        }
-
-        session()->flash('admin-roles-flash', 'دسترسی مدیران ذخیره شد.');
-    }
-
     /* ── data for view ── */
 
     public function render()
     {
         return view('livewire.admin.access.roles-index', [
-            'roles'  => AdminRole::query()->withCount('admins')->orderBy('id')->get(),
-            'admins' => Admin::query()->orderBy('id')->get(),
-            'allRoles' => AdminRole::query()->orderBy('id')->get(),
+            'roles'    => AdminRole::query()->withCount('admins')->orderBy('id')->get(),
         ])->title('نقش‌ها و دسترسی‌ها')
-            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — تنظیمات — دسترسی‌ها']);
+            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — مدیران — نقش‌ها']);
     }
 }

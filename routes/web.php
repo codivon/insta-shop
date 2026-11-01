@@ -5,19 +5,18 @@ use App\Http\Controllers\Seller\ProductFileDownload;
 use App\Http\Controllers\Shop\PaymentCallback;
 use App\Http\Controllers\Shop\PaymentRedirect;
 use App\Livewire\Admin\Dashboard;
+use App\Livewire\Admin\Access\AdminsIndex;
 use App\Livewire\Admin\Access\RolesIndex;
-use App\Livewire\Admin\AppearanceSettings;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Admin\Developer\DeveloperSettings;
+use App\Livewire\Admin\Developer\SystemLogs;
 use App\Livewire\Admin\OrdersIndex;
 use App\Livewire\Admin\OrderShow;
 use App\Livewire\Admin\ProductsIndex;
 use App\Livewire\Admin\ShopsIndex;
 use App\Livewire\Admin\Users\CustomersIndex;
 use App\Livewire\Admin\Users\SellersIndex;
-use App\Livewire\Admin\Settings\GeneralSettings;
-use App\Livewire\Admin\Settings\PaymentSettings;
-use App\Livewire\Admin\Settings\SmsSettings;
+use App\Livewire\Admin\Settings\SettingsHub;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\CartPage;
 use App\Livewire\Customer\CategoriesPage;
@@ -72,24 +71,33 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/orders', OrdersIndex::class)->name('orders');
         Route::get('/orders/{order}', OrderShow::class)->name('orders.show');
 
-        // Livewire full-page: appearance & theme customization
-        Route::get('/settings/appearance', AppearanceSettings::class)
+        // ── Settings hub: ONE sidebar menu, sections rendered inside the
+        //    page itself (عمومی / ظاهر / پیامک / درگاه پرداخت). Old
+        //    sub-routes redirect here and keep their names so existing
+        //    role permissions stay valid.
+        Route::get('/settings', SettingsHub::class)->name('settings');
+
+        Route::get('/settings/general', fn () => redirect()->route('admin.settings', ['tab' => 'general']))
+            ->name('settings.general');
+        Route::get('/settings/appearance', fn () => redirect()->route('admin.settings', ['tab' => 'appearance']))
             ->name('settings.appearance');
+        Route::get('/settings/sms', fn () => redirect()->route('admin.settings', ['tab' => 'sms']))
+            ->name('settings.sms');
+        Route::get('/settings/payment', fn () => redirect()->route('admin.settings', ['tab' => 'payment']))
+            ->name('settings.payment');
 
-        // ── Settings: general (title, logo, favicon, ...) ──
-        Route::get('/settings/general', GeneralSettings::class)->name('settings.general');
-
-        // ── Settings: SMS provider ──
-        Route::get('/settings/sms', SmsSettings::class)->name('settings.sms');
-
-        // ── Settings: payment gateway ──
-        Route::get('/settings/payment', PaymentSettings::class)->name('settings.payment');
+        // ── Managers: admins list (and roles live under access.roles) ──
+        Route::get('/admins', AdminsIndex::class)->name('admins');
 
         // ── Access control: roles & permissions ──
         Route::get('/access/roles', RolesIndex::class)->name('access.roles');
 
         // ── Developer: settings (cron, maintenance, updates, migrations) ──
+        //    Developer pages are super-admin ONLY (سازنده) — they are
+        //    intentionally NOT registered in config/admin-permissions.php
+        //    so no role can ever grant them.
         Route::get('/developer/settings', DeveloperSettings::class)->name('developer.settings');
+        Route::get('/developer/logs', SystemLogs::class)->name('developer.logs');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });

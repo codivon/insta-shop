@@ -20,7 +20,7 @@
                     <x-icon name="bag" class="size-4" />
                     سفارش‌ها
                 </a>
-                <a href="{{ route('admin.settings.appearance') }}"
+                <a href="{{ route('admin.settings', ['tab' => 'appearance']) }}"
                    class="inline-flex items-center gap-2 rounded-2xl border border-white/40 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/20">
                     <x-icon name="palette" class="size-4" />
                     رنگ‌بندی

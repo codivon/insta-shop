@@ -13,6 +13,10 @@
 | middleware FAILS CLOSED, meaning an unregistered admin route is only
 | reachable by super admins.
 |
+| NOTE: Developer pages (admin.developer.*) are deliberately NOT
+| registered here — they are exclusive to the super admin (سازنده) and
+| can never be granted through roles.
+|
 */
 
 return [
@@ -44,27 +48,24 @@ return [
             ],
         ],
 
+        // The settings HUB is one sidebar page; each section inside it is
+        // its own permission so roles can grant only some sections.
         'settings' => [
-            'label' => 'تنظیمات',
+            'label' => 'تنظیمات سیستم',
             'permissions' => [
+                'admin.settings'            => 'مرکز تنظیمات (دسترسی به صفحه تنظیمات)',
                 'admin.settings.general'    => 'تنظیمات عمومی (عنوان، لوگو، فاوآیکون)',
                 'admin.settings.appearance' => 'ظاهر و رنگ‌بندی',
-                'admin.settings.sms'        => 'پیامک',
+                'admin.settings.sms'        => 'پیامک و پرووایدر',
                 'admin.settings.payment'    => 'درگاه پرداخت',
             ],
         ],
 
-        'access' => [
-            'label' => 'دسترسی‌ها',
+        'managers' => [
+            'label' => 'مدیران و نقش‌ها',
             'permissions' => [
+                'admin.admins'       => 'لیست مدیران',
                 'admin.access.roles' => 'نقش‌ها و دسترسی‌ها',
-            ],
-        ],
-
-        'developer' => [
-            'label' => 'برنامه‌نویس',
-            'permissions' => [
-                'admin.developer.settings' => 'تنظیمات برنامه‌نویس',
             ],
         ],
     ],

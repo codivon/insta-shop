@@ -10,6 +10,9 @@ namespace App\Support\Sms;
  */
 class SmsMessage
 {
+    /** Audit anchor: which SMS template produced this message (sms_templates.key). */
+    public ?string $templateKey = null;
+
     public function __construct(
         public string $to,
         public ?string $text = null,

@@ -62,27 +62,34 @@
 
                 // Permission-aware menu: items the current admin cannot open
                 // are hidden (super admins always pass).
-                $can = fn (string $route) => auth('admin')->user()?->hasPermission($route) ?? false;
+                $admin = auth('admin')->user();
+                $can   = fn (string $route) => $admin?->hasPermission($route) ?? false;
 
                 $navItems = array_values(array_filter([
-                    ['route' => 'admin.dashboard',           'icon' => 'chart',       'label' => 'داشبورد',         'match' => 'admin.dashboard',                'badge' => null],
-                    ['route' => 'admin.orders',              'icon' => 'bag',         'label' => 'سفارش‌ها',        'match' => 'admin.orders.*',                 'badge' => $pendingOrders],
-                    ['route' => 'admin.shops',               'icon' => 'store',       'label' => 'فروشگاه‌ها',      'match' => 'admin.shops',                    'badge' => null],
-                    ['route' => 'admin.products',            'icon' => 'package',     'label' => 'محصولات',         'match' => 'admin.products',                 'badge' => null],
-                    ['route' => 'admin.users.sellers',       'icon' => 'users',       'label' => 'فروشندگان',       'match' => 'admin.users.sellers',            'badge' => $pendingSellers],
-                    ['route' => 'admin.users.customers',     'icon' => 'user',        'label' => 'مشتریان',         'match' => 'admin.users.customers',          'badge' => null],
+                    ['route' => 'admin.dashboard',           'icon' => 'chart',       'label' => 'داشبورد',    'match' => 'admin.dashboard',     'badge' => null],
+                    ['route' => 'admin.orders',              'icon' => 'bag',         'label' => 'سفارش‌ها',   'match' => 'admin.orders.*',      'badge' => $pendingOrders],
+                    ['route' => 'admin.shops',               'icon' => 'store',       'label' => 'فروشگاه‌ها', 'match' => 'admin.shops',         'badge' => null],
+                    ['route' => 'admin.products',            'icon' => 'package',     'label' => 'محصولات',    'match' => 'admin.products',      'badge' => null],
+                    ['route' => 'admin.users.sellers',       'icon' => 'users',       'label' => 'فروشندگان',  'match' => 'admin.users.sellers', 'badge' => $pendingSellers],
+                    ['route' => 'admin.users.customers',     'icon' => 'user',        'label' => 'مشتریان',    'match' => 'admin.users.customers','badge' => null],
                 ], fn ($item) => $can($item['route'])));
 
-                $settingsItems = array_values(array_filter([
-                    ['route' => 'admin.settings.general',    'icon' => 'sliders',      'label' => 'تنظیمات عمومی'],
-                    ['route' => 'admin.settings.appearance', 'icon' => 'palette',      'label' => 'ظاهر و رنگ‌بندی'],
-                    ['route' => 'admin.settings.sms',        'icon' => 'message',      'label' => 'پیامک'],
-                    ['route' => 'admin.settings.payment',    'icon' => 'credit-card',  'label' => 'درگاه پرداخت'],
-                    ['route' => 'admin.access.roles',        'icon' => 'shield',       'label' => 'دسترسی‌ها'],
+                // ── مدیران group (لیست مدیران + نقش‌ها) ──
+                $managersItems = array_values(array_filter([
+                    ['route' => 'admin.admins',       'icon' => 'user',   'label' => 'لیست مدیران'],
+                    ['route' => 'admin.access.roles', 'icon' => 'shield', 'label' => 'نقش‌ها'],
                 ], fn ($item) => $can($item['route'])));
+                $showManagers = $managersItems !== [];
 
-                $showSettings  = $settingsItems !== [];
-                $showDeveloper = $can('admin.developer.settings');
+                // ── تنظیمات: ONE menu item; sections live INSIDE the page ──
+                $showSettings = $can('admin.settings')
+                    || $can('admin.settings.general')
+                    || $can('admin.settings.appearance')
+                    || $can('admin.settings.sms')
+                    || $can('admin.settings.payment');
+
+                // ── برنامه‌نویس: super admin (سازنده) ONLY — never in roles ──
+                $showDeveloper = $admin?->isSuper() ?? false;
             @endphp
 
             @foreach ($navItems as $item)
@@ -106,29 +113,29 @@
             @endforeach
 
             @php
-                $settingsOpen  = request()->routeIs('admin.settings.*') || request()->routeIs('admin.access.*');
+                $managersOpen  = request()->routeIs('admin.admins') || request()->routeIs('admin.access.*');
                 $developerOpen = request()->routeIs('admin.developer.*');
             @endphp
 
-            {{-- settings group (collapsible) --}}
-            @if ($showSettings)
-            <div x-data="{ open: {{ $settingsOpen ? 'true' : 'false' }} }" class="pt-5">
+            {{-- managers group (collapsible) — لیست مدیران + نقش‌ها --}}
+            @if ($showManagers)
+            <div x-data="{ open: {{ $managersOpen ? 'true' : 'false' }} }" class="pt-5">
                 <button type="button" x-on:click="open = !open"
                         class="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition
-                               {{ $settingsOpen
+                               {{ $managersOpen
                                    ? 'bg-primary-600 font-bold text-white shadow-md shadow-primary-600/25'
                                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}"
-                        :aria-expanded="open" aria-controls="admin-settings-menu">
+                        :aria-expanded="open" aria-controls="admin-managers-menu">
                     <span class="flex items-center gap-2.5">
-                        <x-icon name="settings" class="size-4.5 {{ $settingsOpen ? 'text-white' : 'text-slate-400' }}" />
-                        تنظیمات
+                        <x-icon name="users" class="size-4.5 {{ $managersOpen ? 'text-white' : 'text-slate-400' }}" />
+                        مدیران
                     </span>
-                    <x-icon name="chevron-down" class="size-3.5 transition-transform duration-300 {{ $settingsOpen ? 'text-white' : 'text-slate-400' }}" x-bind:class="open ? 'rotate-180' : ''" />
+                    <x-icon name="chevron-down" class="size-3.5 transition-transform duration-300 {{ $managersOpen ? 'text-white' : 'text-slate-400' }}" x-bind:class="open ? 'rotate-180' : ''" />
                 </button>
 
-                <div id="admin-settings-menu" x-show="open" x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="-translate-y-1 opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-cloak class="mt-1 space-y-0.5 border-e-2 border-slate-100 pe-1 dark:border-slate-800">
-                    @foreach ($settingsItems as $item)
-                        @php $isActive = request()->routeIs($item['match'] ?? $item['route']); @endphp
+                <div id="admin-managers-menu" x-show="open" x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="-translate-y-1 opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-cloak class="mt-1 space-y-0.5 border-e-2 border-slate-100 pe-1 dark:border-slate-800">
+                    @foreach ($managersItems as $item)
+                        @php $isActive = request()->routeIs($item['route']); @endphp
                         <a href="{{ route($item['route']) }}" wire:navigate
                            class="ms-4 flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] transition
                                   {{ $isActive
@@ -142,7 +149,24 @@
             </div>
             @endif
 
-            {{-- developer group (collapsible) --}}
+            {{-- settings: SINGLE menu item — sections are inside the page --}}
+            @if ($showSettings)
+                <a href="{{ route('admin.settings') }}" wire:navigate
+                   class="mt-5 flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition
+                          {{ request()->routeIs('admin.settings')
+                              ? 'bg-primary-600 font-bold text-white shadow-md shadow-primary-600/25'
+                              : 'font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}">
+                    <span class="flex items-center gap-2.5">
+                        <x-icon name="settings" class="size-4.5 {{ request()->routeIs('admin.settings') ? 'text-white' : 'text-slate-400' }}" />
+                        تنظیمات
+                    </span>
+                    <span class="rounded-md px-1.5 py-0.5 text-[10px] font-bold {{ request()->routeIs('admin.settings') ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500' }}">
+                        بخش‌ها در صفحه
+                    </span>
+                </a>
+            @endif
+
+            {{-- developer group (collapsible) — super admin ONLY --}}
             @if ($showDeveloper)
             <div x-data="{ open: {{ $developerOpen ? 'true' : 'false' }} }">
                 <button type="button" x-on:click="open = !open"
@@ -166,6 +190,14 @@
                                   : 'font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800' }}">
                         <x-icon name="terminal" class="size-3.5 {{ request()->routeIs('admin.developer.settings') ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400' }}" />
                         تنظیمات برنامه‌نویس
+                    </a>
+                    <a href="{{ route('admin.developer.logs') }}" wire:navigate
+                       class="ms-4 flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] transition
+                              {{ request()->routeIs('admin.developer.logs')
+                                  ? 'bg-amber-50 font-extrabold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
+                                  : 'font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800' }}">
+                        <x-icon name="file-text" class="size-3.5 {{ request()->routeIs('admin.developer.logs') ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400' }}" />
+                        لاگ سیستم
                     </a>
                 </div>
             </div>

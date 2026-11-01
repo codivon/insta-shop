@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             AdminSeeder::class,
             SmsSettingsSeeder::class,
             PaymentSettingsSeeder::class,
+            SmsTemplateSeeder::class,
         ]);
     }
 }

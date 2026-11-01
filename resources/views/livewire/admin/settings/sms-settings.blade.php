@@ -19,12 +19,19 @@
 
         {{-- ── provider selection ── --}}
         <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2 dark:border-slate-800 dark:bg-slate-900">
-            <h2 class="flex items-center gap-2 text-sm font-extrabold">
-                <span class="grid size-9 place-items-center rounded-xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
-                    <x-icon name="message" class="size-4.5" />
-                </span>
-                پروایدر پیامک
-            </h2>
+            <div class="flex items-start justify-between gap-3">
+                <h2 class="flex items-center gap-2 text-sm font-extrabold">
+                    <span class="grid size-9 place-items-center rounded-xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
+                        <x-icon name="message" class="size-4.5" />
+                    </span>
+                    پروایدر پیامک
+                </h2>
+                <a href="{{ route('admin.settings', ['tab' => 'sms-templates']) }}" wire:navigate
+                   class="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-primary-600 px-3.5 py-2 text-[11px] font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700">
+                    <x-icon name="megaphone" class="size-3.5" />
+                    قالب‌های پیامک
+                </a>
+            </div>
             <p class="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
                 پروایدر فعال برای همه پیامک‌های سیستم (کد OTP و ...) انتخاب کنید. اعتبارنامه هر پروایدر جداگانه ذخیره می‌شود و با تغییر پروایدر حفظ می‌ماند.
             </p>

@@ -74,7 +74,7 @@ class SmsManager
             'panel'               => $message->panel,
             'driver'              => $driver->name(),
             'phone'               => $message->to,
-            'template'            => $message->template,
+            'template'            => $message->templateKey ?? $message->template,
             'message'             => $message->body(),
             'status'              => $result->ok ? 'sent' : 'failed',
             'error'               => $result->error,
