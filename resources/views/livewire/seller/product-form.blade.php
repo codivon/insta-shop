@@ -5,7 +5,8 @@
         catQuery: '',
      }"
      x-effect="if (tab === 'pricing' && $wire.productType === 'downloadable') tab = 'files'"
-     x-on:scroll-specs-bottom.window="$nextTick(() => { const el = document.getElementById('specs-editor-end'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) })">
+     x-on:scroll-specs-bottom.window="$nextTick(() => { const el = document.getElementById('specs-editor-end'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) })"
+     x-on:product-form-errors.window="tab = $event.detail.tab || 'info'; document.getElementById('pf-error-summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">
 
     {{-- ───────── Sticky page header ───────── --}}
     <div class="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/90">
@@ -56,6 +57,17 @@
     </div>
 
     <form wire:submit="save" class="px-4 pt-4">
+
+        {{-- error summary anchor — the form auto-scrolls here when a save fails --}}
+        @if ($errors->isNotEmpty())
+            <div id="pf-error-summary" class="mb-3 flex items-start gap-2 rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 dark:border-rose-900 dark:bg-rose-950/40">
+                <x-icon name="alert" class="mt-0.5 size-4 shrink-0 text-rose-500" />
+                <div class="min-w-0">
+                    <p class="text-[11px] font-extrabold text-rose-600 dark:text-rose-400">ذخیره انجام نشد — {{ \App\Support\Fmt::toFa($errors->count()) }} مورد نیاز به اصلاح دارد</p>
+                    <p class="mt-0.5 text-[10px] font-bold leading-5 text-rose-500 dark:text-rose-400/90">{{ $errors->first() }}</p>
+                </div>
+            </div>
+        @endif
 
         {{-- ═══════════════ TAB 1 · اطلاعات محصول ═══════════════ --}}
         <div x-show="tab === 'info'" x-cloak class="space-y-3">
@@ -198,7 +210,7 @@
                 @if ($productType === 'physical')
                     <div class="mt-3 grid grid-cols-2 gap-3">
                         <div>
-                            <label for="pf-weight" class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">وزن (گرم)</label>
+                            <label for="pf-weight" class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">وزن (گرم) <span class="text-rose-500" title="برای کالای فیزیکی الزامی است">*</span></label>
                             <input id="pf-weight" type="text" inputmode="numeric" dir="ltr" wire:model="weight" placeholder="500"
                                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-xs font-extrabold outline-none transition placeholder:text-slate-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800">
                             @error('weight') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror

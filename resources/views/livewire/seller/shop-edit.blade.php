@@ -175,6 +175,21 @@
             </span>
         </a>
 
+        {{-- ── کدهای تخفیف — shortcut to the discount codes manager ── --}}
+        <a href="{{ route('seller.discounts') }}" wire:navigate
+           class="mt-2 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-rose-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-rose-800">
+            <span class="flex items-center gap-2.5 text-xs font-bold">
+                <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-fuchsia-100 to-rose-100 text-rose-600 dark:from-fuchsia-950/50 dark:to-rose-950/50 dark:text-rose-400">
+                    <x-icon name="tag" class="size-4.5" />
+                </span>
+                کدهای تخفیف
+            </span>
+            <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                ساخت و مدیریت کدهای خرید
+                <x-icon name="chevron-left" class="size-3.5" />
+            </span>
+        </a>
+
         {{-- ───────── Pinned actions (fixed at the bottom of the viewport on phones) ───────── --}}
         <div class="sticky bottom-0 z-20 -mx-4 mt-4 flex gap-2 border-t border-slate-200/80 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95">
             <button type="submit"

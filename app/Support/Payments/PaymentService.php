@@ -50,6 +50,39 @@ class PaymentService
     }
 
     /**
+     * Gateways the CUSTOMER may choose from at checkout: the local test
+     * gateway is always there; a real gateway shows up once ANY credential
+     * for it is saved (admin settings panel or .env config).
+     *
+     * @return array<string, string> key → Persian label
+     */
+    public static function availableGateways(): array
+    {
+        $available = [];
+
+        foreach (self::GATEWAYS as $key => $label) {
+            if ($key === 'local') {
+                $available[$key] = $label;
+
+                continue;
+            }
+
+            foreach (self::CREDENTIAL_FIELDS[$key] ?? [] as $field => $_) {
+                $fromSettings = trim((string) Setting::get("payment.{$key}.{$field}", ''));
+                $fromConfig   = trim((string) data_get(config('payment.drivers.'.$key, []), $field, ''));
+
+                if ($fromSettings !== '' || $fromConfig !== '') {
+                    $available[$key] = $label;
+
+                    break;
+                }
+            }
+        }
+
+        return $available;
+    }
+
+    /**
      * Build the "drivers" config block with credentials from the settings
      * merged over config/payment.php (env-backed defaults). We must pass
      * the WHOLE drivers map because shetabit's config() replaces keys.
@@ -77,7 +110,12 @@ class PaymentService
      */
     public static function purchase(Order $order): RedirectionForm
     {
-        $gateway = self::activeGateway();
+        // The gateway the CUSTOMER chose at checkout wins; fall back to the
+        // admin-configured default when the order predates that feature or
+        // carries an unknown key.
+        $gateway = $order->gateway && array_key_exists($order->gateway, self::GATEWAYS)
+            ? $order->gateway
+            : self::activeGateway();
 
         $invoice = new Invoice;
         $invoice->amount($order->total_amount);

@@ -12,6 +12,7 @@ use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — «مرکز پیامک» / قالب‌های پیامک.
@@ -26,6 +27,7 @@ use Livewire\Component;
 #[Title('قالب‌های پیامک')]
 class SmsTemplatesCenter extends Component
 {
+    use NotifiesOnValidation;
     use GuardsPermissions;
 
     protected static string $permission = 'admin.settings.sms';
@@ -169,7 +171,7 @@ class SmsTemplatesCenter extends Component
 
     public function saveTemplate(): void
     {
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'editTitle'   => ['required', 'min:2', 'max:120'],
             'editBody'    => ['required', 'min:2', 'max:1000'],
             'editPattern' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z0-9_\-\.]+$/'],
@@ -177,7 +179,7 @@ class SmsTemplatesCenter extends Component
             'editTitle.required'   => 'عنوان رویداد را وارد کنید.',
             'editBody.required'    => 'متن پیامک را وارد کنید.',
             'editPattern.regex'    => 'کد پترن فقط می‌تواند شامل حروف لاتین، عدد، خط تیره و زیرخط باشد.',
-        ]);
+        ]));
 
         $tpl = SmsTemplate::query()->findOrFail($this->editId);
 
@@ -230,11 +232,11 @@ class SmsTemplatesCenter extends Component
             return;
         }
 
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'testPhone' => ['required'],
         ], [
             'testPhone.required' => 'شماره موبایل آزمایشی را وارد کنید.',
-        ]);
+        ]));
 
         $normalized = Phone::normalize($this->testPhone);
 

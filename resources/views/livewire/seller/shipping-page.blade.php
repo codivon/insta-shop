@@ -88,6 +88,11 @@
                                     </span>
                                     @if ($carrier->carriage_forward)
                                         <span class="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">پس کرایه</span>
+                                    @elseif ($carrier->base_price > 0)
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300">
+                                            <x-icon name="coins" class="size-2.5" />
+                                            {{ \App\Support\Fmt::moneyShort($carrier->base_price) }} تومان
+                                        </span>
                                     @endif
                                     @if ($carrier->free_shipping_price > 0 || $carrier->free_shipping_weight > 0)
                                         <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">ارسال رایگان شرطی</span>
@@ -127,17 +132,23 @@
         </div>
     </div>
 
-    {{-- ═══════════════ CREATE / EDIT MODAL (sample layout — 3 tabs) ═══════════════ --}}
+    {{-- ═══════════════ CREATE / EDIT MODAL (sample layout — 3 tabs) ═══════════════
+         Mobile: full-height bottom sheet (no empty strip at the top).
+         Footer buttons are pinned OUTSIDE the scroll area — only the
+         tab contents scroll. ═══════════════ --}}
     <div x-show="$wire.showCreateModal"
          x-cloak
          class="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
          role="dialog" aria-modal="true" aria-label="روش ارسال">
-        <div class="relative flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-2xl dark:border-slate-800 dark:bg-slate-900"
+        <div class="relative flex h-full max-h-full w-full flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:h-auto sm:max-h-[92dvh] sm:rounded-2xl dark:border-slate-800 dark:bg-slate-900"
              x-data="{ tab: 'base' }"
-             x-init="$wire.on('shipping-modal-open', () => { tab = 'base' })">
+             x-init="
+                $wire.on('shipping-modal-open', () => { tab = 'base' });
+                $wire.on('shipping-modal-errors', (e) => { tab = e.tab || 'base' });
+             ">
 
             {{-- modal header --}}
-            <div class="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+            <div class="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] dark:border-slate-800">
                 <h3 class="flex items-center gap-2 text-sm font-extrabold">
                     <span class="grid size-8 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950/60 dark:text-primary-400">
                         <x-icon name="truck" class="size-4" />
@@ -150,7 +161,7 @@
             </div>
 
             {{-- tabs --}}
-            <div class="shrink-0 px-5 pt-4">
+            <div class="shrink-0 px-5 pb-3 pt-3">
                 <div class="flex gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
                     <button type="button" @click="tab = 'base'" :aria-selected="tab === 'base'" role="tab"
                             class="flex-1 rounded-xl px-3 py-2 text-[11px] font-extrabold transition"
@@ -170,8 +181,10 @@
                 </div>
             </div>
 
-            {{-- body (scrollable) --}}
-            <form wire:submit="createCarrier" class="scroll-slim min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            {{-- body: the FORM is a flex column — only the middle section
+                 scrolls, the footer (دکمه‌ها) stays pinned below it --}}
+            <form wire:submit="createCarrier" class="flex min-h-0 flex-1 flex-col">
+                <div class="scroll-slim min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-4">
                 {{-- ── tab 1: اطلاعات کلی ── --}}
                 <div x-show="tab === 'base'" class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3" role="tabpanel">
                     <div>
@@ -248,6 +261,13 @@
                         <input type="checkbox" wire:model="createCarrigeForward" class="size-4 accent-primary-600">
                         پس کرایه (کرایه پس از ارسال مشخص شود)
                     </label>
+                    <div>
+                        <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">هزینه ارسال پایه (تومان)</label>
+                        <input type="text" inputmode="numeric" wire:model.blur="createBasePrice" placeholder="مثال: 45000"
+                               class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-semibold outline-none transition focus:border-primary-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800">
+                        <p class="mt-1 text-[10px] leading-4 text-slate-400 dark:text-slate-500">در تسویهٔ آنلاین از مشتری گرفته می‌شود؛ با فعال‌بودن پس‌کرایه نادیده گرفته می‌شود.</p>
+                        @error('createBasePrice') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                    </div>
                     <div>
                         <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">ارسال رایگان برای وزن‌های بزرگتر از (گرم)</label>
                         <input type="text" inputmode="numeric" wire:model.blur="createFreeShippingWeight" placeholder="مثال: 1000"
@@ -349,9 +369,11 @@
                         </div>
                     @endif
                 </div>
+                </div><!-- /scrollable modal body -->
 
-                {{-- sticky modal footer — INSIDE the form so type=submit works --}}
-                <div class="flex shrink-0 items-center justify-end gap-2.5 border-t border-slate-100 pt-3.5 dark:border-slate-800">
+                {{-- pinned modal footer — OUTSIDE the scroll area so the
+                     دکمه‌ها همیشه پایین و در دسترس می‌مانند --}}
+                <div class="flex shrink-0 items-center justify-end gap-2.5 border-t border-slate-100 bg-white px-5 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3.5 dark:border-slate-800 dark:bg-slate-900">
                     <button type="button" wire:click="closeCreateModal" class="rounded-2xl border border-slate-200 px-4 py-2.5 text-[11px] font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
                         انصراف
                     </button>

@@ -29,6 +29,15 @@ html {
     -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Kill the iOS/Android document-level rubber-band: when the user pulls
+   past the edge of a page, the WHOLE document (header + bottom tab bar +
+   pinned buy bars) used to bounce up together. Disabling overscroll on the
+   root keeps every pinned bar rock-solid in the app shells. ── */
+html,
+body {
+    overscroll-behavior: none;
+}
+
 body {
     @apply font-sans antialiased;
 }

@@ -6,10 +6,12 @@ use App\Models\Shop;
 use App\Models\ShopCategory;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 #[Layout('layouts.seller-slot')]
 class CategoryManager extends Component
 {
+    use NotifiesOnValidation;
     public string $name = '';
 
     public ?int $editingId = null;
@@ -23,13 +25,13 @@ class CategoryManager extends Component
 
     public function add(): void
     {
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'name' => ['required', 'string', 'min:2', 'max:80'],
         ], [
             'name.required' => 'نام دسته‌بندی را وارد کنید.',
             'name.min'      => 'نام دسته‌بندی حداقل ۲ کاراکتر است.',
             'name.max'      => 'نام دسته‌بندی حداکثر ۸۰ کاراکتر است.',
-        ]);
+        ]));
 
         $shop     = $this->shop();
         $name     = trim($this->name);
@@ -73,12 +75,12 @@ class CategoryManager extends Component
             return;
         }
 
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'editingName' => ['required', 'string', 'min:2', 'max:80'],
         ], [
             'editingName.required' => 'نام دسته‌بندی را وارد کنید.',
             'editingName.min'      => 'نام دسته‌بندی حداقل ۲ کاراکتر است.',
-        ]);
+        ]));
 
         $category = $this->findOwned($this->editingId);
 

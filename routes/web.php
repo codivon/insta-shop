@@ -36,6 +36,8 @@ use App\Livewire\Seller\AttributeManager;
 use App\Livewire\Seller\Auth\PhoneAuth;
 use App\Livewire\Seller\BankCardsPage;
 use App\Livewire\Seller\CategoryManager;
+use App\Livewire\Seller\DiscountForm;
+use App\Livewire\Seller\DiscountIndex;
 use App\Livewire\Seller\Home;
 use App\Livewire\Seller\OrdersPage as SellerOrdersPage;
 use App\Livewire\Seller\ProductForm;
@@ -156,6 +158,11 @@ Route::prefix('seller')->name('seller.')->group(function () {
         // ── Shipping methods (روش‌های ارسال فروشگاه) ──
         Route::get('/shipping', ShippingPage::class)->name('shipping');
 
+        // ── Discount codes (کدهای تخفیف فروشگاه) ──
+        Route::get('/discounts', DiscountIndex::class)->name('discounts');
+        Route::get('/discounts/create', DiscountForm::class)->name('discounts.create');
+        Route::get('/discounts/{discount}/edit', DiscountForm::class)->name('discounts.edit');
+
         // ── Reports (orders & product-visit analytics) ──
         Route::get('/reports', ReportsPage::class)->name('reports');
 
@@ -233,6 +240,26 @@ Route::prefix('shop')->name('shop.')->group(function () {
     Route::match(['get', 'post'], '/payment/callback', PaymentCallback::class)->name('payment.callback');
 
     /*
+     | Legacy customer-app shop links (/shop/s/{slug}) — 301-redirect
+     | to the new public storefront so already-shared links keep working.
+     |
+     | MUST be registered BEFORE the catch-all /{instagram}/{slug}
+     | product route — otherwise «s» would be treated as an instagram
+     | handle and every legacy shop link would 404.
+     */
+    Route::get('/s/{slug}', function (string $slug) {
+        $shop = \App\Models\Shop::query()->publiclyVisible()->where('slug', $slug)->first();
+
+        abort_if(! $shop, 404);
+
+        $handle = $shop->seller?->instagram_username ?: $shop->instagram_username;
+
+        abort_if(! $handle, 404);
+
+        return redirect()->to(route('shop.storefront', ['instagram' => $handle]), 301);
+    })->name('store.show');
+
+    /*
      | ─────────────────────────────────────────────────────────────
      |  PUBLIC product page inside a storefront — no login required.
      |
@@ -259,22 +286,6 @@ Route::prefix('shop')->name('shop.')->group(function () {
      | ─────────────────────────────────────────────────────────────
      */
     Route::get('/{instagram}', StorefrontShow::class)->name('storefront');
-
-    /*
-     | Legacy customer-app shop links (/shop/s/{slug}) — 301-redirect
-     | to the new public storefront so already-shared links keep working.
-     */
-    Route::get('/s/{slug}', function (string $slug) {
-        $shop = \App\Models\Shop::query()->publiclyVisible()->where('slug', $slug)->first();
-
-        abort_if(! $shop, 404);
-
-        $handle = $shop->seller?->instagram_username ?: $shop->instagram_username;
-
-        abort_if(! $handle, 404);
-
-        return redirect()->to(route('shop.storefront', ['instagram' => $handle]), 301);
-    })->name('store.show');
 });
 
 /*

@@ -7,10 +7,12 @@ use App\Models\ShopAttribute;
 use App\Models\ShopAttributeValue;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 #[Layout('layouts.seller-slot')]
 class AttributeManager extends Component
 {
+    use NotifiesOnValidation;
     /** new-attribute form */
     public string $name = '';
 
@@ -30,7 +32,7 @@ class AttributeManager extends Component
     /** Add a new attribute field (نام + نوع ویژگی). */
     public function addAttribute(): void
     {
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'name' => [
                 'required', 'string', 'min:1', 'max:80',
                 function (string $attribute, mixed $value, \Closure $fail) {
@@ -47,7 +49,7 @@ class AttributeManager extends Component
         ], [
             'name.required' => 'نام ویژگی را وارد کنید (مثال: جنس، مدل، ...).',
             'name.max'      => 'نام ویژگی حداکثر ۸۰ کاراکتر است.',
-        ]);
+        ]));
 
         $shop = $this->shop();
 
@@ -84,12 +86,12 @@ class AttributeManager extends Component
 
         $value = trim((string) ($this->newValue[$attributeId] ?? ''));
 
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             "newValue.$attributeId" => ['required', 'string', 'max:80'],
         ], [
             "newValue.$attributeId.required" => 'مقدار را وارد کنید.',
             "newValue.$attributeId.max"      => 'مقدار حداکثر ۸۰ کاراکتر است.',
-        ]);
+        ]));
 
         $hex = null;
 

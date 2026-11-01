@@ -136,6 +136,19 @@
             <x-icon name="chevron-left" class="size-3.5 opacity-60" />
         </a>
 
+        {{-- ───────── Discount codes entry ───────── --}}
+        <a href="{{ route('seller.discounts') }}" wire:navigate
+           class="mt-2 flex items-center justify-between rounded-2xl border border-dashed border-rose-300 bg-gradient-to-l from-rose-50/70 to-fuchsia-50/50 px-4 py-2.5 text-xs font-bold text-rose-700 transition hover:border-rose-400 active:scale-[.99] dark:border-rose-800 dark:from-rose-950/30 dark:to-fuchsia-950/20 dark:text-rose-300">
+            <span class="flex items-center gap-2">
+                <x-icon name="tag" class="size-4" />
+                کدهای تخفیف فروشگاه
+            </span>
+            <span class="flex items-center gap-1 text-[11px] font-semibold opacity-80">
+                ساخت کد و جذب مشتری
+                <x-icon name="chevron-left" class="size-3.5" />
+            </span>
+        </a>
+
         {{-- ───────── Filters ───────── --}}
         <div class="sticky top-[65px] z-10 -mx-4 mt-3 bg-slate-50/95 px-4 py-3 backdrop-blur dark:bg-slate-950/95">
             {{-- search --}}

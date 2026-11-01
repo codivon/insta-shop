@@ -56,8 +56,9 @@
 
         <div class="scroll-slim mt-3 flex gap-3 overflow-x-auto pb-1">
             @forelse ($shops as $shop)
-                <a href="{{ route('shop.store.show', $shop->slug) }}" wire:navigate
-                   class="group w-36 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+                @php $storeUrl = $shop->storefrontHandle() ? $shop->storefrontUrl() : null; @endphp
+                <a href="{{ $storeUrl ?? '#' }}" @if ($storeUrl) wire:navigate @else aria-disabled="true" @endif
+                   class="group w-36 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900 {{ $storeUrl ? '' : 'pointer-events-none opacity-60' }}">
                     <div class="grid h-16 place-items-center overflow-hidden bg-slate-100 dark:bg-slate-800">
                         @if ($shop->banner_path)
                             <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($shop->banner_path) }}" alt="بنر {{ $shop->name }}" loading="lazy" class="h-full w-full object-cover">
@@ -148,7 +149,7 @@
                                         <x-icon name="layers" class="size-3.5" />
                                     </a>
                                 @else
-                                    <button type="button" wire:click="addToCart({{ $product->id }})" @disabled($product->stock < 1)
+                                    <button type="button" wire:click="addToCart({{ $product->id }})" @disabled($product->type !== \App\Models\Product::TYPE_DOWNLOADABLE && $product->stock < 1)
                                             class="grid size-7 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition active:scale-90 disabled:opacity-40 disabled:shadow-none"
                                             aria-label="افزودن به سبد خرید">
                                         <x-icon name="plus" class="size-3.5" />

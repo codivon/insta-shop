@@ -76,6 +76,11 @@ class ProductShow extends Component
         $this->legacyVariantId = $initial?->id;
         $this->picks           = $this->picksFor($initial);
 
+        // هر گروه تنوع همیشه یک گزینهٔ انتخاب‌شده دارد — اگر تنوع اولیه
+        // ویژگی‌ای (مثل گارانتی) نداشت، بهترین ترکیبِ ممکن با همان انتخاب‌های
+        // بالادستی به‌صورت خودکار برای گروه‌های پایین‌دستی انتخاب می‌شود.
+        $this->fillMissingPicks();
+
         // Count a view once per component mount (= per page visit):
         // cumulative counter on the product + daily log for reports.
         \App\Models\ProductView::recordView($product);
@@ -108,6 +113,11 @@ class ProductShow extends Component
             $this->picks[$attributeId] = $option['key'];
 
             $this->reconcilePicksAfter($attributeId);
+
+            // هر گروه پایین‌دستی همیشه یک انتخاب معتبر دارد — هیچ ردیفی
+            // بدون گزینهٔ انتخاب‌شده نمی‌ماند (مثلاً با انتخاب رنگ مشکی،
+            // گارانتیِ ۲۴ ماهِ همان رنگ خودکار انتخاب می‌شود).
+            $this->fillMissingPicks();
 
             unset($this->variantMatrix, $this->selectedVariant, $this->textNotes);
         }
@@ -513,15 +523,19 @@ class ProductShow extends Component
         return $this->product->special_ends_at->timestamp * 1000;
     }
 
-    /** Related products: same shop first, same category prioritized. */
+    /**
+     * Related products: same store AND same category only (خواستهٔ فروشنده‌ها —
+     * محصولات مرتبط از دسته‌بندیِ همان محصول و فقط از این فروشگاه). When the
+     * product has no seller category the same-store feed is the fallback.
+     */
     public function getRelatedProperty(): Collection
     {
         return Product::query()
             ->where('shop_id', $this->product->shop_id)
             ->where('status', 'published')
             ->whereKeyNot($this->product->id)
-            ->with(['mainImage', 'shop.seller'])
-            ->when($this->product->shop_category_id, fn ($q) => $q->orderByRaw('shop_category_id = ? desc', [$this->product->shop_category_id]))
+            ->when($this->product->shop_category_id, fn ($q) => $q->where('shop_category_id', $this->product->shop_category_id))
+            ->with(['mainImage'])
             ->latest()
             ->limit(12)
             ->get();
@@ -680,9 +694,43 @@ class ProductShow extends Component
     }
 
     /**
+     * Every pickable attribute row must ALWAYS carry a selection: for any
+     * row without a pick, the best option reachable with the picks ABOVE it
+     * is chosen (cheapest in-stock first). Keeps the picker in the
+     * «همیشه یک مورد انتخاب‌شده» state the seller community asked for.
+     */
+    private function fillMissingPicks(): void
+    {
+        $upstream = [];
+
+        foreach ($this->orderedAttributeIds() as $id) {
+            if (isset($this->picks[$id])) {
+                $upstream[$id] = $this->picks[$id];
+
+                continue;
+            }
+
+            $best = collect($this->optionKeysOfAttribute($id))
+                ->map(fn ($key) => ['key' => $key, 'variant' => $this->variantWithAttribute($id, $key, $upstream)])
+                ->filter(fn ($row) => $row['variant'] !== null)
+                ->filter(fn ($row) => $this->isDownloadable || $row['variant']->stock > 0)
+                ->sortBy(fn ($row) => $row['variant']->finalPrice())
+                ->first();
+
+            if ($best === null) {
+                continue; // nothing reachable — row will render empty
+            }
+
+            $this->picks[$id] = $best['key'];
+            $upstream[$id]    = $best['key'];
+        }
+    }
+
+    /**
      * After a pick changes on «$changedAttrId», every LOWER-priority pick
-     * is re-validated against the new upstream picks: kept when still
-     * reachable, otherwise replaced with the best reachable option
+     * is re-validated against the new upstream picks (INCLUDING the changed
+     * row itself — رنگ همیشه محدودکنندهٔ گروه‌های پایین‌تر است): kept when
+     * still reachable, otherwise replaced with the best reachable option
      * (in-stock & cheapest first) or dropped when nothing fits.
      */
     private function reconcilePicksAfter(int $changedAttrId): void
@@ -697,7 +745,10 @@ class ProductShow extends Component
 
         $upstream = [];
 
-        foreach (array_slice($ordered, 0, $pos) as $id) {
+        // the changed attribute's OWN new pick must constrain everything
+        // below it — previously only the rows ABOVE were collected, which
+        // let stale lower picks (e.g. a size the new color lacks) survive.
+        foreach (array_slice($ordered, 0, $pos + 1) as $id) {
             if (isset($this->picks[$id])) {
                 $upstream[$id] = $this->picks[$id];
             }

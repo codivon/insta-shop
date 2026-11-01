@@ -170,6 +170,19 @@
                     <x-icon name="chevron-left" class="size-3.5" />
                 </span>
             </a>
+            <a href="{{ route('seller.discounts') }}" wire:navigate
+               class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <span class="flex items-center gap-2.5 text-xs font-bold">
+                    <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-fuchsia-100 to-rose-100 text-rose-600 dark:from-fuchsia-950/50 dark:to-rose-950/50 dark:text-rose-400">
+                        <x-icon name="tag" class="size-4.5" />
+                    </span>
+                    کدهای تخفیف
+                </span>
+                <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                    ساخت و مدیریت کدهای خرید
+                    <x-icon name="chevron-left" class="size-3.5" />
+                </span>
+            </a>
             <button type="button" data-theme-toggle
                     class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <span class="flex items-center gap-2.5 text-xs font-bold">

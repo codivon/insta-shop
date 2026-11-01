@@ -32,7 +32,7 @@
         @php
             $productShell = request()->routeIs(['shop.product.show', 'shop.storefront.product']);
         @endphp
-        <main class="min-h-0 flex-1 {{ $productShell ? 'flex flex-col overflow-hidden' : 'scroll-slim overflow-y-auto' }}">
+        <main class="min-h-0 flex-1 overscroll-contain {{ $productShell ? 'flex flex-col overflow-hidden' : 'scroll-slim overflow-y-auto' }}">
             @yield('content')
         </main>
 
@@ -85,6 +85,8 @@
             </nav>
         @endif
     </div>
+
+    @include('partials.panel-toast')
 
     @stack('scripts')
 </body>

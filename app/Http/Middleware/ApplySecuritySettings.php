@@ -21,7 +21,10 @@ use Symfony\Component\HttpFoundation\Response;
  *                        the admin panel (and its Livewire calls) answer
  *                        only to allow-listed IPs (exact match or
  *                        wildcard patterns like 5.190.*.*).
- *  3. Security headers — X-Frame-Options, X-Content-Type-Options,
+ *  3. Bad-bot blocker  — when security.bot_blocking is on, known scraper
+ *                        User-Agents (SEO bots, HEAD-less tools) get the
+ *                        styled «errors.bot-blocked» 403 page.
+ *  4. Security headers — X-Frame-Options, X-Content-Type-Options,
  *                        Referrer-Policy, Permissions-Policy (+ HSTS
  *                        while force-HTTPS is on).
  *
@@ -53,6 +56,13 @@ class ApplySecuritySettings
                     return response()->view('errors.ip-403', ['ip' => (string) $request->ip()], 403);
                 }
             }
+
+            /* ── 3) Bad-bot blocker (styled 403, safe defaults) ── */
+            if ($this->bool('security.bot_blocking') && $this->isBlockedBot($request)) {
+                return response()->view('errors.bot-blocked', [
+                    'agent' => (string) $request->userAgent(),
+                ], 403);
+            }
         } catch (\Throwable) {
             // Settings table not ready yet — never block on our own account.
             return $next($request);
@@ -83,6 +93,57 @@ class ApplySecuritySettings
     }
 
     /* ----------------------------- internals ----------------------------- */
+
+    /**
+     * Known scraper/SEO bots — deliberately NOT including Googlebot/Bing
+     * (real search engines keep access). Admin panel requests bypass this.
+     * The deny list can be extended via security.bot_deny_list (one token
+     * per line, case-insensitive substring match on the User-Agent).
+     */
+    protected const DEFAULT_BOT_TOKENS = [
+        'ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'petalbot',
+        'bytespider', 'buzzbot', 'barkrowler', 'dataforseo',
+        'serpstatbot', 'megaindex', 'mauibot', 'yandexbot',
+        'sogou', 'exabot', 'facebot', 'ia_archiver', 'archive.org_bot',
+        'python-requests', 'python-urllib', 'curl/', 'wget/',
+        'httpclient', 'go-http-client', 'java/', 'okhttp', 'scrapy',
+        'headlesschrome', 'puppeteer', 'playwright', 'zgrab', 'masscan',
+        'nikto', 'nmap', 'sqlmap', 'dirbuster', 'gobuster',
+    ];
+
+    protected function isBlockedBot(Request $request): bool
+    {
+        if ($this->isAdminRequest($request)) {
+            return false;
+        }
+
+        $agent = strtolower((string) $request->userAgent());
+
+        // empty UA or a plain PHP UA is almost always a script
+        if ($agent === '' || $agent === 'php' || str_starts_with($agent, 'laravel')) {
+            return true;
+        }
+
+        $tokens = self::DEFAULT_BOT_TOKENS;
+
+        $extra = trim((string) Setting::get('security.bot_deny_list', ''));
+
+        foreach (preg_split('/[\r\n,;]+/', $extra) ?: [] as $line) {
+            $token = strtolower(trim($line));
+
+            if ($token !== '') {
+                $tokens[] = $token;
+            }
+        }
+
+        foreach ($tokens as $token) {
+            if ($token !== '' && str_contains($agent, $token)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     protected function bool(string $key): bool
     {

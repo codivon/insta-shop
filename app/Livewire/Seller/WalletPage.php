@@ -11,6 +11,7 @@ use App\Support\Wallet\WalletService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Seller — کیف پول (wallet tab):
@@ -21,6 +22,7 @@ use Livewire\Component;
 #[Layout('layouts.seller-slot')]
 class WalletPage extends Component
 {
+    use NotifiesOnValidation;
     public int $perPage = 10;
 
     public bool $hasMore = true;
@@ -94,7 +96,7 @@ class WalletPage extends Component
     {
         $wallet = $this->wallet();
 
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'withdrawAmount' => ['required', 'numeric', 'min:50000', 'max:'.$wallet->balance],
             'withdrawSheba'  => ['required', 'string', 'regex:/^IR\d{24}$/'],
         ], [
@@ -103,7 +105,7 @@ class WalletPage extends Component
             'withdrawAmount.max'      => 'مبلغ درخواستی بیشتر از موجودی قابل برداشت است.',
             'withdrawSheba.required'  => 'شماره شبا را وارد کنید.',
             'withdrawSheba.regex'     => 'شماره شبا باید با IR شروع شود و ۲۴ رقم بعد از آن باشد (مثال: IR062980000000123456789001).',
-        ]);
+        ]));
 
         $amount = (int) $this->withdrawAmount;
 

@@ -8,6 +8,7 @@ use App\Models\Province;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — locations management (استان‌ها / شهرها).
@@ -19,6 +20,7 @@ use Livewire\Component;
 #[Layout('layouts.admin-slot')]
 class LocationsPage extends Component
 {
+    use NotifiesOnValidation;
     use GuardsPermissions;
 
     protected static string $permission = 'admin.locations';
@@ -139,7 +141,7 @@ class LocationsPage extends Component
     {
         $isCity = $this->kind === 'city';
 
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'name' => ['required', 'string', 'min:2', 'max:80'],
             'parentProvinceId' => $isCity ? ['required', 'integer', 'exists:provinces,id'] : ['nullable', 'integer'],
             'ordering' => ['integer', 'min:0', 'max:99999'],
@@ -147,7 +149,7 @@ class LocationsPage extends Component
         ], [
             'name.required' => 'نام را وارد کنید.',
             'parentProvinceId.required' => 'استان شهر را انتخاب کنید.',
-        ]);
+        ]));
 
         if ($isCity) {
             $unique = City::query()

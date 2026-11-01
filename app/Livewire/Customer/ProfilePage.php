@@ -6,10 +6,12 @@ use App\Models\Customer;
 use Illuminate\Support\Facades\Date;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 #[Layout('layouts.customer-slot')]
 class ProfilePage extends Component
 {
+    use NotifiesOnValidation;
     public string $full_name = '';
 
     public function mount(): void
@@ -34,7 +36,7 @@ class ProfilePage extends Component
 
     public function saveName(): void
     {
-        $this->validate();
+        $this->validateWithToast(fn () => $this->validate());
 
         $this->customer()?->update([
             'full_name' => trim($this->full_name) !== '' ? trim($this->full_name) : null,

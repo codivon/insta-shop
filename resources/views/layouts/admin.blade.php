@@ -298,6 +298,9 @@
     @endonce
 
     @livewireScripts
+
+    @include('partials.panel-toast')
+
     @stack('scripts')
 </body>
 </html>

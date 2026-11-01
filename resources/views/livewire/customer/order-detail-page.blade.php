@@ -66,10 +66,51 @@
                 @endforeach
             </div>
 
-            <div class="mt-3 flex items-center justify-between border-t border-dashed border-slate-200 pt-3 dark:border-slate-700">
-                <span class="text-xs font-bold text-slate-500 dark:text-slate-400">جمع کل</span>
-                <span class="text-sm font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($order->total_amount) }}</span>
+            <div class="mt-3 space-y-1.5 border-t border-dashed border-slate-200 pt-3 dark:border-slate-700">
+                <div class="flex items-center justify-between text-[10.5px] text-slate-400">
+                    <span>جمع کالاها</span>
+                    <span class="font-bold">{{ \App\Support\Fmt::money($order->items->sum(fn ($i) => $i->lineTotal())) }}</span>
+                </div>
+                @if ($order->shipping_cost > 0)
+                    <div class="flex items-center justify-between text-[10.5px] text-slate-400">
+                        <span class="flex items-center gap-1">
+                            <x-icon name="truck" class="size-3" />
+                            هزینه ارسال
+                        </span>
+                        <span class="font-bold">{{ \App\Support\Fmt::money($order->shipping_cost) }}</span>
+                    </div>
+                @endif
+                @if ($order->discount_amount > 0)
+                    <div class="flex items-center justify-between text-[10.5px] text-emerald-600 dark:text-emerald-400">
+                        <span class="flex items-center gap-1">
+                            <x-icon name="tag" class="size-3" />
+                            تخفیف @if ($order->discount_code)({{ $order->discount_code }}) @endif
+                        </span>
+                        <span class="font-extrabold">− {{ \App\Support\Fmt::money($order->discount_amount) }}</span>
+                    </div>
+                @endif
+                <div class="flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400">جمع کل</span>
+                    <span class="text-sm font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($order->total_amount) }}</span>
+                </div>
             </div>
+
+            {{-- ── carriers of each store (shipments snapshot) ── --}}
+            @if (is_iterable($order->shipments) && count($order->shipments) > 0)
+                <div class="mt-3 space-y-1.5 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
+                    @foreach ($order->shipments as $shipment)
+                        <div class="flex items-center justify-between gap-2 text-[10px] font-bold">
+                            <span class="flex min-w-0 items-center gap-1.5 text-slate-500 dark:text-slate-300">
+                                <x-icon name="truck" class="size-3 shrink-0 text-slate-400" />
+                                <span class="truncate">{{ $shipment['carrier_title'] ?? 'روش ارسال' }}</span>
+                            </span>
+                            <span class="shrink-0 text-slate-400">
+                                {{ (($shipment['cost'] ?? 0) > 0 ? \App\Support\Fmt::moneyShort($shipment['cost']).' تومان' : 'پس‌کرایه / رایگان') }}
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
 
         {{-- ── delivery ── --}}

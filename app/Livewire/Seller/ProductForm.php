@@ -10,6 +10,7 @@ use App\Models\Shop;
 use App\Models\ShopCategory;
 use App\Models\SpecificationTemplate;
 use App\Support\Fmt;
+use App\Livewire\Concerns\NotifiesOnValidation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -21,6 +22,7 @@ use Livewire\WithFileUploads;
 class ProductForm extends Component
 {
     use WithFileUploads;
+    use NotifiesOnValidation;
 
     public ?int $productId = null;
 
@@ -402,16 +404,24 @@ class ProductForm extends Component
 
         $row = $this->variants[$index];
 
-        $this->validate([
-            "variants.$index.price"       => ['required', 'numeric', 'min:0', 'max:999999999999'],
-            "variants.$index.stock"       => ['required', 'integer', 'min:0', 'max:1000000'],
-            "variants.$index.discount"    => ['nullable', 'integer', 'min:0', 'max:100'],
-            "variants.$index.max_purchase" => ['nullable', 'integer', 'min:1', 'max:1000000'],
-            "variants.$index.min_purchase" => ['nullable', 'integer', 'min:1', 'max:1000000'],
-        ], [
-            "variants.$index.price.required" => 'قیمت این تنوع را وارد کنید.',
-            "variants.$index.stock.required" => 'موجودی انبار این تنوع را وارد کنید.',
-        ]);
+        try {
+            $this->validate([
+                "variants.$index.price"       => ['required', 'numeric', 'min:0', 'max:999999999999'],
+                "variants.$index.stock"       => ['required', 'integer', 'min:0', 'max:1000000'],
+                "variants.$index.discount"    => ['nullable', 'integer', 'min:0', 'max:100'],
+                "variants.$index.max_purchase" => ['nullable', 'integer', 'min:1', 'max:1000000'],
+                "variants.$index.min_purchase" => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            ], [
+                "variants.$index.price.required" => 'قیمت این تنوع را وارد کنید.',
+                "variants.$index.stock.required" => 'موجودی انبار این تنوع را وارد کنید.',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            // مودال باز می‌ماند و خطاها زیر فیلدها نشان داده می‌شوند — به‌همراه پیام پررنگ
+            $this->dispatch('panel-toast', message: collect($exception->errors())->flatten()->filter()->first()
+                ?: 'قیمت و موجودی این تنوع را تکمیل کنید.');
+
+            throw $exception;
+        }
 
         $min = (int) ($row['min_purchase'] ?? 0);
         $max = (int) ($row['max_purchase'] ?? 0);
@@ -558,10 +568,23 @@ class ProductForm extends Component
 
     public function save(): void
     {
-        $this->validateBase();
-        $this->productType === Product::TYPE_DOWNLOADABLE
-            ? $this->validateFiles()
-            : $this->validateVariants();
+        try {
+            $this->validateBase();
+            $this->productType === Product::TYPE_DOWNLOADABLE
+                ? $this->validateFiles()
+                : $this->validateVariants();
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->announceFormErrors($exception->errors());
+
+            throw $exception;
+        }
+
+        // دستی addError شده‌ها (مثل حداقل/حداکثر خرید) هم بی‌صدا نمانند
+        if ($this->getErrorBag()->isNotEmpty()) {
+            $this->announceFormErrors($this->getErrorBag()->toArray());
+
+            return; // روی فرم بمان — خطاها زیر فیلدها نمایش داده شده‌اند
+        }
 
         $product = $this->productId
             ? Product::query()->findOrFail($this->productId)
@@ -611,6 +634,33 @@ class ProductForm extends Component
         $this->redirect(route('seller.shop'), navigate: true);
     }
 
+    /**
+     * «هیچ ذخیره‌ای بی‌پیام» — the seller ALWAYS gets a toast with the first
+     * error message and the form auto-jumps to the tab holding that error.
+     */
+    protected function announceFormErrors(array $errors): void
+    {
+        $firstMsg = collect($errors)->flatten()->filter()->first();
+        $firstKey = array_key_first($errors);
+
+        $this->dispatch('panel-toast', message: $firstMsg ?: 'لطفاً خطاهای فرم محصول را برطرف کنید.');
+        $this->dispatch('product-form-errors', tab: $this->errorTabOf((string) $firstKey));
+    }
+
+    /** Which form tab owns a failing field key (for the auto-jump on errors). */
+    protected function errorTabOf(string $key): string
+    {
+        if (str_starts_with($key, 'variants')) {
+            return 'pricing';
+        }
+
+        if (str_starts_with($key, 'files')) {
+            return 'files';
+        }
+
+        return 'info';
+    }
+
     /** Clean specification groups (drop empty titles/values, cap counts). */
     protected function normalizedSpecifications(): array
     {
@@ -649,7 +699,8 @@ class ProductForm extends Component
             'description' => ['nullable', 'string', 'max:5000'],
             'categoryId'  => ['nullable', 'integer', Rule::in(array_merge([0], $this->shop()->categories()->pluck('id')->all()))],
             'productType' => ['required', 'in:'.Product::TYPE_PHYSICAL.','.Product::TYPE_DOWNLOADABLE],
-            'weight'      => ['nullable', 'numeric', 'min:0', 'max:10000000'],
+            // کالای فیزیکی بدون وزن پذیرفته نمی‌شود (حمل‌ونقل بر اساس وزن)
+            'weight'      => ['exclude_unless:productType,'.Product::TYPE_PHYSICAL, 'required', 'numeric', 'min:1', 'max:10000000'],
             'unit'        => ['nullable', 'string', 'max:20'],
             'status'      => ['required', 'in:draft,published'],
             'isSpecial'   => ['boolean'],
@@ -672,6 +723,9 @@ class ProductForm extends Component
             'photos.*.max'   => 'حجم هر تصویر حداکثر ۲ مگابایت است.',
             'specialEndsAt.required' => 'تاریخ پایان فروش ویژه را انتخاب کنید.',
             'specialEndsAt.date'     => 'تاریخ پایان فروش ویژه معتبر نیست.',
+            'weight.required'        => 'برای کالای فیزیکی، وزن محصول (گرم) الزامی است.',
+            'weight.numeric'         => 'وزن محصول باید عدد باشد.',
+            'weight.min'             => 'وزن محصول باید بیشتر از صفر باشد.',
         ]);
 
         if ($this->isSpecial && trim($this->specialEndsAt) === '') {

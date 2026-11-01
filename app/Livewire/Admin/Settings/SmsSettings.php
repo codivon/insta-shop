@@ -12,6 +12,7 @@ use App\Support\Sms\SmsMessage;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — SMS settings: choose provider, fill its credentials (stored in
@@ -20,6 +21,7 @@ use Livewire\Component;
 #[Layout('layouts.admin-slot')]
 class SmsSettings extends Component
 {
+    use NotifiesOnValidation;
     use GuardsPermissions;
 
     protected static string $permission = 'admin.settings.sms';
@@ -81,13 +83,13 @@ class SmsSettings extends Component
 
     public function sendTest(): void
     {
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'testPhone' => ['required'],
             'testText' => ['required', 'min:2', 'max:200'],
         ], [
             'testPhone.required' => 'شماره موبایل تست را وارد کنید.',
             'testText.required' => 'متن پیام تست را وارد کنید.',
-        ]);
+        ]));
 
         $normalized = Phone::normalize($this->testPhone);
 

@@ -5,10 +5,12 @@ namespace App\Livewire\Seller;
 use App\Models\Wallet;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 #[Layout('layouts.seller-slot')]
 class ProfilePage extends Component
 {
+    use NotifiesOnValidation;
     public string $full_name = '';
 
     public function mount(): void
@@ -33,7 +35,7 @@ class ProfilePage extends Component
 
     public function saveName(): void
     {
-        $this->validate();
+        $this->validateWithToast(fn () => $this->validate());
 
         $this->seller()?->update([
             'full_name' => trim($this->full_name) !== '' ? trim($this->full_name) : null,

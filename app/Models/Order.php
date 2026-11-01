@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 #[Fillable([
     'customer_id', 'status', 'total_amount', 'items_count',
+    'shipping_cost', 'discount_amount', 'discount_code', 'shipments',
     'receiver_name', 'delivery_phone', 'delivery_address', 'postal_code',
     'gateway', 'gateway_ref', 'receipt_ref', 'paid_at',
 ])]
@@ -22,9 +23,12 @@ class Order extends Model
     protected function casts(): array
     {
         return [
-            'total_amount' => 'integer',
-            'items_count'  => 'integer',
-            'paid_at'      => 'datetime',
+            'total_amount'    => 'integer',
+            'shipping_cost'   => 'integer',
+            'discount_amount' => 'integer',
+            'items_count'     => 'integer',
+            'shipments'       => 'array',
+            'paid_at'         => 'datetime',
         ];
     }
 
@@ -48,8 +52,15 @@ class Order extends Model
      * variant was picked); quantities are capped to the current stock and
      * the picked combination is snapshotted (id + human label).
      * Returns null when nothing is purchasable.
+     *
+     * $checkout carries the checkout decisions:
+     *   gateway        → chosen payment gateway key
+     *   shipments      → [{shop_id, carrier_id, carrier_title, cost}]
+     *   shipping_cost  → sum of the chosen carriers' online costs
+     *   discount       → ?Discount applied (its used_count is bumped here)
+     *   discount_amount→ computed discount in Toman
      */
-    public static function createFromCart(Customer $customer, array $delivery, string $gateway): ?self
+    public static function createFromCart(Customer $customer, array $delivery, string $gateway, array $checkout = []): ?self
     {
         $cart = $customer->cart;
 
@@ -76,11 +87,21 @@ class Order extends Model
             return null;
         }
 
-        return DB::transaction(function () use ($customer, $delivery, $gateway, $lines) {
+        $shipping  = max(0, (int) ($checkout['shipping_cost'] ?? 0));
+        $discount  = $checkout['discount'] ?? null;
+        $discountAmount = $discount instanceof Discount
+            ? max(0, (int) ($checkout['discount_amount'] ?? 0))
+            : 0;
+
+        return DB::transaction(function () use ($customer, $delivery, $gateway, $lines, $shipping, $discount, $discountAmount, $checkout) {
             $order = static::query()->create([
                 'customer_id'      => $customer->id,
                 'status'           => 'pending',
-                'total_amount'     => (int) $lines->sum(fn ($line) => $line['unit_price'] * $line['quantity']),
+                'total_amount'     => max(0, (int) $lines->sum(fn ($line) => $line['unit_price'] * $line['quantity']) + $shipping - $discountAmount),
+                'shipping_cost'    => $shipping,
+                'discount_amount'  => $discountAmount,
+                'discount_code'    => $discount?->code,
+                'shipments'        => array_values((array) ($checkout['shipments'] ?? [])),
                 'items_count'      => (int) $lines->sum('quantity'),
                 'receiver_name'    => (string) $delivery['receiver_name'],
                 'delivery_phone'   => (string) $delivery['delivery_phone'],
@@ -90,6 +111,11 @@ class Order extends Model
             ]);
 
             $order->items()->createMany($lines->all());
+
+            // the code is consumed the moment an order is created for it
+            if ($discount instanceof Discount) {
+                $discount->increment('used_count');
+            }
 
             return $order;
         });

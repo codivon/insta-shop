@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
     'origin_province_id',
     'origin_city_id',
     'carriage_forward',
+    'base_price',
     'free_shipping_weight',
     'free_shipping_price',
     'extra_cost',
@@ -46,6 +47,7 @@ class Carrier extends Model
             'carriage_forward'      => 'boolean',
             'max_package_weight'    => 'integer',
             'min_package_weight'    => 'integer',
+            'base_price'            => 'integer',
             'free_shipping_weight'  => 'integer',
             'free_shipping_price'   => 'integer',
             'extra_cost'            => 'integer',
@@ -121,5 +123,38 @@ class Carrier extends Model
         }
 
         return $this->default_delivery_range ?: 'زمان‌بندی ارسال ثبت نشده';
+    }
+
+    /**
+     * Online shipping cost of this carrier for one shop's cart group.
+     *
+     *  پس‌کرایه          → 0 online (paid on delivery, shown as a note)
+     *  سقف مبلغ رایگان    → free when the group subtotal reached the threshold
+     *  سقف وزن رایگان     → free when the group weight reached the threshold
+     *  otherwise          → base price + extra cost per kg heavier than the first kg
+     */
+    public function costFor(int $subtotal, int $weightGrams = 0): int
+    {
+        if ($this->carriage_forward) {
+            return 0; // paid on delivery
+        }
+
+        if ($this->free_shipping_price > 0 && $subtotal >= $this->free_shipping_price) {
+            return 0;
+        }
+
+        if ($this->free_shipping_weight > 0 && $weightGrams >= $this->free_shipping_weight) {
+            return 0;
+        }
+
+        $kg = max(1, (int) ceil($weightGrams / 1000));
+
+        return max(0, (int) $this->base_price + (max(0, $kg - 1) * (int) $this->extra_cost));
+    }
+
+    /** Whether this carrier is paid on delivery (پس‌کرایه) instead of online. */
+    public function isPayOnDelivery(): bool
+    {
+        return $this->carriage_forward;
     }
 }

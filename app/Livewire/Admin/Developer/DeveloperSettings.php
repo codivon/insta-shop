@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — Developer settings («تنظیمات برنامه‌نویس»), tabbed:
@@ -35,6 +36,7 @@ use Livewire\Component;
 #[Title('تنظیمات برنامه‌نویس')]
 class DeveloperSettings extends Component
 {
+    use NotifiesOnValidation;
     use GuardsSuperAdmin;
 
     /* ── Cron ── */
@@ -67,6 +69,10 @@ class DeveloperSettings extends Component
 
     public bool $securityHeaders = false;
 
+    public bool $botBlocking = false;
+
+    public string $botDenyList = '';
+
     public string $adminIpWhitelist = '';
 
     public int $loginMaxAttempts = 5;
@@ -95,6 +101,8 @@ class DeveloperSettings extends Component
         /* ── Security ── */
         $this->forceHttps         = (bool) Setting::get('security.force_https');
         $this->securityHeaders    = (bool) Setting::get('security.headers_enabled');
+        $this->botBlocking        = (bool) Setting::get('security.bot_blocking');
+        $this->botDenyList        = (string) Setting::get('security.bot_deny_list', '');
         $this->adminIpWhitelist   = (string) Setting::get('security.admin_ip_whitelist', '');
         $this->loginMaxAttempts   = max(3, (int) Setting::get('security.login_max_attempts', 5));
         $this->loginLockoutMinutes = max(1, (int) Setting::get('security.login_lockout_minutes', 10));
@@ -155,14 +163,14 @@ class DeveloperSettings extends Component
 
     public function enableMaintenance(): void
     {
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'maintenanceSecret'        => ['required', 'alpha_num', 'min:6', 'max:32'],
             'maintenanceTitle'         => ['required', 'min:3', 'max:120'],
             'maintenanceDescription'   => ['nullable', 'max:1000'],
         ], [
             'maintenanceSecret.required'      => 'کد مخفی را وارد کنید.',
             'maintenanceTitle.required'       => 'عنوان صفحه بروزرسانی را وارد کنید.',
-        ]);
+        ]));
 
         Setting::setMany([
             'developer.maintenance.secret'      => $this->maintenanceSecret,
@@ -382,7 +390,7 @@ class DeveloperSettings extends Component
 
     public function saveSecurity(): void
     {
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'adminIpWhitelist'    => ['nullable', 'string', 'max:2000', 'regex:/^[\d\.\*\r\n\s,;]+$/'],
             'loginMaxAttempts'    => ['required', 'integer', 'min:3', 'max:10'],
             'loginLockoutMinutes' => ['required', 'integer', 'min:1', 'max:120'],
@@ -391,7 +399,7 @@ class DeveloperSettings extends Component
             'adminIpWhitelist.regex'    => 'هر خط فقط می‌تواند یک آی‌پی معتبر یا الگوی با ستاره باشد (مثال: 5.190.*.*).',
             'loginMaxAttempts.required' => 'حداکثر تلاش ورود را وارد کنید.',
             'sessionLifetime.in'        => 'مدت اعتبار ورود نامعتبر است.',
-        ]);
+        ]));
 
         $list = trim((string) $this->adminIpWhitelist);
 
@@ -413,6 +421,8 @@ class DeveloperSettings extends Component
         Setting::setMany([
             'security.force_https'         => ['value' => $this->forceHttps ? '1' : '0', 'type' => 'boolean'],
             'security.headers_enabled'     => ['value' => $this->securityHeaders ? '1' : '0', 'type' => 'boolean'],
+            'security.bot_blocking'        => ['value' => $this->botBlocking ? '1' : '0', 'type' => 'boolean'],
+            'security.bot_deny_list'       => ['value' => trim($this->botDenyList), 'type' => 'text'],
             'security.admin_ip_whitelist'  => ['value' => $list, 'type' => 'text'],
             'security.login_max_attempts'  => ['value' => (string) $this->loginMaxAttempts, 'type' => 'integer'],
             'security.login_lockout_minutes' => ['value' => (string) $this->loginLockoutMinutes, 'type' => 'integer'],

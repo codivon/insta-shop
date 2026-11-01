@@ -8,6 +8,7 @@ use App\Models\AdminRole;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — «لیست مدیران» (زیرمنوی مدیران).
@@ -21,6 +22,7 @@ use Livewire\Component;
 #[Title('لیست مدیران')]
 class AdminsIndex extends Component
 {
+    use NotifiesOnValidation;
     use GuardsPermissions;
 
     protected static string $permission = 'admin.admins';
@@ -122,7 +124,7 @@ class AdminsIndex extends Component
             'adminPassword.min'      => 'رمز عبور باید حداقل ۸ کاراکتر باشد.',
         ];
 
-        $this->validate($rules, $messages);
+        $this->validateWithToast(fn () => $this->validate($rules, $messages));
 
         $me = auth('admin')->user();
 

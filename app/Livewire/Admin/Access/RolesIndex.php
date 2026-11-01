@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — «نقش‌ها» (زیرمنوی مدیران).
@@ -22,6 +23,7 @@ use Livewire\Component;
 #[Title('نقش‌ها و دسترسی‌ها')]
 class RolesIndex extends Component
 {
+    use NotifiesOnValidation;
     use GuardsPermissions;
 
     protected static string $permission = 'admin.access.roles';
@@ -84,12 +86,12 @@ class RolesIndex extends Component
 
     public function saveRole(): void
     {
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'roleName'        => ['required', 'min:2', 'max:80'],
             'roleDescription' => ['nullable', 'max:255'],
         ], [
             'roleName.required' => 'نام نقش را وارد کنید.',
-        ]);
+        ]));
 
         // Keep only registered permission slugs that are checked — guards
         // against any stray/nested keys the checkbox UI could ever send.

@@ -9,10 +9,12 @@ use App\Support\Color;
 use App\Support\Theme;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 #[Layout('layouts.admin-slot')]
 class AppearanceSettings extends Component
 {
+    use NotifiesOnValidation;
     use GuardsPermissions;
 
     protected static string $permission = 'admin.settings.appearance';
@@ -94,7 +96,7 @@ class AppearanceSettings extends Component
 
     public function save(): void
     {
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'preset' => ['nullable', 'in:'.implode(',', array_keys(Theme::PRESETS)).',custom'],
             'primary' => ['required', 'string'],
             'warmth' => ['required', 'integer', 'min:'.self::WARMTH_MIN, 'max:'.self::WARMTH_MAX],
@@ -102,7 +104,7 @@ class AppearanceSettings extends Component
         ], [
             'warmth.min' => 'میزان گرمی خارج از محدوده مجاز است.',
             'warmth.max' => 'میزان گرمی خارج از محدوده مجاز است.',
-        ]);
+        ]));
 
         if ($this->preset === 'custom' && ! Color::isHex($this->primary)) {
             $this->addError('primary', 'کد رنگ نامعتبر است. نمونه صحیح: #D62976');

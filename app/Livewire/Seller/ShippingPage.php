@@ -6,6 +6,7 @@ use App\Models\Carrier;
 use App\Models\City;
 use App\Models\Province;
 use App\Support\Fmt;
+use App\Livewire\Concerns\NotifiesOnValidation;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -24,6 +25,7 @@ use Livewire\WithFileUploads;
 class ShippingPage extends Component
 {
     use WithFileUploads;
+    use NotifiesOnValidation;
 
     /* ══════════ modal state ══════════ */
 
@@ -58,6 +60,8 @@ class ShippingPage extends Component
     public int $createCityId = 0;
 
     public bool $createCarrigeForward = false;
+
+    public string $createBasePrice = '';
 
     public string $createFreeShippingWeight = '';
 
@@ -122,6 +126,7 @@ class ShippingPage extends Component
         $this->createProvinceId         = (int) ($carrier->origin_province_id ?? 0);
         $this->createCityId             = (int) ($carrier->origin_city_id ?? 0);
         $this->createCarrigeForward     = (bool) $carrier->carriage_forward;
+        $this->createBasePrice          = $carrier->base_price ? (string) $carrier->base_price : '';
         $this->createFreeShippingWeight = $carrier->free_shipping_weight ? (string) $carrier->free_shipping_weight : '';
         $this->createFreeShippingPrice  = $carrier->free_shipping_price ? (string) $carrier->free_shipping_price : '';
         $this->createExtraCost          = (string) ($carrier->extra_cost ?: 0);
@@ -156,6 +161,7 @@ class ShippingPage extends Component
         $this->createProvinceId          = 0;
         $this->createCityId              = 0;
         $this->createCarrigeForward      = false;
+        $this->createBasePrice           = '';
         $this->createFreeShippingWeight  = '';
         $this->createFreeShippingPrice   = '';
         $this->createExtraCost           = '';
@@ -208,12 +214,28 @@ class ShippingPage extends Component
         $this->createExtraCost = Fmt::toLatin((string) $value);
     }
 
+    public function updatedCreateBasePrice($value): void
+    {
+        $this->createBasePrice = Fmt::toLatin((string) $value);
+    }
+
     /* ══════════ persistence ══════════ */
 
     /** wire:submit of the modal — creates when editId is null, updates otherwise. */
     public function createCarrier(): void
     {
-        $this->validate($this->rules(), $this->messages());
+        try {
+            $this->validate($this->rules(), $this->messages());
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $keys     = array_keys($exception->errors());
+            $firstMsg = collect($exception->errors())->flatten()->filter()->first();
+
+            // first error message as a loud toast + jump to the failing tab
+            $this->dispatch('panel-toast', message: $firstMsg ?: 'لطفاً خطاهای فرم را برطرف کنید.');
+            $this->dispatch('shipping-modal-errors', tab: $this->errorTabOf($keys[0] ?? ''));
+
+            throw $exception;
+        }
 
         $carrier = $this->editId
             ? $this->findCarrier($this->editId)
@@ -235,6 +257,7 @@ class ShippingPage extends Component
             'origin_province_id'     => $this->createProvinceId > 0 ? $this->createProvinceId : null,
             'origin_city_id'         => $this->createCityId > 0 ? $this->createCityId : null,
             'carriage_forward'       => $this->createCarrigeForward,
+            'base_price'             => $this->createBasePrice !== '' ? (int) $this->createBasePrice : 0,
             'free_shipping_weight'   => $this->createFreeShippingWeight !== '' ? (int) $this->createFreeShippingWeight : null,
             'free_shipping_price'    => $this->createFreeShippingPrice !== '' ? (int) $this->createFreeShippingPrice : null,
             'extra_cost'             => $this->createExtraCost !== '' ? (int) $this->createExtraCost : 0,
@@ -306,6 +329,28 @@ class ShippingPage extends Component
         return Carrier::query()->where('shop_id', $this->shop()->id)->find($id);
     }
 
+    /** Which modal tab owns a failing field key (for the auto-jump on errors). */
+    private function errorTabOf(string $key): string
+    {
+        if (str_starts_with($key, 'createDeliveryTimeType')
+            || str_starts_with($key, 'createStartDaysAfterOrder')
+            || str_starts_with($key, 'createDefaultDeliveryRange')) {
+            return 'ranges';
+        }
+
+        if (str_starts_with($key, 'createProvinceId')
+            || str_starts_with($key, 'createCityId')
+            || str_starts_with($key, 'createCarrigeForward')
+            || str_starts_with($key, 'createBasePrice')
+            || str_starts_with($key, 'createFreeShipping')
+            || str_starts_with($key, 'createExtraCost')
+            || str_starts_with($key, 'createCovered')) {
+            return 'zones';
+        }
+
+        return 'base';
+    }
+
     /* ══════════ rules ══════════ */
 
     protected function rules(): array
@@ -322,6 +367,7 @@ class ShippingPage extends Component
             // unselected select → int 0 — must NOT hit «exists»
             'createCityId'             => [Rule::excludeIf(fn () => $this->createCityId === 0), 'integer', 'exists:cities,id'],
             'createCarrigeForward'     => ['boolean'],
+            'createBasePrice'          => ['nullable', 'integer', 'min:0', 'max:999999999999'],
             'createFreeShippingWeight' => ['nullable', 'integer', 'min:0', 'max:10000000'],
             'createFreeShippingPrice'  => ['nullable', 'integer', 'min:0', 'max:999999999999'],
             'createExtraCost'          => ['nullable', 'integer', 'min:0', 'max:999999999999'],

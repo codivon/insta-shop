@@ -8,11 +8,13 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 use Livewire\WithFileUploads;
 
 #[Layout('layouts.seller-slot')]
 class ShopEdit extends Component
 {
+    use NotifiesOnValidation;
     use WithFileUploads;
 
     public string $name = '';
@@ -132,7 +134,7 @@ class ShopEdit extends Component
 
     public function save(): void
     {
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'name'    => ['required', 'string', 'min:2', 'max:120'],
             'about'   => ['nullable', 'string', 'max:2000'],
             'phone'   => ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail) {
@@ -151,7 +153,7 @@ class ShopEdit extends Component
         ], [
             'name.required' => 'نام فروشگاه را وارد کنید.',
             'name.min'      => 'نام فروشگاه حداقل ۲ کاراکتر است.',
-        ]);
+        ]));
 
         $this->shop()->update([
             'name'     => trim($this->name),

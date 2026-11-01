@@ -26,7 +26,7 @@
         </header>
 
         {{-- ───────── Scrollable content (the only scroll container) ───────── --}}
-        <main class="scroll-slim min-h-0 flex-1 overflow-y-auto {{ ($hideTabbar ?? false) ? 'pb-4' : '' }}">
+        <main class="scroll-slim min-h-0 flex-1 overscroll-contain overflow-y-auto {{ ($hideTabbar ?? false) ? 'pb-4' : '' }}">
             @yield('content')
         </main>
 
@@ -64,6 +64,8 @@
         </nav>
         @endunless
     </div>
+
+    @include('partials.panel-toast')
 
     @stack('scripts')
 </body>

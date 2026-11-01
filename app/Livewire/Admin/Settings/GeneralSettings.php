@@ -8,6 +8,7 @@ use App\Support\Branding;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 use Livewire\WithFileUploads;
 
 /**
@@ -19,6 +20,7 @@ use Livewire\WithFileUploads;
 #[Title('تنظیمات عمومی')]
 class GeneralSettings extends Component
 {
+    use NotifiesOnValidation;
     use WithFileUploads;
     use GuardsPermissions;
 
@@ -78,7 +80,7 @@ class GeneralSettings extends Component
 
     public function save(): void
     {
-        $this->validate();
+        $this->validateWithToast(fn () => $this->validate());
 
         Setting::setMany([
             'theme.app_name' => $this->appName,

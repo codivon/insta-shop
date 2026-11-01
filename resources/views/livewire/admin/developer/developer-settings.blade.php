@@ -432,6 +432,31 @@
                         </label>
                     </div>
 
+                    {{-- bot blocker --}}
+                    <div class="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="flex items-center gap-1.5 text-[13px] font-bold">
+                                    <x-icon name="circle-slash" class="size-4 text-emerald-600 dark:text-emerald-400" />
+                                    مسدودکردن ربات‌ها و خزنده‌های مزاحم
+                                </p>
+                                <p class="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                                    خزنده‌های SEO و اسکریپت‌های شناخته‌شده (مثل Ahrefs، Semrush، curl و ربات‌های headless) با صفحهٔ اختصاصی «ربات مسدود شد» پاسخ می‌گیرند. موتورهای جستجوی اصلی (Google/Bing) مسدود نمی‌شوند.
+                                </p>
+                            </div>
+                            <label class="inline-flex shrink-0 cursor-pointer items-center">
+                                <input type="checkbox" class="peer sr-only" wire:model="botBlocking" aria-label="مسدودکردن ربات‌ها">
+                                <span class="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-300 transition-colors duration-300 after:absolute after:start-0.5 after:top-1/2 after:size-5 after:-translate-y-1/2 after:rounded-full after:bg-white after:shadow-md after:transition-all after:duration-300 peer-checked:bg-emerald-600 peer-checked:after:start-[calc(100%-1.375rem)] dark:bg-slate-700"></span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-semibold">لیست تکمیلی ربات‌ها (هر خط یک کلمه از User-Agent)</label>
+                            <textarea rows="2" dir="ltr" wire:model="botDenyList" placeholder="mycustombot&#10;weirdscraper"
+                                      class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono text-xs shadow-sm focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800"></textarea>
+                            @error('botDenyList') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+
                     {{-- admin ip allow-list --}}
                     <div class="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
                         <p class="flex items-center gap-1.5 text-[13px] font-bold">

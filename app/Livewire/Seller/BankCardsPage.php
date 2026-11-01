@@ -8,6 +8,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Seller — کارت‌های بانکی (bank cards):
@@ -19,6 +20,7 @@ use Livewire\Component;
 #[Layout('layouts.seller-slot')]
 class BankCardsPage extends Component
 {
+    use NotifiesOnValidation;
     public const MAX_CARDS = 5;
 
     /* ── add-card modal ── */
@@ -94,7 +96,7 @@ class BankCardsPage extends Component
 
         $fullSheba = 'IR'.$this->shebaDigits;
 
-        $this->validate([
+        $this->validateWithToast(fn () => $this->validate([
             'cardName'    => ['required', 'string', 'min:3', 'max:60'],
             'cardNumber'  => ['required', 'digits:16', Rule::unique('bank_cards', 'card_number')->where('seller_id', $seller->id)],
             'shebaDigits' => ['required', 'digits:24'],
@@ -106,7 +108,7 @@ class BankCardsPage extends Component
             'cardNumber.unique'      => 'این شماره کارت قبلاً ثبت شده است.',
             'shebaDigits.required'   => 'رقم‌های شبا را وارد کنید.',
             'shebaDigits.digits'     => 'بعد از IR باید دقیقاً ۲۴ رقم وارد شود.',
-        ]);
+        ]));
 
         if (! Banking::validCard($this->cardNumber)) {
             $this->addError('cardNumber', 'شماره کارت معتبر نیست (رقم کنترل لان اشتباه است).');
