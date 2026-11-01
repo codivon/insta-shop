@@ -39,7 +39,15 @@ class ProductForm extends Component
 
     public string $unit = 'تعداد';
 
-    public string $status = 'draft';
+    public string $status = Product::STATUS_DRAFT;
+
+    /* ── فروش ویژه (special sale) ── */
+
+    /** Part of the storefront's «فروش ویژه» block (with live countdown). */
+    public bool $isSpecial = false;
+
+    /** ISO (Y-m-d) end date picked with the Jalali datepicker; the sale runs to the END of this day. */
+    public string $specialEndsAt = '';
 
     /** Newly picked gallery photos (TemporaryUploadedFile[]) */
     public array $photos = [];
@@ -85,6 +93,8 @@ class ProductForm extends Component
             $this->weight         = $product->weight_grams ? (string) $product->weight_grams : '';
             $this->unit           = (string) ($product->unit ?: 'تعداد');
             $this->status         = $product->status;
+            $this->isSpecial      = $product->is_special;
+            $this->specialEndsAt  = $product->special_ends_at?->toDateString() ?? '';
             $this->specifications = $product->specifications ?? [];
             $this->specType       = (string) ($product->spec_type ?? '');
 
@@ -105,7 +115,11 @@ class ProductForm extends Component
         }
 
         if ($this->productType === Product::TYPE_DOWNLOADABLE && $this->files === []) {
-            $this->addFile();
+            // Editing a product that already has saved files → those render as
+            // their own cards in the files tab; don't force an empty new row.
+            if (! ($product !== null && $product->files()->exists())) {
+                $this->addFile();
+            }
         }
     }
 
@@ -559,6 +573,11 @@ class ProductForm extends Component
                 'weight_grams'     => $this->productType === Product::TYPE_PHYSICAL && $this->weight !== '' ? (int) $this->weight : null,
                 'unit'             => $this->productType === Product::TYPE_PHYSICAL ? (trim($this->unit) ?: 'تعداد') : null,
                 'status'           => $this->status,
+                'is_special'       => $this->isSpecial,
+                // the picked Jalali day counts as a full sale day → 23:59:59
+                'special_ends_at'  => $this->isSpecial && $this->specialEndsAt !== ''
+                    ? $this->specialEndsAt.' 23:59:59'
+                    : null,
             ]);
             $product->save();
 
@@ -622,6 +641,8 @@ class ProductForm extends Component
             'weight'      => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'unit'        => ['nullable', 'string', 'max:20'],
             'status'      => ['required', 'in:draft,published'],
+            'isSpecial'   => ['boolean'],
+            'specialEndsAt' => ['nullable', 'exclude_unless:isSpecial,true', 'required', 'date'],
             'photos'      => ['nullable', 'array', 'max:'.max(0, 6 - $existingCount)],
             'photos.*'    => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'specifications'              => ['nullable', 'array', 'max:10'],
@@ -636,7 +657,13 @@ class ProductForm extends Component
             'photos.max'     => 'حداکثر ۶ تصویر برای هر محصول مجاز است (تصاویر فعلی + جدید).',
             'photos.*.image' => 'فایل انتخاب‌شده تصویر نیست.',
             'photos.*.max'   => 'حجم هر تصویر حداکثر ۲ مگابایت است.',
+            'specialEndsAt.required' => 'تاریخ پایان فروش ویژه را انتخاب کنید.',
+            'specialEndsAt.date'     => 'تاریخ پایان فروش ویژه معتبر نیست.',
         ]);
+
+        if ($this->isSpecial && trim($this->specialEndsAt) === '') {
+            $this->addError('specialEndsAt', 'تاریخ پایان فروش ویژه را انتخاب کنید.');
+        }
     }
 
     protected function validateVariants(): void
@@ -680,8 +707,14 @@ class ProductForm extends Component
 
     protected function validateFiles(): void
     {
+        // Saved files (minus removed ones) already satisfy the «at least one file»
+        // rule — the new-row array is only REQUIRED when nothing is saved yet.
+        $existingCount = $this->productId
+            ? $this->existingFiles->whereNotIn('id', $this->removedFileIds)->count()
+            : 0;
+
         $this->validate([
-            'files'               => ['required', 'array', 'min:1'],
+            'files'               => $existingCount > 0 ? ['nullable', 'array'] : ['required', 'array', 'min:1'],
             'files.*.title'       => ['required', 'string', 'min:1', 'max:150'],
             'files.*.price'       => ['required', 'numeric', 'min:0', 'max:999999999999'],
             'files.*.discount'    => ['nullable', 'integer', 'min:0', 'max:100'],
@@ -695,10 +728,6 @@ class ProductForm extends Component
             'files.*.discount.max'      => 'تخفیف باید بین ۰ تا ۱۰۰ درصد باشد.',
             'files.*.file.max'          => 'حجم فایل حداکثر ۱۰۰ مگابایت است.',
         ]);
-
-        $existingCount = $this->productId
-            ? $this->existingFiles->whereNotIn('id', $this->removedFileIds)->count()
-            : 0;
 
         if ($this->status === 'published' && ($existingCount + count($this->files)) === 0) {
             $this->addError('files', 'برای انتشار محصول دانلودی، حداقل یک فایل لازم است.');

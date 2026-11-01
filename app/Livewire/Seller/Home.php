@@ -31,7 +31,6 @@ class Home extends Component
     public function setChartMode(string $mode): void
     {
         $this->chartMode = in_array($mode, ['daily', 'monthly', 'yearly'], true) ? $mode : 'daily';
-
         // a sensible window per mode
         $today = CarbonImmutable::today();
 
@@ -42,6 +41,21 @@ class Home extends Component
             'monthly' => $today->subMonths(5)->startOfMonth()->toDateString(),
             default   => $today->subYears(3)->startOfYear()->toDateString(),
         };
+    }
+
+    /** Public storefront address of this shop (only when the shop is publicly visible). */
+    public function getStorefrontUrlProperty(): ?string
+    {
+        $seller = auth('seller')->user();
+
+        if (! $seller || $seller->status !== 'approved') {
+            return null; // pending shops 404 publicly → hide the button
+        }
+
+        $shop   = Shop::ensureForSeller($seller);
+        $handle = $shop->instagram_username ?: $seller->instagram_username;
+
+        return $handle ? route('shop.storefront', ['instagram' => $handle]) : null;
     }
 
     public function render()
@@ -63,6 +77,7 @@ class Home extends Component
         return view('livewire.seller.home', [
             'shop'           => $shop,
             'stats'          => $stats,
+            'storefrontUrl'  => $this->storefrontUrl,
             'chart'          => $chart['series'],
             'chartTotal'     => $chart['total'],
             'chartOrders'    => $chart['orders'],

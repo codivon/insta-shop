@@ -1,21 +1,25 @@
 {{-- ─────────────────────────────────────────────────────────
-  Storefront product card (slider «slide» + main «grid» variant)
+  Storefront product card
+  Variants: «slide» (sliders) · «grid» (main grid) · «special» (فروش ویژه
+  section — rose glass card with a live per-product countdown chip).
   Expects: $product, $isFav, $prefix (wire:key prefix), $variant
 ──────────────────────────────────────────────────────────── --}}
 @php
     $discount = $product->compare_at_price > 0 && $product->compare_at_price > $product->price
         ? (int) round(100 - ($product->price / $product->compare_at_price * 100))
         : 0;
+    $specialActive = $product->is_special && $product->isSpecialActive();
 @endphp
 
 <div wire:key="{{ $prefix }}-card-{{ $product->id }}"
      class="group/card {{ $variant === 'grid' ? '' : 'w-36 shrink-0 snap-start sm:w-44' }}
-            flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200
-            hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900">
+            {{ $variant === 'special' ? 'rounded-2xl border border-white/25 bg-white/95 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-900/95' : 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900' }}
+            flex flex-col overflow-hidden transition duration-200
+            hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-900/5">
 
     {{-- image --}}
     <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate
-       class="relative block {{ $variant === 'grid' ? 'aspect-square' : 'h-28 sm:h-36' }} overflow-hidden bg-slate-100 dark:bg-slate-800">
+       class="relative block {{ $variant === 'grid' ? 'aspect-square' : 'h-28 sm:h-36' }} overflow-hidden {{ $variant === 'special' ? 'bg-rose-50 dark:bg-slate-800' : 'bg-slate-100 dark:bg-slate-800' }}">
         @if ($product->mainImage)
             <img src="{{ $product->mainImage->url() }}" alt="{{ $product->name }}" loading="lazy"
                  class="size-full object-cover transition duration-300 group-hover/card:scale-[1.04]">
@@ -25,9 +29,23 @@
             </span>
         @endif
 
-        @if ($discount > 0)
+        @if ($specialActive)
+            <span class="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-gradient-to-l from-rose-600 to-orange-500 px-2 py-0.5 text-[9px] font-black text-white shadow-md shadow-rose-500/40">
+                <x-icon name="flame" class="size-2.5" />
+                فروش ویژه
+            </span>
+        @elseif ($discount > 0)
             <span class="absolute right-2 top-2 rounded-full bg-gradient-to-l from-rose-500 to-rose-600 px-2 py-0.5 text-[9px] font-black text-white shadow-md shadow-rose-500/30">
                 ٪{{ \App\Support\Fmt::toFa($discount) }}
+            </span>
+        @endif
+
+        @if ($variant === 'special' && $product->special_ends_at)
+            <span x-data="sfCountdown({{ $product->special_ends_at->timestamp * 1000 }})"
+                  class="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-slate-950/75 px-2 py-0.5 font-mono text-[8.5px] font-black text-white backdrop-blur" dir="ltr">
+                <x-icon name="timer" class="size-2.5 text-amber-300" />
+                <span x-show="!over" x-text="d + ':' + pad(h) + ':' + pad(m) + ':' + pad(s)">…</span>
+                <span x-show="over" x-cloak>پایان یافت</span>
             </span>
         @endif
 
@@ -41,7 +59,7 @@
     {{-- body --}}
     <div class="flex flex-1 flex-col gap-1.5 p-2.5 sm:p-3">
         @if ($product->category)
-            <span class="truncate text-[9px] font-bold text-slate-400">{{ $product->category->name }}</span>
+            <span class="truncate text-[9px] font-bold {{ $variant === 'special' ? 'text-rose-400' : 'text-slate-400' }}">{{ $product->category->name }}</span>
         @endif
 
         <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate

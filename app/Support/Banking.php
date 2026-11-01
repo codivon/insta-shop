@@ -142,6 +142,12 @@ final class Banking
         return $mod === 1;
     }
 
+    /** BIN → bank-name map for the client-side instant card detection (bank-cards form). */
+    public static function bins(): array
+    {
+        return self::BANK_BINS;
+    }
+
     /* ──────────────────────────── naming ───────────────────────────── */
 
     /** Iranian bank name from the card BIN, or a neutral fallback. */

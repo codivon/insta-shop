@@ -59,7 +59,9 @@
         </div>
 
         <div class="mx-auto max-w-6xl px-4 sm:px-6">
-            <div class="-mt-12 flex flex-col items-center text-center sm:-mt-14">
+            {{-- relative z-10 → the logo block paints ABOVE the banner/gradient hero
+                (the banner wrapper is `relative` and would otherwise cover it) --}}
+            <div class="relative z-10 -mt-12 flex flex-col items-center text-center sm:-mt-14">
                 {{-- logo --}}
                 <div class="grid size-24 shrink-0 place-items-center overflow-hidden rounded-3xl border-4 border-white bg-white shadow-xl shadow-slate-900/10 sm:size-28 dark:border-slate-950 dark:bg-slate-900">
                     @if ($shop->logo_path)
@@ -170,6 +172,69 @@
                         <span class="rounded-full px-1.5 py-0.5 text-[8.5px] font-black {{ $catId === $category->id ? 'bg-white/25' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' }}">{{ \App\Support\Fmt::toFa($category->products_count) }}</span>
                     </button>
                 @endforeach
+            </div>
+        </section>
+    @endif
+
+    {{-- ═══════════════ فروش ویژه — SPECIAL SALE (dedicated, with live countdown) ═══════════════ --}}
+    @if ($special->isNotEmpty() && ! $filtersActive)
+        <section class="mx-auto max-w-6xl px-4 pt-7 sm:px-6" aria-label="فروش ویژه">
+            <div class="relative overflow-hidden rounded-3xl bg-gradient-to-bl from-rose-600 via-rose-500 to-orange-500 p-4 shadow-xl shadow-rose-500/25 sm:p-5">
+                {{-- decorative glow --}}
+                <div class="pointer-events-none absolute inset-0 opacity-25" aria-hidden="true">
+                    <div class="absolute -top-10 left-10 size-36 rounded-full bg-white/30 blur-3xl"></div>
+                    <div class="absolute -bottom-14 right-1/4 size-44 rounded-full bg-amber-300/30 blur-3xl"></div>
+                </div>
+
+                <div class="relative flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2.5">
+                        <span class="grid size-10 place-items-center rounded-2xl bg-white/20 backdrop-blur">
+                            <x-icon name="flame" class="size-5" />
+                        </span>
+                        <div>
+                            <h2 class="flex items-center gap-1.5 text-base font-black text-white sm:text-lg">
+                                فروش ویژه
+                                <span class="relative flex size-2">
+                                    <span class="absolute inline-flex size-full animate-ping rounded-full bg-white opacity-70"></span>
+                                    <span class="relative inline-flex size-2 rounded-full bg-white"></span>
+                                </span>
+                            </h2>
+                            <p class="text-[10.5px] font-bold text-rose-50/90 sm:text-[11px]">فرصت محدود — تا پایان زمان باقی‌مانده</p>
+                        </div>
+                    </div>
+
+                    {{-- live countdown to the soonest deadline --}}
+                    @if ($specialDeadlineMs)
+                        <div x-data="sfCountdown({{ $specialDeadlineMs }})" class="flex items-center gap-1.5" dir="ltr" aria-label="زمان باقی‌مانده فروش ویژه">
+                            <span class="grid min-w-9 place-items-center rounded-xl bg-white/20 px-1.5 py-1 text-center backdrop-blur">
+                                <b class="font-mono text-sm font-black leading-4 text-white" x-text="pad(d)" :aria-label="d + ' روز'">۰۰</b>
+                                <i class="text-[7.5px] font-bold not-italic text-rose-50/80">روز</i>
+                            </span>
+                            <span class="text-white/60">:</span>
+                            <span class="grid min-w-9 place-items-center rounded-xl bg-white/20 px-1.5 py-1 text-center backdrop-blur">
+                                <b class="font-mono text-sm font-black leading-4 text-white" x-text="pad(h)">۰۰</b>
+                                <i class="text-[7.5px] font-bold not-italic text-rose-50/80">ساعت</i>
+                            </span>
+                            <span class="text-white/60">:</span>
+                            <span class="grid min-w-9 place-items-center rounded-xl bg-white/20 px-1.5 py-1 text-center backdrop-blur">
+                                <b class="font-mono text-sm font-black leading-4 text-white" x-text="pad(m)">۰۰</b>
+                                <i class="text-[7.5px] font-bold not-italic text-rose-50/80">دقیقه</i>
+                            </span>
+                            <span class="text-white/60">:</span>
+                            <span class="grid min-w-9 place-items-center rounded-xl bg-white px-1.5 py-1 text-center shadow-md">
+                                <b class="font-mono text-sm font-black leading-4 text-rose-600" x-text="pad(s)">۰۰</b>
+                                <i class="text-[7.5px] font-bold not-italic text-rose-500/80">ثانیه</i>
+                            </span>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- special products slider --}}
+                <div class="scrollbar-hide relative -mx-4 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5" data-slider-track>
+                    @foreach ($special as $product)
+                        @include('livewire.storefront.partials.product-card', ['product' => $product, 'isFav' => in_array($product->id, $favoriteIds), 'prefix' => 'special', 'variant' => 'special'])
+                    @endforeach
+                </div>
             </div>
         </section>
     @endif

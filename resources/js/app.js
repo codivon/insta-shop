@@ -6,6 +6,9 @@
 // Jalali datepicker engine (x-jdate-picker)
 import './jdate';
 
+// «فروش ویژه» live countdown (special-sale deadline, window.sfCountdown)
+import './countdown';
+
 // ── Theme mode toggle (dark / light) ─────────────────────────────────
 document.addEventListener('click', (event) => {
     const btn = event.target.closest('[data-theme-toggle]');

@@ -47,6 +47,12 @@
             @if ($product->category)
                 <span class="rounded-full bg-slate-100 px-2.5 py-1 font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">{{ $product->category->name }}</span>
             @endif
+            @if ($product->isSpecialActive())
+                <span class="inline-flex items-center gap-1 rounded-full bg-gradient-to-l from-rose-600 to-orange-500 px-2.5 py-1 font-black text-white shadow-md shadow-rose-500/30">
+                    <x-icon name="flame" class="size-3" />
+                    فروش ویژه
+                </span>
+            @endif
             <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                 <x-icon name="eye" class="size-3" /> {{ \App\Support\Fmt::toFa($product->views) }} بازدید
             </span>
@@ -54,6 +60,56 @@
                 {{ $product->stock > 0 ? \App\Support\Fmt::toFa($product->stock).' عدد موجود' : 'ناموجود' }}
             </span>
         </div>
+
+        {{-- ── شمارش معکوس فروش ویژه (special-sale countdown) ── --}}
+        @if ($specialEndsMs)
+            <div x-data="sfCountdown({{ $specialEndsMs }})"
+                 class="relative mt-3 overflow-hidden rounded-2xl bg-gradient-to-l from-rose-600 via-rose-500 to-orange-500 p-3.5 shadow-lg shadow-rose-500/25">
+                <div class="pointer-events-none absolute inset-0 opacity-25" aria-hidden="true">
+                    <div class="absolute -top-8 left-6 size-24 rounded-full bg-white/30 blur-2xl"></div>
+                    <div class="absolute -bottom-10 right-8 size-28 rounded-full bg-amber-300/30 blur-2xl"></div>
+                </div>
+
+                <div class="relative flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="grid size-8 shrink-0 place-items-center rounded-xl bg-white/20 backdrop-blur">
+                            <x-icon name="timer" class="size-4 text-white" />
+                        </span>
+                        <div>
+                            <div class="text-[11px] font-black text-white">پایان فروش ویژه</div>
+                            <div class="text-[9px] font-bold text-rose-50/85">فرصت باقی‌مانده برای خرید</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1" dir="ltr">
+                        <span class="grid min-w-8 place-items-center rounded-lg bg-white/20 px-1 py-1 backdrop-blur">
+                            <b class="font-mono text-[13px] font-black leading-4 text-white" x-text="pad(d)">۰۰</b>
+                            <i class="text-[6.5px] font-bold not-italic text-rose-50/80">روز</i>
+                        </span>
+                        <span class="text-white/60">:</span>
+                        <span class="grid min-w-8 place-items-center rounded-lg bg-white/20 px-1 py-1 backdrop-blur">
+                            <b class="font-mono text-[13px] font-black leading-4 text-white" x-text="pad(h)">۰۰</b>
+                            <i class="text-[6.5px] font-bold not-italic text-rose-50/80">ساعت</i>
+                        </span>
+                        <span class="text-white/60">:</span>
+                        <span class="grid min-w-8 place-items-center rounded-lg bg-white/20 px-1 py-1 backdrop-blur">
+                            <b class="font-mono text-[13px] font-black leading-4 text-white" x-text="pad(m)">۰۰</b>
+                            <i class="text-[6.5px] font-bold not-italic text-rose-50/80">دقیقه</i>
+                        </span>
+                        <span class="text-white/60">:</span>
+                        <span class="grid min-w-8 place-items-center rounded-lg bg-white px-1 py-1 shadow-md">
+                            <b class="font-mono text-[13px] font-black leading-4 text-rose-600" x-text="pad(s)">۰۰</b>
+                            <i class="text-[6.5px] font-bold not-italic text-rose-500/80">ثانیه</i>
+                        </span>
+                    </div>
+                </div>
+
+                <p class="relative mt-2.5 rounded-xl bg-white/15 px-2.5 py-1.5 text-center text-[9.5px] font-bold text-white backdrop-blur"
+                   x-show="over" x-cloak>
+                    فروش ویژه پایان یافت — قیمت عادی اعمال شد
+                </p>
+            </div>
+        @endif
 
         <a href="{{ route('shop.store.show', $product->shop->slug) }}" wire:navigate
            class="mt-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-primary-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-800">

@@ -13,6 +13,13 @@
             </div>
             <div class="flex items-center gap-1">
                 <x-theme-toggle class="size-10 text-slate-500" />
+                @if ($storefrontUrl)
+                    <a href="{{ $storefrontUrl }}" target="_blank" rel="noopener noreferrer"
+                       class="grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-primary-600 dark:hover:bg-slate-800"
+                       aria-label="مشاهده فروشگاه عمومی" title="مشاهده فروشگاه عمومی">
+                        <x-icon name="external-link" class="size-5" />
+                    </a>
+                @endif
                 <a href="{{ route('seller.shop.edit') }}" wire:navigate
                    class="grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-primary-600 dark:hover:bg-slate-800"
                    aria-label="ویرایش فروشگاه">
@@ -54,11 +61,20 @@
                             <span class="text-lg font-black text-primary-600 dark:text-primary-400">{{ mb_substr($shop->name, 0, 1) }}</span>
                         @endif
                     </div>
-                    <a href="{{ route('seller.shop.edit') }}" wire:navigate
-                       class="mb-1 flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-600 shadow-sm transition hover:border-primary-300 hover:text-primary-600 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-primary-400">
-                        <x-icon name="edit" class="size-3.5" />
-                        ویرایش فروشگاه
-                    </a>
+                    <div class="mb-1 flex items-center gap-1.5">
+                        @if ($storefrontUrl)
+                            <a href="{{ $storefrontUrl }}" target="_blank" rel="noopener noreferrer"
+                               class="flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-[11px] font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95">
+                                <x-icon name="external-link" class="size-3.5" />
+                                مشاهده فروشگاه
+                            </a>
+                        @endif
+                        <a href="{{ route('seller.shop.edit') }}" wire:navigate
+                           class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-600 shadow-sm transition hover:border-primary-300 hover:text-primary-600 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-primary-400">
+                            <x-icon name="edit" class="size-3.5" />
+                            ویرایش
+                        </a>
+                    </div>
                 </div>
 
                 <h3 class="mt-2 text-sm font-extrabold">{{ $shop->name }}</h3>
@@ -85,7 +101,7 @@
                     @foreach ([
                         ['value' => \App\Support\Fmt::fa($stats['total']),      'label' => 'محصول'],
                         ['value' => \App\Support\Fmt::fa($stats['published']),  'label' => 'منتشرشده'],
-                        ['value' => \App\Support\Fmt::fa($stats['outOfStock']), 'label' => 'ناموجود'],
+                        ['value' => \App\Support\Fmt::fa($stats['special']),    'label' => 'ویژه'],
                         ['value' => \App\Support\Fmt::fa($stats['categories']), 'label' => 'دسته'],
                     ] as $st)
                         <div class="rounded-2xl bg-slate-50 p-2 text-center dark:bg-slate-800/60">
@@ -169,10 +185,23 @@
                     @endforeach
                 </div>
             </div>
+
+            {{-- special-sale filter (فروش ویژه) --}}
+            <div class="mt-2 flex rounded-xl border border-rose-200 bg-rose-50/70 p-1 dark:border-rose-900/60 dark:bg-rose-950/30" role="group" aria-label="فیلتر فروش ویژه">
+                @foreach (['all' => 'همه محصولات', 'special' => 'فروش ویژه', 'plain' => 'غیر ویژه'] as $key => $label)
+                    <button type="button" wire:click="$set('specialFilter', '{{ $key }}')"
+                            class="flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-bold transition {{ $specialFilter === $key ? 'bg-white text-rose-600 shadow-sm dark:bg-slate-900 dark:text-rose-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
+                        @if ($key === 'special')
+                            <x-icon name="flame" class="size-3" />
+                        @endif
+                        {{ $label }}
+                    </button>
+                @endforeach
+            </div>
         </div>
 
         {{-- ───────── Product grid (lazy loaded) ───────── --}}
-        <div class="mt-1 transition" wire:loading.class="opacity-40 pointer-events-none" wire:target="search, categoryFilter, statusFilter, stockFilter">
+        <div class="mt-1 transition" wire:loading.class="opacity-40 pointer-events-none" wire:target="search, categoryFilter, statusFilter, stockFilter, specialFilter">
             @forelse ($products as $product)
                 <div class="group relative mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
                     <a href="{{ route('seller.products.edit', $product) }}" wire:navigate class="block">
@@ -192,11 +221,19 @@
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="truncate text-xs font-extrabold">{{ $product->name }}</div>
-                                    <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold {{ $product->status === 'published'
-                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' }}">
-                                        {{ $product->status === 'published' ? 'منتشرشده' : 'پیش‌نویس' }}
-                                    </span>
+                                    <div class="flex shrink-0 items-center gap-1">
+                                        @if ($product->is_special && $product->isSpecialActive())
+                                            <span class="flex items-center gap-0.5 rounded-full bg-gradient-to-l from-rose-600 to-orange-500 px-2 py-0.5 text-[9px] font-black text-white shadow-sm shadow-rose-500/30">
+                                                <x-icon name="flame" class="size-2.5" />
+                                                ویژه
+                                            </span>
+                                        @endif
+                                        <span class="rounded-full px-2 py-0.5 text-[9px] font-bold {{ $product->status === 'published'
+                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                                            : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' }}">
+                                            {{ $product->status === 'published' ? 'منتشرشده' : 'پیش‌نویس' }}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-slate-400">
@@ -249,12 +286,12 @@
                 {{-- empty state --}}
                 <div class="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
                     <span class="grid size-16 place-items-center rounded-2xl bg-primary-50 text-primary-400 dark:bg-primary-950">
-                        <x-icon name="{{ ($search !== '' || $categoryFilter !== 0 || $statusFilter !== 'all' || $stockFilter !== 'all') ? 'search' : 'package' }}" class="size-8" />
+                        <x-icon name="{{ ($search !== '' || $categoryFilter !== 0 || $statusFilter !== 'all' || $stockFilter !== 'all' || $specialFilter !== 'all') ? 'search' : 'package' }}" class="size-8" />
                     </span>
                     <p class="text-sm font-extrabold">
-                        {{ ($search !== '' || $categoryFilter !== 0 || $statusFilter !== 'all' || $stockFilter !== 'all') ? 'محصولی با این فیلترها پیدا نشد' : 'هنوز محصولی ندارید' }}
+                        {{ ($search !== '' || $categoryFilter !== 0 || $statusFilter !== 'all' || $stockFilter !== 'all' || $specialFilter !== 'all') ? 'محصولی با این فیلترها پیدا نشد' : 'هنوز محصولی ندارید' }}
                     </p>
-                    @if ($search !== '' || $categoryFilter !== 0 || $statusFilter !== 'all' || $stockFilter !== 'all')
+                    @if ($search !== '' || $categoryFilter !== 0 || $statusFilter !== 'all' || $stockFilter !== 'all' || $specialFilter !== 'all')
                         <button type="button" wire:click="resetFilters"
                                 class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                             <x-icon name="rotate" class="size-3.5" />

@@ -83,6 +83,16 @@
                     </a>
                 @endforeach
             </div>
+
+            {{-- view my store (public storefront) --}}
+            @if ($storefrontUrl)
+                <a href="{{ $storefrontUrl }}" target="_blank" rel="noopener noreferrer"
+                   class="relative mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-white/95 py-2.5 text-xs font-extrabold text-primary-700 shadow-lg shadow-primary-900/20 backdrop-blur transition hover:bg-white active:scale-[.98]">
+                    <x-icon name="external-link" class="size-4" />
+                    مشاهده فروشگاه من
+                    <span class="rounded-full bg-primary-100 px-2 py-0.5 text-[9px] font-bold text-primary-600">صفحه عمومی فروشگاه</span>
+                </a>
+            @endif
         </div>
 
         {{-- ── quick actions (real links) ── --}}

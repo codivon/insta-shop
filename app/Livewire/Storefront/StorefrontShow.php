@@ -241,6 +241,18 @@ class StorefrontShow extends Component
             ->get();
     }
 
+    /** فروش ویژه — products whose special-sale window is open, soonest deadline first. */
+    public function getSpecialProperty(): Collection
+    {
+        return $this->baseQuery()
+            ->with(['mainImage', 'category'])
+            ->specialActive()
+            ->orderByRaw('special_ends_at IS NULL, special_ends_at ASC')
+            ->latest()
+            ->limit(10)
+            ->get();
+    }
+
     /** Filtered + sorted main grid. */
     public function getGridProperty(): Collection
     {
@@ -266,6 +278,18 @@ class StorefrontShow extends Component
         return $rows;
     }
 
+    /** Nearest active special-sale deadline (ms epoch) — drives the section countdown. */
+    public function getSpecialDeadlineMsProperty(): ?int
+    {
+        $ends = $this->special
+            ->pluck('special_ends_at')
+            ->filter()
+            ->sort()
+            ->first();
+
+        return $ends ? $ends->timestamp * 1000 : null;
+    }
+
     public function getFavoriteIdsProperty(): array
     {
         $customer = auth('customer')->user();
@@ -284,14 +308,16 @@ class StorefrontShow extends Component
     public function render()
     {
         return view('livewire.storefront.storefront-show', [
-            'stats'         => $this->stats,
-            'categories'    => $this->categories,
-            'newest'        => $this->newest,
-            'discounted'    => $this->discounted,
-            'popular'       => $this->popular,
-            'grid'          => $this->grid,
-            'favoriteIds'   => $this->favoriteIds,
-            'storefrontUrl' => $this->storefrontUrl,
+            'stats'             => $this->stats,
+            'categories'        => $this->categories,
+            'newest'            => $this->newest,
+            'discounted'        => $this->discounted,
+            'popular'           => $this->popular,
+            'special'           => $this->special,
+            'specialDeadlineMs' => $this->specialDeadlineMs,
+            'grid'              => $this->grid,
+            'favoriteIds'       => $this->favoriteIds,
+            'storefrontUrl'     => $this->storefrontUrl,
         ])->title($this->shop->name);
     }
 }

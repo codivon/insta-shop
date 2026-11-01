@@ -23,6 +23,8 @@ class ShopIndex extends Component
 
     public string $stockFilter = 'all';      // all|in|out
 
+    public string $specialFilter = 'all';    // all|special|plain  (فروش ویژه)
+
     /** Lazy load (infinite scroll) */
     public int $perPage = 8;
 
@@ -45,7 +47,7 @@ class ShopIndex extends Component
     /** Reset pagination when any filter changes. */
     public function updating(string $property): void
     {
-        if (in_array($property, ['search', 'categoryFilter', 'statusFilter', 'stockFilter'], true)) {
+        if (in_array($property, ['search', 'categoryFilter', 'statusFilter', 'stockFilter', 'specialFilter'], true)) {
             $this->perPage = 8;
             $this->hasMore = true;
         }
@@ -97,6 +99,7 @@ class ShopIndex extends Component
         $this->categoryFilter = 0;
         $this->statusFilter  = 'all';
         $this->stockFilter   = 'all';
+        $this->specialFilter = 'all';
         $this->perPage       = 8;
         $this->hasMore       = true;
     }
@@ -108,6 +111,21 @@ class ShopIndex extends Component
         return $this->shop();
     }
 
+    /** Public storefront address (only when the shop is publicly visible). */
+    public function getStorefrontUrlProperty(): ?string
+    {
+        $seller = auth('seller')->user();
+
+        if (! $seller || $seller->status !== 'approved') {
+            return null; // pending shops 404 publicly → hide the button
+        }
+
+        $shop   = $this->shop();
+        $handle = $shop->instagram_username ?: $seller->instagram_username;
+
+        return $handle ? route('shop.storefront', ['instagram' => $handle]) : null;
+    }
+
     public function getStatsProperty(): array
     {
         $base = Product::query()->where('shop_id', $this->shop()->id);
@@ -117,6 +135,7 @@ class ShopIndex extends Component
             'published' => (clone $base)->where('status', 'published')->count(),
             'outOfStock' => (clone $base)->where('stock', 0)->count(),
             'categories' => ShopCategory::query()->where('shop_id', $this->shop()->id)->count(),
+            'special'   => (clone $base)->specialActive()->count(),
         ];
     }
 
@@ -148,10 +167,11 @@ class ShopIndex extends Component
     public function render()
     {
         return view('livewire.seller.shop-index', [
-            'shop'       => $this->shop,
-            'stats'      => $this->stats,
-            'categories' => $this->categories,
-            'products'   => $this->products,
+            'shop'          => $this->shop,
+            'stats'         => $this->stats,
+            'storefrontUrl' => $this->storefrontUrl,
+            'categories'    => $this->categories,
+            'products'      => $this->products,
         ])->title('فروشگاه من');
     }
 
@@ -186,6 +206,12 @@ class ShopIndex extends Component
             $query->where('stock', '>', 0);
         } elseif ($this->stockFilter === 'out') {
             $query->where('stock', 0);
+        }
+
+        if ($this->specialFilter === 'special') {
+            $query->where('is_special', true);
+        } elseif ($this->specialFilter === 'plain') {
+            $query->where('is_special', false);
         }
 
         return $query;

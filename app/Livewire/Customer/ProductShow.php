@@ -154,13 +154,24 @@ class ProductShow extends Component
         return (int) round(100 - ($this->product->price / $compare * 100));
     }
 
+    /** «فروش ویژه» deadline in ms epoch (null = no active special sale) — drives the countdown. */
+    public function getSpecialEndsMsProperty(): ?int
+    {
+        if (! $this->product->isSpecialActive() || ! $this->product->special_ends_at) {
+            return null;
+        }
+
+        return $this->product->special_ends_at->timestamp * 1000;
+    }
+
     public function render()
     {
         return view('livewire.customer.product-show', [
-            'gallery'    => $this->gallery,
-            'activeImg'  => $this->activeImage,
-            'isFavorite' => $this->isFavorite,
-            'discount'   => $this->discountPercent,
+            'gallery'        => $this->gallery,
+            'activeImg'      => $this->activeImage,
+            'isFavorite'     => $this->isFavorite,
+            'discount'       => $this->discountPercent,
+            'specialEndsMs'  => $this->specialEndsMs,
         ])->title($this->product->name);
     }
 }

@@ -159,9 +159,11 @@
                                             :class="$wire.categoryId === {{ $cat->id }} ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300' : 'text-slate-500 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'">
                                         <x-icon name="tag" class="size-3.5 opacity-50" />
                                         {{ $cat->name }}
-                                        @if ($wire.categoryId === $cat->id)
-                                            <x-icon name="circle-check" class="mr-auto size-3.5 text-primary-600" />
-                                        @endif
+                                        {{-- $wire.X === y inside @if compiles to PHP ($wire . categoryId → fatal
+                                            «Undefined constant») — keep the check in Alpine/JS instead. --}}
+                                        <span x-show="$wire.categoryId === {{ $cat->id }}" class="mr-auto grid place-items-center" wire:key="cat-check-{{ $cat->id }}">
+                                            <x-icon name="circle-check" class="size-3.5 text-primary-600" />
+                                        </span>
                                     </button>
                                 @endforeach
                                 @if ($shopCategories->isEmpty())
@@ -345,6 +347,76 @@
                 @foreach (range(0, 5) as $photoKey)
                     @error('photos.'.$photoKey) <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                 @endforeach
+            </div>
+
+            {{-- ── وضعیت انتشار (منتشر شده / پیش‌نویس) ── --}}
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <h3 class="flex items-center gap-2 text-xs font-extrabold">
+                    <span class="grid size-7 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400"><x-icon name="eye" class="size-3.5" /></span>
+                    وضعیت انتشار
+                </h3>
+
+                <div class="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="وضعیت انتشار محصول">
+                    <button type="button" wire:click="$set('status', 'published')"
+                            class="rounded-2xl border-2 p-3 text-right transition {{ $status === 'published'
+                                ? 'border-emerald-500 bg-emerald-50/70 shadow-sm shadow-emerald-600/10 dark:border-emerald-600 dark:bg-emerald-950/40'
+                                : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900' }}">
+                        <div class="flex items-center gap-2">
+                            <span class="grid size-8 place-items-center rounded-xl {{ $status === 'published' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' }}">
+                                <x-icon name="eye" class="size-4" />
+                            </span>
+                            <span class="text-[11px] font-extrabold">منتشر شده</span>
+                        </div>
+                        <p class="mt-1.5 text-[9px] leading-4 text-slate-400">در فروشگاه عمومی قابل مشاهده و خرید است</p>
+                    </button>
+                    <button type="button" wire:click="$set('status', 'draft')"
+                            class="rounded-2xl border-2 p-3 text-right transition {{ $status === 'draft'
+                                ? 'border-amber-500 bg-amber-50/70 shadow-sm shadow-amber-600/10 dark:border-amber-600 dark:bg-amber-950/40'
+                                : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900' }}">
+                        <div class="flex items-center gap-2">
+                            <span class="grid size-8 place-items-center rounded-xl {{ $status === 'draft' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' }}">
+                                <x-icon name="edit" class="size-4" />
+                            </span>
+                            <span class="text-[11px] font-extrabold">پیش‌نویس</span>
+                        </div>
+                        <p class="mt-1.5 text-[9px] leading-4 text-slate-400">فقط شما می‌بینید؛ هنوز آماده انتشار نیست</p>
+                    </button>
+                </div>
+                @error('status') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </div>
+
+            {{-- ── فروش ویژه (special sale + تاریخ پایان) ── --}}
+            <div class="rounded-2xl border p-4 shadow-sm transition {{ $isSpecial
+                ? 'border-rose-300 bg-gradient-to-l from-rose-50/80 to-orange-50/50 dark:border-rose-900 dark:from-rose-950/30 dark:to-orange-950/20'
+                : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900' }}">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="grid size-7 place-items-center rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-md shadow-rose-500/30">
+                            <x-icon name="flame" class="size-3.5" />
+                        </span>
+                        <div>
+                            <div class="text-xs font-extrabold">فروش ویژه</div>
+                            <div class="text-[9.5px] text-slate-400">نمایش در بخش «فروش ویژه» صفحه فروشگاه با شمارش معکوس</div>
+                        </div>
+                    </div>
+
+                    <button type="button" wire:click="$toggle('isSpecial')" role="switch" aria-checked="{{ $isSpecial ? 'true' : 'false' }}"
+                            class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition {{ $isSpecial ? 'bg-rose-500 shadow-md shadow-rose-500/30' : 'bg-slate-200 dark:bg-slate-700' }}">
+                        {{-- RTL track: off = knob at inline-start (right), on = slides to the left edge --}}
+                        <span class="inline-block size-4.5 transform rounded-full bg-white shadow transition-transform duration-200 {{ $isSpecial ? '-translate-x-[26px]' : 'translate-x-0' }}"></span>
+                    </button>
+                </div>
+
+                @if ($isSpecial)
+                    <div class="mt-3">
+                        <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">تاریخ پایان فروش ویژه <span class="text-rose-500">*</span></span>
+                        <x-jdate-picker model="specialEndsAt" placeholder="انتخاب تاریخ پایان (شمسی)" />
+                        <p class="mt-1.5 text-[9.5px] leading-5 text-slate-400">
+                            فروش ویژه تا پایان روز انتخاب‌شده ادامه دارد و بعد از آن به‌صورت خودکار از بخش ویژه خارج می‌شود. روی صفحه محصول هم شمارش معکوس نمایش داده می‌شود.
+                        </p>
+                        @error('specialEndsAt') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                    </div>
+                @endif
             </div>
         </div>
 

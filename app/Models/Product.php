@@ -3,17 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['shop_id', 'shop_category_id', 'name', 'description', 'specifications', 'spec_type', 'type', 'price', 'compare_at_price', 'stock', 'weight_grams', 'unit', 'status'])]
+#[Fillable(['shop_id', 'shop_category_id', 'name', 'description', 'specifications', 'spec_type', 'type', 'price', 'compare_at_price', 'stock', 'weight_grams', 'unit', 'status', 'is_special', 'special_ends_at'])]
 class Product extends Model
 {
     public const TYPE_PHYSICAL = 'physical';
 
     public const TYPE_DOWNLOADABLE = 'downloadable';
+
+    public const STATUS_DRAFT = 'draft';
+
+    public const STATUS_PUBLISHED = 'published';
 
     protected function casts(): array
     {
@@ -24,7 +29,28 @@ class Product extends Model
             'views'            => 'integer',
             'weight_grams'     => 'integer',
             'specifications'   => 'array',
+            'is_special'       => 'boolean',
+            'special_ends_at'  => 'datetime',
         ];
+    }
+
+    /** The «فروش ویژه» window is currently open (flag on + deadline in the future). */
+    public function isSpecialActive(): bool
+    {
+        if (! $this->is_special) {
+            return false;
+        }
+
+        return $this->special_ends_at === null || $this->special_ends_at->isFuture();
+    }
+
+    /** Scope: published products whose special-sale window is open. */
+    public function scopeSpecialActive(Builder $query): Builder
+    {
+        return $query->where('is_special', true)
+            ->where(fn (Builder $q) => $q
+                ->whereNull('special_ends_at')
+                ->orWhere('special_ends_at', '>', now()));
     }
 
     public function isDownloadable(): bool
@@ -70,7 +96,7 @@ class Product extends Model
 
     public function isPublished(): bool
     {
-        return $this->status === 'published';
+        return $this->status === self::STATUS_PUBLISHED;
     }
 
     /**
