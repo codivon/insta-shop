@@ -122,6 +122,18 @@ class CategoryManager extends Component
         $category->delete();
     }
 
+    /** Tick/untick «نمایش در صفحه فروشگاه» — controls the public storefront chips. */
+    public function toggleStorefront(int $id): void
+    {
+        $category = $this->findOwned($id);
+
+        if (! $category) {
+            return;
+        }
+
+        $category->update(['show_on_storefront' => ! $category->show_on_storefront]);
+    }
+
     public function moveUp(int $id): void
     {
         $category = $this->findOwned($id);

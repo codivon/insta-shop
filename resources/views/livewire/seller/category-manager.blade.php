@@ -60,6 +60,19 @@
                         <div class="min-w-0 flex-1">
                             <div class="truncate text-xs font-extrabold">{{ $category->name }}</div>
                             <div class="mt-0.5 text-[10px] font-semibold text-slate-400">{{ \App\Support\Fmt::fa($category->products_count) }} محصول</div>
+                            {{-- «نمایش در صفحه فروشگاه» toggle — controls the public storefront --}}
+                            <button type="button" wire:click="toggleStorefront({{ $category->id }})"
+                                    wire:loading.attr="disabled" wire:target="toggleStorefront"
+                                    class="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold transition"
+                                    role="switch" aria-checked="{{ $category->show_on_storefront ? 'true' : 'false' }}"
+                                    aria-label="نمایش دسته {{ $category->name }} در صفحه فروشگاه">
+                                <span class="relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition {{ $category->show_on_storefront ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600' }}">
+                                    <span class="absolute size-3 rounded-full bg-white shadow transition-all {{ $category->show_on_storefront ? 'right-0.5' : 'right-[calc(100%-0.875rem)]' }}"></span>
+                                </span>
+                                <span class="{{ $category->show_on_storefront ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400' }}">
+                                    نمایش در صفحه فروشگاه
+                                </span>
+                            </button>
                         </div>
 
                         <div class="flex shrink-0 items-center gap-0.5">
@@ -104,7 +117,7 @@
         <div class="mt-4 flex items-start gap-2.5 rounded-2xl border border-primary-200 bg-primary-50/70 p-3.5 text-xs leading-6 text-primary-800 dark:border-primary-900 dark:bg-primary-950/40 dark:text-primary-300">
             <x-icon name="info" class="mt-0.5 size-4 shrink-0" />
             <span>
-                با حذف دسته‌بندی، محصولاتی که در آن بودند حذف نمی‌شوند؛ فقط «بدون دسته» می‌شوند. ترتیب دسته‌ها در فیلترهای فروشگاه و صفحه مشتری اعمال می‌شود.
+                با حذف دسته‌بندی، محصولاتی که در آن بودند حذف نمی‌شوند؛ فقط «بدون دسته» می‌شوند. دسته‌هایی که کلید «نمایش در صفحه فروشگاه» آن‌ها روشن باشد، در صفحهٔ عمومی فروشگاه شما (آدرس اینستاگرامی شما) به‌عنوان فیلتر نمایش داده می‌شوند.
             </span>
         </div>
     </div>

@@ -30,7 +30,7 @@ use App\Livewire\Customer\OrderResultPage;
 use App\Livewire\Customer\OrdersPage;
 use App\Livewire\Customer\ProductShow;
 use App\Livewire\Customer\ProfilePage;
-use App\Livewire\Customer\ShopShow;
+use App\Livewire\Storefront\StorefrontShow;
 use App\Livewire\Seller\AttributeManager;
 use App\Livewire\Seller\Auth\PhoneAuth;
 use App\Livewire\Seller\BankCardsPage;
@@ -171,7 +171,6 @@ Route::prefix('shop')->name('shop.')->group(function () {
         Route::get('/', CustomerHome::class)->name('home');
 
         // ── Phase 4: customer storefront ──
-        Route::get('/s/{slug}', ShopShow::class)->name('store.show');
         Route::get('/product/{productId}', ProductShow::class)->name('product.show');
         Route::get('/cart', CartPage::class)->name('cart');
         Route::get('/favorites', FavoritesPage::class)->name('favorites');
@@ -194,6 +193,38 @@ Route::prefix('shop')->name('shop.')->group(function () {
      | not by the session). Same browser keeps the customer cookie anyway.
      */
     Route::match(['get', 'post'], '/payment/callback', PaymentCallback::class)->name('payment.callback');
+
+    /*
+     | ─────────────────────────────────────────────────────────────
+     |  PUBLIC seller storefront — no login required.
+     |
+     |  The seller's shop front page lives at the seller's instagram
+     | handle:  دامنه/shop/{آیدی اینستا}
+     | (the bare  دامنه/{آیدی اینستا}  form is served by the fallback
+     | route at the bottom of this file).
+     |
+     | Registered AFTER every specific /shop/* route above, so real
+     | app pages (cart, profile, …) always win; any other single
+     | segment is treated as an instagram handle.
+     | ─────────────────────────────────────────────────────────────
+     */
+    Route::get('/{instagram}', StorefrontShow::class)->name('storefront');
+
+    /*
+     | Legacy customer-app shop links (/shop/s/{slug}) — 301-redirect
+     | to the new public storefront so already-shared links keep working.
+     */
+    Route::get('/s/{slug}', function (string $slug) {
+        $shop = \App\Models\Shop::query()->publiclyVisible()->where('slug', $slug)->first();
+
+        abort_if(! $shop, 404);
+
+        $handle = $shop->seller?->instagram_username ?: $shop->instagram_username;
+
+        abort_if(! $handle, 404);
+
+        return redirect()->to(route('shop.storefront', ['instagram' => $handle]), 301);
+    })->name('store.show');
 });
 
 /*
@@ -228,3 +259,15 @@ if (app()->isLocal()) {
         'table' => config('session.table'),
     ]));
 }
+
+/*
+|--------------------------------------------------------------------------
+| Direct storefront address —  دامنه/{آیدی اینستا}
+|--------------------------------------------------------------------------
+| The user-preferred, shortest shareable form. The fallback fires ONLY
+| when no other route matched, so panels/api/assets are never touched:
+| if the segment resolves to a publicly visible shop (by the seller's
+| instagram handle) the public storefront is rendered, otherwise a
+| regular 404 — exactly like any unknown path.
+*/
+Route::fallback(StorefrontShow::class);

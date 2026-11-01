@@ -50,6 +50,15 @@ body {
     background: transparent;
 }
 
+/* ── Storefront carousels: scrollable but scrollbar-free ── */
+.scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
 /* ── SPA-ish page transitions (used with wire:navigate / turbo-like swaps) ──
    FADE ONLY — and critically WITHOUT `fill-mode: both/forwards`: a filled
    opacity animation keeps a stacking context alive on the page root forever,

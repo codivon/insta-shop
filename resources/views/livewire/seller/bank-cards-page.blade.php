@@ -177,24 +177,43 @@
 
                 <label class="block">
                     <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">شماره کارت ۱۶ رقمی <span class="text-rose-500">*</span></span>
-                    <input type="text" inputmode="numeric" dir="ltr" wire:model="cardNumber" placeholder="6104 3378 1234 5678" maxlength="19"
-                           class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left font-mono text-xs font-extrabold tracking-[0.12em] outline-none transition placeholder:text-slate-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800">
-                    @if (strlen($cardNumber) === 16)
-                        <p class="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-primary-500">
-                            <x-icon name="credit-card" class="size-3" />
-                            {{ \App\Support\Banking::bankName($cardNumber) }}
+                    <div class="relative">
+                        <input type="text" inputmode="numeric" dir="ltr" wire:model.live.debounce.250ms="cardNumber" placeholder="6104 3378 1234 5678" maxlength="19"
+                               class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left font-mono text-xs font-extrabold tracking-[0.14em] outline-none transition placeholder:tracking-normal placeholder:text-slate-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800">
+                        @if (strlen($this->cardDigits) > 0)
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 rounded-md bg-slate-200/80 px-1.5 py-0.5 font-mono text-[9px] font-black text-slate-500 dark:bg-slate-700 dark:text-slate-300">{{ \App\Support\Fmt::toFa(strlen($this->cardDigits)) }}/۱۶</span>
+                        @endif
+                    </div>
+                    @if (strlen($this->cardDigits) === 16)
+                        <p class="mt-1.5 flex items-center gap-1 text-[10px] font-bold {{ $this->cardValid ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500' }}">
+                            <x-icon name="{{ $this->cardValid ? 'circle-check' : 'alert' }}" class="size-3" />
+                            {{ \App\Support\Banking::bankName($this->cardDigits) }}
+                            {{ $this->cardValid ? '— شماره کارت معتبر است' : '— رقم کنترل کارت اشتباه است' }}
                         </p>
                     @endif
                     @error('cardNumber') <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                    <p class="mt-1.5 text-[9.5px] text-slate-400">رقم‌ها هنگام تایپ خودکار ۴ رقم ۴ رقم جدا می‌شوند و در سیستم یکپارچه (بدون فاصله) ذخیره می‌شوند.</p>
                 </label>
 
                 <label class="block">
                     <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">شماره شبا <span class="text-rose-500">*</span></span>
-                    <input type="text" dir="ltr" wire:model="cardSheba" placeholder="IR062980000000123456789001" maxlength="26"
-                           class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left font-mono text-xs font-extrabold tracking-wide outline-none transition placeholder:text-slate-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800">
-                    @error('cardSheba') <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                    <div class="flex items-stretch overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition focus-within:border-primary-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus-within:bg-slate-800">
+                        <span class="grid shrink-0 place-items-center border-l border-slate-200 bg-slate-100 px-3.5 font-mono text-xs font-black tracking-wider text-slate-500 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-300" dir="ltr">IR</span>
+                        <input type="text" inputmode="numeric" dir="ltr" wire:model.live.debounce.250ms="shebaDigits" placeholder="062980000000123456789001" maxlength="24"
+                               class="w-full min-w-0 border-0 bg-transparent px-3 py-2.5 text-left font-mono text-xs font-extrabold tracking-[0.1em] outline-none placeholder:text-slate-400">
+                        @if (strlen($this->shebaDigits) > 0)
+                            <span class="grid shrink-0 place-items-center pl-3 pr-1 font-mono text-[9px] font-black text-slate-400">{{ \App\Support\Fmt::toFa(strlen($this->shebaDigits)) }}/۲۴</span>
+                        @endif
+                    </div>
+                    @if (strlen($this->shebaDigits) === 24)
+                        <p class="mt-1.5 flex items-center gap-1 text-[10px] font-bold {{ $this->shebaValid ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500' }}">
+                            <x-icon name="{{ $this->shebaValid ? 'circle-check' : 'alert' }}" class="size-3" />
+                            {{ $this->shebaValid ? 'شماره شبا معتبر است' : 'رقم‌های کنترل شبا اشتباه است' }}
+                        </p>
+                    @endif
+                    @error('shebaDigits') <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                     <p class="mt-1.5 text-[9.5px] leading-5 text-slate-400">
-                        شبای کارت‌های ایرانی با IR شروع می‌شود و ۲۴ رقم بعد از آن است.
+                        پیشوند IR ثابت است؛ فقط ۲۴ رقم بعد از آن را وارد کنید (شبا را از اپ بانک کپی کنید و بدون IR بچسبانید).
                     </p>
                 </label>
 

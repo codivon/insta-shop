@@ -26,9 +26,11 @@ class BankCardsPage extends Component
 
     public string $cardName = '';
 
+    /** Display value — «6037 6912 3456 7890» (groups of 4, as the user types). */
     public string $cardNumber = '';
 
-    public string $cardSheba = '';
+    /** Numeric part of the sheba ONLY (۲۴ رقم) — the «IR» prefix lives outside the input. */
+    public string $shebaDigits = '';
 
     public ?int $confirmDeleteId = null;
 
@@ -43,31 +45,39 @@ class BankCardsPage extends Component
         }
 
         $this->resetErrorBag();
-        $this->cardName   = '';
-        $this->cardNumber = '';
-        $this->cardSheba  = '';
-        $this->addOpen    = true;
+        $this->cardName     = '';
+        $this->cardNumber   = '';
+        $this->shebaDigits  = '';
+        $this->addOpen      = true;
     }
 
     public function closeAdd(): void
     {
-        $this->addOpen    = false;
-        $this->cardName   = '';
-        $this->cardNumber = '';
-        $this->cardSheba  = '';
+        $this->addOpen     = false;
+        $this->cardName    = '';
+        $this->cardNumber  = '';
+        $this->shebaDigits = '';
         $this->resetErrorBag();
     }
 
     /* ─────────────────── live input hygiene ─────────────────── */
 
+    /**
+     * Live 4-4-4-4 grouping WHILE TYPING: the input always shows
+     * «6037 6912 …», the raw digits are re-joined on submit and
+     * stored un-spaced in the database.
+     */
     public function updatedCardNumber(mixed $value): void
     {
-        $this->cardNumber = Banking::digitsOnly((string) $value);
+        $digits = Banking::digitsOnly((string) $value);
+
+        $this->cardNumber = trim(implode(' ', str_split($digits, 4)));
     }
 
-    public function updatedCardSheba(mixed $value): void
+    /** Only the 24-digit part is typed here — «IR» is a fixed prefix outside the field. */
+    public function updatedShebaDigits(mixed $value): void
     {
-        $this->cardSheba = Banking::shebaNormalize((string) $value);
+        $this->shebaDigits = mb_substr(Banking::digitsOnly((string) $value), 0, 24);
     }
 
     /* ───────────────────────── actions ───────────────────────── */
@@ -78,24 +88,24 @@ class BankCardsPage extends Component
 
         // belt & suspenders: updated* hooks normalize live input, but
         // normalize again server-side before validating.
-        $this->cardName   = trim($this->cardName);
-        $this->cardNumber = Banking::digitsOnly($this->cardNumber);
-        $this->cardSheba  = Banking::shebaNormalize($this->cardSheba);
+        $this->cardName    = trim($this->cardName);
+        $this->cardNumber  = Banking::digitsOnly($this->cardNumber); // ← DB stores it un-spaced
+        $this->shebaDigits = Banking::digitsOnly($this->shebaDigits);
+
+        $fullSheba = 'IR'.$this->shebaDigits;
 
         $this->validate([
-            'cardName'   => ['required', 'string', 'min:3', 'max:60'],
-            'cardNumber' => ['required', 'digits:16', Rule::unique('bank_cards', 'card_number')->where('seller_id', $seller->id)],
-            'cardSheba'  => ['required', 'string', 'size:26', 'starts_with:IR', Rule::unique('bank_cards', 'sheba')->where('seller_id', $seller->id)],
+            'cardName'    => ['required', 'string', 'min:3', 'max:60'],
+            'cardNumber'  => ['required', 'digits:16', Rule::unique('bank_cards', 'card_number')->where('seller_id', $seller->id)],
+            'shebaDigits' => ['required', 'digits:24'],
         ], [
-            'cardName.required'          => 'نام و نام خانوادگی صاحب کارت را وارد کنید.',
-            'cardName.min'               => 'نام باید حداقل ۳ حرف باشد.',
-            'cardNumber.required'        => 'شماره کارت را وارد کنید.',
-            'cardNumber.digits'          => 'شماره کارت باید ۱۶ رقم باشد.',
-            'cardNumber.unique'          => 'این شماره کارت قبلاً ثبت شده است.',
-            'cardSheba.required'         => 'شماره شبا را وارد کنید.',
-            'cardSheba.size'             => 'شماره شبا باید IR + ۲۴ رقم باشد.',
-            'cardSheba.starts_with'      => 'شماره شبا باید با IR شروع شود.',
-            'cardSheba.unique'           => 'این شماره شبا قبلاً ثبت شده است.',
+            'cardName.required'      => 'نام و نام خانوادگی صاحب کارت را وارد کنید.',
+            'cardName.min'           => 'نام باید حداقل ۳ حرف باشد.',
+            'cardNumber.required'    => 'شماره کارت را وارد کنید.',
+            'cardNumber.digits'      => 'شماره کارت باید ۱۶ رقم باشد.',
+            'cardNumber.unique'      => 'این شماره کارت قبلاً ثبت شده است.',
+            'shebaDigits.required'   => 'رقم‌های شبا را وارد کنید.',
+            'shebaDigits.digits'     => 'بعد از IR باید دقیقاً ۲۴ رقم وارد شود.',
         ]);
 
         if (! Banking::validCard($this->cardNumber)) {
@@ -104,8 +114,14 @@ class BankCardsPage extends Component
             return;
         }
 
-        if (! Banking::validSheba($this->cardSheba)) {
-            $this->addError('cardSheba', 'شماره شبا معتبر نیست — رقم‌های کنترل را بررسی کنید.');
+        if (! Banking::validSheba($fullSheba)) {
+            $this->addError('shebaDigits', 'شماره شبا معتبر نیست — رقم‌های کنترل را بررسی کنید.');
+
+            return;
+        }
+
+        if (BankCard::query()->where('seller_id', $seller->id)->where('sheba', $fullSheba)->exists()) {
+            $this->addError('shebaDigits', 'این شماره شبا قبلاً ثبت شده است.');
 
             return;
         }
@@ -121,10 +137,12 @@ class BankCardsPage extends Component
         BankCard::query()->create([
             'seller_id'   => $seller->id,
             'full_name'   => trim($this->cardName),
-            'card_number' => $this->cardNumber,
-            'sheba'       => $this->cardSheba,
+            'card_number' => $this->cardNumber, // raw 16 digits, no spaces
+            'sheba'       => $fullSheba,        // stored as IR + 24 digits
             'is_default'  => $isFirst,
         ]);
+
+        unset($this->cards); // bust the per-request computed cache
 
         $this->closeAdd();
 
@@ -163,6 +181,8 @@ class BankCardsPage extends Component
             }
         }
 
+        unset($this->cards);
+
         $this->confirmDeleteId = null;
 
         session()->flash('cards-flash', 'کارت حذف شد.');
@@ -181,6 +201,8 @@ class BankCardsPage extends Component
             ->whereKey($cardId)
             ->update(['is_default' => true]);
 
+        unset($this->cards);
+
         session()->flash('cards-flash', 'کارت پیش‌فرض برداشت تغییر کرد. ✅');
     }
 
@@ -188,7 +210,35 @@ class BankCardsPage extends Component
 
     protected function cardsCount(): int
     {
-        return $this->cards->count();
+        // direct count (not the cached computed) — submitCard calls this
+        // BEFORE creating, and the fresh number must not poison the render.
+        return BankCard::query()->where('seller_id', auth('seller')->id())->count();
+    }
+
+    /** Raw typed digits of the card number (without spaces). */
+    public function getCardDigitsProperty(): string
+    {
+        return Banking::digitsOnly($this->cardNumber);
+    }
+
+    /** Luhn result for the live ✓/✗ badge (null = not complete yet). */
+    public function getCardValidProperty(): ?bool
+    {
+        if (strlen($this->cardDigits) !== 16) {
+            return null;
+        }
+
+        return Banking::validCard($this->cardDigits);
+    }
+
+    /** mod-97 result for the live ✓/✗ badge (null = not complete yet). */
+    public function getShebaValidProperty(): ?bool
+    {
+        if (strlen($this->shebaDigits) !== 24) {
+            return null;
+        }
+
+        return Banking::validSheba('IR'.$this->shebaDigits);
     }
 
     public function getCardsProperty(): Collection
