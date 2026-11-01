@@ -19,7 +19,11 @@
 /public/storage
 /storage/*.key
 /storage/pail
-/vendor
+# NOTE: /vendor is INTENTIONALLY tracked in git (owner request): the host has
+# no terminal/composer, so the repo itself must ship the production vendor.
+# Keep it production-only: `composer install --no-dev` before committing
+# vendor changes, and keep vendor/instashop/installer as a REAL COPY
+# (not a symlink) so host checkouts work without composer.
 _ide_helper.php
 Homestead.json
 Homestead.yaml
