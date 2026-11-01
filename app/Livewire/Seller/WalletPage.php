@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Seller;
 
+use App\Models\BankCard;
 use App\Models\Shop;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -51,8 +52,16 @@ class WalletPage extends Component
     {
         $this->resetErrorBag();
         $this->withdrawAmount = '';
-        $this->withdrawSheba  = '';
-        $this->withdrawOpen   = true;
+
+        // pre-fill the destination sheba from the seller's default bank card
+        $defaultCard = BankCard::query()
+            ->where('seller_id', auth('seller')->id())
+            ->orderByDesc('is_default')
+            ->orderBy('id')
+            ->first();
+
+        $this->withdrawSheba = $defaultCard?->sheba ?? '';
+        $this->withdrawOpen  = true;
     }
 
     public function closeWithdraw(): void
@@ -159,6 +168,11 @@ class WalletPage extends Component
             'stats'        => $stats,
             'transactions' => $transactions,
             'txHasMore'    => $txHasMore,
+            'cards'        => BankCard::query()
+                ->where('seller_id', auth('seller')->id())
+                ->orderByDesc('is_default')
+                ->orderBy('id')
+                ->get(),
         ])->title('کیف پول');
     }
 }

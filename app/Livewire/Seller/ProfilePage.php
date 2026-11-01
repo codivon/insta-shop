@@ -56,6 +56,8 @@ class ProfilePage extends Component
                 ->whereHas('items', fn ($q) => $q->where('shop_id', $shopId))
                 ->count() : 0,
             'balance'  => $seller ? (int) Wallet::ensureForSeller($seller->id)->balance : 0,
+            'views'    => $shop ? (int) $shop->products()->sum('views') : 0,
+            'cards'    => $seller ? \App\Models\BankCard::query()->where('seller_id', $seller->id)->count() : 0,
         ];
     }
 

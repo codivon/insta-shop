@@ -32,8 +32,9 @@ class ProductShow extends Component
 
         $this->product = $product;
 
-        // Count a view once per component mount (= per page visit).
-        $product->increment('views');
+        // Count a view once per component mount (= per page visit):
+        // cumulative counter on the product + daily log for reports.
+        \App\Models\ProductView::recordView($product);
     }
 
     public function selectImage(?int $imageId): void

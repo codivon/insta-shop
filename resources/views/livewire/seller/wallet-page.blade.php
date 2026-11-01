@@ -54,6 +54,27 @@
             </button>
         </div>
 
+        {{-- ───────── bank cards quick access ───────── --}}
+        <a href="{{ route('seller.cards') }}" wire:navigate
+           class="mt-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:border-violet-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-violet-800">
+            <span class="flex items-center gap-2.5">
+                <span class="grid size-9 place-items-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400">
+                    <x-icon name="credit-card" class="size-4.5" />
+                </span>
+                <span>
+                    <span class="block text-xs font-extrabold">کارت‌های بانکی</span>
+                    <span class="block text-[10px] text-slate-400">
+                        @if ($cards->count() > 0)
+                            {{ \App\Support\Fmt::fa($cards->count()) }} کارت ثبت‌شده · پیش‌فرض برداشت: {{ $cards->firstWhere('is_default')?->bankName() ?? '—' }}
+                        @else
+                            افزودن کارت برای برداشت سریع‌تر
+                        @endif
+                    </span>
+                </span>
+            </span>
+            <x-icon name="chevron-left" class="size-4 text-slate-400" />
+        </a>
+
         {{-- ───────── stats ───────── --}}
         <div class="mt-3 grid grid-cols-3 gap-2">
             <div class="rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -202,6 +223,23 @@
 
                 <label class="block">
                     <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">شماره شبا <span class="text-rose-500">*</span></span>
+                    @if ($cards->isNotEmpty())
+                        <div class="mb-2 flex flex-wrap gap-1.5">
+                            @foreach ($cards as $card)
+                                <button type="button" wire:click="$set('withdrawSheba', '{{ $card->sheba }}')"
+                                        class="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9.5px] font-bold transition {{ $withdrawSheba === $card->sheba
+                                            ? 'border-primary-400 bg-primary-50 text-primary-600 dark:border-primary-700 dark:bg-primary-950/40 dark:text-primary-300'
+                                            : 'border-slate-200 text-slate-500 hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:text-slate-300' }}">
+                                    <x-icon name="credit-card" class="size-3" />
+                                    {{ $card->bankName() }} · {{ \App\Support\Fmt::toFa(\App\Support\Banking::shebaTail($card->sheba)) }}
+                                </button>
+                            @endforeach
+                        </div>
+                        <a href="{{ route('seller.cards') }}" wire:navigate class="mb-2 inline-flex items-center gap-1 text-[9.5px] font-bold text-violet-600 hover:text-violet-700 dark:text-violet-400">
+                            <x-icon name="external-link" class="size-3" />
+                            مدیریت کارت‌های بانکی
+                        </a>
+                    @endif
                     <input type="text" dir="ltr" wire:model="withdrawSheba" placeholder="IR062980000000123456789001" maxlength="26"
                            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-xs font-extrabold tracking-wide outline-none transition placeholder:text-slate-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800">
                     @error('withdrawSheba') <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror

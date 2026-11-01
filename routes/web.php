@@ -33,11 +33,13 @@ use App\Livewire\Customer\ProfilePage;
 use App\Livewire\Customer\ShopShow;
 use App\Livewire\Seller\AttributeManager;
 use App\Livewire\Seller\Auth\PhoneAuth;
+use App\Livewire\Seller\BankCardsPage;
 use App\Livewire\Seller\CategoryManager;
 use App\Livewire\Seller\Home;
 use App\Livewire\Seller\OrdersPage as SellerOrdersPage;
 use App\Livewire\Seller\ProductForm;
 use App\Livewire\Seller\ProfilePage as SellerProfilePage;
+use App\Livewire\Seller\ReportsPage;
 use App\Livewire\Seller\ShopEdit;
 use App\Livewire\Seller\ShopIndex;
 use App\Livewire\Seller\WalletPage;
@@ -141,6 +143,12 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
         // ── Wallet (balance + deposits from paid orders + withdrawals) ──
         Route::get('/wallet', WalletPage::class)->name('wallet');
+
+        // ── Bank cards (profile + wallet destination accounts) ──
+        Route::get('/cards', BankCardsPage::class)->name('cards');
+
+        // ── Reports (orders & product-visit analytics) ──
+        Route::get('/reports', ReportsPage::class)->name('reports');
 
         // ── Seller profile (identity, shortcuts, theme, logout) ──
         Route::get('/profile', SellerProfilePage::class)->name('profile');

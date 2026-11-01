@@ -118,6 +118,32 @@
                     <x-icon name="chevron-left" class="size-3.5" />
                 </span>
             </a>
+            <a href="{{ route('seller.reports') }}" wire:navigate
+               class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <span class="flex items-center gap-2.5 text-xs font-bold">
+                    <span class="grid size-9 place-items-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-950/50 dark:text-sky-400">
+                        <x-icon name="chart" class="size-4.5" />
+                    </span>
+                    گزارش‌ها
+                </span>
+                <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                    سفارش‌ها و بازدید محصولات
+                    <x-icon name="chevron-left" class="size-3.5" />
+                </span>
+            </a>
+            <a href="{{ route('seller.cards') }}" wire:navigate
+               class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <span class="flex items-center gap-2.5 text-xs font-bold">
+                    <span class="grid size-9 place-items-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400">
+                        <x-icon name="credit-card" class="size-4.5" />
+                    </span>
+                    کارت‌های بانکی
+                </span>
+                <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                    {{ $stats['cards'] > 0 ? \App\Support\Fmt::fa($stats['cards']).' کارت ثبت‌شده' : 'افزودن کارت و شبا' }}
+                    <x-icon name="chevron-left" class="size-3.5" />
+                </span>
+            </a>
             <a href="{{ route('seller.shop.attributes') }}" wire:navigate
                class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <span class="flex items-center gap-2.5 text-xs font-bold">
