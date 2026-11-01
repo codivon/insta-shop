@@ -18,7 +18,7 @@
     <div class="px-4 pt-4">
         {{-- ── pending: continue payment ── --}}
         @if ($order->status === 'pending')
-            <div class="mb-4 flex items-center gap-3 rounded-3xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+            <div class="mb-4 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900 dark:bg-amber-950/30">
                 <span class="grid size-10 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
                     <x-icon name="clock" class="size-5" />
                 </span>
@@ -34,7 +34,7 @@
         @endif
 
         {{-- ── items ── --}}
-        <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h3 class="text-xs font-extrabold">اقلام سفارش ({{ \App\Support\Fmt::toFa($order->items_count) }} عدد)</h3>
             <div class="mt-3 space-y-2">
                 @foreach ($items as $item)
@@ -67,7 +67,7 @@
         </div>
 
         {{-- ── delivery ── --}}
-        <div class="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center gap-2">
                 <span class="grid size-9 place-items-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                     <x-icon name="package" class="size-4.5" />
@@ -97,7 +97,7 @@
         </div>
 
         {{-- ── payment info ── --}}
-        <div class="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center gap-2">
                 <span class="grid size-9 place-items-center rounded-xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
                     <x-icon name="credit-card" class="size-4.5" />

@@ -17,7 +17,7 @@
     <div class="px-4 pt-4">
         @if ($orders->isEmpty())
             {{-- ── empty state ── --}}
-            <div class="mt-10 rounded-3xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
+            <div class="mt-10 rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
                 <span class="mx-auto grid size-16 place-items-center rounded-full bg-slate-100 dark:bg-slate-800">
                     <x-icon name="inbox" class="size-8 text-slate-300 dark:text-slate-600" />
                 </span>
@@ -32,7 +32,7 @@
             <div class="space-y-3">
                 @foreach ($orders as $order)
                     <a href="{{ route('shop.orders.show', $order->id) }}" wire:navigate
-                       class="block rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-primary-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-800">
+                       class="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-primary-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-800">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span class="text-xs font-extrabold" dir="ltr">{{ \App\Support\Fmt::toFa('#'.$order->id) }}</span>

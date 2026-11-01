@@ -5,7 +5,9 @@ namespace App\Livewire\Admin;
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 
 use App\Models\Shop;
+use App\Models\WalletTransaction;
 use App\Support\Fmt;
+use App\Support\Wallet\WalletService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -61,6 +63,34 @@ class ShopsIndex extends Component
             ($shop->status === 'active' ? 'فروشگاه «' : 'فروشگاه «').$shop->name.'» '.($shop->status === 'active' ? 'فعال شد.' : 'موقتاً متوقف شد و از دید مشتریان خارج است.'));
     }
 
+    // ── Wallet withdrawal requests (seller wallet approvals) ────────
+
+    public function approveWithdrawal(int $txId): void
+    {
+        $tx = WalletTransaction::query()->find($txId);
+
+        if (! $tx) {
+            return;
+        }
+
+        WalletService::approveWithdrawal($tx);
+
+        session()->flash('admin-catalog-flash', 'درخواست برداشت تأیید شد؛ مبلغ به شبا فروشنده واریز شده در نظر گرفته می‌شود.');
+    }
+
+    public function rejectWithdrawal(int $txId): void
+    {
+        $tx = WalletTransaction::query()->find($txId);
+
+        if (! $tx) {
+            return;
+        }
+
+        WalletService::rejectWithdrawal($tx);
+
+        session()->flash('admin-catalog-flash', 'درخواست برداشت رد شد؛ مبلغ به کیف پول فروشنده بازگشت.');
+    }
+
     // ── Computed data ────────────────────────────────────────────────
 
     public function getStatsProperty(): array
@@ -103,7 +133,20 @@ class ShopsIndex extends Component
             'shops' => $this->shops,
             'stats' => $this->stats,
             'hasMore' => $this->hasMore,
+            'withdrawals' => $this->pendingWithdrawals,
         ])->title('مدیریت فروشگاه‌ها')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — فروشگاه‌ها']);
+    }
+
+    /** Pending withdrawal requests with their shop/wallet context. */
+    public function getPendingWithdrawalsProperty(): Collection
+    {
+        return WalletTransaction::query()
+            ->where('type', WalletTransaction::TYPE_WITHDRAWAL)
+            ->where('status', WalletTransaction::STATUS_PENDING)
+            ->with(['wallet.seller:id,full_name,instagram_username'])
+            ->latest('id')
+            ->limit(10)
+            ->get();
     }
 }

@@ -28,7 +28,7 @@
         {{-- ───────── Attribute cards ───────── --}}
         <div class="space-y-3">
             @forelse ($attributeList as $attribute)
-                <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900" wire:key="attr-{{ $attribute->id }}">
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900" wire:key="attr-{{ $attribute->id }}">
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex min-w-0 items-center gap-2">
                             <span class="grid size-8 shrink-0 place-items-center rounded-xl {{ $attribute->type === 'color'
@@ -95,7 +95,7 @@
                     @error("newValue.{{ $attribute->id }}") <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                 </div>
             @empty
-                <div class="rounded-3xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+                <div class="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
                     <x-icon name="tag" class="mx-auto size-10 text-slate-300" />
                     <p class="mt-3 text-xs font-bold text-slate-500">هیچ ویژگی‌ای ندارید. اولین فیلد را اضافه کنید.</p>
                 </div>
@@ -103,7 +103,7 @@
         </div>
 
         {{-- ───────── Add attribute card ───────── --}}
-        <div class="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h3 class="flex items-center gap-2 text-xs font-extrabold">
                 <span class="grid size-7 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400"><x-icon name="plus" class="size-3.5" /></span>
                 افزودن ویژگی جدید

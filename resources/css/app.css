@@ -51,15 +51,17 @@ body {
 }
 
 /* ── SPA-ish page transitions (used with wire:navigate / turbo-like swaps) ──
-   FADE ONLY — deliberately no transform: `fill-mode: both` would keep an
-   identity transform on the wrapper after the animation, making it the
-   containing block for position:fixed modals and breaking their centering. */
+   FADE ONLY — and critically WITHOUT `fill-mode: both/forwards`: a filled
+   opacity animation keeps a stacking context alive on the page root forever,
+   which would trap every position:fixed modal INSIDE it — painting modals
+   UNDER the sticky panel header (z-30) even though the modal uses z-[70].
+   (fill-mode none ⇒ the context exists only during the 0.28s fade.) */
 @keyframes ip-fade-up {
     from { opacity: 0; }
     to   { opacity: 1; }
 }
 .ip-fade-up {
-    animation: ip-fade-up 0.28s ease-out both;
+    animation: ip-fade-up 0.28s ease-out;
 }
 
 /* ── Alpine: hide until initialized ── */

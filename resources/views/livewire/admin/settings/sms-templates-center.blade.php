@@ -190,23 +190,20 @@
     </div>
 
     {{-- ═══════════════════ EDIT MODAL ═══════════════════ --}}
-    <div x-cloak x-show="editOpen" x-on:click.self="editOpen = false; $wire.closeEdit()"
-         class="fixed inset-0 z-[70] flex overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"
-         role="dialog" aria-modal="true" aria-labelledby="tpl-edit-title"
-         x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-         x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-        <div class="scroll-slim m-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
-             x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="translate-y-4 opacity-0" x-transition:enter-end="translate-y-0 opacity-100">
+    <x-modal-panel open="$wire.editOpen" max-width="lg" labelledby="tpl-edit-title"
+                   close-js="__ipOpen = false; $wire.closeEdit()">
 
-            <div class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
                 <h3 id="tpl-edit-title" class="text-sm font-extrabold">ویرایش قالب پیامک</h3>
-                <button type="button" x-on:click="editOpen = false; $wire.closeEdit()"
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeEdit()"
                         class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
                     <x-icon name="x" class="size-4" />
                 </button>
             </div>
+        </x-slot:header>
 
-            <div class="space-y-5 px-5 py-5">
+        <div class="space-y-5 px-5 py-5">
                 {{-- status + chips row --}}
                 <div class="flex flex-wrap items-center gap-2">
                     <button type="button" wire:click="$toggle('editEnabled')" wire:loading.attr="disabled" wire:target="editEnabled"
@@ -270,8 +267,9 @@
                 </div>
             </div>
 
-            <div class="sticky bottom-0 flex gap-2 border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
-                <button type="button" wire:click="openTest('{{ $editKey }}', true)" x-on:click="testOpen = true"
+        <x-slot:footer>
+            <div class="flex gap-2 px-5 py-4">
+                <button type="button" wire:click="openTest('{{ $editKey }}', true)"
                         class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800">
                     <x-icon name="megaphone" class="size-3.5" />
                     ارسال آزمایشی
@@ -282,26 +280,24 @@
                     ذخیره قالب
                 </button>
             </div>
-        </div>
-    </div>
+        </x-slot:footer>
+    </x-modal-panel>
 
     {{-- ═══════════════════ TEST MODAL ═══════════════════ --}}
-    <div x-cloak x-show="testOpen" x-on:click.self="testOpen = false; $wire.closeTest()"
-         class="fixed inset-0 z-[80] flex overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"
-         role="dialog" aria-modal="true" aria-labelledby="tpl-test-title"
-         x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-         x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-        <div class="scroll-slim m-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+    <x-modal-panel open="$wire.testOpen" max-width="md" z-class="z-[80]" labelledby="tpl-test-title"
+                   close-js="__ipOpen = false; $wire.closeTest()">
 
-            <div class="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
                 <h3 id="tpl-test-title" class="text-sm font-extrabold">تست «{{ $this->testTitle() }}»</h3>
-                <button type="button" x-on:click="testOpen = false; $wire.closeTest()"
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeTest()"
                         class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
                     <x-icon name="x" class="size-4" />
                 </button>
             </div>
+        </x-slot:header>
 
-            <div class="space-y-4 px-5 py-5">
+        <div class="space-y-4 px-5 py-5">
                 {{-- preview with sample data --}}
                 <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60">
                     <p class="text-[11px] font-extrabold text-primary-600 dark:text-primary-300">پیش‌نمایش با متغیرهای نمونه:</p>
@@ -321,13 +317,14 @@
                 </label>
             </div>
 
-            <div class="sticky bottom-0 border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
+        <x-slot:footer>
+            <div class="px-5 py-4">
                 <button type="button" wire:click="sendTest" wire:loading.attr="disabled"
                         class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 disabled:opacity-50">
                     <span wire:loading wire:target="sendTest" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                     تست
                 </button>
             </div>
-        </div>
-    </div>
+        </x-slot:footer>
+    </x-modal-panel>
 </div>

@@ -17,7 +17,7 @@
     <div class="px-4 pt-4">
         @if ($validItems->isEmpty())
             {{-- ── nothing purchasable ── --}}
-            <div class="mt-10 rounded-3xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
+            <div class="mt-10 rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
                 <span class="mx-auto grid size-16 place-items-center rounded-full bg-slate-100 dark:bg-slate-800">
                     <x-icon name="cart" class="size-8 text-slate-300 dark:text-slate-600" />
                 </span>
@@ -37,7 +37,7 @@
 
             {{-- ── delivery info form ── --}}
             <form wire:submit="placeOrder">
-                <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div class="flex items-center gap-2">
                         <span class="grid size-9 place-items-center rounded-xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
                             <x-icon name="package" class="size-4.5" />
@@ -78,7 +78,7 @@
                 </div>
 
                 {{-- ── order summary ── --}}
-                <div class="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div class="flex items-center gap-2">
                         <span class="grid size-9 place-items-center rounded-xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                             <x-icon name="file-text" class="size-4.5" />

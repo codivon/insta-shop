@@ -11,7 +11,7 @@
     <style>[x-cloak]{display:none!important}</style>
 </head>
 <body class="grid min-h-screen place-items-center bg-slate-100 p-6 dark:bg-slate-950">
-    <main class="ip-fade-up w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-xl dark:border-slate-800 dark:bg-slate-900">
+    <main class="ip-fade-up w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-xl dark:border-slate-800 dark:bg-slate-900">
         @if (\App\Support\Branding::logoUrl())
             <img src="{{ \App\Support\Branding::logoUrl() }}" alt="{{ \App\Support\Theme::resolve()['app_name'] }}" class="mx-auto size-16 object-contain">
         @else

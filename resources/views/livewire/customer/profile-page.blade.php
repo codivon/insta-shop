@@ -14,7 +14,7 @@
 
     <div class="px-4 pt-4">
         {{-- ── identity card ── --}}
-        <div class="flex items-center gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <span class="grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-lg font-extrabold text-white shadow-lg shadow-primary-600/30">
                 {{ mb_substr($customer->full_name ?: '۹', 0, 1) }}
             </span>
@@ -65,7 +65,7 @@
         </div>
 
         {{-- ── edit name ── --}}
-        <div class="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h3 class="text-xs font-extrabold">نام و نام خانوادگی</h3>
             <p class="mt-0.5 text-[10px] text-slate-400">برای نمایش در فاکتورهای خرید (اختیاری)</p>
             <form wire:submit="saveName" class="mt-3 flex gap-2">
@@ -80,7 +80,7 @@
         </div>
 
         {{-- ── settings rows ── --}}
-        <div class="mt-4 divide-y divide-slate-100 overflow-hidden rounded-3xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+        <div class="mt-4 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
             <a href="{{ route('shop.orders') }}" wire:navigate
                class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <span class="flex items-center gap-2.5 text-xs font-bold">

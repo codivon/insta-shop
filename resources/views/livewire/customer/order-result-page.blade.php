@@ -3,7 +3,7 @@
         @php $paid = $order->status === 'paid'; $pending = $order->status === 'pending'; @endphp
 
         {{-- ── status hero ── --}}
-        <div class="rounded-3xl border p-6 text-center shadow-sm {{ $paid
+        <div class="rounded-2xl border p-6 text-center shadow-sm {{ $paid
                 ? 'border-emerald-200 bg-gradient-to-b from-emerald-50 to-white dark:border-emerald-900 dark:from-emerald-950/40 dark:to-slate-900'
                 : ($pending
                     ? 'border-amber-200 bg-gradient-to-b from-amber-50 to-white dark:border-amber-900 dark:from-amber-950/40 dark:to-slate-900'
@@ -69,7 +69,7 @@
         @endif
 
         {{-- ── order lines ── --}}
-        <div class="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h3 class="text-xs font-extrabold">اقلام سفارش</h3>
             <div class="mt-3 space-y-2">
                 @foreach ($items as $item)

@@ -93,28 +93,25 @@
     </div>
 
     {{-- ═══════════ add/edit role modal ═══════════ --}}
-    <div x-cloak x-show="open" x-on:click.self="open = false; $wire.closeModal()"
-         class="fixed inset-0 z-[70] flex overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm"
-         role="dialog" aria-modal="true" aria-labelledby="role-modal-title"
-         x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-         x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-        <div class="scroll-slim m-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
-             x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="translate-y-4 opacity-0" x-transition:enter-end="translate-y-0 opacity-100">
+    <x-modal-panel open="$wire.modalOpen" max-width="xl" labelledby="role-modal-title"
+                   close-js="__ipOpen = false; $wire.closeModal()">
 
-            <div class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
                 <h3 id="role-modal-title" class="flex items-center gap-2 text-sm font-extrabold">
                     <span class="grid size-8 place-items-center rounded-xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
                         <x-icon name="{{ $editing ? 'edit' : 'plus' }}" class="size-4" />
                     </span>
                     {{ $editing ? 'ویرایش نقش' : 'افزودن نقش جدید' }}
                 </h3>
-                <button type="button" x-on:click="open = false; $wire.closeModal()"
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeModal()"
                         class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
                     <x-icon name="x" class="size-4" />
                 </button>
             </div>
+        </x-slot:header>
 
-            <form wire:submit="saveRole" class="space-y-4 px-5 py-5">
+        <form wire:submit="saveRole" class="space-y-4 px-5 py-5">
                 <div class="grid gap-4 sm:grid-cols-2">
                     <label class="block">
                         <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">نام نقش <span class="text-rose-500">*</span></span>
@@ -174,12 +171,12 @@
                         <span wire:loading wire:target="saveRole" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                         ذخیره نقش
                     </button>
-                    <button type="button" x-on:click="open = false; $wire.closeModal()"
+                    <button type="button" x-on:click="__ipOpen = false; $wire.closeModal()"
                             class="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">
                         انصراف
                     </button>
                 </div>
             </form>
-        </div>
-    </div>
+
+    </x-modal-panel>
 </div>

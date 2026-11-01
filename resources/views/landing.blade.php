@@ -168,7 +168,7 @@
             </div>
 
             <div class="mt-10 grid gap-5 md:grid-cols-3">
-                <a href="{{ route('admin.dashboard') }}" class="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+                <a href="{{ route('admin.dashboard') }}" class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
                     <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-primary-500 to-primary-700 opacity-0 transition group-hover:opacity-100"></div>
                     <span class="grid size-12 place-items-center rounded-2xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
                         <x-icon name="shield" class="size-6" />
@@ -183,7 +183,7 @@
                     </span>
                 </a>
 
-                <a href="{{ route('seller.home') }}" class="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+                <a href="{{ route('seller.home') }}" class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
                     <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-primary-500 to-primary-700 opacity-0 transition group-hover:opacity-100"></div>
                     <span class="grid size-12 place-items-center rounded-2xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
                         <x-icon name="bag" class="size-6" />
@@ -198,7 +198,7 @@
                     </span>
                 </a>
 
-                <a href="{{ route('shop.home') }}" class="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+                <a href="{{ route('shop.home') }}" class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
                     <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-primary-500 to-primary-700 opacity-0 transition group-hover:opacity-100"></div>
                     <span class="grid size-12 place-items-center rounded-2xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
                         <x-icon name="cart" class="size-6" />
@@ -267,7 +267,7 @@
 
         {{-- ═══════════════════ CTA ═══════════════════ --}}
         <section class="px-4 pb-20 sm:px-6">
-            <div class="relative mx-auto max-w-4xl overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 to-primary-800 p-10 text-center text-white shadow-2xl shadow-primary-700/30 md:p-14">
+            <div class="relative mx-auto max-w-4xl overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 to-primary-800 p-10 text-center text-white shadow-2xl shadow-primary-700/30 md:p-14">
                 <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
                     <div class="absolute -top-16 right-10 size-64 rounded-full bg-white/30 blur-3xl"></div>
                     <div class="absolute -bottom-20 left-10 size-72 rounded-full bg-white/20 blur-3xl"></div>

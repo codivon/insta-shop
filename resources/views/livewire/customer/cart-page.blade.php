@@ -37,7 +37,7 @@
 
         @if ($items->isEmpty())
             {{-- ── empty cart ── --}}
-            <div class="mt-10 rounded-3xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
+            <div class="mt-10 rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
                 <span class="mx-auto grid size-16 place-items-center rounded-full bg-slate-100 dark:bg-slate-800">
                     <x-icon name="cart" class="size-8 text-slate-300 dark:text-slate-600" />
                 </span>
@@ -117,7 +117,7 @@
             </div>
 
             {{-- ── summary + checkout teaser ── --}}
-            <div class="mt-5 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <div class="flex items-center justify-between text-xs">
                     <span class="text-slate-400">جمع کل ({{ \App\Support\Fmt::toFa($units) }} کالا)</span>
                     <span class="font-extrabold">{{ \App\Support\Fmt::money($total) }}</span>

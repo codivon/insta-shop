@@ -14,7 +14,7 @@
 
     <div class="px-4 pt-4">
         @if ($favorites->isEmpty())
-            <div class="mt-10 rounded-3xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
+            <div class="mt-10 rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
                 <span class="mx-auto grid size-16 place-items-center rounded-full bg-slate-100 dark:bg-slate-800">
                     <x-icon name="heart" class="size-8 text-slate-300 dark:text-slate-600" />
                 </span>

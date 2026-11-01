@@ -19,7 +19,7 @@
 
     <form wire:submit="save" class="px-4 pt-4 pb-8">
         {{-- ───────── Identity card (logo + banner) ───────── --}}
-        <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h3 class="flex items-center gap-2 text-xs font-extrabold">
                 <span class="grid size-7 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400"><x-icon name="palette" class="size-3.5" /></span>
                 هویت بصری
@@ -81,7 +81,7 @@
         </div>
 
         {{-- ───────── Basic info card ───────── --}}
-        <div class="mt-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="mt-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h3 class="flex items-center gap-2 text-xs font-extrabold">
                 <span class="grid size-7 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400"><x-icon name="store" class="size-3.5" /></span>
                 اطلاعات فروشگاه

@@ -35,7 +35,7 @@
 
     <div class="px-4 pt-4">
         {{-- ── banner ── --}}
-        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-4 text-white shadow-xl shadow-primary-600/25">
+        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-4 text-white shadow-xl shadow-primary-600/25">
             <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
                 <div class="absolute -top-6 left-4 size-32 rounded-full bg-white/30 blur-2xl"></div>
             </div>

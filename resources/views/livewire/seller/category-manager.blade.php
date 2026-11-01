@@ -19,7 +19,7 @@
 
     <div class="px-4 pt-4 pb-8">
         {{-- ───────── Add form ───────── --}}
-        <form wire:submit="add" class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <form wire:submit="add" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <label for="cm-name" class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">دسته‌بندی جدید</label>
             <div class="flex gap-2">
                 <input id="cm-name" type="text" wire:model="name" maxlength="80" placeholder="مثال: ادویه و خشکبار"
@@ -90,8 +90,8 @@
                     @endif
                 </div>
             @empty
-                <div class="mt-4 flex flex-col items-center gap-3 rounded-3xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
-                    <span class="grid size-16 place-items-center rounded-3xl bg-primary-50 text-primary-400 dark:bg-primary-950">
+                <div class="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
+                    <span class="grid size-16 place-items-center rounded-2xl bg-primary-50 text-primary-400 dark:bg-primary-950">
                         <x-icon name="tag" class="size-8" />
                     </span>
                     <p class="text-sm font-extrabold">هنوز دسته‌بندی‌ای نساخته‌اید</p>

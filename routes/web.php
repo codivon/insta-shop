@@ -39,6 +39,7 @@ use App\Livewire\Seller\OrdersPage as SellerOrdersPage;
 use App\Livewire\Seller\ProductForm;
 use App\Livewire\Seller\ShopEdit;
 use App\Livewire\Seller\ShopIndex;
+use App\Livewire\Seller\WalletPage;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -136,6 +137,9 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
         // ── Phase 5: shop orders (read-only) ──
         Route::get('/orders', SellerOrdersPage::class)->name('orders');
+
+        // ── Wallet (balance + deposits from paid orders + withdrawals) ──
+        Route::get('/wallet', WalletPage::class)->name('wallet');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });

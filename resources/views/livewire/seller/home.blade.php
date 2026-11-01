@@ -52,7 +52,7 @@
         @endif
 
         {{-- ── greeting hero with real stats ── --}}
-        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-5 text-white shadow-xl shadow-primary-600/25">
+        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-5 text-white shadow-xl shadow-primary-600/25">
             <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
                 <div class="absolute -top-8 left-6 size-40 rounded-full bg-white/30 blur-2xl"></div>
                 <div class="absolute -bottom-12 right-10 size-48 rounded-full bg-white/20 blur-2xl"></div>
@@ -120,32 +120,67 @@
             </a>
         </div>
 
-        {{-- ── 7-day mini chart (products added) ── --}}
-        @php
-            $maxCount = max($chart->max('count'), 1);
-        @endphp
-        <div class="mt-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div class="flex items-center justify-between">
+        {{-- ── نمودار فروش با فیلتر روزانه/ماهانه/سالانه + بازه تاریخی شمسی ── --}}
+        <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between gap-2">
                 <h3 class="flex items-center gap-2 text-xs font-extrabold">
                     <span class="grid size-7 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400"><x-icon name="chart" class="size-3.5" /></span>
-                    محصولات جدید هفته گذشته
+                    نمودار فروش
                 </h3>
-                <span class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
-                    مجموع: {{ \App\Support\Fmt::fa($chart->sum('count')) }}
-                </span>
+                <div class="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800" role="group" aria-label="بازه نمودار فروش">
+                    @foreach ([['key' => 'daily', 'label' => 'روزانه'], ['key' => 'monthly', 'label' => 'ماهانه'], ['key' => 'yearly', 'label' => 'سالانه']] as $mode)
+                        <button type="button" wire:click="setChartMode('{{ $mode['key'] }}')" wire:loading.attr="disabled" wire:target="setChartMode"
+                                class="rounded-lg px-2.5 py-1 text-[10px] font-bold transition {{ $chartMode === $mode['key']
+                                    ? 'bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400'
+                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
+                            {{ $mode['label'] }}
+                        </button>
+                    @endforeach
+                </div>
             </div>
 
-            <div class="mt-4 flex h-24 items-end justify-between gap-1.5" dir="ltr">
-                @foreach ($chart as $bar)
-                    <div class="flex flex-1 flex-col items-center gap-1.5">
-                        <div class="flex w-full flex-1 items-end">
-                            <div class="w-full rounded-t-lg transition-all {{ $bar['today'] ? 'bg-gradient-to-t from-primary-600 to-primary-400 shadow-md shadow-primary-600/30' : 'bg-primary-200 dark:bg-primary-900' }}"
-                                 style="height: {{ max(8, (int) round($bar['count'] / $maxCount * 100)) }}%"
-                                 title="{{ $bar['label'] }}: {{ $bar['count'] }}"></div>
+            {{-- summary --}}
+            <div class="mt-3 grid grid-cols-2 gap-2">
+                <div class="rounded-2xl bg-gradient-to-l from-primary-600/10 to-primary-500/5 p-3 dark:from-primary-600/20 dark:to-primary-500/10">
+                    <p class="text-[9.5px] font-bold text-slate-400">فروش بازه انتخابی</p>
+                    <p class="mt-0.5 text-sm font-black text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($chartTotal) }} <span class="text-[9px] font-bold text-slate-400">تومان</span></p>
+                </div>
+                <div class="rounded-2xl bg-emerald-50 p-3 dark:bg-emerald-950/30">
+                    <p class="text-[9.5px] font-bold text-slate-400">سفارش‌های پرداخت‌شده</p>
+                    <p class="mt-0.5 text-sm font-black text-emerald-600 dark:text-emerald-400">{{ \App\Support\Fmt::fa($chartOrders) }} <span class="text-[9px] font-bold text-slate-400">سفارش</span></p>
+                </div>
+            </div>
+
+            {{-- jalali range pickers --}}
+            <div class="mt-3 grid grid-cols-2 gap-2">
+                <div>
+                    <span class="mb-1 block text-[9.5px] font-bold text-slate-400">از تاریخ</span>
+                    <x-jdate-picker model="chartFrom" placeholder="از تاریخ" />
+                </div>
+                <div>
+                    <span class="mb-1 block text-[9.5px] font-bold text-slate-400">تا تاریخ</span>
+                    <x-jdate-picker model="chartTo" placeholder="تا تاریخ" />
+                </div>
+            </div>
+
+            {{-- bars --}}
+            <div class="scroll-slim mt-4 overflow-x-auto pb-1">
+                <div class="flex h-28 min-w-full items-end gap-1.5" dir="ltr">
+                    @forelse ($chart as $bar)
+                        <div class="flex min-w-7 flex-1 flex-col items-center gap-1">
+                            <div class="flex w-full flex-1 items-end">
+                                <div class="w-full rounded-t-lg transition-all duration-300 {{ $bar['today'] ? 'bg-gradient-to-t from-primary-600 to-primary-400 shadow-md shadow-primary-600/30' : 'bg-primary-200/80 dark:bg-primary-900' }}"
+                                     style="height: {{ max(6, (int) round($bar['value'] / max($chartMax, 1) * 100)) }}%"
+                                     title="{{ $bar['label'] }}: {{ \App\Support\Fmt::money($bar['value']) }} تومان"></div>
+                            </div>
+                            <span class="whitespace-nowrap text-[8.5px] font-bold {{ $bar['today'] ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}">{{ $bar['label'] }}</span>
                         </div>
-                        <span class="text-[9px] font-bold {{ $bar['today'] ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}">{{ $bar['label'] }}</span>
-                    </div>
-                @endforeach
+                    @empty
+                        <div class="grid h-full w-full place-items-center">
+                            <p class="text-[10px] font-bold text-slate-400">در این بازه فروشی ثبت نشده است.</p>
+                        </div>
+                    @endforelse
+                </div>
             </div>
         </div>
 
@@ -161,8 +196,8 @@
         </div>
 
         @if ($recentProducts->isEmpty())
-            <div class="mt-3 flex flex-col items-center gap-3 rounded-3xl border border-dashed border-slate-300 py-10 text-center dark:border-slate-700">
-                <span class="grid size-14 place-items-center rounded-3xl bg-primary-50 text-primary-400 dark:bg-primary-950">
+            <div class="mt-3 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 py-10 text-center dark:border-slate-700">
+                <span class="grid size-14 place-items-center rounded-2xl bg-primary-50 text-primary-400 dark:bg-primary-950">
                     <x-icon name="package" class="size-7" />
                 </span>
                 <p class="text-xs font-bold text-slate-500 dark:text-slate-300">هنوز محصولی ثبت نکرده‌اید</p>

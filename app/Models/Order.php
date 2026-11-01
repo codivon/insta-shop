@@ -120,6 +120,9 @@ class Order extends Model
 
             ($order->customer->cart)?->items()->delete();
 
+            // seller wallets: credit each shop's share of this paid order
+            \App\Support\Wallet\WalletService::creditOrder($order);
+
             return true;
         });
     }

@@ -1,6 +1,10 @@
+
 //
 // InstaShop — front-end runtime
 //
+
+// Jalali datepicker engine (x-jdate-picker)
+import './jdate';
 
 // ── Theme mode toggle (dark / light) ─────────────────────────────────
 document.addEventListener('click', (event) => {

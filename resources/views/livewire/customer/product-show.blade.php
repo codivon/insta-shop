@@ -18,7 +18,7 @@
 
     {{-- ── gallery ── --}}
     <div class="px-4 pt-4">
-        <div class="grid h-64 place-items-center overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="grid h-64 place-items-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             @if ($activeImg)
                 <img src="{{ $activeImg['url'] }}" alt="{{ $product->name }}" class="size-full object-contain">
             @else
@@ -74,7 +74,7 @@
         </a>
 
         {{-- price + add to cart --}}
-        <div class="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-end justify-between">
                 <div>
                     @if ($discount > 0)
@@ -110,7 +110,7 @@
         </div>
 
         @if ($product->description)
-            <div class="mt-4 rounded-3xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                 <h3 class="text-xs font-extrabold">توضیحات</h3>
                 <p class="mt-2 whitespace-pre-line text-xs leading-6 text-slate-500 dark:text-slate-400">{{ $product->description }}</p>
             </div>

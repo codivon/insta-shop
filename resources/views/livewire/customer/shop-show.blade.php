@@ -22,7 +22,7 @@
 
         <div class="px-4">
             <div class="-mt-10 flex items-end gap-3">
-                <div class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-3xl border-4 border-slate-50 bg-white shadow-lg dark:border-slate-950 dark:bg-slate-900">
+                <div class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl border-4 border-slate-50 bg-white shadow-lg dark:border-slate-950 dark:bg-slate-900">
                     @if ($shop->logo_path)
                         <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($shop->logo_path) }}" alt="لوگوی {{ $shop->name }}" class="size-full object-cover">
                     @else

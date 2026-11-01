@@ -7,6 +7,7 @@ use App\Models\ProductFile;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\Shop;
+use App\Models\ShopCategory;
 use App\Support\Fmt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -14,7 +15,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-#[Layout('layouts.seller-slot')]
+#[Layout('layouts.seller-slot', ['hideTabbar' => true])]
 class ProductForm extends Component
 {
     use WithFileUploads;
@@ -41,8 +42,19 @@ class ProductForm extends Component
     /** Newly picked gallery photos (TemporaryUploadedFile[]) */
     public array $photos = [];
 
+    /** Key of the newly-picked photo chosen as the featured (شاخص) image. */
+    public ?int $featuredPhotoKey = null;
+
+    /* ── مشخصات فنی (گروه‌های مشخصه) ── */
+    public array $specifications = [];
+
+    public bool $specsModalOpen = false;
+
     /* ── تنوع‌ها (physical) ── */
     public array $variants = [];
+
+    /** Index of the variant currently open in the edit modal (null = closed). */
+    public ?int $variantModalIndex = null;
 
     /* ── فایل‌های دانلودی (downloadable) ── */
     public array $files = [];
@@ -59,14 +71,15 @@ class ProductForm extends Component
         if ($product !== null) {
             abort_unless($product->shop_id === $shop->id, 404, 'محصول یافت نشد.');
 
-            $this->productId   = $product->id;
-            $this->name        = $product->name;
-            $this->description = (string) $product->description;
-            $this->categoryId  = (int) $product->shop_category_id;
-            $this->productType = $product->type ?: Product::TYPE_PHYSICAL;
-            $this->weight      = $product->weight_grams ? (string) $product->weight_grams : '';
-            $this->unit        = (string) ($product->unit ?: 'تعداد');
-            $this->status      = $product->status;
+            $this->productId      = $product->id;
+            $this->name           = $product->name;
+            $this->description    = (string) $product->description;
+            $this->categoryId     = (int) $product->shop_category_id;
+            $this->productType    = $product->type ?: Product::TYPE_PHYSICAL;
+            $this->weight         = $product->weight_grams ? (string) $product->weight_grams : '';
+            $this->unit           = (string) ($product->unit ?: 'تعداد');
+            $this->status         = $product->status;
+            $this->specifications = $product->specifications ?? [];
 
             $this->loadVariants($product);
         }
@@ -129,8 +142,159 @@ class ProductForm extends Component
         }
     }
 
-    /* ══════════════════ variant row ops ══════════════════ */
+    /* ══════════════════ specifications (گروه‌های مشخصه) ══════════════════ */
 
+    public function openSpecsModal(): void
+    {
+        $this->resetErrorBag(['specifications']);
+        $this->specsModalOpen = true;
+    }
+
+    public function closeSpecsModal(): void
+    {
+        $this->specsModalOpen = false;
+    }
+
+    public function addSpecGroup(): void
+    {
+        $this->specifications[] = ['name' => '', 'items' => [['title' => '', 'value' => '']]];
+
+        $this->dispatch('scroll-specs-bottom');
+    }
+
+    public function removeSpecGroup(int $gi): void
+    {
+        unset($this->specifications[$gi]);
+        $this->specifications = array_values($this->specifications);
+    }
+
+    public function addSpecItem(int $gi): void
+    {
+        if (! isset($this->specifications[$gi])) {
+            return;
+        }
+
+        $this->specifications[$gi]['items'][] = ['title' => '', 'value' => ''];
+
+        $this->dispatch('scroll-specs-bottom');
+    }
+
+    public function removeSpecItem(int $gi, int $ii): void
+    {
+        if (! isset($this->specifications[$gi]['items'][$ii])) {
+            return;
+        }
+
+        unset($this->specifications[$gi]['items'][$ii]);
+        $this->specifications[$gi]['items'] = array_values($this->specifications[$gi]['items']);
+
+        if ($this->specifications[$gi]['items'] === []) {
+            $this->specifications[$gi]['items'][] = ['title' => '', 'value' => ''];
+        }
+    }
+
+    /* ══════════════════ variant modal ══════════════════ */
+
+    public function openVariantModal(?int $index = null): void
+    {
+        if ($index === null || ! isset($this->variants[$index])) {
+            $values = [];
+
+            foreach ($this->attributesWithValues as $attribute) {
+                $values[$attribute->id] = ['value_id' => 0, 'text' => ''];
+            }
+
+            $this->variants[] = [
+                'id'                  => null,
+                'price'               => '',
+                'stock'               => '',
+                'discount'            => '',
+                'discount_expires_at' => '',
+                'max_purchase'        => '',
+                'min_purchase'        => '',
+                'status'              => 'active',
+                'values'              => $values,
+            ];
+
+            $index = count($this->variants) - 1;
+        }
+
+        $this->resetErrorBag();
+        $this->variantModalIndex = $index;
+    }
+
+    public function closeVariantModal(): void
+    {
+        // a brand-new row that was never confirmed is dropped again
+        $index = $this->variantModalIndex;
+
+        if ($index !== null && isset($this->variants[$index]) && $this->variants[$index]['id'] === null) {
+            $price = trim((string) ($this->variants[$index]['price'] ?? ''));
+
+            if ($price === '') {
+                unset($this->variants[$index]);
+                $this->variants = array_values($this->variants);
+            }
+        }
+
+        $this->variantModalIndex = null;
+        $this->resetErrorBag();
+    }
+
+    /** Confirm the row being edited in the modal (inline per-row validation). */
+    public function confirmVariantModal(): void
+    {
+        $index = $this->variantModalIndex;
+
+        if ($index === null || ! isset($this->variants[$index])) {
+            $this->closeVariantModal();
+
+            return;
+        }
+
+        $row = $this->variants[$index];
+
+        $this->validate([
+            "variants.$index.price"       => ['required', 'numeric', 'min:0', 'max:999999999999'],
+            "variants.$index.stock"       => ['required', 'integer', 'min:0', 'max:1000000'],
+            "variants.$index.discount"    => ['nullable', 'integer', 'min:0', 'max:100'],
+            "variants.$index.max_purchase" => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            "variants.$index.min_purchase" => ['nullable', 'integer', 'min:1', 'max:1000000'],
+        ], [
+            "variants.$index.price.required" => 'قیمت این تنوع را وارد کنید.',
+            "variants.$index.stock.required" => 'موجودی انبار این تنوع را وارد کنید.',
+        ]);
+
+        $min = (int) ($row['min_purchase'] ?? 0);
+        $max = (int) ($row['max_purchase'] ?? 0);
+
+        if ($min > 0 && $max > 0 && $min > $max) {
+            $this->addError("variants.$index.min_purchase", 'حداقل خرید نمی‌تواند بیشتر از حداکثر خرید باشد.');
+
+            return;
+        }
+
+        $this->variantModalIndex = null;
+    }
+
+    public function removeVariant(int $index): void
+    {
+        if ($this->variantModalIndex === $index) {
+            $this->variantModalIndex = null;
+        }
+
+        unset($this->variants[$index]);
+        $this->variants = array_values($this->variants);
+
+        // close the modal on the client too (Alpine state lives there)
+        $this->dispatch('variant-close');
+
+        if ($this->variants === []) {
+            $this->addVariant();
+        }
+    }
+
+    /** Keep a raw empty row so the «افزودن تنوع» button always has backup (never rendered directly). */
     public function addVariant(): void
     {
         $values = [];
@@ -150,16 +314,6 @@ class ProductForm extends Component
             'status'              => 'active',
             'values'              => $values,
         ];
-    }
-
-    public function removeVariant(int $index): void
-    {
-        unset($this->variants[$index]);
-        $this->variants = array_values($this->variants);
-
-        if ($this->variants === []) {
-            $this->addVariant();
-        }
     }
 
     /* ══════════════════ file row ops ══════════════════ */
@@ -202,6 +356,18 @@ class ProductForm extends Component
     public function removeNewPhoto(int $index): void
     {
         unset($this->photos[$index]);
+        $this->photos = array_values($this->photos);
+
+        if ($this->featuredPhotoKey !== null && ! isset($this->photos[$this->featuredPhotoKey])) {
+            $this->featuredPhotoKey = null;
+        }
+    }
+
+    public function setFeaturedPhoto(int $key): void
+    {
+        if (isset($this->photos[$key])) {
+            $this->featuredPhotoKey = $key;
+        }
     }
 
     public function removeImage(int $imageId): void
@@ -250,6 +416,7 @@ class ProductForm extends Component
                 'shop_category_id' => $this->categoryId ?: null,
                 'name'             => trim($this->name),
                 'description'      => trim($this->description) ?: null,
+                'specifications'   => $this->normalizedSpecifications(),
                 'type'             => $this->productType,
                 'weight_grams'     => $this->productType === Product::TYPE_PHYSICAL && $this->weight !== '' ? (int) $this->weight : null,
                 'unit'             => $this->productType === Product::TYPE_PHYSICAL ? (trim($this->unit) ?: 'تعداد') : null,
@@ -275,6 +442,32 @@ class ProductForm extends Component
         $this->redirect(route('seller.shop'), navigate: true);
     }
 
+    /** Clean specification groups (drop empty titles/values, cap counts). */
+    protected function normalizedSpecifications(): array
+    {
+        $clean = [];
+
+        foreach (array_slice($this->specifications, 0, 10) as $group) {
+            $name = trim((string) ($group['name'] ?? ''));
+            $items = [];
+
+            foreach (array_slice($group['items'] ?? [], 0, 25) as $item) {
+                $title = trim((string) ($item['title'] ?? ''));
+                $value = trim((string) ($item['value'] ?? ''));
+
+                if ($title !== '' || $value !== '') {
+                    $items[] = ['title' => $title, 'value' => $value];
+                }
+            }
+
+            if ($name !== '' && $items !== []) {
+                $clean[] = ['name' => $name, 'items' => $items];
+            }
+        }
+
+        return $clean;
+    }
+
     protected function validateBase(): void
     {
         $existingCount = $this->productId
@@ -286,11 +479,16 @@ class ProductForm extends Component
             'description' => ['nullable', 'string', 'max:5000'],
             'categoryId'  => ['nullable', 'integer', Rule::in(array_merge([0], $this->shop()->categories()->pluck('id')->all()))],
             'productType' => ['required', 'in:'.Product::TYPE_PHYSICAL.','.Product::TYPE_DOWNLOADABLE],
-            'weight'      => [$this->productType === Product::TYPE_PHYSICAL ? 'nullable' : 'nullable', 'numeric', 'min:0', 'max:10000000'],
+            'weight'      => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'unit'        => ['nullable', 'string', 'max:20'],
             'status'      => ['required', 'in:draft,published'],
             'photos'      => ['nullable', 'array', 'max:'.max(0, 6 - $existingCount)],
             'photos.*'    => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'specifications'              => ['nullable', 'array', 'max:10'],
+            'specifications.*.name'       => ['nullable', 'string', 'max:80'],
+            'specifications.*.items'      => ['nullable', 'array', 'max:25'],
+            'specifications.*.items.*.title' => ['nullable', 'string', 'max:80'],
+            'specifications.*.items.*.value' => ['nullable', 'string', 'max:200'],
         ], [
             'name.required'  => 'نام محصول را وارد کنید.',
             'name.min'       => 'نام محصول حداقل ۲ کاراکتر است.',
@@ -377,9 +575,18 @@ class ProductForm extends Component
 
     protected function storePhotos(Product $product): void
     {
+        $photos = $this->photos;
+
+        // the picked featured (شاخص) photo goes first → lowest sort
+        if ($this->featuredPhotoKey !== null && isset($photos[$this->featuredPhotoKey])) {
+            $featured = $photos[$this->featuredPhotoKey];
+            unset($photos[$this->featuredPhotoKey]);
+            $photos = array_merge([$this->featuredPhotoKey => $featured], $photos);
+        }
+
         $baseSort = $product->images()->count() === 0 ? 0 : ((int) $product->images()->max('sort') + 1);
 
-        foreach ($this->photos as $i => $photo) {
+        foreach (array_values($photos) as $i => $photo) {
             $path = $photo->store("products/{$product->id}", 'public');
 
             ProductImage::query()->create([
@@ -389,7 +596,8 @@ class ProductForm extends Component
             ]);
         }
 
-        $this->photos = [];
+        $this->photos          = [];
+        $this->featuredPhotoKey = null;
     }
 
     protected function persistVariants(Product $product): void
@@ -528,6 +736,7 @@ class ProductForm extends Component
             'existingImages' => $this->existingImages,
             'existingFiles'  => $this->existingFiles,
             'shopAttributes' => $this->attributesWithValues,
+            'shopCategories' => $this->shop()->categories()->orderBy('sort')->orderBy('id')->get(),
         ])->title($this->productId ? 'ویرایش محصول' : 'افزودن محصول');
     }
 

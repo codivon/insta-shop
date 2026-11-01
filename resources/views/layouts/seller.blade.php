@@ -24,11 +24,11 @@
         </header>
 
         {{-- ───────── Scrollable content ───────── --}}
-        <main class="scroll-slim min-h-0 flex-1 overflow-y-auto pb-28">
+        <main class="scroll-slim min-h-0 flex-1 overflow-y-auto {{ ($hideTabbar ?? false) ? 'pb-6' : 'pb-28' }}">
             @yield('content')
         </main>
 
-        {{-- ───────── Bottom tab bar ───────── --}}
+        {{-- ───────── Bottom tab bar (hidden on focused full-screen pages) ───────── --}}
         @php
             $sellerTabs = [
                 ['route' => 'seller.home',        'icon' => 'home',   'label' => 'خانه'],
@@ -38,6 +38,7 @@
                 ['route' => 'seller.profile',     'icon' => 'user',   'label' => 'پروفایل'],
             ];
         @endphp
+        @unless ($hideTabbar ?? false)
         <nav class="fixed bottom-0 z-30 w-full max-w-[430px] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95 lg:absolute lg:bottom-0"
              aria-label="تب‌های اصلی فروشنده">
             <div class="grid grid-cols-5">
@@ -59,6 +60,7 @@
                 @endforeach
             </div>
         </nav>
+        @endunless
     </div>
 
     @stack('scripts')

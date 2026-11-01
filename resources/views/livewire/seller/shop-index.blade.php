@@ -32,7 +32,7 @@
         @endif
 
         {{-- ───────── Shop summary card ───────── --}}
-        <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="relative h-24 bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500">
                 @if ($shop->banner_path)
                     <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($shop->banner_path) }}" alt="بنر فروشگاه"
@@ -247,8 +247,8 @@
                 </div>
             @empty
                 {{-- empty state --}}
-                <div class="mt-4 flex flex-col items-center gap-3 rounded-3xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
-                    <span class="grid size-16 place-items-center rounded-3xl bg-primary-50 text-primary-400 dark:bg-primary-950">
+                <div class="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
+                    <span class="grid size-16 place-items-center rounded-2xl bg-primary-50 text-primary-400 dark:bg-primary-950">
                         <x-icon name="{{ ($search !== '' || $categoryFilter !== 0 || $statusFilter !== 'all' || $stockFilter !== 'all') ? 'search' : 'package' }}" class="size-8" />
                     </span>
                     <p class="text-sm font-extrabold">
@@ -277,7 +277,7 @@
             </div>
         </div>
 
-        <div class="h-6"></div>
+        <div class="h-24"></div>
     </div>
 
     {{-- ───────── Floating "Add product" FAB ───────── --}}

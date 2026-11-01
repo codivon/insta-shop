@@ -27,7 +27,7 @@
 
         @if ($orders->isEmpty())
             {{-- ── empty state ── --}}
-            <div class="mt-10 rounded-3xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
+            <div class="mt-10 rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
                 <span class="mx-auto grid size-16 place-items-center rounded-full bg-slate-100 dark:bg-slate-800">
                     <x-icon name="inbox" class="size-8 text-slate-300 dark:text-slate-600" />
                 </span>
@@ -44,7 +44,7 @@
             <div class="mt-3 space-y-3">
                 @foreach ($orders as $order)
                     @php $items = $this->shopItems($order); @endphp
-                    <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                         {{-- top row --}}
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
