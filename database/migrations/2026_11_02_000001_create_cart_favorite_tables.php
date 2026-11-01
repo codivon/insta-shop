@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::dropIfExists('favorites');
+        Schema::dropIfExists('cart_items');
+        Schema::dropIfExists('carts');
+
         Schema::create('carts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('customer_id')->unique()->constrained()->cascadeOnDelete();

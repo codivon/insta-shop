@@ -13,6 +13,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::dropIfExists('product_images');
+        Schema::dropIfExists('products');
+        Schema::dropIfExists('shop_categories');
+        Schema::dropIfExists('shops');
+
         Schema::create('shops', function (Blueprint $table) {
             $table->id();
             $table->foreignId('seller_id')->unique()->constrained()->cascadeOnDelete();

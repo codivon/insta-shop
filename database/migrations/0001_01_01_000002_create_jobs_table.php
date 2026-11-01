@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::dropIfExists('failed_jobs');
+        Schema::dropIfExists('job_batches');
+        Schema::dropIfExists('jobs');
+
         Schema::create('jobs', function (Blueprint $table) {
             $table->id();
             $table->string('queue')->index();
@@ -36,9 +40,12 @@ return new class extends Migration
 
         Schema::create('failed_jobs', function (Blueprint $table) {
             $table->id();
+            // Short lengths so the composite index below (connection+queue+failed_at)
+            // fits the 767/1000-byte index limits of restricted MySQL engines:
+            // (80 + 80) × 4 + 4 = 644 bytes.
             $table->string('uuid')->unique();
-            $table->string('connection');
-            $table->string('queue');
+            $table->string('connection', 80);
+            $table->string('queue', 80);
             $table->longText('payload');
             $table->longText('exception');
             $table->timestamp('failed_at')->useCurrent();

@@ -8,6 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
+        foreach (['customer_sessions', 'seller_sessions', 'admin_sessions'] as $tbl) {
+            Schema::dropIfExists($tbl);
+        }
+        Schema::dropIfExists('otp_codes');
+        Schema::dropIfExists('settings');
+
         // ── DB-driven system settings (key/value per group) ──
         Schema::create('settings', function (Blueprint $table) {
             $table->id();

@@ -8,6 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('sms_logs');
+
         // ── Audit trail of every SMS the system sends ──
         Schema::create('sms_logs', function (Blueprint $table) {
             $table->id();

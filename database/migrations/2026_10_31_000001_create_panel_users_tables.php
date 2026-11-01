@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('customers');
+        Schema::dropIfExists('sellers');
+        Schema::dropIfExists('admins');
+
         // ── Admins (back-office users, email + password) ──
         Schema::create('admins', function (Blueprint $table) {
             $table->id();

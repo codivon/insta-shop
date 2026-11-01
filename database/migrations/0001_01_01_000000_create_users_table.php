@@ -11,6 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Installer resilience: remove leftovers of a failed previous attempt
+        // (e.g. CREATE users succeeded but the unique-index ALTER hit the
+        // MySQL key-length limit — SQLSTATE 1071). Children first.
+        Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
+
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
