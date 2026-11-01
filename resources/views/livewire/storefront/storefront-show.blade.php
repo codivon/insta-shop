@@ -35,6 +35,17 @@
                         <span class="hidden sm:inline">اینستاگرام</span>
                     </a>
                 @endif
+
+                {{-- live cart badge (guest-friendly: shared-cookie cart) --}}
+                <a href="{{ route('shop.cart') }}" wire:navigate
+                   class="relative grid size-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-primary-300 hover:text-primary-600 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                   aria-label="سبد خرید">
+                    <x-icon name="cart" class="size-4.5" />
+                    <span data-cart-badge
+                          class="absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-primary-600 px-1 text-[9px] font-bold text-white shadow {{ $cartCount === 0 ? 'hidden' : '' }}"
+                          data-count="{{ $cartCount }}">{{ \App\Support\Fmt::toFa($cartCount) }}</span>
+                </a>
+
                 <x-theme-toggle class="size-9 text-slate-500" />
             </div>
         </div>

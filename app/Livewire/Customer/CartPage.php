@@ -67,7 +67,7 @@ class CartPage extends Component
 
     public function clearCart(): void
     {
-        $this->cart()->items()->delete();
+        $this->cart?->items()->delete();
 
         $this->syncBadge();
         $this->dispatch('cart-toast', message: 'سبد خرید خالی شد.');
@@ -77,13 +77,14 @@ class CartPage extends Component
 
     public function getCartProperty(): ?Cart
     {
-        return $this->customer()?->cart;
+        // Guests browse their cart too — login is only asked at checkout.
+        return Cart::forVisitor($this->customer());
     }
 
     public function getItemsProperty(): Collection
     {
-        return $this->cart()
-            ? $this->cart()->items()->with(['product.mainImage', 'product.shop:id,name,slug', 'variant.values.attribute', 'variant.values.value'])->get()
+        return $this->cart
+            ? $this->cart->items()->with(['product.mainImage', 'product.shop:id,name,slug', 'variant.values.attribute', 'variant.values.value'])->get()
             : collect();
     }
 
@@ -131,15 +132,10 @@ class CartPage extends Component
         return auth('customer')->user();
     }
 
-    private function cart(): ?Cart
-    {
-        return $this->customer()?->cart()->first();
-    }
-
-    /** Only items belonging to the logged-in customer's cart. */
+    /** Only items belonging to the visitor's cart (customer OR guest). */
     private function ownedItem(int $itemId): ?\App\Models\CartItem
     {
-        $cart = $this->cart();
+        $cart = $this->cart;
 
         if (! $cart) {
             return null;
@@ -152,8 +148,6 @@ class CartPage extends Component
 
     private function syncBadge(): void
     {
-        $cart = $this->cart();
-
-        $this->dispatch('cart-changed', count: $cart ? $cart->countDistinct() : 0);
+        $this->dispatch('cart-changed', count: $this->cart?->countDistinct() ?? 0);
     }
 }

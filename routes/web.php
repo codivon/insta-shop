@@ -171,13 +171,13 @@ Route::prefix('shop')->name('shop.')->group(function () {
         Route::get('/', CustomerHome::class)->name('home');
 
         // ── Phase 4: customer storefront ──
-        Route::get('/product/{productId}', ProductShow::class)->name('product.show');
-        Route::get('/cart', CartPage::class)->name('cart');
         Route::get('/favorites', FavoritesPage::class)->name('favorites');
         Route::get('/categories', CategoriesPage::class)->name('categories');
         Route::get('/profile', ProfilePage::class)->name('profile');
 
         // ── Phase 5: checkout & orders ──
+        // Login is required HERE (at checkout) — browsing and filling the
+        // cart is open to guests.
         Route::get('/checkout', CheckoutPage::class)->name('checkout');
         Route::get('/orders', OrdersPage::class)->name('orders');
         Route::get('/orders/{order}', OrderDetailPage::class)->name('orders.show');
@@ -186,6 +186,19 @@ Route::prefix('shop')->name('shop.')->group(function () {
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });
+
+    /*
+     | ─────────────────────────────────────────────────────────────
+     |  PUBLIC customer-app pages — NO login required.
+     |
+     |  Guests may open a product page and fill their cart freely
+     |  (the guest cart rides a shared domain cookie); the login
+     |  wall stands only at «ادامه و پرداخت» (checkout) and the
+     |  account pages above.
+     | ─────────────────────────────────────────────────────────────
+     */
+    Route::get('/product/{productId}', ProductShow::class)->name('product.show');
+    Route::get('/cart', CartPage::class)->name('cart');
 
     /*
      | Gateway callback — public (banks POST/redirect from outside our

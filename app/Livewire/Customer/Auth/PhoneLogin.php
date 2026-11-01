@@ -25,9 +25,14 @@ class PhoneLogin extends Component
 
     public int $resendIn = 0;
 
+    /** Where the login wall intercepted the visitor (persisted across the OTP steps). */
+    public ?string $intent = null;
+
     public function mount(): void
     {
-        //
+        // Flash from AuthenticatePanel — grabbed into a component property
+        // NOW, because the flash itself would expire before verify() runs.
+        $this->intent = session('auth-intent');
     }
 
     protected function rules(): array
@@ -128,7 +133,19 @@ class PhoneLogin extends Component
         Auth::guard('customer')->login($customer, remember: true);
         session()->regenerate();
 
-        $this->redirect(route('shop.home'), navigate: true);
+        // The guest cart (shared cookie) is merged by MergeGuestCart
+        // middleware on the very next request — no action needed here.
+
+        // Return the customer to where the login wall intercepted them
+        // (usually «ادامه و پرداخت» / checkout) instead of the home feed.
+        // The property is client-tamperable → only same-origin URLs pass.
+        $fallback = route('shop.home');
+        $intent   = (string) ($this->intent ?? '');
+
+        $this->redirect(
+            str_starts_with($intent, url('/').'/') ? $intent : $fallback,
+            navigate: true,
+        );
     }
 
     /** Step back to phone entry */

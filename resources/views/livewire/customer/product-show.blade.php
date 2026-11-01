@@ -8,11 +8,22 @@
                 <x-icon name="arrow-left" class="size-5" />
             </a>
             <div class="truncate text-xs font-bold text-slate-500 dark:text-slate-400">{{ $product->shop?->name }}</div>
-            <button type="button" wire:click="toggleFavorite"
-                    class="grid size-10 place-items-center rounded-xl transition hover:bg-slate-100 dark:hover:bg-slate-800 {{ $isFavorite ? 'text-rose-500' : 'text-slate-400 hover:text-rose-400' }}"
-                    aria-label="{{ $isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها' }}">
-                <x-icon name="heart" class="size-5 {{ $isFavorite ? 'fill-current' : '' }}" />
-            </button>
+            <div class="flex shrink-0 items-center gap-0.5">
+                {{-- live cart badge in the page header --}}
+                <a href="{{ route('shop.cart') }}" wire:navigate
+                   class="relative grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-primary-600 dark:hover:bg-slate-800"
+                   aria-label="سبد خرید">
+                    <x-icon name="cart" class="size-5" />
+                    <span data-cart-badge
+                          class="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-primary-600 px-1 text-[9px] font-bold text-white shadow {{ $cartCount === 0 ? 'hidden' : '' }}"
+                          data-count="{{ $cartCount }}">{{ \App\Support\Fmt::toFa($cartCount) }}</span>
+                </a>
+                <button type="button" wire:click="toggleFavorite"
+                        class="grid size-10 place-items-center rounded-xl transition hover:bg-slate-100 dark:hover:bg-slate-800 {{ $isFavorite ? 'text-rose-500' : 'text-slate-400 hover:text-rose-400' }}"
+                        aria-label="{{ $isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها' }}">
+                    <x-icon name="heart" class="size-5 {{ $isFavorite ? 'fill-current' : '' }}" />
+                </button>
+            </div>
         </div>
     </div>
 
@@ -127,8 +138,83 @@
             </span>
         </div>
 
-        {{-- ── انتخاب تنوع (variant picker — price reacts instantly) ── --}}
-        @if ($variants->isNotEmpty())
+        {{-- ── انتخاب تنوع — گزینه‌های گرد برای هر ویژگی (رنگ / سایز / گارانتی …)
+                ارزان‌ترین ترکیب موجود پیش‌فرض است و قیمت لحظه‌ای تغییر می‌کند ── --}}
+        @if ($variantMatrix->isNotEmpty())
+            <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="flex items-center gap-1.5 text-xs font-extrabold">
+                        <span class="grid size-6 place-items-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950/50 dark:text-primary-400">
+                            <x-icon name="layers" class="size-3" />
+                        </span>
+                        انتخاب تنوع
+                    </h3>
+                    @if ($selectedVariant)
+                        <span class="max-w-40 truncate rounded-full bg-primary-50 px-2 py-0.5 text-[9px] font-bold text-primary-600 dark:bg-primary-950/40 dark:text-primary-400">{{ $selectedVariant->label() }}</span>
+                    @else
+                        <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-500 dark:bg-rose-950/40 dark:text-rose-400">این ترکیب موجود نیست</span>
+                    @endif
+                </div>
+
+                @foreach ($variantMatrix as $attr)
+                    <div class="mt-3.5">
+                        <div class="mb-2 flex items-center gap-1 text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400">
+                            @if ($attr['type'] === 'color')
+                                <x-icon name="palette" class="size-3" />
+                            @endif
+                            {{ $attr['name'] }}
+                        </div>
+
+                        <div class="flex flex-wrap gap-2" role="group" aria-label="{{ $attr['name'] }}">
+                            @foreach ($attr['options'] as $optIndex => $opt)
+                                @php $picked = ($picks[$attr['id']] ?? null) === $opt['key']; @endphp
+                                <button type="button"
+                                        wire:click="selectOption({{ $attr['id'] }}, {{ $optIndex }})"
+                                        @disabled(! $opt['available'])
+                                        title="{{ $opt['label'] }}{{ $opt['available'] && ! $opt['inStock'] ? ' — ناموجود' : '' }}"
+                                        aria-pressed="{{ $picked ? 'true' : 'false' }}"
+                                        aria-label="انتخاب {{ $attr['name'] }} {{ $opt['label'] }}"
+                                        class="inline-flex items-center gap-1.5 rounded-full border py-1 transition active:scale-95
+                                               {{ $picked
+                                                   ? 'border-primary-600 bg-primary-600/10 ring-2 ring-primary-500/40 dark:border-primary-500 dark:bg-primary-500/15'
+                                                   : 'border-slate-200 bg-white hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-primary-700' }}
+                                               {{ ! $opt['available'] ? 'pointer-events-none opacity-35 grayscale' : (! $opt['inStock'] ? 'opacity-60' : '') }}">
+                                    @if ($attr['type'] === 'color')
+                                        <span class="relative grid size-7 shrink-0 place-items-center rounded-full border border-slate-900/10 shadow-inner"
+                                              style="background: {{ $opt['hex'] ?: '#e2e8f0' }}">
+                                            @if ($picked)
+                                                <x-icon name="check" class="size-3.5 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.65)]" />
+                                            @endif
+                                        </span>
+                                        <span class="pl-2 text-[10px] font-extrabold {{ $picked ? 'text-primary-700 dark:text-primary-300' : 'text-slate-600 dark:text-slate-300' }}">{{ $opt['label'] }}</span>
+                                    @else
+                                        <span class="px-3.5 py-1.5 text-[10.5px] font-extrabold {{ $picked ? 'text-primary-700 dark:text-primary-300' : 'text-slate-600 dark:text-slate-300' }}">
+                                            {{ $opt['label'] }}
+                                            @if ($opt['available'] && ! $opt['inStock'])
+                                                <span class="text-[8.5px] font-bold text-rose-400">(ناموجود)</span>
+                                            @endif
+                                        </span>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+
+                {{-- ویژگی‌های متنی (مثل حکاکی) — فقط نمایش، انتخاب نیستند --}}
+                @if ($textNotes)
+                    <div class="mt-3.5 flex flex-wrap gap-1.5 border-t border-dashed border-slate-200 pt-3 dark:border-slate-700">
+                        @foreach ($textNotes as $note)
+                            <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[9.5px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                                <x-icon name="edit" class="size-2.5" />
+                                {{ $note['name'] }}: {{ $note['text'] }}
+                            </span>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @elseif ($variants->isNotEmpty())
+            {{-- حالت قدیمی: تنوع‌ها بدون ویژگی انتخابی → کارت‌های ترکیبی کامل --}}
             <div class="mt-4">
                 <div class="flex items-center justify-between">
                     <h3 class="text-xs font-extrabold">انتخاب تنوع</h3>
@@ -139,7 +225,7 @@
 
                 <div class="mt-2 grid grid-cols-2 gap-2">
                     @foreach ($variants as $variant)
-                        <button type="button" wire:click="selectVariant({{ $variant->id }})" @disabled($variant->stock < 1)
+                        <button type="button" wire:click="selectLegacyVariant({{ $variant->id }})" @disabled($variant->stock < 1)
                                 class="rounded-2xl border p-2.5 text-right transition {{ $selectedVariant && $selectedVariant->id === $variant->id
                                     ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-500 dark:border-primary-500 dark:bg-primary-950/40'
                                     : 'border-slate-200 bg-white hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-primary-700' }}

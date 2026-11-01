@@ -3,6 +3,7 @@
 use App\Http\Middleware\AuthenticatePanel;
 use App\Http\Middleware\ApplySecuritySettings;
 use App\Http\Middleware\CheckMaintenanceMode;
+use App\Http\Middleware\MergeGuestCart;
 use App\Http\Middleware\RedirectIfPanelAuthenticated;
 use App\Http\Middleware\ResolvePanel;
 use App\Http\Middleware\EnsureAdminPermission;
@@ -40,7 +41,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // the ?secret= bypass must persist in the session.
         // ApplySecuritySettings runs right after it: force-HTTPS redirect,
         // admin-panel IP allow-list and security response headers.
-        $middleware->appendToGroup('web', [CheckMaintenanceMode::class, ApplySecuritySettings::class]);
+        // MergeGuestCart runs last in the group: hands the guest cart (shared
+        // cookie) over to the customer as soon as they are logged in.
+        $middleware->appendToGroup('web', [
+            CheckMaintenanceMode::class,
+            ApplySecuritySettings::class,
+            MergeGuestCart::class,
+        ]);
 
         // Payment gateway callbacks post/redirect from OUTSIDE the app
         // (local test gateway form, bank gateways) — no CSRF token.

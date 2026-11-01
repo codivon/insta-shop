@@ -53,17 +53,22 @@ const applyStoredThemeMode = () => {
 applyStoredThemeMode();
 document.addEventListener('livewire:navigated', applyStoredThemeMode);
 
-// ── Cart badge live update (customer app) ────────────────────────────
-// Livewire cart actions dispatch a browser event (on window); the tab-bar
-// badge updates without a full page reload. Listener lives in app.js
-// because wire:navigate does not re-execute page-level inline scripts.
+// ── Cart badge live update (everywhere) ──────────────────────────────
+// Livewire cart actions dispatch a browser event (on window); EVERY badge
+// on the page — storefront header, product-page header, customer tab bar —
+// updates without a reload. Listener lives in app.js because wire:navigate
+// does not re-execute page-level inline scripts.
 window.addEventListener('cart-changed', (event) => {
-    const badge = document.getElementById('cart-badge');
-    if (!badge) return;
+    const count = Number(event.detail?.count ?? 0);
 
-    const count = Number(event.detail?.count ?? badge.dataset.count ?? 0);
+    document.querySelectorAll('[data-cart-badge]').forEach((badge) => {
+        badge.dataset.count = String(count);
+        badge.textContent = count.toLocaleString('fa-IR');
+        badge.classList.toggle('hidden', count <= 0);
 
-    badge.dataset.count = String(count);
-    badge.textContent = count.toLocaleString('fa-IR');
-    badge.classList.toggle('hidden', count <= 0);
+        // tiny pop so the change is felt, not just seen
+        badge.classList.remove('cart-pop');
+        void badge.offsetWidth; // restart the animation
+        badge.classList.add('cart-pop');
+    });
 });

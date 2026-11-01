@@ -6,6 +6,8 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Favorite;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\ProductVariantValue;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -18,12 +20,21 @@ class ProductShow extends Component
     /** Selected gallery image id (null = main image). */
     public ?int $selectedImageId = null;
 
-    /** Picked variant (null = plain product / no choice yet). */
-    public ?int $selectedVariantId = null;
+    /**
+     * Attribute picks of the variant picker: shop_attribute_id => option key
+     * («v7» = library value #7, «t:متن» = free text). Every pickable
+     * attribute is always selected — the cheapest in-stock combination is
+     * preselected on mount, and clicking an option re-resolves instantly.
+     */
+    public array $picks = [];
+
+    /** Legacy fallback: direct variant id when NO pickable attribute exists. */
+    public ?int $legacyVariantId = null;
 
     public function mount(int $productId): void
     {
-        // Only published products of publicly visible shops are reachable.
+        // Public page — only published products of publicly visible shops
+        // are reachable (guests included).
         $product = Product::query()
             ->where('status', 'published')
             ->whereHas('shop', fn ($q) => $q->publiclyVisible())
@@ -34,11 +45,17 @@ class ProductShow extends Component
 
         $this->product = $product;
 
-        // Default to the first in-stock variant (if the product has any).
-        $firstAvailable = $this->variants->first(fn ($variant) => $variant->stock > 0)
+        // Default = the cheapest IN-STOCK combination (fallback: cheapest
+        // overall, then the very first variant).
+        $initial = $this->variants
+            ->filter(fn (ProductVariant $v) => $v->stock > 0)
+            ->sortBy(fn (ProductVariant $v) => $v->finalPrice())
+            ->first()
+            ?? $this->variants->sortBy(fn (ProductVariant $v) => $v->finalPrice())->first()
             ?? $this->variants->first();
 
-        $this->selectedVariantId = $firstAvailable?->id;
+        $this->legacyVariantId = $initial?->id;
+        $this->picks           = $this->picksFor($initial);
 
         // Count a view once per component mount (= per page visit):
         // cumulative counter on the product + daily log for reports.
@@ -52,10 +69,27 @@ class ProductShow extends Component
         $this->selectedImageId = $imageId;
     }
 
-    public function selectVariant(int $variantId): void
+    /**
+     * Attribute-option click: $optionIndex is the position of the option
+     * inside the rendered attribute row (numeric → no quoting hazards).
+     * Unavailable (dimmed) options are rejected server-side too.
+     */
+    public function selectOption(int $attributeId, int $optionIndex): void
+    {
+        $attribute = $this->variantMatrix->firstWhere('id', $attributeId);
+
+        $option = $attribute['options'][$optionIndex] ?? null;
+
+        if ($option && ($option['available'] ?? false)) {
+            $this->picks[$attributeId] = $option['key'];
+        }
+    }
+
+    /** Legacy combo-grid click (products without pickable attributes). */
+    public function selectLegacyVariant(int $variantId): void
     {
         if ($this->variants->contains('id', $variantId)) {
-            $this->selectedVariantId = $variantId;
+            $this->legacyVariantId = $variantId;
         }
     }
 
@@ -64,6 +98,8 @@ class ProductShow extends Component
         $customer = auth('customer')->user();
 
         if (! $customer) {
+            $this->dispatch('product-toast', message: 'برای ذخیره در علاقه‌مندی‌ها ابتدا وارد حساب شوید.');
+
             return;
         }
 
@@ -89,16 +125,8 @@ class ProductShow extends Component
     /** «افزودن به سبد خرید» — adds one unit of the picked combination. */
     public function addToCart(): void
     {
-        $customer = auth('customer')->user();
-
-        if (! $customer) {
-            $this->redirect(route('shop.login'), navigate: true);
-
-            return;
-        }
-
         if ($this->product->hasVariants() && ! $this->selectedVariant) {
-            $this->dispatch('product-toast', message: 'لطفاً ابتدا یک تنوع انتخاب کنید.');
+            $this->dispatch('product-toast', message: 'این ترکیب از تنوع‌ها موجود نیست؛ ترکیب دیگری را انتخاب کنید.');
 
             return;
         }
@@ -111,7 +139,7 @@ class ProductShow extends Component
             return;
         }
 
-        $cart = Cart::ensureForCustomer($customer);
+        $cart = Cart::ensureForVisitor(auth('customer')->user());
         $item = $cart->items()->firstOrCreate(
             ['product_id' => $this->product->id, 'variant_id' => $this->variantKey],
             ['quantity' => 0],
@@ -133,12 +161,6 @@ class ProductShow extends Component
     /** + on the fixed bar stepper — instant one-unit bump of the cart line. */
     public function cartIncrement(): void
     {
-        $customer = auth('customer')->user();
-
-        if (! $customer) {
-            return;
-        }
-
         $item = $this->cartLine;
 
         if (! $item) {
@@ -157,18 +179,12 @@ class ProductShow extends Component
 
         $item->update(['quantity' => $item->quantity + 1]);
 
-        $this->dispatch('cart-changed', count: Cart::ensureForCustomer($customer)->countDistinct());
+        $this->dispatch('cart-changed', count: $this->cartCount);
     }
 
     /** − on the fixed bar stepper — instant one-unit drop (below the minimum → line removed). */
     public function cartDecrement(): void
     {
-        $customer = auth('customer')->user();
-
-        if (! $customer) {
-            return;
-        }
-
         $item = $this->cartLine;
 
         if (! $item) {
@@ -183,7 +199,7 @@ class ProductShow extends Component
             $item->decrement('quantity');
         }
 
-        $this->dispatch('cart-changed', count: Cart::ensureForCustomer($customer)->countDistinct());
+        $this->dispatch('cart-changed', count: $this->cartCount);
     }
 
     // ── Computed data ────────────────────────────────────────────────
@@ -233,14 +249,132 @@ class ProductShow extends Component
             ->get();
     }
 
-    public function getSelectedVariantProperty(): ?\App\Models\ProductVariant
+    /**
+     * The variant-picker matrix — one row per pickable attribute (رنگ /
+     * سایز / گارانتی …), each with its round options annotated for the
+     * CURRENT picks:
+     *   available → a real combination exists with the other picks kept
+     *   inStock   → that combination actually has stock
+     * Text-type attributes are NOT pickable — they surface as read-only
+     * notes of the resolved variant (textNotes).
+     */
+    public function getVariantMatrixProperty(): Collection
+    {
+        $rows   = [];
+        $order  = [];   // attribute id → sort position
+        $sortBy = [];   // attribute id → ShopAttribute sort column
+
+        foreach ($this->variants as $variant) {
+            foreach ($variant->values as $value) {
+                $attribute = $value->attribute;
+
+                if (! $attribute || $attribute->type === 'text') {
+                    continue;
+                }
+
+                $key = $this->optionKeyOf($value);
+
+                if ($key === null) {
+                    continue;
+                }
+
+                $attrId = (int) $value->shop_attribute_id;
+
+                if (! isset($rows[$attrId])) {
+                    $order[$attrId]  = count($order);
+                    $sortBy[$attrId] = (int) $attribute->sort;
+
+                    $rows[$attrId] = [
+                        'id'      => $attrId,
+                        'name'    => $attribute->name,
+                        'type'    => $attribute->type,
+                        'options' => [],
+                    ];
+                }
+
+                if (! isset($rows[$attrId]['options'][$key])) {
+                    $rows[$attrId]['options'][$key] = [
+                        'key'   => $key,
+                        'label' => (string) ($value->value?->value ?? $value->value_text ?? ''),
+                        'hex'   => $value->value?->color_hex,
+                    ];
+                }
+            }
+        }
+
+        if ($rows === []) {
+            return collect();
+        }
+
+        // Attributes ordered by the shop's attribute sort, options in
+        // first-seen (seller variant) order → stable numeric indexes.
+        $ordered = collect($rows)->sortBy(fn ($row, $id) => [$sortBy[$id], $id])->values();
+
+        // Annotate availability against the CURRENT picks.
+        $ordered->transform(function (array $row) {
+            $options = [];
+
+            foreach (array_values($row['options']) as $index => $option) {
+                $candidate         = $this->picks;
+                $candidate[$row['id']] = $option['key'];
+
+                $match        = $this->variantMatching($candidate);
+                $option['available'] = $match !== null;
+                $option['inStock']   = $match !== null
+                    && ($this->isDownloadable || $match->stock > 0);
+
+                $options[] = $option;
+            }
+
+            $row['options'] = $options;
+
+            return $row;
+        });
+
+        return $ordered;
+    }
+
+    /** Read-only text-attribute notes of the resolved variant (e.g. حکاکی). */
+    public function getTextNotesProperty(): array
+    {
+        $variant = $this->selectedVariant;
+
+        if (! $variant) {
+            return [];
+        }
+
+        $notes = [];
+
+        foreach ($variant->values as $value) {
+            $attribute = $value->attribute;
+
+            if (! $attribute || $attribute->type !== 'text') {
+                continue;
+            }
+
+            $text = trim((string) $value->value_text);
+
+            if ($text !== '') {
+                $notes[] = ['name' => $attribute->name, 'text' => $text];
+            }
+        }
+
+        return $notes;
+    }
+
+    public function getSelectedVariantProperty(): ?ProductVariant
     {
         if ($this->variants->isEmpty()) {
             return null;
         }
 
-        return $this->variants->firstWhere('id', $this->selectedVariantId)
-            ?? $this->variants->first();
+        // No pickable attributes → legacy direct selection.
+        if ($this->variantMatrix->isEmpty()) {
+            return $this->variants->firstWhere('id', $this->legacyVariantId)
+                ?? $this->variants->first();
+        }
+
+        return $this->variantMatching($this->picks);
     }
 
     /** 0 = plain product line, otherwise the picked variant id. */
@@ -283,23 +417,17 @@ class ProductShow extends Component
         return $maxPerOrder > 0 ? min($cap, $maxPerOrder) : $cap;
     }
 
-    /** The current (product, variant) cart line of the logged-in customer. */
+    /** The current (product, variant) cart line of the visitor (customer OR guest). */
     public function getCartLineProperty(): ?CartItem
     {
-        $customer = auth('customer')->user();
+        $cart = Cart::forVisitor(auth('customer')->user());
 
-        if (! $customer) {
-            return null;
-        }
-
-        $cartId = Cart::query()->where('customer_id', $customer->id)->value('id');
-
-        if (! $cartId) {
+        if (! $cart) {
             return null;
         }
 
         return CartItem::query()
-            ->where('cart_id', $cartId)
+            ->where('cart_id', $cart->id)
             ->where('product_id', $this->product->id)
             ->where('variant_id', $this->variantKey)
             ->first();
@@ -309,6 +437,12 @@ class ProductShow extends Component
     public function getCartQtyProperty(): int
     {
         return (int) ($this->cartLine?->quantity ?? 0);
+    }
+
+    /** Distinct cart lines of the current visitor — drives the header badge. */
+    public function getCartCountProperty(): int
+    {
+        return Cart::forVisitor(auth('customer')->user())?->countDistinct() ?? 0;
     }
 
     public function getDiscountPercentProperty(): int
@@ -355,13 +489,80 @@ class ProductShow extends Component
             'discount'       => $this->discountPercent,
             'specialEndsMs'  => $this->specialEndsMs,
             'variants'       => $this->variants,
+            'variantMatrix'  => $this->variantMatrix,
+            'textNotes'      => $this->textNotes,
             'selectedVariant'=> $this->selectedVariant,
             'displayPrice'   => $this->displayPrice,
             'displayStock'   => $this->displayStock,
             'cartQty'        => $this->cartQty,
+            'cartCount'      => $this->cartCount,
             'purchaseCap'    => $this->purchaseCap,
             'isDownloadable' => $this->isDownloadable,
             'related'        => $this->related,
         ])->title($this->product->name);
+    }
+
+    /* ─────────────────────── picker internals ─────────────────────── */
+
+    /** First active variant whose values satisfy every pick. */
+    private function variantMatching(array $picks): ?ProductVariant
+    {
+        if ($picks === []) {
+            return null;
+        }
+
+        return $this->variants->first(function (ProductVariant $variant) use ($picks) {
+            foreach ($picks as $attributeId => $key) {
+                $value = $variant->valueForAttribute((int) $attributeId);
+
+                if ($this->optionKeyOf($value) !== $key) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    /** Picks of a given variant, limited to the pickable (matrix) attributes. */
+    private function picksFor(?ProductVariant $variant): array
+    {
+        if (! $variant) {
+            return [];
+        }
+
+        $picks = [];
+
+        foreach ($variant->values as $value) {
+            $attribute = $value->attribute;
+
+            if (! $attribute || $attribute->type === 'text') {
+                continue;
+            }
+
+            $key = $this->optionKeyOf($value);
+
+            if ($key !== null) {
+                $picks[(int) $value->shop_attribute_id] = $key;
+            }
+        }
+
+        return $picks;
+    }
+
+    /** Stable identity of a variant-value cell: «v5» (library) or «t:متن» (free text). */
+    private function optionKeyOf(?ProductVariantValue $value): ?string
+    {
+        if (! $value) {
+            return null;
+        }
+
+        if ($value->shop_attribute_value_id) {
+            return 'v'.$value->shop_attribute_value_id;
+        }
+
+        $text = trim((string) $value->value_text);
+
+        return $text !== '' ? 't:'.$text : null;
     }
 }

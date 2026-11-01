@@ -112,14 +112,6 @@ class StorefrontShow extends Component
 
     public function addToCart(int $productId): void
     {
-        $customer = auth('customer')->user();
-
-        if (! $customer) {
-            $this->redirect(route('shop.login'), navigate: true);
-
-            return;
-        }
-
         $product = $this->baseQuery()->whereKey($productId)->first();
 
         if (! $product) {
@@ -139,7 +131,8 @@ class StorefrontShow extends Component
             return;
         }
 
-        $cart = Cart::ensureForCustomer($customer);
+        // Guests fill their own cart too — the login wall stands at checkout.
+        $cart = Cart::ensureForVisitor(auth('customer')->user());
 
         $item = $cart->items()->firstOrCreate(
             ['product_id' => $productId],
@@ -305,6 +298,12 @@ class StorefrontShow extends Component
         return $customer ? $customer->favoriteProductIds() : [];
     }
 
+    /** Distinct cart lines of the current visitor — drives the header badge. */
+    public function getCartCountProperty(): int
+    {
+        return Cart::forVisitor(auth('customer')->user())?->countDistinct() ?? 0;
+    }
+
     /** Public shareable address of this storefront. */
     public function getStorefrontUrlProperty(): string
     {
@@ -326,6 +325,7 @@ class StorefrontShow extends Component
             'grid'              => $this->grid,
             'favoriteIds'       => $this->favoriteIds,
             'storefrontUrl'     => $this->storefrontUrl,
+            'cartCount'         => $this->cartCount,
         ])->title($this->shop->name);
     }
 }

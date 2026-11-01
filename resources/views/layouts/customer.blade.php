@@ -43,10 +43,10 @@
             ];
 
             $cartBadgeCount = 0;
-            if ($customer = auth('customer')->user()) {
-                $cartBadgeCount = \App\Models\CartItem::query()
-                    ->whereHas('cart', fn ($q) => $q->where('customer_id', $customer->id))
-                    ->count();
+            $cartBadgeCart  = \App\Models\Cart::forVisitor(auth('customer')->user());
+
+            if ($cartBadgeCart) {
+                $cartBadgeCount = $cartBadgeCart->countDistinct();
             }
 
             $showTabBar = ! request()->routeIs('shop.product.show');
@@ -69,7 +69,7 @@
                         </span>
                         {{ $tab['label'] }}
                         @if ($tab['route'] === 'shop.cart')
-                            <span id="cart-badge"
+                            <span id="cart-badge" data-cart-badge
                                   class="absolute right-5 top-0.5 grid min-w-4 place-items-center rounded-full bg-primary-600 px-1 text-[9px] font-bold text-white shadow {{ $cartBadgeCount === 0 ? 'hidden' : '' }}"
                                   data-count="{{ $cartBadgeCount }}">{{ \App\Support\Fmt::toFa($cartBadgeCount) }}</span>
                         @endif
