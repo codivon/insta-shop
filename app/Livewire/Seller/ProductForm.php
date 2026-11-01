@@ -8,7 +8,9 @@ use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\Shop;
 use App\Models\ShopCategory;
+use App\Models\SpecificationTemplate;
 use App\Support\Fmt;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -48,7 +50,11 @@ class ProductForm extends Component
     /* ── مشخصات فنی (گروه‌های مشخصه) ── */
     public array $specifications = [];
 
-    public bool $specsModalOpen = false;
+    /** نوع مشخصات — reusable template title, e.g. «گوشی موبایل» */
+    public string $specType = '';
+
+    /** Selected template row id (0 = new/none). */
+    public int $specTemplateId = 0;
 
     /* ── تنوع‌ها (physical) ── */
     public array $variants = [];
@@ -80,6 +86,16 @@ class ProductForm extends Component
             $this->unit           = (string) ($product->unit ?: 'تعداد');
             $this->status         = $product->status;
             $this->specifications = $product->specifications ?? [];
+            $this->specType       = (string) ($product->spec_type ?? '');
+
+            if ($this->specType !== '') {
+                $template = SpecificationTemplate::query()
+                    ->where('shop_id', $this->shop()->id)
+                    ->where('title', $this->specType)
+                    ->first();
+
+                $this->specTemplateId = (int) ($template?->id ?? 0);
+            }
 
             $this->loadVariants($product);
         }
@@ -142,17 +158,77 @@ class ProductForm extends Component
         }
     }
 
-    /* ══════════════════ specifications (گروه‌های مشخصه) ══════════════════ */
+    /* ══════════════════ specifications (گروه‌های مشخصه + نوع مشخصات) ══════════════════ */
 
-    public function openSpecsModal(): void
+    /**
+     * Apply a saved spec type (نوع مشخصات): its groups load as fresh rows
+     * (values empty) so the seller only fills values / deletes extras.
+     */
+    public function applySpecTemplate(int $templateId): void
     {
+        $template = SpecificationTemplate::query()
+            ->where('shop_id', $this->shop()->id)
+            ->find($templateId);
+
+        if (! $template) {
+            return;
+        }
+
         $this->resetErrorBag(['specifications']);
-        $this->specsModalOpen = true;
+
+        $this->specType        = $template->title;
+        $this->specTemplateId  = (int) $template->id;
+
+        $this->loadTemplateIntoSpecifications($template);
     }
 
-    public function closeSpecsModal(): void
+    /**
+     * Picking/typing a spec type (نوع مشخصات):
+     *  - matching saved template → its groups load as fresh rows (values empty)
+     *  - unknown title → kept as a new type (template is created on save)
+     */
+    public function updatedSpecType(string $value): void
     {
-        $this->specsModalOpen = false;
+        $title = trim($value);
+
+        if ($title === '') {
+            $this->specTemplateId = 0;
+
+            return;
+        }
+
+        $template = SpecificationTemplate::query()
+            ->where('shop_id', $this->shop()->id)
+            ->where('title', $title)
+            ->first();
+
+        if ($template) {
+            $this->specTemplateId = (int) $template->id;
+            $this->loadTemplateIntoSpecifications($template);
+        } else {
+            $this->specTemplateId = 0;
+        }
+    }
+
+    protected function loadTemplateIntoSpecifications(SpecificationTemplate $template): void
+    {
+        $groups = [];
+
+        foreach (array_slice($template->groups ?? [], 0, 10) as $group) {
+            $items = [];
+
+            foreach (array_slice($group['items'] ?? [], 0, 25) as $item) {
+                $items[] = ['title' => (string) ($item['title'] ?? ''), 'value' => ''];
+            }
+
+            if ($items === []) {
+                $items[] = ['title' => '', 'value' => ''];
+            }
+
+            $groups[] = ['name' => (string) ($group['name'] ?? ''), 'items' => $items];
+        }
+
+        $this->specifications = $groups;
     }
 
     public function addSpecGroup(): void
@@ -175,8 +251,6 @@ class ProductForm extends Component
         }
 
         $this->specifications[$gi]['items'][] = ['title' => '', 'value' => ''];
-
-        $this->dispatch('scroll-specs-bottom');
     }
 
     public function removeSpecItem(int $gi, int $ii): void
@@ -191,6 +265,42 @@ class ProductForm extends Component
         if ($this->specifications[$gi]['items'] === []) {
             $this->specifications[$gi]['items'][] = ['title' => '', 'value' => ''];
         }
+    }
+
+    /**
+     * Persist the spec-type library: current groups (title superset) are
+     * merged back into the template so they re-appear on the next product.
+     */
+    protected function syncSpecTemplate(): void
+    {
+        $title = trim($this->specType);
+
+        if ($title === '') {
+            $this->specTemplateId = 0;
+
+            return;
+        }
+
+        $template = SpecificationTemplate::query()->firstOrNew([
+            'shop_id' => $this->shop()->id,
+            'title'   => $title,
+        ]);
+
+        $template->mergeGroups($this->normalizedSpecifications());
+
+        if (($template->groups ?? []) === []) {
+            if ($template->exists) {
+                $template->delete();
+            }
+
+            $this->specTemplateId = 0;
+
+            return;
+        }
+
+        $template->save();
+
+        $this->specTemplateId = (int) $template->id;
     }
 
     /* ══════════════════ variant modal ══════════════════ */
@@ -390,9 +500,20 @@ class ProductForm extends Component
             return;
         }
 
-        $minSort = (int) $image->product->images()->min('sort');
+        // Resequence deterministically: the picked image gets sort 0 and every
+        // other image shifts after it. Never produces negative values (the
+        // `sort` column is UNSIGNED → MySQL error 1264 on -1).
+        $product = $image->product;
+        $ordered = $product->images()->orderBy('sort')->orderBy('id')->get()
+            ->reject(fn (ProductImage $row) => $row->id === $image->id)
+            ->values()
+            ->prepend($image);
 
-        $image->update(['sort' => $minSort - 1]);
+        foreach ($ordered as $index => $row) {
+            if ((int) $row->sort !== $index) {
+                $row->update(['sort' => $index]);
+            }
+        }
     }
 
     /* ══════════════════ save ══════════════════ */
@@ -417,12 +538,15 @@ class ProductForm extends Component
                 'name'             => trim($this->name),
                 'description'      => trim($this->description) ?: null,
                 'specifications'   => $this->normalizedSpecifications(),
+                'spec_type'        => trim($this->specType) !== '' ? trim($this->specType) : null,
                 'type'             => $this->productType,
                 'weight_grams'     => $this->productType === Product::TYPE_PHYSICAL && $this->weight !== '' ? (int) $this->weight : null,
                 'unit'             => $this->productType === Product::TYPE_PHYSICAL ? (trim($this->unit) ?: 'تعداد') : null,
                 'status'           => $this->status,
             ]);
             $product->save();
+
+            $this->syncSpecTemplate();
 
             $this->storePhotos($product);
 
@@ -489,6 +613,7 @@ class ProductForm extends Component
             'specifications.*.items'      => ['nullable', 'array', 'max:25'],
             'specifications.*.items.*.title' => ['nullable', 'string', 'max:80'],
             'specifications.*.items.*.value' => ['nullable', 'string', 'max:200'],
+            'specType'                    => ['nullable', 'string', 'max:120'],
         ], [
             'name.required'  => 'نام محصول را وارد کنید.',
             'name.min'       => 'نام محصول حداقل ۲ کاراکتر است.',
@@ -737,7 +862,17 @@ class ProductForm extends Component
             'existingFiles'  => $this->existingFiles,
             'shopAttributes' => $this->attributesWithValues,
             'shopCategories' => $this->shop()->categories()->orderBy('sort')->orderBy('id')->get(),
+            'specTemplates'  => $this->specTemplates,
         ])->title($this->productId ? 'ویرایش محصول' : 'افزودن محصول');
+    }
+
+    /** Saved spec-type library of this shop (for the نوع مشخصات selector). */
+    public function getSpecTemplatesProperty(): Collection
+    {
+        return SpecificationTemplate::query()
+            ->where('shop_id', $this->shop()->id)
+            ->orderBy('title')
+            ->get(['id', 'title']);
     }
 
     /** Shop attribute fields with their values (for the variant pickers). */

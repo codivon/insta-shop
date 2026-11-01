@@ -34,6 +34,22 @@ document.addEventListener('livewire:init', () => {
     });
 });
 
+// ── Theme mode persistence across wire:navigate ──────────────────────
+// Livewire navigate swaps the <html> attributes from the fetched page,
+// which is server-rendered without the .dark class — so the mode reset to
+// light on every SPA navigation. Re-apply the stored choice after each
+// navigation (and right after the initial load, harmlessly).
+const applyStoredThemeMode = () => {
+    try {
+        const mode = localStorage.getItem('ip-mode');
+
+        document.documentElement.classList.toggle('dark', mode === 'dark');
+    } catch (e) { /* private mode */ }
+};
+
+applyStoredThemeMode();
+document.addEventListener('livewire:navigated', applyStoredThemeMode);
+
 // ── Cart badge live update (customer app) ────────────────────────────
 // Livewire cart actions dispatch a browser event (on window); the tab-bar
 // badge updates without a full page reload. Listener lives in app.js

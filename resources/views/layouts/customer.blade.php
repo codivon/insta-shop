@@ -16,15 +16,17 @@
 </head>
 <body class="min-h-screen bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
 
-    <div class="relative mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-slate-50 shadow-2xl dark:bg-slate-950 lg:my-6 lg:h-[calc(100vh-3rem)] lg:min-h-0 lg:rounded-[2.5rem] lg:overflow-hidden lg:border lg:border-slate-300 dark:lg:border-slate-800">
+    {{-- App shell: exactly viewport height on every device → the header and
+         tab bar stay pinned and ONLY <main> scrolls (also on real phones). --}}
+    <div class="relative mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-slate-50 shadow-2xl dark:bg-slate-950 lg:my-6 lg:h-[calc(100vh-3rem)] lg:min-h-0 lg:rounded-[2.5rem] lg:overflow-hidden lg:border lg:border-slate-300 dark:lg:border-slate-800">
 
-        {{-- ───────── App header (sticky) ───────── --}}
-        <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/90">
+        {{-- ───────── App header (pinned top) ───────── --}}
+        <header class="relative z-30 shrink-0 border-b border-slate-200/80 bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/90">
             @yield('header')
         </header>
 
-        {{-- ───────── Scrollable content ───────── --}}
-        <main class="scroll-slim min-h-0 flex-1 overflow-y-auto pb-28">
+        {{-- ───────── Scrollable content (the only scroll container) ───────── --}}
+        <main class="scroll-slim min-h-0 flex-1 overflow-y-auto">
             @yield('content')
         </main>
 
@@ -45,7 +47,7 @@
                     ->count();
             }
         @endphp
-        <nav class="fixed bottom-0 z-30 w-full max-w-[430px] border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95 lg:absolute lg:bottom-0"
+        <nav class="shrink-0 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95"
              aria-label="تب‌های اصلی فروشگاه">
             <div class="grid grid-cols-5">
                 @foreach ($customerTabs as $tab)

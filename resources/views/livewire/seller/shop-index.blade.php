@@ -33,10 +33,10 @@
 
         {{-- ───────── Shop summary card ───────── --}}
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div class="relative h-24 bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500">
+            <div class="relative z-0 h-24 overflow-hidden bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500">
                 @if ($shop->banner_path)
                     <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($shop->banner_path) }}" alt="بنر فروشگاه"
-                         class="size-full object-cover">
+                         class="absolute inset-0 size-full object-cover">
                 @else
                     <div class="absolute inset-0 opacity-20" aria-hidden="true">
                         <div class="absolute -top-6 left-6 size-28 rounded-full bg-white/30 blur-2xl"></div>
@@ -46,7 +46,7 @@
             </div>
 
             <div class="px-4 pb-4">
-                <div class="-mt-7 flex items-end justify-between">
+                <div class="relative z-10 -mt-7 flex items-end justify-between">
                     <div class="grid size-14 shrink-0 place-items-center overflow-hidden rounded-2xl border-4 border-white bg-white shadow-lg dark:border-slate-900 dark:bg-slate-800">
                         @if ($shop->logo_path)
                             <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($shop->logo_path) }}" alt="لوگوی فروشگاه" class="size-full object-cover">
@@ -281,7 +281,7 @@
     </div>
 
     {{-- ───────── Floating "Add product" FAB ───────── --}}
-    <div class="pointer-events-none fixed bottom-[5.75rem] z-40 w-full max-w-[430px] px-5 lg:absolute">
+    <div class="pointer-events-none fixed inset-x-0 bottom-[5.5rem] z-40 mx-auto w-full max-w-[430px] px-5">
         <div class="flex justify-end">
             <a href="{{ route('seller.products.create') }}" wire:navigate
                class="pointer-events-auto flex items-center gap-2 rounded-2xl bg-primary-600 px-4 py-3 text-xs font-extrabold text-white shadow-xl shadow-primary-600/40 transition hover:bg-primary-700 active:scale-95"

@@ -37,6 +37,7 @@ use App\Livewire\Seller\CategoryManager;
 use App\Livewire\Seller\Home;
 use App\Livewire\Seller\OrdersPage as SellerOrdersPage;
 use App\Livewire\Seller\ProductForm;
+use App\Livewire\Seller\ProfilePage as SellerProfilePage;
 use App\Livewire\Seller\ShopEdit;
 use App\Livewire\Seller\ShopIndex;
 use App\Livewire\Seller\WalletPage;
@@ -140,6 +141,9 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
         // ── Wallet (balance + deposits from paid orders + withdrawals) ──
         Route::get('/wallet', WalletPage::class)->name('wallet');
+
+        // ── Seller profile (identity, shortcuts, theme, logout) ──
+        Route::get('/profile', SellerProfilePage::class)->name('profile');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });

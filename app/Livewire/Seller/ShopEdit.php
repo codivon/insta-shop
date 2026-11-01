@@ -2,8 +2,6 @@
 
 namespace App\Livewire\Seller;
 
-use App\Models\Seller;
-use App\Models\Shop;
 use App\Support\Fmt;
 use App\Support\Phone;
 use Illuminate\Support\Facades\Storage;
@@ -29,7 +27,7 @@ class ShopEdit extends Component
 
     public string $status = 'active';
 
-    /** Newly picked replacements */
+    /** Newly picked uploads (wire:model bindings — persisted instantly in the updated hooks). */
     public $logo = null;
 
     public $banner = null;
@@ -47,9 +45,9 @@ class ShopEdit extends Component
         $this->status            = $shop->status;
     }
 
-    protected function shop(): Shop
+    protected function shop(): \App\Models\Shop
     {
-        return once(fn () => Shop::ensureForSeller(auth('seller')->user()));
+        return once(fn () => \App\Models\Shop::ensureForSeller(auth('seller')->user()));
     }
 
     public function updatedPhone(string $value): void
@@ -57,9 +55,59 @@ class ShopEdit extends Component
         $this->phone = Fmt::toLatin($value);
     }
 
-    public function updatedInstagramUsername(string $value): void
+    /**
+     * Logo/banner save the moment the seller picks a file — instant
+     * feedback («آپلود شد») instead of a silent pick that only lands
+     * after the full form save (the source of the "آپلود نمی‌شود" reports).
+     */
+    public function updatedLogo($value): void
     {
-        $this->instagramUsername = ltrim(strtolower(trim($value)), '@');
+        $this->persistImage('logo', 'logo_path', 2048, 'لوگو');
+    }
+
+    public function updatedBanner($value): void
+    {
+        $this->persistImage('banner', 'banner_path', 4096, 'بنر');
+    }
+
+    protected function persistImage(string $property, string $column, int $maxKb, string $label): void
+    {
+        $file = $this->{$property};
+
+        if (! $file) {
+            return;
+        }
+
+        $this->resetErrorBag([$property]);
+
+        // size/mime rules here so the seller sees the problem immediately
+        $validator = \Illuminate\Support\Facades\Validator::make([$property => $file], [
+            $property => ['image', 'mimes:jpg,jpeg,png,webp', "max:{$maxKb}"],
+        ], [
+            "{$property}.image" => "فایل {$label} تصویر نیست.",
+            "{$property}.mimes" => "فرمت {$label} باید JPG، PNG یا WebP باشد.",
+            "{$property}.max"   => 'حجم '.$label.' حداکثر '.(int) ($maxKb / 1024).' مگابایت است.',
+        ]);
+
+        if ($validator->fails()) {
+            $this->setErrorBag($validator->getMessageBag());
+            $this->{$property} = null; // drop the bad pick
+
+            return;
+        }
+
+        $shop = $this->shop();
+
+        if ($shop->{$column}) {
+            Storage::disk('public')->delete($shop->{$column});
+        }
+
+        $shop->update([$column => $file->store('shops/'.$shop->id, 'public')]);
+
+        // release the temp upload; the shop now owns the real file
+        $this->{$property} = null;
+
+        $this->dispatch('shop-image-saved', label: $label);
     }
 
     public function removeLogo(): void
@@ -84,8 +132,6 @@ class ShopEdit extends Component
 
     public function save(): void
     {
-        $sellerId = auth('seller')->id();
-
         $this->validate([
             'name'    => ['required', 'string', 'min:2', 'max:120'],
             'about'   => ['nullable', 'string', 'max:2000'],
@@ -100,53 +146,23 @@ class ShopEdit extends Component
                     $fail('شماره تماس را صحیح وارد کنید (مثال: ۰۹۱۲۳۴۵۶۷۸۹).');
                 }
             }],
-            'address'          => ['nullable', 'string', 'max:300'],
-            'status'           => ['required', 'in:active,paused'],
-            'logo'             => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'banner'           => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
-            'instagramUsername' => [
-                'nullable', 'string', 'min:2', 'max:80', 'regex:/^[a-zA-Z0-9._]+$/u',
-                Rule::unique('sellers', 'instagram_username')->ignore($sellerId),
-            ],
+            'address' => ['nullable', 'string', 'max:300'],
+            'status'  => ['required', 'in:active,paused'],
         ], [
-            'name.required'    => 'نام فروشگاه را وارد کنید.',
-            'name.min'         => 'نام فروشگاه حداقل ۲ کاراکتر است.',
-            'instagramUsername.regex'  => 'شناسه اینستاگرام فقط می‌تواند حروف انگلیسی، عدد، نقطه و زیرخط باشد.',
-            'instagramUsername.unique' => 'این شناسه اینستاگرام قبلاً استفاده شده است.',
-            'logo.image'       => 'فایل لوگو تصویر نیست.',
-            'logo.max'         => 'حجم لوگو حداکثر ۲ مگابایت است.',
-            'banner.max'       => 'حجم بنر حداکثر ۴ مگابایت است.',
+            'name.required' => 'نام فروشگاه را وارد کنید.',
+            'name.min'      => 'نام فروشگاه حداقل ۲ کاراکتر است.',
         ]);
 
-        $shop = $this->shop();
-
-        $shop->update([
-            'name'               => trim($this->name),
-            'about'              => trim($this->about) ?: null,
-            'phone'              => $this->phone !== '' ? Phone::normalize($this->phone) : null,
-            'address'            => trim($this->address) ?: null,
-            'status'             => $this->status,
-            'instagram_username' => $this->instagramUsername !== '' ? $this->instagramUsername : null,
+        $this->shop()->update([
+            'name'     => trim($this->name),
+            'about'    => trim($this->about) ?: null,
+            'phone'    => $this->phone !== '' ? Phone::normalize($this->phone) : null,
+            'address'  => trim($this->address) ?: null,
+            'status'   => $this->status,
         ]);
 
-        // Keep the seller's Instagram handle in sync (it doubles as the account handle).
-        if ($this->instagramUsername !== '' && auth('seller')->user()->instagram_username !== $this->instagramUsername) {
-            Seller::query()->whereKey($sellerId)->update(['instagram_username' => $this->instagramUsername]);
-        }
-
-        if ($this->logo) {
-            if ($shop->logo_path) {
-                Storage::disk('public')->delete($shop->logo_path);
-            }
-            $shop->update(['logo_path' => $this->logo->store('shops/'.$shop->id, 'public')]);
-        }
-
-        if ($this->banner) {
-            if ($shop->banner_path) {
-                Storage::disk('public')->delete($shop->banner_path);
-            }
-            $shop->update(['banner_path' => $this->banner->store('shops/'.$shop->id, 'public')]);
-        }
+        // NOTE: the Instagram handle is intentionally NOT editable here —
+        // it doubles as the account handle and the public store link/slug.
 
         session()->flash('shop-flash', 'اطلاعات فروشگاه ذخیره شد.');
 
@@ -162,7 +178,7 @@ class ShopEdit extends Component
 
     // ── Computed ─────────────────────────────────────────────────────
 
-    public function getShopProperty(): Shop
+    public function getShopProperty(): \App\Models\Shop
     {
         return $this->shop();
     }

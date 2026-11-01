@@ -4,7 +4,8 @@
         catOpen: false,
         catQuery: '',
      }"
-     x-effect="if (tab === 'pricing' && $wire.productType === 'downloadable') tab = 'files'">
+     x-effect="if (tab === 'pricing' && $wire.productType === 'downloadable') tab = 'files'"
+     x-on:scroll-specs-bottom.window="$nextTick(() => { const el = document.getElementById('specs-editor-end'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) })">
 
     {{-- ───────── Sticky page header ───────── --}}
     <div class="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/90">
@@ -67,14 +68,14 @@
                 <div class="mt-3 space-y-3">
                     <div>
                         <label for="pf-name" class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">نام محصول <span class="text-rose-500">*</span></label>
-                        <input id="pf-name" type="text" wire:model="name" maxlength="150" placeholder="مثال: زعفران سرگل قائنات — ۱۰ گرم"
+                        <input id="pf-name" type="text" wire:model.blur="name" maxlength="150" placeholder="مثال: زعفران سرگل قائنات — ۱۰ گرم"
                                class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold outline-none transition placeholder:text-slate-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800">
                         @error('name') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label for="pf-desc" class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">توضیحات</label>
-                        <textarea id="pf-desc" wire:model="description" rows="4" maxlength="5000"
+                        <textarea id="pf-desc" wire:model.blur="description" rows="4" maxlength="5000"
                                   placeholder="ویژگی‌ها، جنس، ابعاد، نحوه ارسال..."
                                   class="scroll-slim w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold leading-6 outline-none transition placeholder:text-slate-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800"></textarea>
                         @error('description') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
@@ -193,46 +194,160 @@
                 @endif
             </div>
 
-            {{-- ═══ مشخصات فنی (گروه‌های مشخصه) — مدیریت با مودال ═══ --}}
+            {{-- ═══ مشخصات فنی — نوع مشخصات + ویرایش درون‌صفحه‌ای ═══ --}}
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                <div class="flex items-center justify-between gap-2">
-                    <h3 class="flex items-center gap-2 text-xs font-extrabold">
-                        <span class="grid size-7 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400"><x-icon name="list" class="size-3.5" /></span>
-                        مشخصات محصول
-                    </h3>
-                    <button type="button" wire:click="openSpecsModal"
-                            class="flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-[10px] font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95">
-                        <x-icon name="{{ count($specifications) > 0 ? 'edit' : 'plus' }}" class="size-3.5" />
-                        {{ count($specifications) > 0 ? 'ویرایش مشخصات' : 'افزودن مشخصات' }}
-                    </button>
+                <h3 class="flex items-center gap-2 text-xs font-extrabold">
+                    <span class="grid size-7 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400"><x-icon name="list" class="size-3.5" /></span>
+                    مشخصات محصول
+                </h3>
+
+                {{-- ── نوع مشخصات (کتابخانه گروه‌های ذخیره‌شده) ── --}}
+                <div class="mt-3" x-data="{ stOpen: false, stQuery: '' }" @click.outside="stOpen = false">
+                    <div class="mb-1.5 flex items-center justify-between gap-2">
+                        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-300">نوع مشخصات</label>
+                        @if (trim($specType) !== '')
+                            <button type="button" wire:click="$set('specType', '')"
+                                    class="flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-extrabold text-primary-700 transition hover:bg-primary-100 dark:bg-primary-950/60 dark:text-primary-300"
+                                    title="حذف نوع (مشخصات آزاد می‌ماند)">
+                                {{ $specType }}
+                                <x-icon name="x" class="size-3" />
+                            </button>
+                        @endif
+                    </div>
+                    <div class="relative">
+                        <div class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <x-icon name="search" class="size-3.5" />
+                        </div>
+                        <button type="button" @click="stOpen = !stOpen" :aria-expanded="stOpen"
+                                class="flex w-full items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pr-9 pl-3 text-[11px] font-semibold outline-none transition hover:border-slate-300 focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                            <span class="truncate {{ trim($specType) !== '' ? 'font-bold text-slate-700 dark:text-slate-200' : 'text-slate-400' }}">
+                                @if (trim($specType) !== '')
+                                    {{ $specType }} — گروه‌های همین نوع بارگذاری شده است
+                                @else
+                                    انتخاب نوع ذخیره‌شده یا تایپ نوع جدید (مثل: گوشی موبایل)
+                                @endif
+                            </span>
+                            <span class="shrink-0 text-slate-400 transition-transform" :class="stOpen ? 'rotate-180' : ''">
+                                <x-icon name="chevron-down" class="size-4" />
+                            </span>
+                        </button>
+
+                        <div x-cloak x-show="stOpen"
+                             x-transition:enter="transition duration-150 ease-out" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition duration-100 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                             class="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                            <div class="border-b border-slate-100 p-2 dark:border-slate-800">
+                                <input type="search" x-model="stQuery" placeholder="جستجوی نوع مشخصات..."
+                                       class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pr-3 pl-3 text-[11px] font-semibold outline-none focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                            </div>
+                            <div class="scroll-slim max-h-44 overflow-y-auto p-1.5">
+                                @forelse ($specTemplates as $template)
+                                    <button type="button" x-show="stQuery.trim() === '' || '{{ e($template->title) }}'.includes(stQuery.trim())"
+                                            wire:key="st-{{ $template->id }}"
+                                            @click="stOpen = false; stQuery = ''"
+                                            @if (count($specifications) > 0)
+                                                wire:click="applySpecTemplate({{ $template->id }})"
+                                                wire:confirm="با انتخاب این نوع، مشخصات فعلی جایگزین می‌شود. ادامه می‌دهید؟"
+                                            @else
+                                                wire:click="applySpecTemplate({{ $template->id }})"
+                                            @endif
+                                            class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-bold transition"
+                                            :class="($wire.specType || '').trim() === '{{ e($template->title) }}' ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'">
+                                        <x-icon name="folder" class="size-3.5 opacity-50" />
+                                        {{ $template->title }}
+                                        @if (trim($specType) === $template->title)
+                                            <x-icon name="circle-check" class="mr-auto size-3.5 text-primary-600" />
+                                        @endif
+                                    </button>
+                                @empty
+                                    <p class="px-3 py-3 text-center text-[10px] font-bold text-slate-400">هنوز نوعی ذخیره نکرده‌اید — اولین نوع را با تایپ بسازید.</p>
+                                @endforelse
+                                @if (trim($specType) !== '')
+                                    <button type="button" x-show="stQuery.trim() === ''"
+                                            @click="stOpen = false; stQuery = ''" wire:click="$set('specType', '')"
+                                            class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-bold text-slate-500 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
+                                        <x-icon name="circle-slash" class="size-3.5 opacity-50" />
+                                        بدون نوع (مشخصات این محصول آزاد بماند)
+                                    </button>
+                                @endif
+                            </div>
+                            <div class="border-t border-slate-100 p-2 dark:border-slate-800" x-show="stQuery.trim() !== ''">
+                                <button type="button"
+                                        @click="$wire.set('specType', stQuery.trim()); stOpen = false; stQuery = ''"
+                                        class="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-[11px] font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700">
+                                    <x-icon name="plus" class="size-3.5" />
+                                    ساخت نوع جدید: «<span x-text="stQuery.trim()"></span>»
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mt-1.5 text-[9.5px] leading-4 text-slate-400">
+                        با انتخاب نوع، گروه‌های ذخیره‌شده همان نوع ظاهر می‌شوند؛ فقط مقادیر را پر کنید. مشخصه یا گروه جدید هم به همان نوع اضافه می‌شود تا دفعه بعد دوباره در دسترس باشد.
+                    </p>
+                    @error('specType') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                 </div>
 
+                {{-- ── ویرایش درون‌صفحه‌ای گروه‌ها و مشخصه‌ها ── --}}
                 @if (count($specifications) > 0)
-                    <div class="mt-3 space-y-2">
-                        @foreach ($specifications as $group)
-                            <div class="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60" wire:key="spec-g-view-{{ $loop->index }}">
-                                <div class="flex items-center gap-1.5 text-[11px] font-extrabold text-slate-700 dark:text-slate-200">
-                                    <x-icon name="folder" class="size-3.5 text-primary-500" />
-                                    {{ $group['name'] ?: 'گروه بدون نام' }}
-                                    <span class="text-[9px] font-bold text-slate-400">({{ \App\Support\Fmt::fa(count($group['items'] ?? [])) }} مشخصه)</span>
+                    <div class="mt-3 space-y-2.5">
+                        @foreach ($specifications as $gi => $group)
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/40" wire:key="spec-g-{{ $gi }}">
+                                <div class="flex items-center gap-2">
+                                    <span class="grid size-6 shrink-0 place-items-center rounded-lg bg-primary-600 text-[9.5px] font-black text-white">{{ \App\Support\Fmt::fa($gi + 1) }}</span>
+                                    <input type="text" wire:model="specifications.{{ $gi }}.name" maxlength="80"
+                                           placeholder="نام گروه — مثال: مشخصات کلی"
+                                           class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold outline-none transition placeholder:text-slate-400 focus:border-primary-400 dark:border-slate-600 dark:bg-slate-900">
+                                    <button type="button" wire:click="removeSpecGroup({{ $gi }})" wire:loading.attr="disabled"
+                                            class="grid size-8 shrink-0 place-items-center rounded-lg text-rose-500 transition hover:bg-rose-100 dark:hover:bg-rose-950/60" aria-label="حذف گروه">
+                                        <x-icon name="trash" class="size-4" />
+                                    </button>
                                 </div>
-                                <div class="mt-2 flex flex-wrap gap-1.5">
-                                    @foreach (($group['items'] ?? []) as $item)
-                                        @if (trim($item['title'] ?? '') !== '' || trim($item['value'] ?? '') !== '')
-                                            <span class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[9.5px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                                                {{ $item['title'] }}: <b class="text-slate-800 dark:text-slate-100">{{ $item['value'] }}</b>
-                                            </span>
-                                        @endif
+
+                                <div class="mt-2 space-y-1.5">
+                                    @foreach ($group['items'] as $ii => $item)
+                                        <div class="flex items-center gap-1.5" wire:key="spec-i-{{ $gi }}-{{ $ii }}">
+                                            <input type="text" wire:model="specifications.{{ $gi }}.items.{{ $ii }}.title" maxlength="80"
+                                                   placeholder="عنوان — مثل: اندازه"
+                                                   class="w-2/5 min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[10.5px] font-semibold outline-none transition placeholder:text-slate-400 focus:border-primary-400 dark:border-slate-600 dark:bg-slate-900">
+                                            <input type="text" wire:model="specifications.{{ $gi }}.items.{{ $ii }}.value" maxlength="200"
+                                                   placeholder="مقدار — مثل: ۶.۷ اینچ"
+                                                   class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[10.5px] font-semibold outline-none transition placeholder:text-slate-400 focus:border-primary-400 dark:border-slate-600 dark:bg-slate-900">
+                                            <button type="button" wire:click="removeSpecItem({{ $gi }}, {{ $ii }})"
+                                                    class="grid size-7 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-100 hover:text-rose-500 dark:hover:bg-rose-950/50"
+                                                    aria-label="حذف مشخصه">
+                                                <x-icon name="x" class="size-3.5" />
+                                            </button>
+                                        </div>
                                     @endforeach
                                 </div>
+
+                                <button type="button" wire:click="addSpecItem({{ $gi }})"
+                                        class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary-300 py-1.5 text-[10px] font-extrabold text-primary-600 transition hover:border-primary-500 hover:bg-primary-50/50 dark:border-primary-700 dark:text-primary-400">
+                                    <x-icon name="plus" class="size-3.5" />
+                                    افزودن مشخصه
+                                </button>
                             </div>
                         @endforeach
+
+                        <button type="button" wire:click="addSpecGroup" wire:loading.attr="disabled"
+                                class="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary-300 py-2.5 text-[11px] font-extrabold text-primary-600 transition hover:border-primary-500 hover:bg-primary-50/60 dark:border-primary-700 dark:text-primary-400 dark:hover:bg-primary-950/30">
+                            <x-icon name="plus" class="size-4" />
+                            افزودن گروه جدید
+                        </button>
                     </div>
                 @else
-                    <p class="mt-2.5 text-[10px] leading-5 text-slate-400">
-                        مشخصاتی مثل «اندازه: ۶.۷ اینچ» یا «جنس: استیل» اضافه کنید تا مشتری راحت‌تر تصمیم بگیرد.
-                    </p>
+                    <div class="mt-3 rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-center dark:border-slate-700">
+                        <x-icon name="list" class="mx-auto size-7 text-slate-300" />
+                        <p class="mt-2 text-[11px] font-bold text-slate-400">مشخصاتی ثبت نشده است.</p>
+                        <p class="mt-1 text-[10px] leading-5 text-slate-400">یک «نوع مشخصات» انتخاب کنید یا از «افزودن گروه جدید» شروع کنید — مثل گروه «مشخصات کلی» با مشخصه «اندازه: ۶.۷ اینچ».</p>
+                    </div>
+                    <button type="button" wire:click="addSpecGroup"
+                            class="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary-300 py-2.5 text-[11px] font-extrabold text-primary-600 transition hover:border-primary-500 hover:bg-primary-50/60 dark:border-primary-700 dark:text-primary-400 dark:hover:bg-primary-950/30">
+                        <x-icon name="plus" class="size-4" />
+                        افزودن گروه جدید
+                    </button>
                 @endif
+                <div id="specs-editor-end" aria-hidden="true"></div>
             </div>
 
             {{-- ── تصاویر محصول ── --}}
@@ -280,7 +395,13 @@
                     <div class="mt-3 grid grid-cols-3 gap-2">
                         @foreach ($photos as $key => $photo)
                             <div class="relative overflow-hidden rounded-xl border-2 {{ $featuredPhotoKey === $key ? 'border-primary-500' : 'border-primary-300 dark:border-primary-700' }}" wire:key="new-{{ $key }}">
-                                <img src="{{ $photo->temporaryUrl() }}" alt="پیش‌نمایش تصویر" class="aspect-square w-full object-cover">
+                                @if (method_exists($photo, 'isPreviewable') && $photo->isPreviewable())
+                                    <img src="{{ $photo->temporaryUrl() }}" alt="پیش‌نمایش تصویر" class="aspect-square w-full object-cover">
+                                @else
+                                    <span class="grid aspect-square w-full place-items-center bg-slate-100 text-slate-400 dark:bg-slate-800">
+                                        <x-icon name="image" class="size-6" />
+                                    </span>
+                                @endif
                                 <button type="button" wire:click="setFeaturedPhoto({{ $key }})"
                                         class="absolute right-1.5 top-1.5 grid size-6 place-items-center rounded-full shadow transition {{ $featuredPhotoKey === $key ? 'bg-primary-600 text-white' : 'bg-white/90 text-slate-400 backdrop-blur hover:text-primary-600' }}"
                                         aria-label="انتخاب به عنوان تصویر شاخص" title="تصویر شاخص">
@@ -572,96 +693,6 @@
             </div>
         </div>
     </form>
-
-    {{-- ═══════════════════ SPECIFICATIONS MODAL ═══════════════════ --}}
-    <div x-data="{ specsOpen: $wire.specsModalOpen }"
-         x-on:specs-close.window="specsOpen = false"
-         x-on:scroll-specs-bottom.window="$nextTick(() => { const b = document.getElementById('specs-modal-body'); if (b) b.scrollTop = b.scrollHeight; })">
-        <x-modal-panel open="$wire.specsModalOpen" max-width="md" labelledby="specs-modal-title" in-frame
-                       close-js="__ipOpen = false; $wire.closeSpecsModal()">
-
-            <x-slot:header>
-                <div class="flex items-center justify-between px-5 py-4">
-                    <h3 id="specs-modal-title" class="flex items-center gap-2 text-sm font-extrabold">
-                        <span class="grid size-8 place-items-center rounded-xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
-                            <x-icon name="list" class="size-4" />
-                        </span>
-                        مشخصات محصول
-                    </h3>
-                    <button type="button" x-on:click="__ipOpen = false; $wire.closeSpecsModal()"
-                            class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
-                        <x-icon name="x" class="size-4" />
-                    </button>
-                </div>
-            </x-slot:header>
-
-            <div id="specs-modal-body" class="space-y-3 px-5 py-5">
-                <p class="rounded-xl bg-slate-50 px-3 py-2 text-[10px] leading-5 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
-                    مشخصات را گروه‌بندی کنید؛ مثلاً گروه «مشخصات کلی» با مشخصه‌های «اندازه: ۶.۷ اینچ» و «جنس: شیشه».
-                </p>
-
-                @forelse ($specifications as $gi => $group)
-                    <div class="rounded-2xl border border-slate-200 p-3 dark:border-slate-700" wire:key="spec-g-{{ $gi }}">
-                        <div class="flex items-center gap-2">
-                            <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-primary-600 text-[10px] font-black text-white">{{ \App\Support\Fmt::fa($gi + 1) }}</span>
-                            <input type="text" wire:model="specifications.{{ $gi }}.name" maxlength="80"
-                                   placeholder="نام گروه — مثال: مشخصات کلی"
-                                   class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold outline-none transition placeholder:text-slate-400 focus:border-primary-400 dark:border-slate-600 dark:bg-slate-900">
-                            <button type="button" wire:click="removeSpecGroup({{ $gi }})" wire:loading.attr="disabled"
-                                    class="grid size-8 shrink-0 place-items-center rounded-lg text-rose-500 transition hover:bg-rose-100 dark:hover:bg-rose-950/60" aria-label="حذف گروه">
-                                <x-icon name="trash" class="size-4" />
-                            </button>
-                        </div>
-
-                        <div class="mt-2.5 space-y-2">
-                            @foreach ($group['items'] as $ii => $item)
-                                <div class="flex items-center gap-1.5" wire:key="spec-i-{{ $gi }}-{{ $ii }}">
-                                    <input type="text" wire:model="specifications.{{ $gi }}.items.{{ $ii }}.title" maxlength="80"
-                                           placeholder="عنوان — مثل: اندازه"
-                                           class="w-2/5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10.5px] font-semibold outline-none transition placeholder:text-slate-400 focus:border-primary-400 dark:border-slate-600 dark:bg-slate-900">
-                                    <input type="text" wire:model="specifications.{{ $gi }}.items.{{ $ii }}.value" maxlength="200"
-                                           placeholder="مقدار — مثل: ۶.۷ اینچ"
-                                           class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10.5px] font-semibold outline-none transition placeholder:text-slate-400 focus:border-primary-400 dark:border-slate-600 dark:bg-slate-900">
-                                    <button type="button" wire:click="removeSpecItem({{ $gi }}, {{ $ii }})"
-                                            class="grid size-7 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-100 hover:text-rose-500 dark:hover:bg-rose-950/50"
-                                            aria-label="حذف مشخصه">
-                                        <x-icon name="x" class="size-3.5" />
-                                    </button>
-                                </div>
-                            @endforeach
-                        </div>
-
-                        <button type="button" wire:click="addSpecItem({{ $gi }})"
-                                class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary-300 py-1.5 text-[10px] font-extrabold text-primary-600 transition hover:border-primary-500 hover:bg-primary-50/50 dark:border-primary-700 dark:text-primary-400">
-                            <x-icon name="plus" class="size-3.5" />
-                            افزودن مشخصه
-                        </button>
-                    </div>
-                @empty
-                    <div class="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center dark:border-slate-700">
-                        <x-icon name="list" class="mx-auto size-8 text-slate-300" />
-                        <p class="mt-2 text-xs font-bold text-slate-400">هنوز گروهی نساخته‌اید.</p>
-                    </div>
-                @endforelse
-
-                <button type="button" wire:click="addSpecGroup" wire:loading.attr="disabled"
-                        class="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary-300 py-2.5 text-[11px] font-extrabold text-primary-600 transition hover:border-primary-500 hover:bg-primary-50/60 dark:border-primary-700 dark:text-primary-400 dark:hover:bg-primary-950/30">
-                    <x-icon name="plus" class="size-4" />
-                    افزودن گروه جدید
-                </button>
-            </div>
-
-            <x-slot:footer>
-                <div class="flex gap-2 px-5 py-4">
-                    <button type="button" x-on:click="__ipOpen = false; $wire.closeSpecsModal()"
-                            class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700">
-                        <x-icon name="circle-check" class="size-4" />
-                        اعمال مشخصات
-                    </button>
-                </div>
-            </x-slot:footer>
-        </x-modal-panel>
-    </div>
 
     {{-- ═══════════════════ VARIANT MODAL ═══════════════════ --}}
     @if ($variantModalIndex !== null)

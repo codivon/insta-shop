@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['shop_id', 'shop_category_id', 'name', 'description', 'specifications', 'type', 'price', 'compare_at_price', 'stock', 'weight_grams', 'unit', 'status'])]
+#[Fillable(['shop_id', 'shop_category_id', 'name', 'description', 'specifications', 'spec_type', 'type', 'price', 'compare_at_price', 'stock', 'weight_grams', 'unit', 'status'])]
 class Product extends Model
 {
     public const TYPE_PHYSICAL = 'physical';
