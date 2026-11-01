@@ -8,9 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['shop_id', 'shop_category_id', 'name', 'description', 'price', 'compare_at_price', 'stock', 'status'])]
+#[Fillable(['shop_id', 'shop_category_id', 'name', 'description', 'type', 'price', 'compare_at_price', 'stock', 'weight_grams', 'unit', 'status'])]
 class Product extends Model
 {
+    public const TYPE_PHYSICAL = 'physical';
+
+    public const TYPE_DOWNLOADABLE = 'downloadable';
+
     protected function casts(): array
     {
         return [
@@ -18,7 +22,28 @@ class Product extends Model
             'compare_at_price' => 'integer',
             'stock'            => 'integer',
             'views'            => 'integer',
+            'weight_grams'     => 'integer',
         ];
+    }
+
+    public function isDownloadable(): bool
+    {
+        return $this->type === self::TYPE_DOWNLOADABLE;
+    }
+
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class)->orderBy('sort')->orderBy('id');
+    }
+
+    public function activeVariants(): HasMany
+    {
+        return $this->variants()->where('status', 'active');
+    }
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(ProductFile::class)->orderBy('sort')->orderBy('id');
     }
 
     public function shop(): BelongsTo
@@ -45,5 +70,29 @@ class Product extends Model
     public function isPublished(): bool
     {
         return $this->status === 'published';
+    }
+
+    /**
+     * Sync the denormalized price/stock used by the customer app:
+     * price = cheapest active variant/file, stock = summed variant stock.
+     */
+    public function syncAggregates(): void
+    {
+        if ($this->isDownloadable()) {
+            $minFilePrice = $this->files()->where('status', 'active')->min('price');
+
+            $this->forceFill(['price' => (int) ($minFilePrice ?: $this->price)])->saveQuietly();
+
+            return;
+        }
+
+        $variants = $this->variants()->where('status', 'active')->get(['price', 'stock']);
+
+        if ($variants->isNotEmpty()) {
+            $this->forceFill([
+                'price' => (int) $variants->min('price'),
+                'stock' => (int) $variants->sum('stock'),
+            ])->saveQuietly();
+        }
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\PanelLogout;
+use App\Http\Controllers\Seller\ProductFileDownload;
 use App\Http\Controllers\Shop\PaymentCallback;
 use App\Http\Controllers\Shop\PaymentRedirect;
 use App\Livewire\Admin\Dashboard;
@@ -26,6 +27,7 @@ use App\Livewire\Customer\OrdersPage;
 use App\Livewire\Customer\ProductShow;
 use App\Livewire\Customer\ProfilePage;
 use App\Livewire\Customer\ShopShow;
+use App\Livewire\Seller\AttributeManager;
 use App\Livewire\Seller\Auth\PhoneAuth;
 use App\Livewire\Seller\CategoryManager;
 use App\Livewire\Seller\Home;
@@ -97,9 +99,14 @@ Route::prefix('seller')->name('seller.')->group(function () {
         // ── Phase 3: My Shop (catalog management) ──
         Route::get('/shop', ShopIndex::class)->name('shop');
         Route::get('/shop/edit', ShopEdit::class)->name('shop.edit');
+        Route::get('/shop/attributes', AttributeManager::class)->name('shop.attributes');
         Route::get('/products/create', ProductForm::class)->name('products.create');
         Route::get('/products/{product}/edit', ProductForm::class)->name('products.edit');
         Route::get('/categories', CategoryManager::class)->name('categories');
+
+        // ── Downloadable product files (private disk, seller-only) ──
+        Route::get('/products/files/{file}/download', ProductFileDownload::class)
+            ->name('products.files.download');
 
         // ── Phase 5: shop orders (read-only) ──
         Route::get('/orders', SellerOrdersPage::class)->name('orders');

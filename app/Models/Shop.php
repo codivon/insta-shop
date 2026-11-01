@@ -16,31 +16,38 @@ class Shop extends Model
     {
         // Generate a unique slug once, right after creation.
         static::created(function (self $shop) {
-            if ($shop->slug) {
-                return;
+            if (! $shop->slug) {
+                $base = Str::slug($shop->name) ?: 'shop';
+                $slug = $base.'-'.$shop->id;
+
+                while (self::query()->where('slug', $slug)->whereKeyNot($shop->id)->exists()) {
+                    $slug = $base.'-'.$shop->id.'-'.Str::lower(Str::random(4));
+                }
+
+                $shop->forceFill(['slug' => $slug])->saveQuietly();
             }
 
-            $base = Str::slug($shop->name) ?: 'shop';
-            $slug = $base.'-'.$shop->id;
-
-            while (self::query()->where('slug', $slug)->whereKeyNot($shop->id)->exists()) {
-                $slug = $base.'-'.$shop->id.'-'.Str::lower(Str::random(4));
-            }
-
-            $shop->forceFill(['slug' => $slug])->saveQuietly();
+            // Fresh shops start with the three default variation fields.
+            ShopAttribute::seedDefaultsFor($shop);
         });
     }
 
     /** Get-or-create the single shop owned by the given seller (safe to call on every login/page). */
     public static function ensureForSeller(Seller $seller): self
     {
-        return static::query()->firstOrCreate(
+        $shop = static::query()->firstOrCreate(
             ['seller_id' => $seller->id],
             [
                 'name'               => 'فروشگاه '.($seller->instagram_username ? '@'.$seller->instagram_username : ($seller->full_name ?: 'من')),
                 'instagram_username' => $seller->instagram_username,
             ],
         );
+
+        // Legacy shops (created before the attributes migration) get their
+        // default variation fields on first touch; seeded shops no-op.
+        ShopAttribute::seedDefaultsFor($shop);
+
+        return $shop;
     }
 
     public function seller(): BelongsTo
@@ -51,6 +58,12 @@ class Shop extends Model
     public function categories(): HasMany
     {
         return $this->hasMany(ShopCategory::class)->orderBy('sort')->orderBy('id');
+    }
+
+    /** Variation fields defined by this shop (رنگ، گارانتی، سایز، ...). */
+    public function attributes(): HasMany
+    {
+        return $this->hasMany(ShopAttribute::class)->orderBy('sort')->orderBy('id');
     }
 
     public function products(): HasMany

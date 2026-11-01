@@ -59,6 +59,23 @@ body {
     animation: ip-fade-up 0.28s ease-out both;
 }
 
+/* ── Alpine: hide until initialized ── */
+[x-cloak] { display: none !important; }
+
+/* ── auth pages: floating hero badge + code-box pop ── */
+@keyframes ip-float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-5px); }
+}
+@keyframes otp-pop {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.04); border-color: var(--ip-primary-500); }
+    100% { transform: scale(1); }
+}
+.otp-pop {
+    animation: otp-pop .45s ease-out;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    InstaShop brand gradient (default: Instagram fuchsia→pink→orange)
    Injected at runtime as `--ip-gradient` by App\Support\Theme and

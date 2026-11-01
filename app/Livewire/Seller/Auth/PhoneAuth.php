@@ -29,6 +29,9 @@ class PhoneAuth extends Component
 
     public ?string $devCode = null;
 
+    /** null = unchecked, true = taken, false = available (register mode) */
+    public ?bool $instagramTaken = null;
+
     public int $resendIn = 0;
 
     protected function rules(): array
@@ -64,6 +67,25 @@ class PhoneAuth extends Component
     public function updatedInstagram(string $value): void
     {
         $this->instagram = ltrim(strtolower(trim($value)), '@');
+        $this->peekInstagram();
+    }
+
+    /** Live uniqueness feedback while typing the shop handle. */
+    protected function peekInstagram(): void
+    {
+        $this->instagramTaken = null;
+
+        if ($this->mode !== 'register' || $this->instagram === '') {
+            return;
+        }
+
+        if (! preg_match('/^[a-zA-Z0-9._]{2,80}$/', $this->instagram)) {
+            return; // format errors surface on submit
+        }
+
+        $this->instagramTaken = Seller::query()
+            ->where('instagram_username', $this->instagram)
+            ->exists();
     }
 
     /** Step 1 — request the OTP (login: any seller phone; register: new seller) */
@@ -118,6 +140,18 @@ class PhoneAuth extends Component
         $this->step = 'code';
         $this->code = '';
         $this->dispatch('otp-countdown', seconds: OtpService::RESEND_SECONDS);
+    }
+
+    /** Fill the code box from the on-screen test code (log driver). */
+    public function autofillTestCode(): void
+    {
+        if ($this->devCode === null) {
+            return;
+        }
+
+        $this->code = $this->devCode;
+        $this->resetErrorBag('code');
+        $this->dispatch('otp-autofilled');
     }
 
     /** Step 2 — verify; on register also create the seller record */
@@ -177,6 +211,7 @@ class PhoneAuth extends Component
         $this->step = 'phone';
         $this->code = '';
         $this->devCode = null;
+        $this->instagramTaken = null;
         $this->resetErrorBag();
     }
 

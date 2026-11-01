@@ -110,6 +110,16 @@
             </span>
         </a>
 
+        {{-- ───────── Variation attributes entry ───────── --}}
+        <a href="{{ route('seller.shop.attributes') }}" wire:navigate
+           class="mt-2 flex items-center justify-between rounded-2xl border border-dashed border-fuchsia-300 bg-gradient-to-l from-fuchsia-50/70 to-orange-50/50 px-4 py-2.5 text-xs font-bold text-fuchsia-700 transition hover:border-fuchsia-400 active:scale-[.99] dark:border-fuchsia-800 dark:from-fuchsia-950/30 dark:to-orange-950/20 dark:text-fuchsia-300">
+            <span class="flex items-center gap-2">
+                <x-icon name="layers" class="size-4" />
+                ویژگی‌ها و تنوع‌ها (رنگ، سایز، گارانتی و ...)
+            </span>
+            <x-icon name="chevron-left" class="size-3.5 opacity-60" />
+        </a>
+
         {{-- ───────── Filters ───────── --}}
         <div class="sticky top-[65px] z-10 -mx-4 mt-3 bg-slate-50/95 px-4 py-3 backdrop-blur dark:bg-slate-950/95">
             {{-- search --}}

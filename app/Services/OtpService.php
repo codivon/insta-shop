@@ -137,10 +137,13 @@ class OtpService
         return max(0, self::RESEND_SECONDS - (int) $elapsed);
     }
 
-    /** Show the code on screen during local testing with the log driver. */
+    /**
+     * Show the code on screen whenever the admin has switched SMS to the
+     * test/log driver (پنل مدیریت ← تنظیمات پیامک ← «تست/لاگ») — this is
+     * how codes stay reachable on production while real sending is off.
+     */
     protected function devCodeEnabled(): bool
     {
-        return app()->isLocal()
-            && app(SmsManager::class)->activeDriverName() === 'log';
+        return app(SmsManager::class)->activeDriverName() === 'log';
     }
 }

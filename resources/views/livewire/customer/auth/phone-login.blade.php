@@ -46,12 +46,27 @@
                 @error('code') <p class="mt-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
             </div>
 
-            {{-- dev hint: OTP visible with the log driver in local env --}}
+            {{-- test-mode code (SMS driver = log) — click to auto-fill --}}
             @if ($devCode)
-                <div class="flex items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300" dir="ltr">
-                    <x-icon name="info" class="size-4 shrink-0" />
-                    <span>DEV OTP: <b class="text-base tracking-widest">{{ $devCode }}</b> (driver = log)</span>
-                </div>
+                <button type="button" wire:click="autofillTestCode"
+                        class="ip-fade-up flex w-full items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/80 px-4 py-3 text-right transition hover:border-amber-400 hover:bg-amber-50 active:scale-[.99] dark:border-amber-700 dark:bg-amber-950/40"
+                        aria-label="پر کردن خودکار کد تست">
+                    <div>
+                        <div class="flex items-center gap-1.5 text-[10px] font-black text-amber-700 dark:text-amber-300">
+                            <x-icon name="info" class="size-3.5" />
+                            حالت آزمایشی پیامک — کد شما:
+                        </div>
+                        <div class="mt-1.5 flex gap-1" dir="ltr">
+                            @foreach (str_split($devCode) as $digit)
+                                <span class="grid size-7 place-items-center rounded-lg bg-white text-sm font-black text-primary-700 shadow-sm dark:bg-slate-900 dark:text-primary-300">{{ $digit }}</span>
+                            @endforeach
+                        </div>
+                        <div class="mt-1.5 text-[9px] font-bold text-amber-600/80 dark:text-amber-400/80">روی این کادر بزنید تا خودکار پر شود</div>
+                    </div>
+                    <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-400/90 text-white shadow-md shadow-amber-400/30">
+                        <x-icon name="chevron-left" class="size-4" />
+                    </span>
+                </button>
             @endif
 
             <button type="submit"
@@ -107,6 +122,16 @@
                         num && (num.textContent = fa(seconds));
                     }
                 }, 1000);
+            });
+
+            // gentle pop on the code box when the test code gets auto-filled
+            document.addEventListener('otp-autofilled', () => {
+                const box = document.getElementById('code');
+                if (! box) return;
+                box.classList.remove('otp-pop');
+                void box.offsetWidth;
+                box.classList.add('otp-pop');
+                box.focus();
             });
         </script>
     @endpush

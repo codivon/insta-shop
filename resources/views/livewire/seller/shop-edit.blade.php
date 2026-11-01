@@ -44,6 +44,9 @@
                 <div wire:loading wire:target="banner" class="absolute inset-0 grid place-items-center bg-black/30">
                     <span class="inline-block size-6 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                 </div>
+                <div class="absolute inset-x-2 bottom-2">
+                    <x-upload-progress target="banner" label="در حال آپلود بنر" />
+                </div>
             </div>
 
             {{-- logo preview --}}
@@ -64,6 +67,7 @@
                         {{ $shop->logo_path ? 'تغییر لوگو' : 'افزودن لوگو' }}
                         <input type="file" wire:model="logo" accept="image/png,image/jpeg,image/webp" class="sr-only">
                     </label>
+                    <x-upload-progress target="logo" label="در حال آپلود لوگو" />
                     @if ($shop->logo_path)
                         <button type="button" wire:click="removeLogo" class="flex w-fit items-center gap-1.5 text-[10px] font-bold text-rose-500 hover:text-rose-600">
                             <x-icon name="trash" class="size-3" />

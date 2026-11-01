@@ -83,6 +83,18 @@ class PhoneLogin extends Component
         $this->dispatch('otp-countdown', seconds: OtpService::RESEND_SECONDS);
     }
 
+    /** Fill the code box from the on-screen test code (log driver). */
+    public function autofillTestCode(): void
+    {
+        if ($this->devCode === null) {
+            return;
+        }
+
+        $this->code = $this->devCode;
+        $this->resetErrorBag('code');
+        $this->dispatch('otp-autofilled');
+    }
+
     /** Step 2 — verify & login (or auto-register) */
     public function verify(): void
     {

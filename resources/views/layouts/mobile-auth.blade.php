@@ -1,7 +1,7 @@
 {{-- ═══════════════════════════════════════════════════════════
   Mobile-auth layout — shared by seller & customer login pages.
   Phone-width app frame (like the panel shells), centered card,
-  no bottom tab bar. Panel is read from PanelContext.
+  animated gradient backdrop, no bottom tab bar.
 ═══════════════════════════════════════════════════════════ --}}
 @php
     $panel = \App\Support\PanelContext::current();
@@ -20,13 +20,20 @@
 </head>
 <body class="min-h-screen bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
 
+    {{-- ───────── animated gradient backdrop ───────── --}}
+    <div class="fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+        <div class="absolute -top-24 right-[12%] size-[22rem] rounded-full bg-gradient-to-br from-fuchsia-400/50 to-pink-400/40 blur-3xl motion-safe:animate-[ip-float_7s_ease-in-out_infinite] dark:from-fuchsia-600/25 dark:to-pink-600/20"></div>
+        <div class="absolute -bottom-28 left-[8%] size-[20rem] rounded-full bg-gradient-to-tr from-orange-300/45 to-amber-300/35 blur-3xl motion-safe:animate-[ip-float_9s_ease-in-out_infinite] dark:from-orange-600/20 dark:to-amber-600/15"></div>
+        <div class="absolute left-1/2 top-1/3 size-[16rem] -translate-x-1/2 rounded-full bg-primary-300/25 blur-3xl dark:bg-primary-700/15"></div>
+    </div>
+
     <div class="relative mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-slate-50 shadow-2xl dark:bg-slate-950 lg:my-6 lg:min-h-[calc(100vh-3rem)] lg:rounded-[2.5rem] lg:overflow-hidden lg:border lg:border-slate-300 dark:lg:border-slate-800">
 
         {{-- ───────── Top bar ───────── --}}
         <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/90">
             <div class="flex items-center justify-between px-4 py-3">
-                <a href="{{ route('landing') }}" class="flex items-center gap-2.5" aria-label="بازگشت به صفحه اصلی">
-                    <span class="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-lg shadow-primary-600/30">
+                <a href="{{ route('landing') }}" class="group flex items-center gap-2.5" aria-label="بازگشت به صفحه اصلی">
+                    <span class="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-fuchsia-500 via-primary-500 to-orange-400 text-white shadow-lg shadow-primary-600/30 transition group-hover:scale-105 group-active:scale-95">
                         <x-icon name="{{ $panelKey === 'seller' ? 'store' : 'bag' }}" class="size-5" />
                     </span>
                     <div>

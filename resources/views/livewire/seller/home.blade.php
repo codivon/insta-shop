@@ -87,7 +87,7 @@
 
         {{-- ── quick actions (real links) ── --}}
         <h3 class="mt-6 text-sm font-extrabold">دسترسی سریع</h3>
-        <div class="mt-3 grid grid-cols-4 gap-2.5">
+        <div class="mt-3 grid grid-cols-5 gap-2.5">
             <a href="{{ route('seller.products.create') }}" wire:navigate class="flex flex-col items-center gap-1.5 rounded-2xl p-2 transition active:scale-95">
                 <span class="grid size-12 w-full place-items-center rounded-2xl bg-primary-600 text-white shadow-lg shadow-primary-600/30">
                     <x-icon name="plus" class="size-5" />
@@ -105,6 +105,12 @@
                     <x-icon name="tag" class="size-5" />
                 </span>
                 <span class="text-center text-[10px] font-semibold leading-3 text-slate-600 dark:text-slate-300">دسته‌بندی‌ها</span>
+            </a>
+            <a href="{{ route('seller.shop.attributes') }}" wire:navigate class="flex flex-col items-center gap-1.5 rounded-2xl p-2 transition active:scale-95">
+                <span class="grid size-12 w-full place-items-center rounded-2xl border border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 to-orange-50 text-fuchsia-600 dark:border-fuchsia-900 dark:from-fuchsia-950/40 dark:to-orange-950/30 dark:text-fuchsia-400">
+                    <x-icon name="layers" class="size-5" />
+                </span>
+                <span class="text-center text-[10px] font-semibold leading-3 text-slate-600 dark:text-slate-300">ویژگی‌ها</span>
             </a>
             <a href="{{ route('seller.shop.edit') }}" wire:navigate class="flex flex-col items-center gap-1.5 rounded-2xl p-2 transition active:scale-95">
                 <span class="grid size-12 w-full place-items-center rounded-2xl border border-slate-200 bg-white text-primary-600 dark:border-slate-800 dark:bg-slate-900 dark:text-primary-400">
