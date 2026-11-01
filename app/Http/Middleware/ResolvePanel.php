@@ -51,6 +51,14 @@ class ResolvePanel
     {
         $path = $request->path();
 
+        // First-run admin registration (/install/admin-setup) belongs to the
+        // ADMIN panel's session — the auto-login performed there must land
+        // in the same session the /admin panel later reads (its own cookie
+        // + table), otherwise the owner would be bounced to /admin/login.
+        if ($path === 'install/admin-setup') {
+            return 'admin';
+        }
+
         // Livewire endpoints (livewire/update in v3, livewire-{hash}/update
         // in v4) are panel-less; inherit the panel context of the page the
         // component is mounted on (header → referer → landing).

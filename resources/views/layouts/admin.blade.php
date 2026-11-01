@@ -7,7 +7,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'پنل مدیریت') | InstaShop</title>
+    <title>@yield('title', 'پنل مدیریت') | {{ \App\Support\Theme::resolve()['app_name'] }}</title>
     <link rel="stylesheet" href="/fonts/vazirmatn.css">
     @include('partials.theme-vars')
     @livewireStyles
@@ -27,7 +27,7 @@
                     <x-icon name="store" class="size-5" />
                 </span>
                 <span>
-                    <span class="block text-sm font-extrabold leading-4">InstaShop</span>
+                    <span class="block text-sm font-extrabold leading-4">{{ \App\Support\Theme::resolve()['app_name'] }}</span>
                     <span class="mt-1 block text-[11px] text-slate-400">پنل مدیریت کل</span>
                 </span>
             </a>
@@ -145,7 +145,7 @@
                     <div>
                         <h1 class="text-base font-extrabold leading-5">@yield('title', 'پنل مدیریت')</h1>
                         <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
-                            <a href="/" class="transition hover:text-primary-600">InstaShop</a>
+                            <a href="/" class="transition hover:text-primary-600">{{ \App\Support\Theme::resolve()['app_name'] }}</a>
                             <x-icon name="chevron-left" class="size-3" />
                             <span>@yield('breadcrumb', 'مدیریت کل — تنظیمات')</span>
                         </div>

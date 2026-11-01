@@ -216,7 +216,7 @@
                             بازگشت
                         </button>
                         <button type="submit" class="btn btn-primary" id="dbSubmit">
-                            بررسی و ذخیره
+                            <span id="dbSubmitLabel">بررسی و ذخیره</span>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
                         </button>
                     </div>
@@ -271,13 +271,21 @@
                 <div class="alert alert-info">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:.2rem" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
                     <div>
-                        ورود مدیر: <code dir="ltr">/admin</code> — اپ فروشنده: <code dir="ltr">/seller</code> — فروشگاه: <code dir="ltr">/shop</code>
+                        <span id="finishHint">اگر هنوز حساب مدیری نساخته‌اید، دکمه «ساخت حساب مدیر» شما را به صفحه ثبت اولین مدیر می‌برد.</span>
+                        <br>ورود مدیر: <code dir="ltr">/admin</code> — اپ فروشنده: <code dir="ltr">/seller</code> — فروشگاه: <code dir="ltr">/shop</code>
                         <br>برای نصب مجدد (فقط در صورت نیاز) فایل‌های <code dir="ltr">.env</code> و <code dir="ltr">storage/app/install.lock</code> را حذف کنید.
                     </div>
                 </div>
-
                 <div class="actions center">
-                    <a class="btn btn-primary" href="/">
+                    <a class="btn btn-ghost" href="/" id="enterApp" hidden>
+                        <span id="enterAppLabel">مشاهده فروشگاه</span>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                    </a>
+                    <a class="btn btn-primary" href="/install/admin-setup" id="adminCta" hidden>
+                        ساخت حساب مدیر
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </a>
+                    <a class="btn btn-primary" href="/" id="enterAppDefault">
                         ورود به InstaShop
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
                     </a>

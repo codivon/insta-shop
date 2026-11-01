@@ -264,11 +264,22 @@ class InstallerController extends Controller
             // cosmetic only — never block completion
         }
 
+        // If no admin account exists yet, the wizard hands the owner over to
+        // the first-run admin registration page (/install/admin-setup).
+        $needsAdmin = false;
+
+        try {
+            $needsAdmin = \App\Models\Admin::count() === 0;
+        } catch (Throwable) {
+            // DB hiccup → default to the plain "enter app" CTA
+        }
+
         return response()->json([
             'ok' => true,
             'app_url' => (string) config('app.url'),
             'db_name' => (string) config('database.connections.mysql.database'),
             'storage_linked' => $storageLinked,
+            'needs_admin' => $needsAdmin,
         ]);
     }
 

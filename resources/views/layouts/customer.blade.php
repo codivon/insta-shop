@@ -7,8 +7,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#2563EB">
-    <title>@yield('title', 'فروشگاه') | InstaShop</title>
+    <meta name="theme-color" content="#D62976">
+    <title>@yield('title', 'فروشگاه') | {{ \App\Support\Theme::resolve()['app_name'] }}</title>
     <link rel="stylesheet" href="/fonts/vazirmatn.css">
     @include('partials.theme-vars')
     @vite(['resources/css/app.css', 'resources/js/app.js'])

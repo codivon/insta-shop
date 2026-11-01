@@ -12,7 +12,8 @@ use App\Models\Setting;
 class Theme
 {
     public const PRESETS = [
-        'sapphire'      => ['label' => 'آبی سافایر (پیش‌فرض)', 'hex' => '#2563EB', 'hint' => 'رنگ اصلی سامانه — آبی سوهان‌مدن', 'gradient' => 'from-blue-500 to-blue-700'],
+        'instagram'     => ['label' => 'گرادیان اینستاگرامی (پیش‌فرض)', 'hex' => '#D62976', 'hint' => 'فوشیا → صورتی → نارنجی', 'gradient' => 'from-fuchsia-600 via-pink-500 to-orange-500'],
+        'sapphire'      => ['label' => 'آبی سافایر', 'hex' => '#2563EB', 'hint' => 'رنگ کلاسیک سامانه — آبی سوهان‌مدن', 'gradient' => 'from-blue-500 to-blue-700'],
         'royal-purple'  => ['label' => 'بنفش سلطنتی', 'hex' => '#7C3AED', 'hint' => 'نشیب مدرن و لاکچری', 'gradient' => 'from-purple-500 to-purple-800'],
         'emerald'       => ['label' => 'زمرد', 'hex' => '#059669', 'hint' => 'سبز رشد و اعتماد', 'gradient' => 'from-emerald-500 to-emerald-700'],
         'pacific'       => ['label' => 'اقیانوس آرام', 'hex' => '#0891B2', 'hint' => 'فیروزه‌ای عمیق و آرامش‌بخش', 'gradient' => 'from-cyan-500 to-teal-700'],
@@ -25,9 +26,19 @@ class Theme
         'jasper-teal'   => ['label' => 'فیروزه خیزر', 'hex' => '#0D9488', 'hint' => 'ترکیبی از سبز و آبی و شادی‌بخش', 'gradient' => 'from-teal-500 to-teal-700'],
     ];
 
+    /**
+     * Multi-stop brand gradients per preset (CSS color stops). Presets not
+     * listed here fall back to a two-stop gradient built from their own
+     * shade scale (500 → 700) so every preset still gets a lively brand
+     * gradient on primary surfaces.
+     */
+    public const GRADIENTS = [
+        'instagram' => ['#C026D3', '#EC4899', '#F97316'], // fuchsia → pink → orange
+    ];
+
     public const DEFAULTS = [
-        'theme.preset'       => 'sapphire',
-        'theme.primary'      => '#2563EB',
+        'theme.preset'       => 'instagram',
+        'theme.primary'      => '#D62976',
         'theme.default_mode' => 'light',
         'theme.app_name'     => 'InstaShop',
     ];
@@ -56,6 +67,20 @@ class Theme
         return Color::shades(self::resolve()['primary']);
     }
 
+    /** Multi-stop brand gradient for the resolved preset (CSS linear-gradient). */
+    public static function gradient(): string
+    {
+        $preset  = self::resolve()['preset'];
+        $stops   = self::GRADIENTS[$preset] ?? null;
+
+        if (! $stops) {
+            $shades = self::shades();
+            $stops  = [$shades[500], $shades[700]];
+        }
+
+        return 'linear-gradient(135deg, '.implode(', ', $stops).')';
+    }
+
     /** Build the ":root" CSS variable block content. */
     public static function cssVariables(): string
     {
@@ -65,6 +90,7 @@ class Theme
 
         $lines[] = '--ip-primary: '.$primary.';';
         $lines[] = '--ip-on-primary: '.Color::onColor($primary).';';
+        $lines[] = '--ip-gradient: '.self::gradient().';';
 
         foreach ($shades as $step => $hex) {
             $lines[] = "--ip-primary-{$step}: {$hex};";

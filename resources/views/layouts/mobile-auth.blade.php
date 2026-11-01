@@ -12,7 +12,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#2563EB">
+    <meta name="theme-color" content="#D62976">
     <title>@yield('title', 'ورود') | InstaShop</title>
     <link rel="stylesheet" href="/fonts/vazirmatn.css">
     @include('partials.theme-vars')

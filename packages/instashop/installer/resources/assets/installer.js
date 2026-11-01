@@ -1,16 +1,23 @@
 /* ═══════════════════════════════════════════════════════════════
-   InstaShop Installer wizard — vanilla JS, no dependencies.
+   InstaShop Installer — vanilla JS, no dependencies.
+
+   Two pages share this file (guarded by body[data-page]):
+     • wizard       — the install pipeline
+     • admin-setup  — first-run admin registration
 
    Pipeline: migrations[] → seeders[] → finish, ONE item per AJAX
    request. Any number of items therefore cannot hit PHP timeouts,
    and a failed item is retried in place (the runner resumes from
    the exact same index). Progress bar + Persian percentage update
    after every item.
+
+   Every actionable button gets a spinner while it works (.loading).
    ═══════════════════════════════════════════════════════════════ */
 (function () {
     'use strict';
 
     var $ = function (s) { return document.querySelector(s); };
+    var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
 
     var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
     var NM = Number(document.body.dataset.migrations || 0);
@@ -24,6 +31,7 @@
         finish: 'مراحل پایانی',
     };
 
+    /* ── element registry (null-safe: both pages) ────────────── */
     var el = {
         bar: $('#bar'),
         percent: $('#percent'),
@@ -40,6 +48,10 @@
         sumUrl: $('#sumUrl'),
         sumDb: $('#sumDb'),
         sumStorage: $('#sumStorage'),
+        adminCta: $('#adminCta'),
+        enterApp: $('#enterApp'),
+        enterAppDefault: $('#enterAppDefault'),
+        dbSubmitLabel: $('#dbSubmitLabel'),
     };
 
     // resumable cursor — where the pipeline currently stands
@@ -52,11 +64,27 @@
 
     var CHECK_SVG = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
 
+    /* loader management for EVERY actionable control */
+    function spin(btn) {
+        if (! btn || btn.disabled) return false;
+        btn.classList.add('loading');
+        btn.setAttribute('aria-busy', 'true');
+        if (btn.tagName === 'BUTTON') btn.disabled = true;
+        return true;
+    }
+
+    function stopSpin(btn) {
+        if (! btn) return;
+        btn.classList.remove('loading');
+        btn.removeAttribute('aria-busy');
+        if (btn.tagName === 'BUTTON' && btn !== el.dbSubmit && btn !== el.setupSubmit) btn.disabled = false;
+    }
+
     function goStep(n) {
-        document.querySelectorAll('.pane').forEach(function (p) {
+        $$('.pane').forEach(function (p) {
             p.hidden = p.dataset.pane !== String(n);
         });
-        document.querySelectorAll('.step').forEach(function (s) {
+        $$('.step').forEach(function (s) {
             var k = Number(s.dataset.stepDot);
             var dot = s.querySelector('.dot');
             s.classList.toggle('active', k === n);
@@ -68,11 +96,12 @@
 
     function setProgress(done) {
         var pct = TOTAL ? Math.round((done / TOTAL) * 100) : 100;
-        el.bar.style.width = pct + '%';
-        el.percent.textContent = fa(pct) + '٪';
+        if (el.bar) el.bar.style.width = pct + '%';
+        if (el.percent) el.percent.textContent = fa(pct) + '٪';
     }
 
     function logLine(text, cls) {
+        if (! el.log) return;
         var d = document.createElement('div');
         d.className = cls || 'ok';
         d.textContent = text;
@@ -81,14 +110,14 @@
     }
 
     function hideError() {
-        el.errBox.hidden = true;
-        el.errDetail.textContent = '';
+        if (el.errBox) el.errBox.hidden = true;
+        if (el.errDetail) el.errDetail.textContent = '';
     }
 
     function showError(message, detail) {
-        el.errMsg.textContent = message || 'خطای ناشناخته رخ داد.';
-        el.errDetail.textContent = detail || '';
-        el.errBox.hidden = false;
+        if (el.errMsg) el.errMsg.textContent = message || 'خطای ناشناخته رخ داد.';
+        if (el.errDetail) el.errDetail.textContent = detail || '';
+        if (el.errBox) el.errBox.hidden = false;
     }
 
     function post(url, payload) {
@@ -106,6 +135,7 @@
                 if (!res.ok || !data || data.ok === false) {
                     var err = new Error((data && data.message) || ('خطای سرور (' + res.status + ')'));
                     err.detail = data && data.detail;
+                    err.errors = data && data.errors;
                     throw err;
                 }
                 return data;
@@ -129,6 +159,7 @@
         if (running) return;
         running = true;
         hideError();
+        if (el.retry) spin(el.retry);
 
         var kind = (from && from.kind) || 'migrate';
         var index = (from && from.index) || 0;
@@ -147,8 +178,8 @@
 
         var step = function () {
             cursor = { kind: kind, index: index, done: done };
-            el.phase.textContent = PHASE_LABELS[kind];
-            el.task.textContent = 'مورد ' + fa(done + 1) + ' از ' + fa(TOTAL) + ' …';
+            if (el.phase) el.phase.textContent = PHASE_LABELS[kind];
+            if (el.task) el.task.textContent = 'مورد ' + fa(done + 1) + ' از ' + fa(TOTAL) + ' …';
             return callStep(kind, index).then(consume);
         };
 
@@ -166,13 +197,25 @@
         chain()
             .then(function () {
                 setProgress(TOTAL);
-                el.phase.textContent = 'نصب کامل شد';
-                el.task.textContent = 'همه موارد با موفقیت انجام شد.';
+                if (el.phase) el.phase.textContent = 'نصب کامل شد';
+                if (el.task) el.task.textContent = 'همه موارد با موفقیت انجام شد.';
                 logLine('✔ InstaShop آماده استفاده است.');
-                el.sumUrl.textContent = (fin && fin.app_url) || location.origin;
-                el.sumDb.textContent = (fin && fin.db_name) || '—';
-                el.sumStorage.textContent =
+                if (el.sumUrl) el.sumUrl.textContent = (fin && fin.app_url) || location.origin;
+                if (el.sumDb) el.sumDb.textContent = (fin && fin.db_name) || '—';
+                if (el.sumStorage) el.sumStorage.textContent =
                     (fin && fin.storage_linked) ? 'ایجاد شد' : 'سیم‌لینک روی هاست غیرفعال است — فایل‌ها از مسیر جایگزین سرو می‌شوند (بدون مشکل)';
+
+                // no admin yet → hand the owner to first-run registration
+                if (fin && fin.needs_admin && el.adminCta && el.enterApp && el.enterAppDefault) {
+                    el.adminCta.hidden = false;
+                    el.enterApp.hidden = false;
+                    el.enterAppDefault.hidden = true;
+                } else if (el.adminCta && el.enterApp && el.enterAppDefault) {
+                    el.adminCta.hidden = true;
+                    el.enterApp.hidden = true;
+                    el.enterAppDefault.hidden = false;
+                }
+
                 goStep(5);
             })
             .catch(function (e) {
@@ -180,29 +223,42 @@
                 logLine('✖ ' + (e.detail || e.message || 'خطا'), 'err');
                 logLine('می‌توانید از دکمه «تلاش مجدد» ادامه دهید.', 'sub');
             })
-            .then(function () { running = false; });
+            .then(function () {
+                running = false;
+                if (el.retry) stopSpin(el.retry);
+            });
     }
 
-    /* ── wiring ──────────────────────────────────────────────── */
+    /* ── wiring · wizard page ────────────────────────────────── */
 
-    document.querySelectorAll('[data-goto]').forEach(function (b) {
-        b.addEventListener('click', function () { goStep(Number(b.dataset.goto)); });
+    // step-nav buttons — brief spinner for feedback, then switch
+    $$('[data-goto]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            if (! spin(b)) return;
+            setTimeout(function () {
+                goStep(Number(b.dataset.goto));
+                stopSpin(b);
+            }, 250);
+        });
     });
 
-    el.retry.addEventListener('click', function () {
-        runInstall({ kind: cursor.kind, index: cursor.index, done: cursor.done });
-    });
+    if (el.retry) {
+        el.retry.addEventListener('click', function () {
+            runInstall({ kind: cursor.kind, index: cursor.index, done: cursor.done });
+        });
+    }
 
     if (el.dbForm) {
         el.dbForm.addEventListener('submit', function (ev) {
             ev.preventDefault();
             var btn = el.dbSubmit;
-            var original = btn.textContent;
+            var label = el.dbSubmitLabel || btn;
+            var original = label.textContent;
 
             el.dbError.hidden = true;
             btn.disabled = true;
             btn.classList.add('loading');
-            btn.textContent = 'در حال بررسی اتصال…';
+            label.textContent = 'در حال بررسی اتصال…';
 
             var payload = {};
             new FormData(el.dbForm).forEach(function (v, k) { payload[k] = v; });
@@ -213,17 +269,71 @@
                     // session cookie name, …). Reloading re-establishes a clean
                     // session and the boot resume path (data-resume="1")
                     // automatically opens step 4 and starts the pipeline.
-                    btn.textContent = 'در حال آماده‌سازی نصب…';
+                    label.textContent = 'در حال آماده‌سازی نصب…';
                     window.location.reload();
                 })
                 .catch(function (e) {
                     el.dbError.textContent = e.message || 'اتصال به دیتابیس برقرار نشد.';
                     el.dbError.hidden = false;
-                })
-                .then(function () {
                     btn.disabled = false;
                     btn.classList.remove('loading');
-                    btn.textContent = original;
+                    label.textContent = original;
+                });
+        });
+    }
+
+    /* ── wiring · admin-setup page ───────────────────────────── */
+
+    var setupForm = $('#setupForm');
+
+    if (setupForm) {
+        // theme swatch selection
+        $$('#swatchGrid .swatch').forEach(function (s) {
+            s.addEventListener('click', function () {
+                $$('#swatchGrid .swatch').forEach(function (o) {
+                    o.classList.remove('is-selected');
+                    o.setAttribute('aria-checked', 'false');
+                });
+                s.classList.add('is-selected');
+                s.setAttribute('aria-checked', 'true');
+                $('#themePreset').value = s.dataset.swatch;
+            });
+        });
+
+        setupForm.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            var btn = $('#setupSubmit');
+            var box = $('#setupError');
+
+            box.hidden = true;
+            box.textContent = '';
+            btn.classList.add('loading');
+            btn.setAttribute('aria-busy', 'true');
+            btn.disabled = true;
+
+            var payload = {};
+            new FormData(setupForm).forEach(function (v, k) { payload[k] = v; });
+
+            post('/install/admin-setup', payload)
+                .then(function (r) {
+                    btn.textContent = (r && r.message) || 'در حال انتقال…';
+                    window.location.href = (r && r.redirect) || '/admin';
+                })
+                .catch(function (e) {
+                    var msg = e.message || 'ثبت حساب انجام نشد.';
+                    if (e.errors) {
+                        var first = null;
+                        Object.keys(e.errors).some(function (k) {
+                            first = e.errors[k] && e.errors[k][0];
+                            return !!first;
+                        });
+                        if (first) msg = first;
+                    }
+                    box.textContent = msg;
+                    box.hidden = false;
+                    btn.classList.remove('loading');
+                    btn.removeAttribute('aria-busy');
+                    btn.disabled = false;
                 });
         });
     }
@@ -238,6 +348,10 @@
     }
 
     /* ── boot ────────────────────────────────────────────────── */
+    if (document.body.dataset.page === 'admin-setup') {
+        return; // nothing else to boot on the setup page
+    }
+
     goStep(1);
     // .env already exists (previous run crashed?) → resume the install phase
     if (document.body.dataset.resume === '1') {

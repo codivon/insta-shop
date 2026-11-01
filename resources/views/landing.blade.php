@@ -4,7 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="InstaShop — پلتفرم فروشگاهی مبتنی بر اینستاگرام؛ فروشگاه اینستاگرامی خود را در چند دقیقه راه‌اندازی کنید.">
-    <title>InstaShop — فروشگاه اینستاگرامی</title>
+    @php($ipAppName = \App\Support\Theme::resolve()['app_name'])
+<title>{{ $ipAppName }} — فروشگاه اینستاگرامی</title>
     <link rel="stylesheet" href="/fonts/vazirmatn.css">
     @include('partials.theme-vars')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -18,7 +19,13 @@
                 <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-lg shadow-primary-600/30">
                     <x-icon name="store" class="size-5" />
                 </span>
-                <span class="text-lg font-extrabold tracking-tight">Insta<span class="text-primary-600 dark:text-primary-400">Shop</span></span>
+                <span class="text-lg font-extrabold tracking-tight">
+                            @if (str_starts_with($ipAppName, 'Insta') && mb_strlen($ipAppName) > 5)
+                                Insta<span class="text-primary-600 dark:text-primary-400">{{ mb_substr($ipAppName, 5) }}</span>
+                            @else
+                                <span class="text-primary-600 dark:text-primary-400">{{ $ipAppName }}</span>
+                            @endif
+                        </span>
             </a>
 
             <nav class="hidden items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-300 md:flex" aria-label="منوی اصلی">
@@ -280,7 +287,7 @@
                 <span class="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 text-white">
                     <x-icon name="store" class="size-3.5" />
                 </span>
-                <span class="font-bold text-slate-700 dark:text-slate-200">InstaShop</span>
+                <span class="font-bold text-slate-700 dark:text-slate-200">{{ $ipAppName }}</span>
                 <span class="text-xs">© ۱۴۰۵</span>
             </div>
             <div class="flex items-center gap-5">

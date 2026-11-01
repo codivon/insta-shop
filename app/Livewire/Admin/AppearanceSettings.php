@@ -11,9 +11,9 @@ use Livewire\Component;
 #[Layout('layouts.admin-slot')]
 class AppearanceSettings extends Component
 {
-    public string $preset = 'sapphire';
+    public string $preset = 'instagram';
 
-    public string $primary = '#2563EB';
+    public string $primary = '#D62976';
 
     public string $defaultMode = 'light';
 
@@ -57,7 +57,7 @@ class AppearanceSettings extends Component
         ]);
 
         if (! Color::isHex($this->primary)) {
-            $this->addError('primary', 'کد رنگ نامعتبر است. نمونه صحیح: #2563EB');
+            $this->addError('primary', 'کد رنگ نامعتبر است. نمونه صحیح: #D62976');
 
             return;
         }
@@ -83,7 +83,7 @@ class AppearanceSettings extends Component
             'theme.default_mode' => $this->defaultMode,
         ]);
 
-        session()->flash('appearance-saved', 'تم به حالت پیش‌فرض (آبی سافایر) بازگشت.');
+        session()->flash('appearance-saved', 'تم به حالت پیش‌فرض (گرادیان اینستاگرامی) بازگشت.');
     }
 
     public function render()

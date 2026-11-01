@@ -77,7 +77,7 @@
                        aria-label="انتخابگر رنگ اصلی">
                 <input type="text" wire:model.live="primary" wire:debounce.300ms dir="ltr"
                        class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-center text-sm font-bold shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900"
-                       placeholder="#2563EB" aria-label="کد رنگ HEX">
+                       placeholder="#D62976" aria-label="کد رنگ HEX">
                 @error('primary')
                     <span class="text-xs font-semibold text-rose-600">{{ $message }}</span>
                 @enderror
@@ -100,10 +100,10 @@
             <div class="mt-4 rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
                 <div class="mb-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">پیش‌نمایش زنده:</div>
                 <div class="flex flex-wrap items-center gap-2.5">
-                    <span class="rounded-xl px-4 py-2 text-xs font-bold text-white shadow-md" style="background: {{ $this->shades[600] ?? '#2563EB' }};">دکمه اصلی</span>
-                    <span class="rounded-xl border px-4 py-2 text-xs font-bold" style="border-color: {{ $this->shades[300] ?? '#93C5FD' }}; color: {{ $this->shades[700] ?? '#1D4ED8' }};">دکمه خطی</span>
-                    <span class="rounded-full px-3 py-1 text-[10px] font-bold" style="background: {{ $this->shades[100] ?? '#DBEAFE' }}; color: {{ $this->shades[800] ?? '#1E40AF' }};">برچسب</span>
-                    <span class="grid size-8 place-items-center rounded-full text-white shadow" style="background: {{ $this->shades[700] ?? '#1D4ED8' }};">
+                    <span class="rounded-xl px-4 py-2 text-xs font-bold text-white shadow-md" style="background: {{ $this->shades[600] ?? '#D62976' }};">دکمه اصلی</span>
+                    <span class="rounded-xl border px-4 py-2 text-xs font-bold" style="border-color: {{ $this->shades[300] ?? '#F3BFD6' }}; color: {{ $this->shades[700] ?? '#9A1E55' }};">دکمه خطی</span>
+                    <span class="rounded-full px-3 py-1 text-[10px] font-bold" style="background: {{ $this->shades[100] ?? '#FCEEF4' }}; color: {{ $this->shades[800] ?? '#7C1844' }};">برچسب</span>
+                    <span class="grid size-8 place-items-center rounded-full text-white shadow" style="background: {{ $this->shades[700] ?? '#9A1E55' }};">
                         <x-icon name="store" class="size-4" />
                     </span>
                 </div>
