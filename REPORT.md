@@ -6,6 +6,77 @@
 
 ---
 
+## گزارش 10 — vendor داخل ریپو (به درخواست کارفرما) + بازسازی کامل محیط پس از ریست سندباکس — 🗓️ 1405/08/10 (2026-10-31)
+
+### 🎯 درخواست کارفرما
+«چون پروژه روی هاست مستقیم نصب می‌شود و دسترسی به ترمینال ندارم، پروژه را با پوشه vendor پوش کن» → پوشه `vendor` (production) باید **داخل خود ریپو** باشد تا با Download ZIP یا cPanel Git، بدون ترمینال/کمپوزر منتقل شود.
+
+### 💥 حادثه محیطی
+بین دو پیام، **سندباکس کامل ریست شد**: `/home/z/insta-shop` و `~/.local` (PHP/Composer/MySQL) و توکن گیت‌هاب (که فقط در `.git/config` بود) پاک شدند. خوشبختانه همه کدها از قبل روی GitHub بود (آخرین کامیت `bb144d3`) و این دقیقاً دلیل ارزش vendor-in-repo است.
+
+### ✅ کارهای انجام‌شده
+
+| # | کار | نتیجه |
+|---|---|---|
+| 1 | کلون مجدد ریپو از GitHub → `/home/z/insta-shop` (کامیت `bb144d3` سالم) | ✅ |
+| 2 | بازسازی ابزارها: **PHP 8.5.8 استاتیک** (static-php-cli، همه افزونه‌های لازم) + **Composer 2.11.1** در `~/.local` | ✅ |
+| 3 | `composer install --no-dev --optimize-autoloader` → vendor **۶۰MB production** | ✅ |
+| 4 | سیم‌لینک path-repo (`vendor/instashop/installer → packages/...`) به **کپی واقعی** تبدیل شد تا روی هاست بدون composer کار کند | ✅ |
+| 5 | بررسی حمل‌پذیری: `vendor/composer/installed.php` و autoloadها **بدون هیچ مسیر مطلق** (همه `__DIR__`-relative) → روی هر مسیری کار می‌کند | ✅ |
+| 6 | `.gitignore`: حذف `/vendor` + کامنت توضیحی (چرا و با چه قواعدی) — `.env` همچنان ignore است (با `git check-ignore` تأیید شد) | ✅ |
+| 7 | تست بوت با vendor جدید: `artisan --version` ✔، هر ۶ روت نصاب ثبت ✔، `GET /` → 302 به `/install` ✔، ویزارد 200 با شمارش ۹ مایگریشن/۳ سیدر ✔، POST `/install/database` با اتصال‌نشدنی → **۴۲۲ با پیام فارسی صحیح** (کنترلر و مسیر PDO کامل اجرا شد) ✔ | ✅ |
+| 8 | بازنویسی دو فایل مستنداتی که از قلم کامیت قبلی جا مانده بود (`docs/host-install-fa.md` + REPORT گزارش 9) + این گزارش | ✅ |
+
+### ⚠️ قواعد جدید برای کامیت‌های بعدی (مهم برای ایجنت‌ها)
+1. vendor فقط production بماند: پیش از هر کامیتِ vendor → `composer install --no-dev --optimize-autoloader`
+2. بعد از هر `composer install/update`، اگر `vendor/instashop/installer` سیم‌لینک شد → `rm` + `cp -rL` کپی واقعی
+3. هر تغییر `composer.lock` باید همراه با تغییرات `vendor/` در همان کامیت push شود
+4. Pint را بیرون از ریپو نصب کنید (`composer global require laravel/pint`) تا vendor محلی تمیز بماند
+5. **توکن GitHub فقط در remote URL می‌ماند** — بعد از هر ریست سندباکس باید دوباره از کارفرما گرفته شود
+
+### ⏭️ قدم بعد
+پوش نهایی (نیازمند توکن جدید از کارفرما) → فاز 7: PWA دو اپ + بهبود SPA + بهینه‌سازی
+
+---
+
+## گزارش 9 — پکیج آماده نصب هاست (Release v0.7.0) + فیکس بحرانی سشن نصب‌کننده — 🗓️ 1405/08/10 (2026-10-31)
+
+### 🎯 مشکل گزارش‌شده کارفرما
+پروژه روی هاست آپلود شد و این خطا آمد:
+```
+Warning: require(.../vendor/autoload.php): Failed to open stream: No such file or directory
+```
+**علت:** پوشه `vendor` در `.gitignore` است و با git یا آپلود دستی سورس منتقل نمی‌شود — روی هاست اشتراکی هم معمولاً Composer در دسترس نیست.
+
+### ✅ کارهای انجام‌شده (همه پوش شد)
+
+| # | کار | نتیجه |
+|---|---|---|
+| 1 | **`scripts/build-release.sh`**: از HEAD گیت خروجی تمیز می‌گیرد → `composer install --no-dev --optimize-autoloader` → ۵ چک سلامت (autoload، manifest، index.php، .htaccess، نبودن .env) → zip بهینه (حجم **۱۳MB، ۸۴۹۵ فایل**) + sha256 | ✅ |
+| 2 | **GitHub Release `v0.7.0`** با توضیحات فارسی + آپلود `instashop-v0.7.0-host.zip` (شامل vendor production) → لینک دانلود مستقیم برای کارفرما | ✅ [releases/v0.7.0](https://github.com/codivon/insta-shop/releases/tag/v0.7.0) |
+| 3 | **E2E بازپخش پروتکل HTTP ویزارد با curl** روی شبیه‌ساز هاست (`/tmp/host-sim` از دل zip واقعی + دیتابیس تازه `insta_shop_host`) → **باگ واقعی کشف شد**: بلافاصله بعد از نوشته‌شدن `.env`، همه POSTهای بعدی `419 CSRF mismatch` می‌گرفتند | ✅ |
+| 4 | **ریشه باگ**: نام کوکی سشن از `APP_NAME` مشتق می‌شود (`laravel-session` → پس از نوشتن `.env`: `instashop-session`) ⇒ سشنِ حاوی توکن CSRF گم می‌شد. **دو فیکس** (پکیج → v1.0.1): ① سنجاق نام کوکی به `instashop_install_session` تا قبل از نصب ② reload صفحه پس از موفقیت مرحله دیتابیس تا مسیر `resume` خودکار با سشن تمیز ادامه دهد | ✅ کامیت `bb144d3` |
+| 5 | **E2E مجدد از صفر** با پکیج فیکس‌شده: توکن پایدار بعد از reload ✔ → ۹ مایگریشن + ۳ سیدر یکی‌یکی ✔ → finish با `storage_linked:true` ✔ → **۲۸ جدول**، ادمین+تنظیمات seed شده، `install.lock` ثبت شد و `/install` قفل شد (302) ✔ → دیتابیس تست و `/tmp/host-sim` پاک‌سازی شد | ✅ |
+| 6 | **`docs/host-install-fa.md`**: راهنمای کامل فارسی نصب روی cPanel — از جوابِ همان خطای کارفرما در صدر فایل، تا مراحل ۵گانه (دیتابیس → آپلود → دسترسی 775 → ویزارد → نصب مجدد) + جدول رفع اشکال + نکات امنیتی | ✅ |
+
+### 🐛 درس‌های فنی
+1. **نام کوکی سشن وابسته به APP_NAME است** — هر جریانی که وسط کار `.env` می‌نویسد باید هویت سشن را سنجاق کند یا سشن را دوباره برقرار کند
+2. `zip` بدون سوییچ `-y` سیم‌لینک‌ها را به محتوا تبدیل می‌کند — همین اتفاق برای `vendor/instashop/installer` (path-repo با symlink) دقیقاً مطلوب ما بود
+3. `php -S` سندباکس بین فراخوانی‌ها کشته می‌شود → تست‌های E2E چندمرحله‌ای باید در یک فراخوانی واحد اجرا شوند (با قابلیت resume نصب‌کننده، بازپخش مقاوم شد)
+4. پروتکل ویزارد ۴ اندپوینت دارد: `POST /install/database` → `migrate{index}` ×N → `seed{index}` ×N → `finish` — بازپخش curl همان کاری است که JS مرورگر می‌کند
+
+### 📦 برای کارفرما — نصب روی هاست در ۴ قدم
+1. دانلود [instashop-v0.7.0-host.zip](https://github.com/codivon/insta-shop/releases/download/v0.7.0/instashop-v0.7.0-host.zip) (۱۳MB، شامل vendor)
+2. در cPanel در پوشه دامنه Extract کنید
+3. دسترسی نوشتن 775 به `storage` و `bootstrap/cache`
+4. باز کردن آدرس سایت → ویزارد `/install` → اطلاعات دیتابیس → تمام
+> ⚠️ PHP هاست باید **۸.۳+** باشد (MultiPHP Manager). راهنمای کامل: `docs/host-install-fa.md`
+
+### ⏭️ قدم بعد
+فاز 7: PWA دو اپ (مانفیست + SW + آیکون) + بهبود SPA + بهینه‌سازی
+
+---
+
 ## گزارش 8 — نصب‌کننده وب (پکیج instashop/installer) + آماده‌سازی نصب روی هاست — 🗓️ 1405/08/11 (2026-11-01)
 
 ### 🎯 خواسته کارفرما (۵ بند)

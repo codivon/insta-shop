@@ -257,6 +257,16 @@ resources/views/{landing,admin,seller,customer}
 
 ## 9️⃣ گزارش‌های به‌روزرسانی (جدید در بالا)
 
+### 2026-10-31 (نوبت ۲) — Release v0.7.0 + فیکس سشن نصب‌کننده + vendor داخل ریپو + بازسازی محیط — توسط ایجنت Z.ai
+- خطای کارفرما روی هاست (`vendor/autoload.php not found`) → علت: vendor در gitignore بود → **GitHub Release v0.7.0** با zip آماده (۱۳MB شامل vendor production) منتشر شد + `scripts/build-release.sh` ساخته شد
+- **باگ بحرانی کشف و فیکس شد** (E2E بازپخش curl روی شبیه‌ساز هاست): نام کوکی سشن از APP_NAME مشتق می‌شود و با نوشته‌شدن `.env` عوض می‌شد (`laravel-session` → `instashop-session`) ⇒ 419 CSRF وسط نصب. فیکس‌ها (پکیج v1.0.1، کامیت `bb144d3`): ① سنجاق `session.cookie` به `instashop_install_session` تا قبل از نصب ② reload پس از موفقیت مرحله دیتابیس → مسیر resume خودکار
+- E2E کامل سبز: ۹ مایگریشن + ۳ سیدر + finish + ۲۸ جدول + قفل نصب (جزئیات: REPORT گزارش 9)
+- **به درخواست کارفرما vendor (production) داخل ریپو push شد** (gitignore حذف شد) → Download ZIP / cPanel Git حالا vendor هم دارد؛ نصب روی هاست بدون ترمینال/Composer
+- ⚠️ **سندباکس ریست شد** — بازسازی کامل: PHP 8.5.8 استاتیک + Composer 2.11.1 در `~/.local` (از HANDOFF همین فایل)؛ MySQL هنوز بازسازی نشده (برای ادامه توسعه فاز 7 لازم است)
+- ⚠️ قواعد جدید vendor-in-git: کامیت vendor فقط بعد از `composer install --no-dev`؛ سیم‌لینک `vendor/instashop/installer` باید کپی واقعی باشد؛ تغییر lock = کامیت همراه vendor؛ Pint فقط global بیرون ریپو؛ توکن GitHub پس از هر ریست سندباکس باید دوباره از کارفرما گرفته شود
+- `docs/host-install-fa.md` — راهنمای کامل فارسی نصب روی cPanel (جدول رفع اشکال شامل خطای vendor)
+- کامیت‌های جدید: vendor + docs (در انتظار توکن برای push — توکن قبلی با ریست سندباکس از بین رفت)
+
 ### 2026-11-01 — نصب‌کننده وب (instashop/installer) + آماده‌سازی هاست — توسط ایجنت Z.ai
 - پکیج Composer داخلی `instashop/installer` v1.0.0 در `packages/` (بجای پکیج‌های آماده متروک — توضیح در REPORT گزارش 8)
 - ویزارد ۵ مرحله‌ای RTL فارسی مطابق تم: خوش‌آمد → پیش‌نیازها/دسترسی‌ها → دیتابیس (PDO + `.env` + `APP_KEY` خودکار) → نصب (هر مایگریشن/سیدر یک درخواست AJAX با نوار پیشرفت/درصد/تلاش مجدد) → پایان (قفل + storage:link)
