@@ -247,7 +247,14 @@ class InstallerController extends Controller
     public function finish(): JsonResponse
     {
         InstallerState::markInstalled();
-        $storageLinked = InstallerState::ensureStorageLink();
+
+        try {
+            $storageLinked = InstallerState::ensureStorageLink();
+        } catch (Throwable) {
+            // symlink() may be disabled on shared hosting — never block
+            // completion; the app streams /storage/* via the fallback route.
+            $storageLinked = false;
+        }
 
         try {
             Artisan::call('config:clear');

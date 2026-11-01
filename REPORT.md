@@ -6,6 +6,28 @@
 
 ---
 
+## گزارش 12 — فیکس خطای `Call to undefined function symlink()` در پایان نصب هاست — 🗓️ 1405/08/11 (2026-11-01)
+
+**گزارش کارفرما:** پس از v0.7.2، نصب روی هاست تا آخرین مرحله (finish) پیش رفت و همه مایگریشن‌ها/سیدرها موفق شدند؛ در پایان این خطا ثبت شد:
+`Call to undefined function InstaShop\Installer\Support\symlink() at vendor/instashop/installer/src/Support/InstallerState.php:121`
+
+**تشخیص:**
+- هاست کارفرما تابع `symlink()` را در `disable_functions` غیرفعال کرده است (رایج در هاست‌های اشتراکی)
+- `ensureStorageLink()` مستقیم و بدون محافظ `@symlink()` صدا می‌زد → Fatal Error
+- **نکته مهم:** چون `markInstalled()` قبل از آن اجرا شده بود، نصب عملاً **کامل شده** بود (install.lock نوشته شده، ادمین/تنظیمات seed شده) — فقط لینک `public/storage` ساخته نشده بود
+
+**فیکس‌ها (پکیج نصب‌کننده v1.0.2 + کانفیگ فایل‌سیستم):**
+1. `InstallerState::ensureStorageLink()`: چک `function_exists('symlink')` + try/catch → در هاست‌های بدون symlink فقط `false` برمی‌گرداند، نه کرش
+2. `InstallerController::finish()`: فراخوانی داخل try/catch → پایان نصب هرگز به‌خاطر لینک storage شکست نمی‌خورد؛ پیام ویزارد هم به‌جای دستور artisan، توضیح «سرو از مسیر جایگزین» می‌دهد
+3. **سرو فایل‌ها بدون symlink با قابلیت بومی لاراول 13:** در `config/filesystems.php` دیسک `public` مقدار `'serve' => true` گرفت → لاراول خودش روت `storage.public` را در `/storage/{path}` ثبت می‌کند و فایل‌های `storage/app/public` را از طریق PHP سرو می‌کند؛ وقتی symlink موجود باشد وب‌سرور مستقیم سرو می‌کند و این روت هرگز اجرا نمی‌شود (صفر کد سفارشی)
+4. دیسک `local` (خصوصی) `url` مجزا گرفت (`/private-files`) تا با روت عمومی تداخل نکند — سرو فایل‌های خصوصی با URL امضادار همچنان کار می‌کند و بدون امضا در production → 404
+
+**اعتبارسنجی (E2E کامل با حذف عمدی symlink = شبیه‌سازی هاست کارفرما):** نصب کامل (۹ مایگریشن + ۳ سیدر + finish) ✅؛ بدون symlink: `GET /storage/e2e/fallback-test.txt` → **200 با محتوا و MIME درست**؛ فایل ناموجود → 404؛ path traversal (`/storage/../.env`) → 404؛ دیسک خصوصی بدون امضا → 404؛ با symlink → سرو استاتیک 200؛ لندینگ 200؛ `/install` قفل (302)
+
+**انتشار:** tag **v0.7.3** + Release با پکیج `instashop-v0.7.3-host.zip`. **برای کارفرما:** روی هاست فعلی **نیازی به نصب مجدد نیست** — فقط فایل‌ها را به‌روز کنید و `.env` و `install.lock` را دست نزنید (نصب شما کامل است)؛ تصاویر از همین لحظه با مسیر جایگزین سرو می‌شوند.
+
+---
+
 ## گزارش 11 — فیکس خطای نصب روی هاست: `SQLSTATE 1071 Specified key was too long` — 🗓️ 1405/08/11 (2026-11-01)
 
 **گزارش کارفرما:** هنگام نصب وب روی هاست cPanel، در اولین مایگریشن این خطا ظاهر شد:

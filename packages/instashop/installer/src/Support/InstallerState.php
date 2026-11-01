@@ -2,6 +2,8 @@
 
 namespace InstaShop\Installer\Support;
 
+use Throwable;
+
 /**
  * Single source of truth for the install lifecycle:
  *
@@ -118,6 +120,17 @@ class InstallerState
             @mkdir($target, 0755, true);
         }
 
-        return @symlink($target, $link) || is_dir($link);
+        // symlink() is a very common entry in disable_functions on shared
+        // hosting — it must never be a fatal error. When unavailable, the
+        // app serves /storage/{path} through StorageFallbackController.
+        if (! function_exists('symlink')) {
+            return false;
+        }
+
+        try {
+            return @symlink($target, $link) || is_dir($link);
+        } catch (Throwable) {
+            return false;
+        }
     }
 }

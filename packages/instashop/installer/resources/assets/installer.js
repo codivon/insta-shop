@@ -172,7 +172,7 @@
                 el.sumUrl.textContent = (fin && fin.app_url) || location.origin;
                 el.sumDb.textContent = (fin && fin.db_name) || '—';
                 el.sumStorage.textContent =
-                    (fin && fin.storage_linked) ? 'ایجاد شد' : 'به‌صورت دستی: php artisan storage:link';
+                    (fin && fin.storage_linked) ? 'ایجاد شد' : 'سیم‌لینک روی هاست غیرفعال است — فایل‌ها از مسیر جایگزین سرو می‌شوند (بدون مشکل)';
                 goStep(5);
             })
             .catch(function (e) {
