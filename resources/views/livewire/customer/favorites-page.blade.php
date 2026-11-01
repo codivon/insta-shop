@@ -30,7 +30,7 @@
                 @foreach ($favorites as $fav)
                     @php $product = $fav->product; @endphp
                     <div class="flex gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                        <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate
+                        <a href="{{ $product->publicUrl() }}" wire:navigate
                            class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
                             @if ($product->mainImage)
                                 <img src="{{ $product->mainImage->url() }}" alt="{{ $product->name }}" loading="lazy" class="size-full object-cover">
@@ -41,7 +41,7 @@
 
                         <div class="min-w-0 flex-1">
                             <div class="flex items-start justify-between gap-2">
-                                <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate
+                                <a href="{{ $product->publicUrl() }}" wire:navigate
                                    class="line-clamp-2 text-xs font-bold leading-5 hover:text-primary-600 dark:hover:text-primary-400">
                                     {{ $product->name }}
                                 </a>
@@ -62,7 +62,7 @@
                                     @endif
                                 </div>
                                 @if ($product->hasVariants())
-                                    <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate
+                                    <a href="{{ $product->publicUrl() }}" wire:navigate
                                        class="grid size-7 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition active:scale-90"
                                        aria-label="مشاهده و انتخاب تنوع" title="انتخاب تنوع در صفحه محصول">
                                         <x-icon name="layers" class="size-3.5" />

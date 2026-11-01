@@ -73,7 +73,7 @@ class CategoriesPage extends Component
     {
         return ShopCategory::query()
             ->whereHas('shop', fn ($q) => $q->publiclyVisible())
-            ->with(['shop:id,name,slug'])
+            ->with(['shop.seller:id,instagram_username'])
             ->withCount(['products' => fn ($q) => $q->where('status', 'published')])
             ->orderBy('shop_id')
             ->orderBy('sort')
@@ -87,7 +87,7 @@ class CategoriesPage extends Component
         $total = $this->productQuery()->count();
 
         $rows = $this->productQuery()
-            ->with(['mainImage', 'category', 'shop:id,name,slug'])
+            ->with(['mainImage', 'category', 'shop.seller:id,instagram_username'])
             ->latest()
             ->limit($this->perPage)
             ->get();

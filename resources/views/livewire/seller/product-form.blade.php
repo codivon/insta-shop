@@ -74,6 +74,26 @@
                     </div>
 
                     <div>
+                        <label for="pf-slug" class="mb-1.5 flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-300">
+                            آدرس اختصاصی محصول
+                            <span class="text-slate-400">(اسلاگ)</span>
+                        </label>
+                        <div dir="ltr" class="flex items-stretch overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition focus-within:border-primary-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus-within:bg-slate-800">
+                            <span class="grid shrink-0 place-items-center border-e border-slate-200 bg-slate-100 px-3 text-[10px] font-bold text-slate-400 dark:border-slate-700 dark:bg-slate-900/60" aria-hidden="true">
+                                /shop/{{ $shop->storefrontHandle() ?: '...' }}/
+                            </span>
+                            <input id="pf-slug" type="text" wire:model.blur="slug" maxlength="190" dir="ltr"
+                                   placeholder="my-product"
+                                   class="w-full min-w-0 bg-transparent px-3 py-3 text-xs font-semibold text-left outline-none placeholder:text-slate-400">
+                        </div>
+                        @error('slug') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                        <p class="mt-1.5 text-[10px] leading-5 text-slate-400">
+                            آدرس عمومی محصول در صفحه فروشگاه — اگر خالی بگذارید <b class="text-slate-500 dark:text-slate-300">خودکار از عنوان محصول ساخته می‌شود</b>.
+                            فقط حروف انگلیسی کوچک، فارسی، عدد و خط تیره؛ باید یکتا باشد. حروف فارسی هم پشتیبانی می‌شود.
+                        </p>
+                    </div>
+
+                    <div>
                         <label for="pf-desc" class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">توضیحات</label>
                         <textarea id="pf-desc" wire:model.blur="description" rows="4" maxlength="5000"
                                   placeholder="ویژگی‌ها، جنس، ابعاد، نحوه ارسال..."

@@ -56,69 +56,101 @@
                 </div>
             @endif
 
-            {{-- ── items ── --}}
-            <div class="space-y-3">
-                @foreach ($items as $item)
+            {{-- ── items — یک کارت جداگانه برای هر فروشگاه ── --}}
+            <div class="space-y-4">
+                @foreach ($groups as $groupIndex => $group)
                     @php
-                        $product = $item->product;
-                        $valid = $product && $product->status === 'published' && $product->stock > 0;
+                        $shop = $group['shop'];
+                        $shopUrl = $shop && $shop->storefrontHandle() ? $shop->storefrontUrl() : null;
                     @endphp
-                    <div class="flex gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 {{ $valid ? '' : 'opacity-60' }}">
-                        <a href="{{ $product ? route('shop.product.show', $product->id) : '#' }}" wire:navigate
-                           class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
-                            @if ($product?->mainImage)
-                                <img src="{{ $product->mainImage->url() }}" alt="{{ $product->name }}" loading="lazy" class="size-full object-cover">
-                            @else
-                                <x-icon name="package" class="size-7 text-slate-300 dark:text-slate-600" />
+                    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900" wire:key="shop-group-{{ $groupIndex }}">
+                        {{-- shop header --}}
+                        <div class="flex items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/70 px-3.5 py-3 dark:border-slate-800 dark:bg-slate-800/40">
+                            <a href="{{ $shopUrl ?? ($shopUrl ?: route('shop.home')) }}" @if ($shopUrl) wire:navigate @endif
+                               class="group flex min-w-0 items-center gap-2"
+                               title="مشاهده فروشگاه {{ $shop?->name }}">
+                                <span class="grid size-8 shrink-0 place-items-center rounded-xl bg-primary-100 text-primary-600 transition group-hover:bg-primary-600 group-hover:text-white dark:bg-primary-950/60 dark:text-primary-400">
+                                    <x-icon name="store" class="size-4" />
+                                </span>
+                                <span class="min-w-0">
+                                    <span class="block truncate text-[11.5px] font-extrabold transition group-hover:text-primary-600 dark:group-hover:text-primary-400">
+                                        {{ $shop?->name ?? 'کالاهای بدون فروشگاه' }}
+                                    </span>
+                                    <span class="block text-[9px] font-bold text-slate-400">{{ \App\Support\Fmt::toFa($group['items']->count()) }} کالا — جمع {{ \App\Support\Fmt::moneyShort($group['total']) }} تومان</span>
+                                </span>
+                            </a>
+                            @if ($shopUrl)
+                                <span class="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-white px-2 py-0.5 text-[8.5px] font-extrabold text-slate-400 shadow-sm dark:bg-slate-900">
+                                    فروشگاه
+                                    <x-icon name="chevron-left" class="size-2.5" />
+                                </span>
                             @endif
-                        </a>
+                        </div>
 
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-start justify-between gap-2">
-                                <a href="{{ $product ? route('shop.product.show', $product->id) : '#' }}" wire:navigate
-                                   class="line-clamp-2 text-xs font-bold leading-5 hover:text-primary-600 dark:hover:text-primary-400">
-                                    {{ $product?->name ?? 'محصول حذف‌شده' }}
-                                </a>
-                                <button type="button" wire:click="removeItem({{ $item->id }})"
-                                        class="grid size-7 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/40"
-                                        aria-label="حذف از سبد">
-                                    <x-icon name="trash" class="size-3.5" />
-                                </button>
-                            </div>
-
-                            <div class="mt-0.5 truncate text-[10px] text-slate-400">از {{ $product?->shop?->name ?? '—' }}</div>
-
-                            @if ($item->variant_id > 0)
-                                <div class="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
-                                    <x-icon name="layers" class="size-2.5 shrink-0" />
-                                    <span class="truncate">{{ $item->variant?->label() ?? 'تنوع نامعتبر' }}</span>
-                                </div>
-                            @endif
-
-                            @if ($valid)
-                                <div class="mt-2 flex items-center justify-between">
-                                    <div class="flex items-center gap-1 rounded-xl border border-slate-200 p-0.5 dark:border-slate-700">
-                                        @php $cap = min(\App\Models\Order::lineStock($item), (int) ($item->variant?->max_purchase ?? 0) ?: \App\Models\Order::lineStock($item)); @endphp
-                                        <button type="button" wire:click="incrementQty({{ $item->id }})" @disabled($item->quantity >= $cap)
-                                                class="grid size-7 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-slate-800"
-                                                aria-label="افزایش"><x-icon name="plus" class="size-3" /></button>
-                                        <span class="w-7 text-center text-xs font-extrabold">{{ \App\Support\Fmt::toFa($item->quantity) }}</span>
-                                        <button type="button" wire:click="decrementQty({{ $item->id }})"
-                                                class="grid size-7 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
-                                                aria-label="کاهش"><x-icon name="x" class="size-3" /></button>
-                                    </div>
-                                    <div class="text-left">
-                                        @if ($item->quantity > 1)
-                                            <div class="text-[9px] text-slate-400">{{ \App\Support\Fmt::moneyShort($item->unitPrice()) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
+                        {{-- items of THIS shop --}}
+                        <div class="divide-y divide-slate-100 dark:divide-slate-800">
+                            @foreach ($group['items'] as $item)
+                                @php
+                                    $product = $item->product;
+                                    $valid = $product && $product->status === 'published' && $product->stock > 0;
+                                @endphp
+                                <div class="flex gap-3 p-3 {{ $valid ? '' : 'opacity-60' }}" wire:key="cart-item-{{ $item->id }}">
+                                    <a href="{{ $product ? $product->publicUrl() : '#' }}" wire:navigate
+                                       class="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
+                                        @if ($product?->mainImage)
+                                            <img src="{{ $product->mainImage->url() }}" alt="{{ $product->name }}" loading="lazy" class="size-full object-cover">
+                                        @else
+                                            <x-icon name="package" class="size-7 text-slate-300 dark:text-slate-600" />
                                         @endif
-                                        <div class="text-xs font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($item->lineTotal()) }}</div>
+                                    </a>
+
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-start justify-between gap-2">
+                                            <a href="{{ $product ? $product->publicUrl() : '#' }}" wire:navigate
+                                               class="line-clamp-2 text-xs font-bold leading-5 hover:text-primary-600 dark:hover:text-primary-400">
+                                                {{ $product?->name ?? 'محصول حذف‌شده' }}
+                                            </a>
+                                            <button type="button" wire:click="removeItem({{ $item->id }})"
+                                                    class="grid size-7 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/40"
+                                                    aria-label="حذف از سبد">
+                                                <x-icon name="trash" class="size-3.5" />
+                                            </button>
+                                        </div>
+
+                                        @if ($item->variant_id > 0)
+                                            <div class="mt-0.5 inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                                                <x-icon name="layers" class="size-2.5 shrink-0" />
+                                                <span class="truncate">{{ $item->variant?->label() ?? 'تنوع نامعتبر' }}</span>
+                                            </div>
+                                        @endif
+
+                                        @if ($valid)
+                                            <div class="mt-2 flex items-center justify-between">
+                                                <div class="flex items-center gap-1 rounded-xl border border-slate-200 p-0.5 dark:border-slate-700">
+                                                    @php $cap = min(\App\Models\Order::lineStock($item), (int) ($item->variant?->max_purchase ?? 0) ?: \App\Models\Order::lineStock($item)); @endphp
+                                                    <button type="button" wire:click="incrementQty({{ $item->id }})" @disabled($item->quantity >= $cap)
+                                                            class="grid size-7 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-slate-800"
+                                                            aria-label="افزایش"><x-icon name="plus" class="size-3" /></button>
+                                                    <span class="w-7 text-center text-xs font-extrabold">{{ \App\Support\Fmt::toFa($item->quantity) }}</span>
+                                                    <button type="button" wire:click="decrementQty({{ $item->id }})"
+                                                            class="grid size-7 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                            aria-label="کاهش"><x-icon name="x" class="size-3" /></button>
+                                                </div>
+                                                <div class="text-left">
+                                                    @if ($item->quantity > 1)
+                                                        <div class="text-[9px] text-slate-400">{{ \App\Support\Fmt::moneyShort($item->unitPrice()) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
+                                                    @endif
+                                                    <div class="text-xs font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($item->lineTotal()) }}</div>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div class="mt-2 inline-block rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+                                                ناموجود / غیرفعال
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
-                            @else
-                                <div class="mt-2 inline-block rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
-                                    ناموجود / غیرفعال
-                                </div>
-                            @endif
+                            @endforeach
                         </div>
                     </div>
                 @endforeach

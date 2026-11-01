@@ -120,7 +120,7 @@ class StorefrontShow extends Component
 
         // Variant products need an explicit combination choice → product page.
         if ($product->variants_count > 0) {
-            $this->redirect(route('shop.product.show', $productId), navigate: true);
+            $this->redirect($product->publicUrl(), navigate: true);
 
             return;
         }
@@ -182,6 +182,7 @@ class StorefrontShow extends Component
         return Product::query()
             ->where('shop_id', $this->shop->id)
             ->where('status', 'published')
+            ->with(['shop.seller:id,instagram_username'])
             ->withCount(['variants as variants_count' => fn (Builder $q) => $q->where('status', 'active')]);
     }
 

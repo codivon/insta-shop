@@ -1,4 +1,8 @@
-<div class="ip-fade-up flex min-h-full flex-col">
+<div class="ip-fade-up flex h-full min-h-0 flex-col">
+    {{-- Everything scrollable lives in THIS inner container; the buy bar
+         below is a plain flex sibling of the page shell → it can never be
+         dragged up by the mobile rubber-band overscroll. --}}
+    <div class="scroll-slim min-h-0 flex-1 overflow-y-auto overscroll-contain">
     {{-- ───────── Sticky in-feed header ───────── --}}
     <div class="sticky top-0 z-20 border-b border-slate-200/80 bg-slate-50/95 px-4 py-3 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/95">
         <div class="flex items-center justify-between gap-2">
@@ -7,7 +11,16 @@
                aria-label="بازگشت">
                 <x-icon name="arrow-left" class="size-5" />
             </a>
-            <div class="truncate text-xs font-bold text-slate-500 dark:text-slate-400">{{ $product->shop?->name }}</div>
+            {{-- clickable store chip → the seller's storefront (icon + ellipsis on long names) --}}
+            <a href="{{ $storeUrl }}" wire:navigate
+               class="group flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-1.5 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+               title="مشاهده فروشگاه {{ $product->shop?->name }}">
+                <span class="grid size-6 shrink-0 place-items-center rounded-lg bg-primary-100 text-primary-600 transition group-hover:bg-primary-600 group-hover:text-white dark:bg-primary-950/60 dark:text-primary-400">
+                    <x-icon name="store" class="size-3.5" />
+                </span>
+                <span class="min-w-0 truncate text-xs font-bold text-slate-600 transition group-hover:text-primary-600 dark:text-slate-300 dark:group-hover:text-primary-400">{{ $product->shop?->name }}</span>
+                <x-icon name="chevron-left" class="size-3 shrink-0 text-slate-400 transition group-hover:-translate-x-0.5 group-hover:text-primary-500" />
+            </a>
             <div class="flex shrink-0 items-center gap-0.5">
                 {{-- live cart badge in the page header --}}
                 <a href="{{ route('shop.cart') }}" wire:navigate
@@ -96,26 +109,88 @@
             @endif
         @endif
 
-        {{-- ── gallery ── --}}
-        <div class="grid h-64 place-items-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            @if ($activeImg)
-                <img src="{{ $activeImg['url'] }}" alt="{{ $product->name }}" class="size-full object-contain">
-            @else
-                <x-icon name="package" class="size-16 text-slate-300 dark:text-slate-600" />
-            @endif
-        </div>
-
-        @if (count($gallery) > 1)
-            <div class="scroll-slim mt-3 flex gap-2 overflow-x-auto pb-1">
-                @foreach ($gallery as $img)
-                    <button type="button" wire:click="selectImage({{ $img['id'] }})"
-                            class="size-16 shrink-0 overflow-hidden rounded-xl border-2 transition {{ $activeImg && $activeImg['id'] === $img['id'] ? 'border-primary-500' : 'border-transparent opacity-70 hover:opacity-100' }}"
-                            aria-label="تصویر {{ \App\Support\Fmt::toFa($loop->iteration) }}">
-                        <img src="{{ $img['url'] }}" alt="" class="size-full object-cover">
-                    </button>
-                @endforeach
+        {{-- ── گالری — اسلایدر لمسی (scroll-snap) + مودال بزرگ‌نمایی ── --}}
+        <div x-data="productGallery({{ count($gallery) }})" class="relative">
+            <div x-ref="track"
+                 @scroll.passive="onTrackScroll"
+                 class="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                @if (count($gallery) > 0)
+                    @foreach ($gallery as $img)
+                        <div class="min-w-full snap-center" wire:key="slide-{{ $img['id'] }}">
+                            <img src="{{ $img['url'] }}" alt="{{ $product->name }} — تصویر {{ \App\Support\Fmt::toFa($loop->iteration) }}"
+                                 @if ($loop->first) fetchpriority="high" @else loading="lazy" @endif
+                                 draggable="false"
+                                 class="h-64 w-full select-none object-contain">
+                        </div>
+                    @endforeach
+                @else
+                    <div class="grid h-64 min-w-full place-items-center">
+                        <x-icon name="package" class="size-16 text-slate-300 dark:text-slate-600" />
+                    </div>
+                @endif
             </div>
-        @endif
+
+            @if (count($gallery) > 1)
+                {{-- dot indicators (tap to jump — instant, no server roundtrip) --}}
+                <div class="absolute inset-x-0 bottom-2 flex items-center justify-center gap-1.5">
+                    @foreach ($gallery as $img)
+                        <button type="button" @click="goTo({{ $loop->index }})"
+                                aria-label="رفتن به تصویر {{ \App\Support\Fmt::toFa($loop->iteration) }}"
+                                :class="active === {{ $loop->index }} ? 'w-4 bg-white shadow' : 'w-1.5 bg-white/60 hover:bg-white/90'"
+                                class="h-1.5 rounded-full transition-all"></button>
+                    @endforeach
+                </div>
+            @endif
+
+            {{-- zoom (بزرگ‌نمایی) — opens the fullscreen modal --}}
+            @if (count($gallery) > 0)
+                <button type="button" @click="openZoom()"
+                        class="absolute left-2.5 top-2.5 grid size-9 place-items-center rounded-xl bg-slate-950/45 text-white shadow-lg backdrop-blur transition hover:bg-slate-950/70 active:scale-95"
+                        aria-label="مشاهده تصویر در اندازه بزرگ" title="بزرگ‌نمایی تصویر">
+                    <x-icon name="zoom-in" class="size-4.5" />
+                </button>
+            @endif
+
+            {{-- ── مودال تصویر بزرگ — swipe + دکمه بستن در بالا سمت راست ── --}}
+            <div x-show="zoom" x-cloak
+                 x-transition.opacity.duration.200ms
+                 @keydown.escape.window="closeZoom()"
+                 class="fixed inset-0 z-[80] flex flex-col bg-slate-950/95 backdrop-blur-sm"
+                 role="dialog" aria-modal="true" aria-label="تصویر بزرگ محصول">
+                <div class="flex shrink-0 items-center justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+                    {{-- RTL: the FIRST child sits at the top-RIGHT → close button there --}}
+                    <button type="button" @click="closeZoom()"
+                            class="grid size-10 place-items-center rounded-full bg-white/10 text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-90"
+                            aria-label="بستن تصویر بزرگ">
+                        <x-icon name="x" class="size-5" />
+                    </button>
+                    <span class="rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold text-white/90"
+                          x-show="count > 1" x-text="fa(zoomIndex + 1) + ' از ' + fa(count)"></span>
+                </div>
+
+                <div x-ref="zoomTrack"
+                     @scroll.passive="onZoomScroll"
+                     class="scrollbar-hide flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-contain overflow-y-hidden">
+                    @foreach ($gallery as $img)
+                        <div class="flex h-full min-w-full snap-center items-center justify-center p-2">
+                            <img src="{{ $img['url'] }}" alt="{{ $product->name }} — تصویر {{ \App\Support\Fmt::toFa($loop->iteration) }}"
+                                 loading="lazy" draggable="false"
+                                 class="max-h-full max-w-full select-none object-contain">
+                        </div>
+                    @endforeach
+                </div>
+
+                @if (count($gallery) > 1)
+                    <div class="absolute inset-x-0 bottom-[max(1.25rem,env(safe-area-inset-bottom))] flex items-center justify-center gap-1.5">
+                        @foreach ($gallery as $img)
+                            <button type="button" @click="goToZoom({{ $loop->index }})"
+                                    :class="zoomIndex === {{ $loop->index }} ? 'w-5 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/70'"
+                                    class="h-1.5 rounded-full transition-all"></button>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
 
     {{-- ── info ── --}}
@@ -354,7 +429,7 @@
                 </div>
                 <div class="scroll-slim -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
                     @foreach ($related as $rel)
-                        <a href="{{ route('shop.product.show', $rel->id) }}" wire:navigate wire:key="related-{{ $rel->id }}"
+                        <a href="{{ $rel->publicUrl() }}" wire:navigate wire:key="related-{{ $rel->id }}"
                            class="group w-32 shrink-0 snap-start overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
                             <div class="relative grid h-28 place-items-center overflow-hidden bg-slate-100 dark:bg-slate-800">
                                 @if ($rel->mainImage)
@@ -386,10 +461,14 @@
         @endif
 
         <div class="h-5"></div>
-    </div>
+    </div><!-- /px-4 info wrapper -->
 
-    {{-- ───────── Fixed bottom buy bar (replaces the tab bar on this page) ───────── --}}
-    <div class="sticky bottom-0 z-30 mt-auto {{ $specialActive
+    </div><!-- /scrollable content -->
+
+    {{-- ───────── Pinned bottom buy bar (replaces the tab bar on this page)
+          A plain flex sibling OUTSIDE the scroll container → pinned by the
+          page shell itself, immune to mobile overscroll rubber-banding. ───────── --}}
+    <div class="z-30 shrink-0 {{ $specialActive
         ? 'border-t border-rose-400/40 bg-gradient-to-l from-rose-600 via-rose-500 to-orange-500 shadow-[0_-8px_24px_-12px_rgba(225,29,72,0.55)]'
         : 'border-t border-slate-200/80 bg-white/95 shadow-[0_-8px_24px_-16px_rgba(15,23,42,0.25)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95' }}">
         <div class="flex items-center gap-3 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">

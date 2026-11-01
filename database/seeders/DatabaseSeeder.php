@@ -19,6 +19,8 @@ class DatabaseSeeder extends Seeder
             SmsSettingsSeeder::class,
             PaymentSettingsSeeder::class,
             SmsTemplateSeeder::class,
+            ProvinceSeeder::class,
+            CitySeeder::class,
         ]);
     }
 }

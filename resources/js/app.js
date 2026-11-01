@@ -9,6 +9,9 @@ import './jdate';
 // «فروش ویژه» live countdown (special-sale deadline, window.sfCountdown)
 import './countdown';
 
+// Touch-swipe product gallery + fullscreen zoom modal (window.productGallery)
+import './product-gallery';
+
 // ── Theme mode toggle (dark / light) ─────────────────────────────────
 document.addEventListener('click', (event) => {
     const btn = event.target.closest('[data-theme-toggle]');

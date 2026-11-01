@@ -157,6 +157,19 @@
                     <x-icon name="chevron-left" class="size-3.5" />
                 </span>
             </a>
+            <a href="{{ route('seller.shipping') }}" wire:navigate
+               class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <span class="flex items-center gap-2.5 text-xs font-bold">
+                    <span class="grid size-9 place-items-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                        <x-icon name="truck" class="size-4.5" />
+                    </span>
+                    حمل و نقل
+                </span>
+                <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                    روش‌های ارسال و هزینه‌ها
+                    <x-icon name="chevron-left" class="size-3.5" />
+                </span>
+            </a>
             <button type="button" data-theme-toggle
                     class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <span class="flex items-center gap-2.5 text-xs font-bold">

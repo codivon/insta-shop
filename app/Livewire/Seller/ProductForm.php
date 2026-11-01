@@ -29,6 +29,13 @@ class ProductForm extends Component
     /* ── مشخصات محصول ── */
     public string $name = '';
 
+    /**
+     * آدرس اختصاصی محصول (slug) — در صورت خالی بودن از عنوان ساخته می‌شود؛
+     * فارسی هم پشتیبانی می‌شود و آدرس نهایی:
+     *   دامنه/shop/{آیدی اینستا}/{اسلاگ}
+     */
+    public string $slug = '';
+
     public string $description = '';
 
     public int $categoryId = 0;
@@ -87,6 +94,7 @@ class ProductForm extends Component
 
             $this->productId      = $product->id;
             $this->name           = $product->name;
+            $this->slug           = (string) ($product->slug ?? '');
             $this->description    = (string) $product->description;
             $this->categoryId     = (int) $product->shop_category_id;
             $this->productType    = $product->type ?: Product::TYPE_PHYSICAL;
@@ -566,6 +574,8 @@ class ProductForm extends Component
                 'shop_id'          => $this->shop()->id,
                 'shop_category_id' => $this->categoryId ?: null,
                 'name'             => trim($this->name),
+                // خالی → خودکار از عنوان ساخته می‌شود (هوک مدل، فارسی‌پسند)
+                'slug'             => trim($this->slug) !== '' ? trim($this->slug) : null,
                 'description'      => trim($this->description) ?: null,
                 'specifications'   => $this->normalizedSpecifications(),
                 'spec_type'        => trim($this->specType) !== '' ? trim($this->specType) : null,
@@ -635,6 +645,7 @@ class ProductForm extends Component
 
         $this->validate([
             'name'        => ['required', 'string', 'min:2', 'max:150'],
+            'slug'        => ['nullable', 'string', 'max:190', 'regex:/^[a-z0-9\x{0600}-\x{06FF}]+(?:-[a-z0-9\x{0600}-\x{06FF}]+)*$/u'],
             'description' => ['nullable', 'string', 'max:5000'],
             'categoryId'  => ['nullable', 'integer', Rule::in(array_merge([0], $this->shop()->categories()->pluck('id')->all()))],
             'productType' => ['required', 'in:'.Product::TYPE_PHYSICAL.','.Product::TYPE_DOWNLOADABLE],
@@ -654,6 +665,8 @@ class ProductForm extends Component
         ], [
             'name.required'  => 'نام محصول را وارد کنید.',
             'name.min'       => 'نام محصول حداقل ۲ کاراکتر است.',
+            'slug.regex'     => 'آدرس محصول فقط می‌تواند شامل حروف کوچک انگلیسی، حروف فارسی، عدد و خط تیره باشد (بدون فاصله).',
+            'slug.max'       => 'آدرس محصول حداکثر ۱۹۰ کاراکتر است.',
             'photos.max'     => 'حداکثر ۶ تصویر برای هر محصول مجاز است (تصاویر فعلی + جدید).',
             'photos.*.image' => 'فایل انتخاب‌شده تصویر نیست.',
             'photos.*.max'   => 'حجم هر تصویر حداکثر ۲ مگابایت است.',
@@ -663,6 +676,21 @@ class ProductForm extends Component
 
         if ($this->isSpecial && trim($this->specialEndsAt) === '') {
             $this->addError('specialEndsAt', 'تاریخ پایان فروش ویژه را انتخاب کنید.');
+        }
+
+        // آدرس محصول باید داخل این فروشگاه یکتا باشد.
+        $slugCandidate = trim($this->slug);
+
+        if ($slugCandidate !== '') {
+            $taken = Product::query()
+                ->where('shop_id', $this->shop()->id)
+                ->where('slug', $slugCandidate)
+                ->when($this->productId, fn ($q) => $q->whereKeyNot($this->productId))
+                ->exists();
+
+            if ($taken) {
+                $this->addError('slug', 'این آدرس قبلاً در فروشگاه شما استفاده شده است؛ آدرس دیگری وارد کنید یا خالی بگذارید تا خودکار ساخته شود.');
+            }
         }
     }
 
@@ -903,6 +931,7 @@ class ProductForm extends Component
     public function render()
     {
         return view('livewire.seller.product-form', [
+            'shop'           => $this->shop(),
             'existingImages' => $this->existingImages,
             'existingFiles'  => $this->existingFiles,
             'shopAttributes' => $this->attributesWithValues,

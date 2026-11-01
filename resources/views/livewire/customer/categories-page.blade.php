@@ -61,7 +61,7 @@
                         : 0;
                 @endphp
                 <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
-                    <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate class="block">
+                    <a href="{{ $product->publicUrl() }}" wire:navigate class="block">
                         <div class="relative grid h-32 place-items-center overflow-hidden bg-slate-100 dark:bg-slate-800">
                             @if ($product->mainImage)
                                 <img src="{{ $product->mainImage->url() }}" alt="{{ $product->name }}" loading="lazy" class="h-full w-full object-cover">
@@ -77,7 +77,7 @@
                         </div>
                     </a>
                     <div class="space-y-1.5 p-2.5">
-                        <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate class="line-clamp-2 block min-h-8 text-xs font-bold leading-5 hover:text-primary-600 dark:hover:text-primary-400">
+                        <a href="{{ $product->publicUrl() }}" wire:navigate class="line-clamp-2 block min-h-8 text-xs font-bold leading-5 hover:text-primary-600 dark:hover:text-primary-400">
                             {{ $product->name }}
                         </a>
                         <div class="truncate text-[10px] text-slate-400">از {{ $product->shop?->name }}</div>

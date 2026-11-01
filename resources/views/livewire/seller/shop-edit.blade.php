@@ -157,7 +157,23 @@
                     @error('address') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                 </div>
             </div>
+
         </div>
+
+        {{-- ── حمل و نقل — shortcut to the shipping methods manager ── --}}
+        <a href="{{ route('seller.shipping') }}" wire:navigate
+           class="mt-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-800">
+            <span class="flex items-center gap-2.5 text-xs font-bold">
+                <span class="grid size-9 place-items-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                    <x-icon name="truck" class="size-4.5" />
+                </span>
+                حمل و نقل
+            </span>
+            <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                مدیریت روش‌های ارسال و هزینه‌ها
+                <x-icon name="chevron-left" class="size-3.5" />
+            </span>
+        </a>
 
         {{-- ───────── Pinned actions (fixed at the bottom of the viewport on phones) ───────── --}}
         <div class="sticky bottom-0 z-20 -mx-4 mt-4 flex gap-2 border-t border-slate-200/80 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95">

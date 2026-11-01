@@ -25,8 +25,14 @@
             @yield('header')
         </header>
 
-        {{-- ───────── Scrollable content (the only scroll container) ───────── --}}
-        <main class="scroll-slim min-h-0 flex-1 overflow-y-auto">
+        {{-- ───────── Scrollable content ─────────
+              On the single product page <main> does NOT scroll — the page
+              component owns an inner scroller and pins its own buy bar
+              (so mobile overscroll can never drag the bar up). ───────── --}}
+        @php
+            $productShell = request()->routeIs(['shop.product.show', 'shop.storefront.product']);
+        @endphp
+        <main class="min-h-0 flex-1 {{ $productShell ? 'flex flex-col overflow-hidden' : 'scroll-slim overflow-y-auto' }}">
             @yield('content')
         </main>
 
@@ -49,7 +55,7 @@
                 $cartBadgeCount = $cartBadgeCart->countDistinct();
             }
 
-            $showTabBar = ! request()->routeIs('shop.product.show');
+            $showTabBar = ! request()->routeIs(['shop.product.show', 'shop.storefront.product']);
         @endphp
         @if ($showTabBar)
             <nav class="shrink-0 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95"

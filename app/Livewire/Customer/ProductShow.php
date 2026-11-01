@@ -8,6 +8,7 @@ use App\Models\Favorite;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductVariantValue;
+use App\Models\Shop;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -16,9 +17,6 @@ use Livewire\Component;
 class ProductShow extends Component
 {
     public Product $product;
-
-    /** Selected gallery image id (null = main image). */
-    public ?int $selectedImageId = null;
 
     /**
      * Attribute picks of the variant picker: shop_attribute_id => option key
@@ -31,15 +29,36 @@ class ProductShow extends Component
     /** Legacy fallback: direct variant id when NO pickable attribute exists. */
     public ?int $legacyVariantId = null;
 
-    public function mount(int $productId): void
+    public function mount(string $instagram, string $slug): void
     {
         // Public page — only published products of publicly visible shops
         // are reachable (guests included).
+        $handle = mb_strtolower(trim($instagram));
+
+        $shop = Shop::query()
+            ->publiclyVisible()
+            ->where(function ($query) use ($handle) {
+                $query
+                    ->whereHas('seller', fn ($s) => $s->whereRaw('lower(instagram_username) = ?', [$handle]))
+                    ->orWhereRaw('lower(instagram_username) = ?', [$handle]);
+            })
+            ->first();
+
+        abort_if(! $shop, 404);
+
+        // Slug first; legacy rows without a slug answer to «p{id}».
         $product = Product::query()
+            ->where('shop_id', $shop->id)
             ->where('status', 'published')
-            ->whereHas('shop', fn ($q) => $q->publiclyVisible())
+            ->where(function ($query) use ($slug) {
+                $query->where('slug', $slug);
+
+                if (preg_match('/^p(\d+)$/', $slug, $m)) {
+                    $query->orWhere('id', (int) $m[1]);
+                }
+            })
             ->with(['shop.seller', 'category', 'images'])
-            ->find($productId);
+            ->first();
 
         abort_if(! $product, 404);
 
@@ -64,24 +83,33 @@ class ProductShow extends Component
 
     /* ─────────────────────── interactions ─────────────────────── */
 
-    public function selectImage(?int $imageId): void
-    {
-        $this->selectedImageId = $imageId;
-    }
-
     /**
      * Attribute-option click: $optionIndex is the position of the option
      * inside the rendered attribute row (numeric → no quoting hazards).
-     * Unavailable (dimmed) options are rejected server-side too.
+     *
+     * Attributes have PRIORITY order (the shop's attribute sort — رنگ first,
+     * then سایز, گارانتی …). Picking an option keeps every EARLIER (higher
+     * priority) pick and auto-corrects the LATER ones to the nearest valid
+     * combination — e.g. selecting a color that lacks the currently picked
+     * size re-picks a size the color actually offers (or drops the size row
+     * entirely when the color has none).
      */
     public function selectOption(int $attributeId, int $optionIndex): void
     {
+        // Reading the matrix here caches it against the OLD picks — exactly
+        // the snapshot the user clicked on (stable numeric indexes). After
+        // mutating the picks the cache MUST be dropped, otherwise the render
+        // would repaint the stale matrix (hidden rows would stay hidden).
         $attribute = $this->variantMatrix->firstWhere('id', $attributeId);
 
         $option = $attribute['options'][$optionIndex] ?? null;
 
         if ($option && ($option['available'] ?? false)) {
             $this->picks[$attributeId] = $option['key'];
+
+            $this->reconcilePicksAfter($attributeId);
+
+            unset($this->variantMatrix, $this->selectedVariant, $this->textNotes);
         }
     }
 
@@ -212,15 +240,10 @@ class ProductShow extends Component
         ])->all();
     }
 
-    public function getActiveImageProperty(): ?array
+    /** Address of the seller's storefront (clickable store chip in the header). */
+    public function getStoreUrlProperty(): string
     {
-        $gallery = $this->gallery;
-
-        if ($gallery === []) {
-            return null;
-        }
-
-        return collect($gallery)->firstWhere('id', $this->selectedImageId) ?? $gallery[0];
+        return $this->product->shop?->storefrontUrl() ?? route('shop.home');
     }
 
     public function getIsFavoriteProperty(): bool
@@ -251,12 +274,19 @@ class ProductShow extends Component
 
     /**
      * The variant-picker matrix — one row per pickable attribute (رنگ /
-     * سایز / گارانتی …), each with its round options annotated for the
-     * CURRENT picks:
-     *   available → a real combination exists with the other picks kept
+     * سایز / گارانتی …) in PRIORITY order, each with its round options
+     * annotated for the CURRENT picks:
+     *
+     *   available → a real combination exists considering the picks of the
+     *               HIGHER-priority rows only (later picks adapt to earlier
+     *               ones, never the other way around — رنگ همیشه اولویت است)
      *   inStock   → that combination actually has stock
-     * Text-type attributes are NOT pickable — they surface as read-only
-     * notes of the resolved variant (textNotes).
+     *
+     * Options with no matching combination are HIDDEN (e.g. a size the
+     * picked color doesn't offer simply disappears), and a row whose
+     * options all vanish (the picked color has no size at all) is not
+     * rendered. Text-type attributes are NOT pickable — they surface as
+     * read-only notes of the resolved variant (textNotes).
      */
     public function getVariantMatrixProperty(): Collection
     {
@@ -310,28 +340,45 @@ class ProductShow extends Component
         // first-seen (seller variant) order → stable numeric indexes.
         $ordered = collect($rows)->sortBy(fn ($row, $id) => [$sortBy[$id], $id])->values();
 
-        // Annotate availability against the CURRENT picks.
-        $ordered->transform(function (array $row) {
+        // Annotate availability against the picks of HIGHER-priority rows
+        // only, then drop the options that lead nowhere (hidden) and rows
+        // left without any option.
+        $matrix     = [];
+        $upstream   = [];   // picks of rows already processed
+
+        foreach ($ordered as $row) {
             $options = [];
 
-            foreach (array_values($row['options']) as $index => $option) {
-                $candidate         = $this->picks;
-                $candidate[$row['id']] = $option['key'];
+            foreach (array_values($row['options']) as $option) {
+                $match = $this->variantWithAttribute($row['id'], $option['key'], $upstream);
 
-                $match        = $this->variantMatching($candidate);
-                $option['available'] = $match !== null;
-                $option['inStock']   = $match !== null
-                    && ($this->isDownloadable || $match->stock > 0);
+                if ($match === null) {
+                    continue; // hidden — no combination with the upstream picks
+                }
+
+                $option['available'] = true;
+                $option['inStock']   = $this->isDownloadable || $match->stock > 0;
 
                 $options[] = $option;
             }
 
+            if ($options === []) {
+                continue; // e.g. سایز ندارد for the picked color
+            }
+
             $row['options'] = $options;
 
-            return $row;
-        });
+            $matrix[] = $row;
 
-        return $ordered;
+            // The pick of this row constrains the rows below it.
+            $pick = $this->picks[$row['id']] ?? null;
+
+            if ($pick !== null && in_array($pick, array_column($options, 'key'), true)) {
+                $upstream[$row['id']] = $pick;
+            }
+        }
+
+        return collect($matrix);
     }
 
     /** Read-only text-attribute notes of the resolved variant (e.g. حکاکی). */
@@ -473,7 +520,7 @@ class ProductShow extends Component
             ->where('shop_id', $this->product->shop_id)
             ->where('status', 'published')
             ->whereKeyNot($this->product->id)
-            ->with(['mainImage'])
+            ->with(['mainImage', 'shop.seller'])
             ->when($this->product->shop_category_id, fn ($q) => $q->orderByRaw('shop_category_id = ? desc', [$this->product->shop_category_id]))
             ->latest()
             ->limit(12)
@@ -484,7 +531,7 @@ class ProductShow extends Component
     {
         return view('livewire.customer.product-show', [
             'gallery'        => $this->gallery,
-            'activeImg'      => $this->activeImage,
+            'storeUrl'       => $this->storeUrl,
             'isFavorite'     => $this->isFavorite,
             'discount'       => $this->discountPercent,
             'specialEndsMs'  => $this->specialEndsMs,
@@ -504,24 +551,199 @@ class ProductShow extends Component
 
     /* ─────────────────────── picker internals ─────────────────────── */
 
-    /** First active variant whose values satisfy every pick. */
+    /**
+     * First variant (best score) whose values satisfy every pick — a
+     * variant that LACKS an attribute is compatible with any pick of that
+     * attribute (wildcard), so partial variants (e.g. a color without any
+     * size) still resolve. Among the matches the one satisfying the most
+     * picks explicitly wins.
+     */
     private function variantMatching(array $picks): ?ProductVariant
     {
         if ($picks === []) {
             return null;
         }
 
-        return $this->variants->first(function (ProductVariant $variant) use ($picks) {
+        $best      = null;
+        $bestScore = -1;
+
+        foreach ($this->variants as $variant) {
+            if (! $this->wildcardMatches($variant, $picks)) {
+                continue;
+            }
+
+            $score = 0;
+
             foreach ($picks as $attributeId => $key) {
                 $value = $variant->valueForAttribute((int) $attributeId);
 
-                if ($this->optionKeyOf($value) !== $key) {
-                    return false;
+                if ($value !== null && $this->optionKeyOf($value) === $key) {
+                    $score++;
                 }
             }
 
-            return true;
-        });
+            if ($score > $bestScore) {
+                $best      = $variant;
+                $bestScore = $score;
+            }
+        }
+
+        return $best;
+    }
+
+    /** Whether the variant satisfies every pick (missing attribute = wildcard). */
+    private function wildcardMatches(ProductVariant $variant, array $picks): bool
+    {
+        foreach ($picks as $attributeId => $key) {
+            $value = $variant->valueForAttribute((int) $attributeId);
+
+            if ($value === null) {
+                continue; // variant doesn't have this attribute at all
+            }
+
+            if ($this->optionKeyOf($value) !== $key) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * First variant that carries «$key» on «$attributeId» AND satisfies the
+     * other (higher-priority) picks with wildcards allowed.
+     */
+    private function variantWithAttribute(int $attributeId, string $key, array $otherPicks): ?ProductVariant
+    {
+        foreach ($this->variants as $variant) {
+            $value = $variant->valueForAttribute($attributeId);
+
+            if ($value === null || $this->optionKeyOf($value) !== $key) {
+                continue;
+            }
+
+            if ($this->wildcardMatches($variant, $otherPicks)) {
+                return $variant;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Priority-ordered pickable attribute ids (same ordering the matrix
+     * renders: shop attribute sort, then id).
+     */
+    private function orderedAttributeIds(): array
+    {
+        $ids    = [];
+        $sortBy = [];
+
+        foreach ($this->variants as $variant) {
+            foreach ($variant->values as $value) {
+                $attribute = $value->attribute;
+
+                if (! $attribute || $attribute->type === 'text') {
+                    continue;
+                }
+
+                $attrId = (int) $value->shop_attribute_id;
+
+                if (! isset($sortBy[$attrId])) {
+                    $ids[$attrId]    = $attrId;
+                    $sortBy[$attrId] = [(int) $attribute->sort, $attrId];
+                }
+            }
+        }
+
+        uasort($ids, fn ($a, $b) => $sortBy[$a] <=> $sortBy[$b]);
+
+        return array_values($ids);
+    }
+
+    /** All option keys a pickable attribute offers across the variants. */
+    private function optionKeysOfAttribute(int $attributeId): array
+    {
+        $keys = [];
+
+        foreach ($this->variants as $variant) {
+            $value = $variant->valueForAttribute($attributeId);
+
+            $key = $this->optionKeyOf($value);
+
+            if ($key !== null && ! in_array($key, $keys, true)) {
+                $keys[] = $key;
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * After a pick changes on «$changedAttrId», every LOWER-priority pick
+     * is re-validated against the new upstream picks: kept when still
+     * reachable, otherwise replaced with the best reachable option
+     * (in-stock & cheapest first) or dropped when nothing fits.
+     */
+    private function reconcilePicksAfter(int $changedAttrId): void
+    {
+        $ordered = $this->orderedAttributeIds();
+
+        $pos = array_search($changedAttrId, $ordered, true);
+
+        if ($pos === false) {
+            return;
+        }
+
+        $upstream = [];
+
+        foreach (array_slice($ordered, 0, $pos) as $id) {
+            if (isset($this->picks[$id])) {
+                $upstream[$id] = $this->picks[$id];
+            }
+        }
+
+        foreach (array_slice($ordered, $pos + 1) as $id) {
+            $reachable  = [];   // key => resolving variant
+            $firstAvail = null;
+
+            foreach ($this->optionKeysOfAttribute($id) as $key) {
+                $match = $this->variantWithAttribute($id, $key, $upstream);
+
+                if ($match === null) {
+                    continue;
+                }
+
+                $reachable[$key] = $match;
+
+                if ($firstAvail === null) {
+                    $firstAvail = $key;
+                }
+            }
+
+            $current = $this->picks[$id] ?? null;
+
+            if ($current !== null && isset($reachable[$current])) {
+                $upstream[$id] = $current;
+
+                continue; // still valid — untouched
+            }
+
+            // Best replacement: cheapest IN-STOCK combination, fallback first reachable.
+            $replacement = collect($reachable)
+                ->filter(fn (ProductVariant $v) => $this->isDownloadable || $v->stock > 0)
+                ->sortBy(fn (ProductVariant $v) => $v->finalPrice())
+                ->keys()
+                ->first()
+                ?? $firstAvail;
+
+            if ($replacement !== null) {
+                $this->picks[$id] = $replacement;
+                $upstream[$id]    = $replacement;
+            } else {
+                unset($this->picks[$id]);
+            }
+        }
     }
 
     /** Picks of a given variant, limited to the pickable (matrix) attributes. */

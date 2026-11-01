@@ -76,19 +76,18 @@ class Home extends Component
         ]);
     }
 
-    /** Quick add-to-cart straight from the product card. */
+    /** Quick add-to-cart straight from the product card (guests included). */
     public function addToCart(int $productId): void
     {
-        $customer = $this->customer();
-        $product  = $this->publicProductQuery()->whereKey($productId)->first();
+        $product = $this->publicProductQuery()->whereKey($productId)->first();
 
-        if (! $customer || ! $product) {
+        if (! $product) {
             return;
         }
 
         // Variant products need an explicit combination choice → product page.
         if ($product->variants_count > 0) {
-            $this->redirect(route('shop.product.show', $productId), navigate: true);
+            $this->redirect($product->publicUrl(), navigate: true);
 
             return;
         }
@@ -99,7 +98,8 @@ class Home extends Component
             return;
         }
 
-        $cart = Cart::ensureForCustomer($customer);
+        // Guests fill their own cart too — the login wall stands at checkout.
+        $cart = Cart::ensureForVisitor($this->customer());
 
         $item = $cart->items()->firstOrCreate(
             ['product_id' => $productId],
@@ -131,7 +131,7 @@ class Home extends Component
         $total = $this->productQuery()->count();
 
         $rows = $this->productQuery()
-            ->with(['mainImage', 'category', 'shop:id,name,slug'])
+            ->with(['mainImage', 'category', 'shop.seller:id,instagram_username'])
             ->withCount(['variants as variants_count' => fn ($q) => $q->where('status', 'active')])
             ->limit($this->perPage)
             ->get();

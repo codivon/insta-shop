@@ -88,4 +88,21 @@ class Shop extends Model
         return $query->where('status', 'active')
             ->whereHas('seller', fn (Builder $q) => $q->where('status', 'approved'));
     }
+
+    /**
+     * The instagram handle this storefront answers to — the seller's
+     * (immutable) handle first, then the shop mirror.
+     */
+    public function storefrontHandle(): ?string
+    {
+        return $this->seller?->instagram_username ?: $this->instagram_username;
+    }
+
+    /** Public address of this storefront: دامنه/shop/{آیدی اینستا}. */
+    public function storefrontUrl(): string
+    {
+        $handle = $this->storefrontHandle();
+
+        return $handle ? route('shop.storefront', ['instagram' => $handle]) : url('/shop');
+    }
 }

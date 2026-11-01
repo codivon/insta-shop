@@ -5,6 +5,7 @@ use App\Http\Controllers\Seller\ProductFileDownload;
 use App\Http\Controllers\Shop\PaymentCallback;
 use App\Http\Controllers\Shop\PaymentRedirect;
 use App\Livewire\Admin\Dashboard;
+use App\Livewire\Admin\LocationsPage;
 use App\Livewire\Admin\Access\AdminsIndex;
 use App\Livewire\Admin\Access\RolesIndex;
 use App\Livewire\Admin\Auth\Login;
@@ -40,9 +41,11 @@ use App\Livewire\Seller\OrdersPage as SellerOrdersPage;
 use App\Livewire\Seller\ProductForm;
 use App\Livewire\Seller\ProfilePage as SellerProfilePage;
 use App\Livewire\Seller\ReportsPage;
+use App\Livewire\Seller\ShippingPage;
 use App\Livewire\Seller\ShopEdit;
 use App\Livewire\Seller\ShopIndex;
 use App\Livewire\Seller\WalletPage;
+use App\Models\Product;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -72,6 +75,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ── Catalog management (shops & products) ──
         Route::get('/shops', ShopsIndex::class)->name('shops');
         Route::get('/products', ProductsIndex::class)->name('products');
+
+        // ── Locations (استان‌ها و شهرها — add/remove ONLY here) ──
+        Route::get('/locations', LocationsPage::class)->name('locations');
 
         // ── Orders management ──
         Route::get('/orders', OrdersIndex::class)->name('orders');
@@ -147,6 +153,9 @@ Route::prefix('seller')->name('seller.')->group(function () {
         // ── Bank cards (profile + wallet destination accounts) ──
         Route::get('/cards', BankCardsPage::class)->name('cards');
 
+        // ── Shipping methods (روش‌های ارسال فروشگاه) ──
+        Route::get('/shipping', ShippingPage::class)->name('shipping');
+
         // ── Reports (orders & product-visit analytics) ──
         Route::get('/reports', ReportsPage::class)->name('reports');
 
@@ -159,20 +168,49 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Customer shop  (mobile app shell)  — guard: customer
+| Customer shop  (mobile app shell)
 |--------------------------------------------------------------------------
+| Browsing (خانه، دسته‌بندی، محصول، سبد خرید) is PUBLIC — the login wall
+| stands only at checkout, orders, favorites and profile.
 */
 Route::prefix('shop')->name('shop.')->group(function () {
     Route::middleware('panel.guest')->group(function () {
         Route::get('/login', PhoneLogin::class)->name('login');
     });
 
-    Route::middleware('panel.auth')->group(function () {
-        Route::get('/', CustomerHome::class)->name('home');
+    /*
+     | ─────────────────────────────────────────────────────────────
+     |  PUBLIC customer-app pages — NO login required.
+     |
+     |  Guests browse the home feed and categories, open product
+     |  pages and fill their cart freely (the guest cart rides a
+     |  shared domain cookie); the login wall stands only at
+     |  «ادامه و پرداخت» (checkout) and the account pages below.
+     | ─────────────────────────────────────────────────────────────
+     */
+    Route::get('/', CustomerHome::class)->name('home');
+    Route::get('/categories', CategoriesPage::class)->name('categories');
+    Route::get('/cart', CartPage::class)->name('cart');
 
-        // ── Phase 4: customer storefront ──
+    /*
+     | Legacy numeric product links (/shop/product/{id}) — 301-redirect
+     | to the new slug address دامنه/shop/{آیدی اینستا}/{اسلاگ} so
+     | already-shared links keep working.
+     */
+    Route::get('/product/{productId}', function (int $productId) {
+        $product = Product::query()
+            ->where('status', 'published')
+            ->whereHas('shop', fn ($q) => $q->publiclyVisible())
+            ->with(['shop.seller'])
+            ->find($productId);
+
+        abort_if(! $product, 404);
+
+        return redirect()->to($product->publicUrl(), 301);
+    })->name('product.show');
+
+    Route::middleware('panel.auth')->group(function () {
         Route::get('/favorites', FavoritesPage::class)->name('favorites');
-        Route::get('/categories', CategoriesPage::class)->name('categories');
         Route::get('/profile', ProfilePage::class)->name('profile');
 
         // ── Phase 5: checkout & orders ──
@@ -188,24 +226,23 @@ Route::prefix('shop')->name('shop.')->group(function () {
     });
 
     /*
-     | ─────────────────────────────────────────────────────────────
-     |  PUBLIC customer-app pages — NO login required.
-     |
-     |  Guests may open a product page and fill their cart freely
-     |  (the guest cart rides a shared domain cookie); the login
-     |  wall stands only at «ادامه و پرداخت» (checkout) and the
-     |  account pages above.
-     | ─────────────────────────────────────────────────────────────
-     */
-    Route::get('/product/{productId}', ProductShow::class)->name('product.show');
-    Route::get('/cart', CartPage::class)->name('cart');
-
-    /*
      | Gateway callback — public (banks POST/redirect from outside our
      | panel.auth flow; the order is identified by its gateway reference,
      | not by the session). Same browser keeps the customer cookie anyway.
      */
     Route::match(['get', 'post'], '/payment/callback', PaymentCallback::class)->name('payment.callback');
+
+    /*
+     | ─────────────────────────────────────────────────────────────
+     |  PUBLIC product page inside a storefront — no login required.
+     |
+     |  Address shape requested by the seller community:
+     |      دامنه/shop/{آیدی اینستا}/{اسلاگ محصول}
+     |  Registered AFTER every specific /shop/* route above so real
+     |  app pages (cart, checkout, orders, …) always win.
+     | ─────────────────────────────────────────────────────────────
+     */
+    Route::get('/{instagram}/{slug}', ProductShow::class)->name('storefront.product');
 
     /*
      | ─────────────────────────────────────────────────────────────

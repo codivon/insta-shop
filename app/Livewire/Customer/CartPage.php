@@ -84,7 +84,7 @@ class CartPage extends Component
     public function getItemsProperty(): Collection
     {
         return $this->cart
-            ? $this->cart->items()->with(['product.mainImage', 'product.shop:id,name,slug', 'variant.values.attribute', 'variant.values.value'])->get()
+            ? $this->cart->items()->with(['product.mainImage', 'product.shop.seller:id,instagram_username', 'variant.values.attribute', 'variant.values.value'])->get()
             : collect();
     }
 
@@ -114,12 +114,37 @@ class CartPage extends Component
         return (int) $this->validItems->sum('quantity');
     }
 
+    /**
+     * Items grouped by their shop — the cart separates each seller's
+     * purchase into its own card (فروشنده‌ها از هم جدا هستند).
+     *
+     * @return Collection<int, array{shop: ?Shop, items: Collection, total: int, validCount: int}>
+     */
+    public function getGroupsProperty(): Collection
+    {
+        return $this->items
+            ->sortBy(fn ($item) => $item->product?->shop?->name)
+            ->groupBy(fn ($item) => (int) ($item->product?->shop_id ?? 0))
+            ->map(fn (Collection $groupItems) => [
+                'shop'       => $groupItems->first()->product?->shop,
+                'items'      => $groupItems->values(),
+                'total'      => (int) $groupItems->sum(fn ($item) => $item->product
+                                        && $item->product->status === 'published'
+                                        && Order::lineStock($item) > 0 ? $item->lineTotal() : 0),
+                'validCount' => $groupItems->filter(fn ($item) => $item->product
+                                        && $item->product->status === 'published'
+                                        && Order::lineStock($item) > 0)->count(),
+            ])
+            ->values();
+    }
+
     public function render()
     {
         return view('livewire.customer.cart-page', [
             'items'      => $this->items,
             'validItems' => $this->validItems,
             'staleItems' => $this->staleItems,
+            'groups'     => $this->groups,
             'total'      => $this->total,
             'units'      => $this->units,
         ])->title('سبد خرید');

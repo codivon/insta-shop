@@ -105,7 +105,7 @@
                         : 0;
                 @endphp
                 <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
-                    <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate class="block">
+                    <a href="{{ $product->publicUrl() }}" wire:navigate class="block">
                         <div class="relative grid h-32 place-items-center overflow-hidden bg-slate-100 dark:bg-slate-800">
                             @if ($product->mainImage)
                                 <img src="{{ $product->mainImage->url() }}" alt="{{ $product->name }}" loading="lazy"
@@ -122,7 +122,7 @@
                         </div>
                     </a>
                     <div class="space-y-1.5 p-2.5">
-                        <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate class="line-clamp-2 block min-h-8 text-xs font-bold leading-5 hover:text-primary-600 dark:hover:text-primary-400">
+                        <a href="{{ $product->publicUrl() }}" wire:navigate class="line-clamp-2 block min-h-8 text-xs font-bold leading-5 hover:text-primary-600 dark:hover:text-primary-400">
                             {{ $product->name }}
                         </a>
                         <div class="truncate text-[10px] text-slate-400">از {{ $product->shop?->name }}</div>
@@ -142,7 +142,7 @@
                                     <x-icon name="heart" class="size-3.5 {{ $isFav ? 'fill-current' : '' }}" />
                                 </button>
                                 @if ($product->variants_count > 0)
-                                    <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate
+                                    <a href="{{ $product->publicUrl() }}" wire:navigate
                                        class="grid size-7 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition active:scale-90"
                                        aria-label="مشاهده و انتخاب تنوع" title="انتخاب تنوع در صفحه محصول">
                                         <x-icon name="layers" class="size-3.5" />

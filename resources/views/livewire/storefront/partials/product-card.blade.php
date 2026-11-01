@@ -18,7 +18,7 @@
             hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-900/5">
 
     {{-- image --}}
-    <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate
+    <a href="{{ $product->publicUrl() }}" wire:navigate
        class="relative block {{ $variant === 'grid' ? 'aspect-square' : 'h-28 sm:h-36' }} overflow-hidden {{ $variant === 'special' ? 'bg-rose-50 dark:bg-slate-800' : 'bg-slate-100 dark:bg-slate-800' }}">
         @if ($product->mainImage)
             <img src="{{ $product->mainImage->url() }}" alt="{{ $product->name }}" loading="lazy"
@@ -62,7 +62,7 @@
             <span class="truncate text-[9px] font-bold {{ $variant === 'special' ? 'text-rose-400' : 'text-slate-400' }}">{{ $product->category->name }}</span>
         @endif
 
-        <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate
+        <a href="{{ $product->publicUrl() }}" wire:navigate
            class="line-clamp-2 min-h-[2rem] text-[11px] font-bold leading-5 transition hover:text-primary-600 sm:text-xs dark:hover:text-primary-400">
             {{ $product->name }}
         </a>
@@ -85,7 +85,7 @@
                     <x-icon name="heart" class="size-3.5 {{ $isFav ? 'fill-current' : '' }}" />
                 </button>
                 @if ($product->variants_count > 0)
-                    <a href="{{ route('shop.product.show', $product->id) }}" wire:navigate
+                    <a href="{{ $product->publicUrl() }}" wire:navigate
                        class="grid size-7 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition hover:bg-primary-700 active:scale-90"
                        aria-label="مشاهده و انتخاب تنوع" title="انتخاب تنوع در صفحه محصول">
                         <x-icon name="layers" class="size-3.5" />

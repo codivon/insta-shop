@@ -65,7 +65,7 @@ class FavoritesPage extends Component
     {
         return $this->customer()
             ? $this->customer()->favorites()
-                ->with(['product.mainImage', 'product.shop:id,name,slug'])
+                ->with(['product.mainImage', 'product.shop.seller:id,instagram_username'])
                 ->latest('id')
                 ->get()
                 ->filter(fn ($fav) => $fav->product && $fav->product->status === 'published')

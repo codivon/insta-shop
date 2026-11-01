@@ -37,6 +37,7 @@ return [
                 'admin.orders.show' => 'جزئیات سفارش',
                 'admin.shops'       => 'فروشگاه‌ها',
                 'admin.products'    => 'محصولات',
+                'admin.locations'   => 'استان‌ها و شهرها',
             ],
         ],
 

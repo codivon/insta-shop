@@ -8,8 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
-#[Fillable(['shop_id', 'shop_category_id', 'name', 'description', 'specifications', 'spec_type', 'type', 'price', 'compare_at_price', 'stock', 'weight_grams', 'unit', 'status', 'is_special', 'special_ends_at'])]
+#[Fillable(['shop_id', 'shop_category_id', 'name', 'slug', 'description', 'specifications', 'spec_type', 'type', 'price', 'compare_at_price', 'stock', 'weight_grams', 'unit', 'status', 'is_special', 'special_ends_at'])]
 class Product extends Model
 {
     public const TYPE_PHYSICAL = 'physical';
@@ -19,6 +20,70 @@ class Product extends Model
     public const STATUS_DRAFT = 'draft';
 
     public const STATUS_PUBLISHED = 'published';
+
+    protected static function booted(): void
+    {
+        // Every product always carries a slug (Persian-friendly): when the
+        // seller leaves the field empty it is generated from the title.
+        static::saving(function (self $product) {
+            if (trim((string) $product->slug) === '') {
+                $product->slug = null; // resolved right after save (needs the id for fallbacks)
+            }
+        });
+
+        static::created(function (self $product) {
+            $product->refreshSlug();
+        });
+
+        static::updated(function (self $product) {
+            if ($product->wasChanged('slug') && $product->slug === null) {
+                $product->refreshSlug();
+            }
+        });
+    }
+
+    /**
+     * Fill an empty slug from the title (Unicode-safe → Persian letters
+     * survive) and make it unique inside the shop. Saves quietly so callers
+     * keep their own transaction flow.
+     */
+    public function refreshSlug(): void
+    {
+        if (trim((string) $this->slug) !== '') {
+            $this->makeSlugUnique()->saveQuietly();
+
+            return;
+        }
+
+        // Str::slug with language=null keeps Unicode letters (\pL) — فارسی سالم می‌ماند.
+        $base = Str::slug((string) $this->name, '-', null);
+        $base = trim($base, '-') ?: 'product';
+
+        $slug = $base;
+        $i = 1;
+
+        while (static::query()->where('shop_id', $this->shop_id)->where('slug', $slug)->whereKeyNot($this->id ?? 0)->exists()) {
+            $slug = $base.'-'.(++$i);
+        }
+
+        $this->forceFill(['slug' => $slug])->saveQuietly();
+    }
+
+    /** Ensure a seller-typed slug does not collide inside the shop (suffix -2, -3 …). */
+    protected function makeSlugUnique(): self
+    {
+        $base = trim((string) $this->slug);
+        $slug = $base;
+        $i = 1;
+
+        while (static::query()->where('shop_id', $this->shop_id)->where('slug', $slug)->whereKeyNot($this->id ?? 0)->exists()) {
+            $slug = $base.'-'.(++$i);
+        }
+
+        $this->slug = $slug;
+
+        return $this;
+    }
 
     protected function casts(): array
     {
@@ -97,6 +162,25 @@ class Product extends Model
     public function isPublished(): bool
     {
         return $this->status === self::STATUS_PUBLISHED;
+    }
+
+    /**
+     * Public URL of this product:
+     *   دامنه/shop/{آیدی اینستا}/{اسلاگ}
+     * Products without a slug (legacy rows) fall back to «p{id}».
+     */
+    public function publicUrl(): string
+    {
+        $handle = $this->shop?->storefrontHandle();
+
+        if (! $handle) {
+            return route('shop.product.show', ['productId' => $this->id]);
+        }
+
+        return route('shop.storefront.product', [
+            'instagram' => $handle,
+            'slug'      => $this->slug ?: ('p'.$this->id),
+        ]);
     }
 
     /** The product sells through active variants (price/stock live per combination). */
