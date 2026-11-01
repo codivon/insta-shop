@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\GuardsPermissions;
+
 use App\Models\Shop;
 use App\Support\Fmt;
 use Illuminate\Support\Collection;
@@ -15,6 +17,9 @@ use Livewire\Component;
 #[Layout('layouts.admin-slot')]
 class ShopsIndex extends Component
 {
+    use GuardsPermissions;
+
+    protected static string $permission = 'admin.shops';
     public string $search = '';
 
     #[Url]

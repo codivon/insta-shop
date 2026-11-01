@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\GuardsPermissions;
+
 use App\Models\Setting;
 use App\Support\Color;
 use App\Support\Theme;
@@ -11,6 +13,9 @@ use Livewire\Component;
 #[Layout('layouts.admin-slot')]
 class AppearanceSettings extends Component
 {
+    use GuardsPermissions;
+
+    protected static string $permission = 'admin.settings.appearance';
     public string $preset = 'instagram';
 
     public string $primary = '#D62976';

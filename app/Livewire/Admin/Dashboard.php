@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\GuardsPermissions;
+
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Product;
@@ -19,6 +21,9 @@ use Livewire\Component;
 #[Layout('layouts.admin-slot')]
 class Dashboard extends Component
 {
+    use GuardsPermissions;
+
+    protected static string $permission = 'admin.dashboard';
     // ── Computed stats ───────────────────────────────────────────────
 
     public function getSellersProperty(): array

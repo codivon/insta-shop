@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Middleware\AuthenticatePanel;
+use App\Http\Middleware\CheckMaintenanceMode;
 use App\Http\Middleware\RedirectIfPanelAuthenticated;
 use App\Http\Middleware\ResolvePanel;
+use App\Http\Middleware\EnsureAdminPermission;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -29,7 +31,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'panel.auth' => AuthenticatePanel::class,
             'panel.guest' => RedirectIfPanelAuthenticated::class,
+            'admin.permission' => EnsureAdminPermission::class,
         ]);
+
+        // Optional maintenance mode (developer settings) — appended to the
+        // web GROUP (not the global stack) so the session is already loaded:
+        // the ?secret= bypass must persist in the session.
+        $middleware->appendToGroup('web', [CheckMaintenanceMode::class]);
 
         // Payment gateway callbacks post/redirect from OUTSIDE the app
         // (local test gateway form, bank gateways) — no CSRF token.

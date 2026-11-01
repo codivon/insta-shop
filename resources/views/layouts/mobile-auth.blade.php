@@ -15,6 +15,7 @@
     <meta name="theme-color" content="#D62976">
     <title>@yield('title', 'ورود') | InstaShop</title>
     <link rel="stylesheet" href="/fonts/vazirmatn.css">
+    @include('partials.brand-favicon')
     @include('partials.theme-vars')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

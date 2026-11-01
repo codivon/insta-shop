@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\GuardsPermissions;
+
 use App\Models\Order;
 use App\Models\PaymentLog;
 use App\Support\Fmt;
@@ -15,6 +17,9 @@ use Livewire\Component;
 #[Layout('layouts.admin-slot')]
 class OrderShow extends Component
 {
+    use GuardsPermissions;
+
+    protected static string $permission = 'admin.orders.show';
     public Order $order;
 
     public function mount(Order $order): void

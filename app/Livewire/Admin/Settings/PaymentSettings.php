@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Admin\Settings;
 
+use App\Livewire\Admin\Concerns\GuardsPermissions;
+
 use App\Models\PaymentLog;
 use App\Models\Setting;
 use App\Support\Payments\PaymentService;
@@ -16,6 +18,9 @@ use Livewire\Component;
 #[Layout('layouts.admin-slot')]
 class PaymentSettings extends Component
 {
+    use GuardsPermissions;
+
+    protected static string $permission = 'admin.settings.payment';
     public string $gateway = 'local';
 
     /** @var array<string, string> nested: fields[gateway][field] */

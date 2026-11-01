@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Admin\Users;
 
+use App\Livewire\Admin\Concerns\GuardsPermissions;
+
 use App\Models\Customer;
 use App\Support\Fmt;
 use Illuminate\Support\Collection;
@@ -15,6 +17,9 @@ use Livewire\Component;
 #[Layout('layouts.admin-slot')]
 class CustomersIndex extends Component
 {
+    use GuardsPermissions;
+
+    protected static string $permission = 'admin.users.customers';
     public string $search = '';
 
     #[Url]

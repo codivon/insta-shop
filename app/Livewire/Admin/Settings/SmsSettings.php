@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Admin\Settings;
 
+use App\Livewire\Admin\Concerns\GuardsPermissions;
+
 use App\Models\Setting;
 use App\Models\SmsLog;
 use App\Support\Phone;
@@ -18,6 +20,9 @@ use Livewire\Component;
 #[Layout('layouts.admin-slot')]
 class SmsSettings extends Component
 {
+    use GuardsPermissions;
+
+    protected static string $permission = 'admin.settings.sms';
     public string $driver = 'log';
 
     /** @var array<string, string> keyed "driver.field" */

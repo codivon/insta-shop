@@ -30,6 +30,13 @@ class Setting extends Model
     {
         [$group, $key] = self::split($groupKey);
 
+        // Guard against silent array→string casts (use type 'json' or setMany).
+        if (is_array($value) && $type !== 'json') {
+            throw new \InvalidArgumentException(
+                "Setting [{$groupKey}]: array values need type 'json' (or use setMany with ['value' => ..., 'type' => ...]).",
+            );
+        }
+
         static::updateOrCreate(
             ['group' => $group, 'key' => $key],
             ['value' => self::serialize($value, $type), 'type' => $type],

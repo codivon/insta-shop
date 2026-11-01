@@ -3,10 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="InstaShop — پلتفرم فروشگاهی مبتنی بر اینستاگرام؛ فروشگاه اینستاگرامی خود را در چند دقیقه راه‌اندازی کنید.">
+    <meta name="description" content="{{ \App\Models\Setting::get('seo.meta_description', 'InstaShop — پلتفرم فروشگاهی مبتنی بر اینستاگرام؛ فروشگاه اینستاگرامی خود را در چند دقیقه راه‌اندازی کنید.') }}">
     @php($ipAppName = \App\Support\Theme::resolve()['app_name'])
 <title>{{ $ipAppName }} — فروشگاه اینستاگرامی</title>
     <link rel="stylesheet" href="/fonts/vazirmatn.css">
+    @include('partials.brand-favicon')
     @include('partials.theme-vars')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -16,9 +17,13 @@
     <header class="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/80">
         <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
             <a href="/" class="flex items-center gap-2.5">
-                <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-lg shadow-primary-600/30">
-                    <x-icon name="store" class="size-5" />
-                </span>
+                @if (\App\Support\Branding::logoUrl())
+                    <img src="{{ \App\Support\Branding::logoUrl() }}" alt="{{ $ipAppName }}" class="size-9 rounded-xl object-contain">
+                @else
+                    <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-lg shadow-primary-600/30">
+                        <x-icon name="store" class="size-5" />
+                    </span>
+                @endif
                 <span class="text-lg font-extrabold tracking-tight">
                             @if (str_starts_with($ipAppName, 'Insta') && mb_strlen($ipAppName) > 5)
                                 Insta<span class="text-primary-600 dark:text-primary-400">{{ mb_substr($ipAppName, 5) }}</span>

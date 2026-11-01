@@ -5,14 +5,17 @@ use App\Http\Controllers\Seller\ProductFileDownload;
 use App\Http\Controllers\Shop\PaymentCallback;
 use App\Http\Controllers\Shop\PaymentRedirect;
 use App\Livewire\Admin\Dashboard;
+use App\Livewire\Admin\Access\RolesIndex;
 use App\Livewire\Admin\AppearanceSettings;
 use App\Livewire\Admin\Auth\Login;
+use App\Livewire\Admin\Developer\DeveloperSettings;
 use App\Livewire\Admin\OrdersIndex;
 use App\Livewire\Admin\OrderShow;
 use App\Livewire\Admin\ProductsIndex;
 use App\Livewire\Admin\ShopsIndex;
 use App\Livewire\Admin\Users\CustomersIndex;
 use App\Livewire\Admin\Users\SellersIndex;
+use App\Livewire\Admin\Settings\GeneralSettings;
 use App\Livewire\Admin\Settings\PaymentSettings;
 use App\Livewire\Admin\Settings\SmsSettings;
 use App\Livewire\Customer\Auth\PhoneLogin;
@@ -54,7 +57,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/login', Login::class)->name('login');
     });
 
-    Route::middleware('panel.auth')->group(function () {
+    Route::middleware(['panel.auth', 'admin.permission'])->group(function () {
         Route::get('/', Dashboard::class)->name('dashboard');
 
         // ── Users management ──
@@ -73,11 +76,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/settings/appearance', AppearanceSettings::class)
             ->name('settings.appearance');
 
+        // ── Settings: general (title, logo, favicon, ...) ──
+        Route::get('/settings/general', GeneralSettings::class)->name('settings.general');
+
         // ── Settings: SMS provider ──
         Route::get('/settings/sms', SmsSettings::class)->name('settings.sms');
 
         // ── Settings: payment gateway ──
         Route::get('/settings/payment', PaymentSettings::class)->name('settings.payment');
+
+        // ── Access control: roles & permissions ──
+        Route::get('/access/roles', RolesIndex::class)->name('access.roles');
+
+        // ── Developer: settings (cron, maintenance, updates, migrations) ──
+        Route::get('/developer/settings', DeveloperSettings::class)->name('developer.settings');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });
