@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -26,8 +27,36 @@ return new class extends Migration
             $table->string('unit', 20)->nullable()->default('تعداد')->after('weight_grams'); // تعداد/کیلوگرم/... (null for downloadable)
         });
 
-        /* ── shops.instagram_username: dedupe then unique (safety net) ── */
-        ShopInstagramUniqueBackfill::run();
+        /* ── shops.instagram_username: dedupe then unique (safety net) ──
+         * Keeps NULL handles untouched and resolves duplicate handles
+         * (all but the first occurrence become NULL) so the unique index
+         * can be created safely on any existing dataset.
+         *
+         * NOTE: the logic lives INSIDE the anonymous migration class on
+         * purpose. Laravel includes every pending migration file twice
+         * (requireOnce + a plain require), so a top-level named class in
+         * a migration file would fatal with "Cannot redeclare class".
+         */
+        $rows = DB::table('shops')
+            ->whereNotNull('instagram_username')
+            ->orderBy('id')
+            ->get(['id', 'instagram_username']);
+
+        $seen = [];
+
+        foreach ($rows as $row) {
+            $handle = mb_strtolower(trim((string) $row->instagram_username));
+
+            if ($handle === '' || isset($seen[$handle])) {
+                DB::table('shops')
+                    ->where('id', $row->id)
+                    ->update(['instagram_username' => null]);
+
+                continue;
+            }
+
+            $seen[$handle] = true;
+        }
 
         Schema::table('shops', function (Blueprint $table) {
             $table->unique('instagram_username', 'shops_instagram_username_unique');
@@ -120,35 +149,3 @@ return new class extends Migration
         });
     }
 };
-
-/**
- * Keeps NULL instagram handles untouched and resolves duplicate handles
- * (all but the first occurrence become NULL) so the unique index can be
- * created safely on any existing dataset.
- */
-class ShopInstagramUniqueBackfill
-{
-    public static function run(): void
-    {
-        $rows = \Illuminate\Support\Facades\DB::table('shops')
-            ->whereNotNull('instagram_username')
-            ->orderBy('id')
-            ->get(['id', 'instagram_username']);
-
-        $seen = [];
-
-        foreach ($rows as $row) {
-            $handle = mb_strtolower(trim((string) $row->instagram_username));
-
-            if ($handle === '' || isset($seen[$handle])) {
-                \Illuminate\Support\Facades\DB::table('shops')
-                    ->where('id', $row->id)
-                    ->update(['instagram_username' => null]);
-
-                continue;
-            }
-
-            $seen[$handle] = true;
-        }
-    }
-}

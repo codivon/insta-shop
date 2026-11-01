@@ -3,7 +3,11 @@
 namespace App\Livewire\Admin\Auth;
 
 use App\Models\Admin;
+use App\Models\Setting;
+use App\Support\Fmt;
+use App\Support\SchemaReady;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -35,10 +39,49 @@ class Login extends Component
         ];
     }
 
+    /**
+     * Brute-force guard, configurable in Developer Settings → امنیت
+     * (security.login_max_attempts / security.login_lockout_minutes).
+     */
+    protected function limiterKey(): string
+    {
+        return 'admin-login:'.sha1(mb_strtolower(trim($this->email)).'|'.(string) request()->ip());
+    }
+
+    protected function lockoutConfig(): array
+    {
+        $max = 5;
+        $minutes = 10;
+
+        try {
+            if (SchemaReady::check('settings')) {
+                $max     = max(3, (int) Setting::get('security.login_max_attempts', 5));
+                $minutes = max(1, (int) Setting::get('security.login_lockout_minutes', 10));
+            }
+        } catch (\Throwable) {
+            // fall back to defaults
+        }
+
+        return [$max, $minutes];
+    }
+
     public function login(): void
     {
         $this->resetErrorBag();
         $this->validate();
+
+        [$max, $minutes] = $this->lockoutConfig();
+
+        $key = $this->limiterKey();
+
+        if (RateLimiter::tooManyAttempts($key, $max)) {
+            $seconds = RateLimiter::availableIn($key);
+
+            $this->addError('email', 'به دلیل تلاش‌های ناموفق مکرر، ورود موقتاً قفل شده است. لطفاً '
+                .Fmt::fa((int) ceil($seconds / 60)).' دقیقه دیگر دوباره تلاش کنید.');
+
+            return;
+        }
 
         $ok = Auth::guard('admin')->attempt(
             ['email' => $this->email, 'password' => $this->password],
@@ -46,10 +89,17 @@ class Login extends Component
         );
 
         if (! $ok) {
-            $this->addError('email', 'ایمیل یا رمز عبور نادرست است.');
+            RateLimiter::hit($key, $minutes * 60);
+
+            $left = max(0, $max - RateLimiter::attempts($key));
+
+            $this->addError('email', 'ایمیل یا رمز عبور نادرست است.'
+                .($left > 0 && $left <= 2 ? ' '.Fmt::fa($left).' تلاش باقی مانده است.' : ''));
 
             return;
         }
+
+        RateLimiter::clear($key);
 
         session()->regenerate();
 
@@ -65,3 +115,4 @@ class Login extends Component
         return view('livewire.admin.auth.login');
     }
 }
+

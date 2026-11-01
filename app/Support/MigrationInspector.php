@@ -56,7 +56,11 @@ class MigrationInspector
         return $out;
     }
 
-    /** Run `artisan migrate --force` and return [ok, output]. */
+    /**
+     * Run `artisan migrate --force`, then apply the (idempotent) seeders
+     * so brand-new migrations that ship with their own seeds get their
+     * data immediately. Returns [ok, output].
+     */
     public static function runMigrations(): array
     {
         try {
@@ -64,7 +68,23 @@ class MigrationInspector
 
             \Artisan::call('migrate', ['--force' => true]);
 
-            return [true, trim(\Artisan::output())];
+            $output = trim(\Artisan::output());
+
+            // Seeders (DatabaseSeeder is idempotent) — best effort: a seeder
+            // failure must not hide the successful migrations.
+            try {
+                \Artisan::call('db:seed', ['--force' => true]);
+
+                $seed = trim(\Artisan::output());
+
+                if ($seed !== '') {
+                    $output .= "\n— سیدرها —\n".$seed;
+                }
+            } catch (\Throwable $e) {
+                $output .= "\n— سیدرها ناموفق: ".$e->getMessage();
+            }
+
+            return [true, $output];
         } catch (\Throwable $e) {
             return [false, $e->getMessage()];
         }

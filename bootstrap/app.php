@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AuthenticatePanel;
+use App\Http\Middleware\ApplySecuritySettings;
 use App\Http\Middleware\CheckMaintenanceMode;
 use App\Http\Middleware\RedirectIfPanelAuthenticated;
 use App\Http\Middleware\ResolvePanel;
@@ -37,7 +38,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Optional maintenance mode (developer settings) — appended to the
         // web GROUP (not the global stack) so the session is already loaded:
         // the ?secret= bypass must persist in the session.
-        $middleware->appendToGroup('web', [CheckMaintenanceMode::class]);
+        // ApplySecuritySettings runs right after it: force-HTTPS redirect,
+        // admin-panel IP allow-list and security response headers.
+        $middleware->appendToGroup('web', [CheckMaintenanceMode::class, ApplySecuritySettings::class]);
 
         // Payment gateway callbacks post/redirect from OUTSIDE the app
         // (local test gateway form, bank gateways) — no CSRF token.

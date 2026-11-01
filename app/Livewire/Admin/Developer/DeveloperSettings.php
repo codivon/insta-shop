@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\Developer;
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Models\Setting;
 use App\Support\MigrationInspector;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Layout;
@@ -20,9 +21,15 @@ use Livewire\Component;
  *  2. Maintenance   — close the site for visitors with a secret bypass URL.
  *  3. Updates       — compare the installed version against the latest
  *                     GitHub release of the project.
- *  4. Database      — pending migrations (tables + fields, statically
- *                     parsed) with a one-click "run" button. The whole
- *                     tab disappears when everything is migrated.
+ *  4. Other         — «تنظیمات دیگر»: development mode (show detailed
+ *                     errors), cache clearing tools, and the pending
+ *                     migrations section (tables + fields, statically
+ *                     parsed) with a one-click "run" button that also
+ *                     applies the seeders. The migrations part disappears
+ *                     when everything is migrated.
+ *  5. Security      — «امنیت»: force HTTPS, admin panel IP allow-list,
+ *                     admin login lockout, session lifetime and security
+ *                     response headers.
  */
 #[Layout('layouts.admin-slot')]
 #[Title('تنظیمات برنامه‌نویس')]
@@ -49,8 +56,26 @@ class DeveloperSettings extends Component
 
     public ?array $updateInfo = null;
 
+    /* ── Other: dev mode / cache ── */
+    public bool $devMode = false;
+
+    public bool $clearingCache = false;
+
     /* ── Migrations ── */
     public bool $runningMigrations = false;
+
+    /* ── Security ── */
+    public bool $forceHttps = false;
+
+    public bool $securityHeaders = false;
+
+    public string $adminIpWhitelist = '';
+
+    public int $loginMaxAttempts = 5;
+
+    public int $loginLockoutMinutes = 10;
+
+    public int $sessionLifetime = 120;
 
     public function mount(): void
     {
@@ -65,6 +90,17 @@ class DeveloperSettings extends Component
         }
 
         $this->updateInfo = $this->cachedUpdateInfo();
+
+        /* ── Other ── */
+        $this->devMode = (bool) Setting::get('developer.dev_mode');
+
+        /* ── Security ── */
+        $this->forceHttps         = (bool) Setting::get('security.force_https');
+        $this->securityHeaders    = (bool) Setting::get('security.headers_enabled');
+        $this->adminIpWhitelist   = (string) Setting::get('security.admin_ip_whitelist', '');
+        $this->loginMaxAttempts   = max(3, (int) Setting::get('security.login_max_attempts', 5));
+        $this->loginLockoutMinutes = max(1, (int) Setting::get('security.login_lockout_minutes', 10));
+        $this->sessionLifetime    = (int) Setting::get('security.session_lifetime', (int) config('session.lifetime', 120));
     }
 
     /* ══════════════════════════ CRON ══════════════════════════ */
@@ -226,6 +262,73 @@ class DeveloperSettings extends Component
         return $data;
     }
 
+    /* ══════════════════════ OTHER — DEV MODE ══════════════════════ */
+
+    public function toggleDevMode(): void
+    {
+        // $this->devMode already holds the NEW value (wire:model synced it
+        // before this change-handler ran) — persist it as-is.
+        Setting::set('developer.dev_mode', $this->devMode ? '1' : '0', 'boolean');
+
+        // Take effect on this request too.
+        config(['app.debug' => $this->devMode]);
+
+        session()->flash('admin-developer-flash', $this->devMode
+            ? 'حالت توسعه‌ای فعال شد — از این پس جزئیات کامل خطاها نمایش داده می‌شود. پس از رفع مشکل آن را خاموش کنید.'
+            : 'حالت توسعه‌ای غیرفعال شد — خطاها به‌صورت کلی نمایش داده می‌شوند.');
+    }
+
+    /* ══════════════════════ OTHER — CACHE ══════════════════════ */
+
+    /**
+     * Clear server-side caches. $which: app|config|view|route|all.
+     */
+    public function clearCache(string $which = 'all'): void
+    {
+        $this->clearingCache = true;
+
+        $which = in_array($which, ['app', 'config', 'view', 'route', 'all'], true) ? $which : 'all';
+
+        $commands = match ($which) {
+            'app'    => ['cache:clear'],
+            'config' => ['config:clear'],
+            'view'   => ['view:clear'],
+            'route'  => ['route:clear'],
+            default  => ['cache:clear', 'config:clear', 'view:clear', 'route:clear'],
+        };
+
+        $labels = [
+            'cache:clear'  => 'کش برنامه',
+            'config:clear' => 'کش پیکربندی',
+            'view:clear'   => 'کش نماها',
+            'route:clear'  => 'کش مسیرها',
+        ];
+
+        $done = [];
+
+        try {
+            @set_time_limit(120);
+
+            foreach ($commands as $command) {
+                Artisan::call($command);
+                $done[] = $labels[$command];
+            }
+        } catch (\Throwable $e) {
+            $this->clearingCache = false;
+
+            session()->flash('admin-developer-error', 'پاک‌سازی کش ناموفق بود: '.$e->getMessage());
+
+            return;
+        }
+
+        // Settings cache is always refreshed too.
+        Cache::forget('instashop.settings');
+
+        $this->clearingCache = false;
+
+        session()->flash('admin-developer-flash', 'پاک‌سازی انجام شد: '.implode('، ', $done).'.');
+    }
+
     /* ════════════════════════ MIGRATIONS ════════════════════════ */
 
     public function pendingReport(): array
@@ -247,10 +350,81 @@ class DeveloperSettings extends Component
         $this->runningMigrations = false;
 
         if ($ok) {
-            session()->flash('admin-developer-flash', 'مایگریشن‌ها با موفقیت اجرا شدند.');
+            session()->flash('admin-developer-flash', 'مایگریشن‌ها و سیدرهای جدید با موفقیت اجرا شدند.');
         } else {
             session()->flash('admin-developer-error', 'اجرای مایگریشن‌ها ناموفق بود: '.$output);
         }
+    }
+
+    /* ═════════════════════════ SECURITY ═════════════════════════ */
+
+    /** Current visitor IP — offered as a one-click addition to the allow-list. */
+    public function currentIp(): string
+    {
+        return (string) request()->ip();
+    }
+
+    /** One-click: put my current IP into the allow-list textarea. */
+    public function addMyIp(): void
+    {
+        $ip = $this->currentIp();
+
+        if ($ip === '') {
+            return;
+        }
+
+        $lines = array_values(array_filter(array_map('trim', preg_split('/[\r\n]+/', $this->adminIpWhitelist) ?: []), fn ($l) => $l !== ''));
+
+        if (! in_array($ip, $lines, true)) {
+            $lines[] = $ip;
+        }
+
+        $this->adminIpWhitelist = implode("\n", $lines);
+    }
+
+    public function saveSecurity(): void
+    {
+        $this->validate([
+            'adminIpWhitelist'    => ['nullable', 'string', 'max:2000', 'regex:/^[\d\.\*\r\n\s,;]+$/'],
+            'loginMaxAttempts'    => ['required', 'integer', 'min:3', 'max:10'],
+            'loginLockoutMinutes' => ['required', 'integer', 'min:1', 'max:120'],
+            'sessionLifetime'     => ['required', 'integer', 'in:30,60,120,240,480,720,1440'],
+        ], [
+            'adminIpWhitelist.regex'    => 'هر خط فقط می‌تواند یک آی‌پی معتبر یا الگوی با ستاره باشد (مثال: 5.190.*.*).',
+            'loginMaxAttempts.required' => 'حداکثر تلاش ورود را وارد کنید.',
+            'sessionLifetime.in'        => 'مدت اعتبار ورود نامعتبر است.',
+        ]);
+
+        $list = trim((string) $this->adminIpWhitelist);
+
+        // Fail-safe: never let the admin lock HIMSELF out of the panel.
+        if ($list !== '') {
+            $allowed = collect(preg_split('/[\r\n,;]+/', $list) ?: [])
+                ->map(fn ($l) => trim($l))
+                ->filter(fn ($l) => $l !== '');
+
+            $myIp = $this->currentIp();
+
+            if ($myIp !== '' && ! $allowed->contains(fn ($pattern) => $pattern === $myIp || \Illuminate\Support\Str::is($pattern, $myIp))) {
+                session()->flash('admin-developer-error', 'ذخیره نشد! آی‌پی فعلی شما ('.$myIp.') در لیست مجاز نیست — ابتدا آن را با دکمه «افزودن IP من» اضافه کنید وگرنه خودتان از پنل قفل می‌شوید.');
+
+                return;
+            }
+        }
+
+        Setting::setMany([
+            'security.force_https'         => ['value' => $this->forceHttps ? '1' : '0', 'type' => 'boolean'],
+            'security.headers_enabled'     => ['value' => $this->securityHeaders ? '1' : '0', 'type' => 'boolean'],
+            'security.admin_ip_whitelist'  => ['value' => $list, 'type' => 'text'],
+            'security.login_max_attempts'  => ['value' => (string) $this->loginMaxAttempts, 'type' => 'integer'],
+            'security.login_lockout_minutes' => ['value' => (string) $this->loginLockoutMinutes, 'type' => 'integer'],
+            'security.session_lifetime'    => ['value' => (string) $this->sessionLifetime, 'type' => 'integer'],
+        ]);
+
+        // Apply immediately to the running request as well.
+        config(['session.lifetime' => $this->sessionLifetime]);
+
+        session()->flash('admin-developer-flash', 'تنظیمات امنیت ذخیره و اعمال شد.');
     }
 
     public function render()

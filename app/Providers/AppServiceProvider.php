@@ -30,5 +30,27 @@ class AppServiceProvider extends ServiceProvider
          * 191 chars × 4 bytes = 764 bytes → fits every engine.
          */
         Schema::defaultStringLength(191);
+
+        /*
+         * Runtime settings that must exist before any request is handled:
+         *  - developer.dev_mode       → show real exceptions (app.debug)
+         *  - security.session_lifetime→ minutes until auto-logout
+         * Guarded so pre-install requests (no settings table) never break.
+         */
+        try {
+            if (\App\Support\SchemaReady::check('settings')) {
+                if ((bool) \App\Models\Setting::get('developer.dev_mode')) {
+                    config(['app.debug' => true]);
+                }
+
+                $lifetime = (int) \App\Models\Setting::get('security.session_lifetime', 0);
+
+                if ($lifetime > 0) {
+                    config(['session.lifetime' => $lifetime]);
+                }
+            }
+        } catch (\Throwable) {
+            // pre-install / DB unavailable — defaults stay as-is
+        }
     }
 }
