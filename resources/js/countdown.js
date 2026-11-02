@@ -12,8 +12,12 @@ function sfCountdown(endsMs) {
         now: Date.now(),
         interval: null,
 
-        mounted() {
+        // Alpine 3's lifecycle hook is init() — NOT mounted(). The old
+        // mounted() hook was never called, so tick() never ran and the
+        // countdown froze on whatever it computed at first paint.
+        init() {
             this.tick();
+            if (this.interval) clearInterval(this.interval); // re-init guard
             this.interval = setInterval(() => this.tick(), 1000);
         },
 
