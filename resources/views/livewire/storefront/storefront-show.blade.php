@@ -252,11 +252,13 @@
 
     {{-- ═══════════════ PRODUCT SLIDERS (only without active filters) ═══════════════ --}}
     @unless ($filtersActive)
-        @php($sliders = [
-            ['key' => 'newest', 'title' => 'جدیدترین محصولات', 'icon' => 'sparkles',   'items' => $newest,     'accent' => 'from-primary-500 to-primary-700'],
-            ['key' => 'discount', 'title' => 'تخفیف‌های ویژه', 'icon' => 'coins',       'items' => $discounted, 'accent' => 'from-rose-500 to-rose-700', 'onlyIf' => $discounted->isNotEmpty()],
-            ['key' => 'popular', 'title' => 'پربازدیدترین‌ها',  'icon' => 'trending-up', 'items' => $popular,    'accent' => 'from-amber-500 to-orange-600', 'onlyIf' => $popular->isNotEmpty()],
-        ])
+        @php
+            $sliders = [
+                ['key' => 'newest', 'title' => 'جدیدترین محصولات', 'icon' => 'sparkles',   'items' => $newest,     'accent' => 'from-primary-500 to-primary-700'],
+                ['key' => 'discount', 'title' => 'تخفیف‌های ویژه', 'icon' => 'coins',       'items' => $discounted, 'accent' => 'from-rose-500 to-rose-700', 'onlyIf' => $discounted->isNotEmpty()],
+                ['key' => 'popular', 'title' => 'پربازدیدترین‌ها',  'icon' => 'trending-up', 'items' => $popular,    'accent' => 'from-amber-500 to-orange-600', 'onlyIf' => $popular->isNotEmpty()],
+            ];
+        @endphp
         @foreach ($sliders as $slider)
             @if (! isset($slider['onlyIf']) || $slider['onlyIf'])
                 @if ($slider['items']->isNotEmpty())

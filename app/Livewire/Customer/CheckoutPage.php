@@ -8,6 +8,7 @@ use App\Models\City;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\Discount;
+use App\Models\Order;
 use App\Models\Province;
 use App\Support\Checkout\DiscountEvaluator;
 use App\Support\Fmt;

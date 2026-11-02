@@ -378,10 +378,9 @@
             <div class="pb-2"></div>
         @endif
     </div>
-</div>
 
-{{-- ═══════════════ تغییر آدرس — انتخاب از دفترچه + افزودن آدرس (73) ═══════════════ --}}
-<x-modal-panel open="$wire.showAddressModal" maxWidth="md"
+    {{-- ═══════════════ تغییر آدرس — انتخاب از دفترچه + افزودن آدرس (73) ═══════════════ --}}
+    <x-modal-panel open="$wire.showAddressModal" maxWidth="md"
                labelledby="addr-modal-title"
                closeJs="__ipOpen = false; $wire.closeAddressModal()">
 
@@ -506,3 +505,4 @@
         </div>
     </div>
 </x-modal-panel>
+</div>

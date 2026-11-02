@@ -319,6 +319,8 @@ class SellersIndex extends Component
             'sellers' => $this->sellers,
             'stats' => $this->stats,
             'hasMore' => $this->hasMore,
+            'editSeller' => $this->editSeller,
+            'deleteSeller' => $this->deleteSeller,
         ])->title('مدیریت فروشندگان')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — کاربران']);
     }

@@ -223,6 +223,7 @@ class CustomersIndex extends Component
             'customers' => $this->customers,
             'stats' => $this->stats,
             'hasMore' => $this->hasMore,
+            'deleteCustomer' => $this->deleteCustomer,
         ])->title('مدیریت مشتریان')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — کاربران']);
     }

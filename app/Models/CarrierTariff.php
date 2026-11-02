@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Fmt;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
