@@ -90,17 +90,21 @@ window.addEventListener('cart-changed', (event) => {
 //                     transition fetches the next document.
 //
 // The DOM nodes are injected once from JS, so no layout file needs edits.
+// Snapshot-safe: wire:navigate stores the WHOLE <body> in the history
+// snapshot and later restores it with document.body.replaceWith(...) —
+// so our injected nodes (and any .ip-on/.ip-busy state baked into the
+// snapshot) come back on every back/forward, and stale element references
+// die. Every operation therefore re-queries the live DOM and never trusts
+// a captured node.
 (function () {
-    let bar, veil;
-
     const ensureNodes = () => {
-        if (!bar) {
-            bar = document.createElement('div');
+        if (!document.getElementById('ip-loadbar')) {
+            const bar = document.createElement('div');
             bar.id = 'ip-loadbar';
             document.body.appendChild(bar);
         }
-        if (!veil) {
-            veil = document.createElement('div');
+        if (!document.getElementById('ip-navveil')) {
+            const veil = document.createElement('div');
             veil.id = 'ip-navveil';
             veil.setAttribute('aria-hidden', 'true');
             veil.innerHTML = '<div class="ip-navveil-spin"></div>';
@@ -111,26 +115,31 @@ window.addEventListener('cart-changed', (event) => {
     /* the element the user interacted with last (capture phase, before
        Livewire sees the click) */
     let origin = null;
-    const busyTargets = new Set();
 
     document.addEventListener('pointerdown', (e) => {
-        const el = e.target.closest('button, a, [role="button"], label, summary, [wire\\:click]');
-        origin = el || null;
+        origin = e.target.closest('button, a, [role="button"], label, summary, [wire\\:click]') || null;
     }, { capture: true });
 
-    const markBusy = (el) => {
-        if (!el || !el.isConnected) return;
-        el.classList.add('ip-busy');
-        busyTargets.add(el);
+    /* hide EVERYTHING, wherever it currently lives — including nodes that
+       just came back from a history snapshot with .ip-on baked in */
+    const resetOverlays = () => {
+        clearTimeout(veilTimer);
+        document.getElementById('ip-loadbar')?.classList.remove('ip-on');
+        document.getElementById('ip-navveil')?.classList.remove('ip-on');
+        document.querySelectorAll('.ip-busy').forEach((el) => el.classList.remove('ip-busy'));
     };
 
-    const clearBusy = () => {
-        busyTargets.forEach((el) => el.classList.remove('ip-busy'));
-        busyTargets.clear();
-    };
+    let veilTimer = null;
 
-    const showBar = () => { ensureNodes(); bar.classList.add('ip-on'); };
-    const hideBar = () => { bar && bar.classList.remove('ip-on'); };
+    const showVeil = () => {
+        ensureNodes();
+        document.getElementById('ip-navveil').classList.add('ip-on');
+        // safety net: if the navigation never completes (the fetch failed
+        // while the browser still reports "online"), take the veil back
+        // off so the user is never trapped behind a frozen loader.
+        clearTimeout(veilTimer);
+        veilTimer = setTimeout(resetOverlays, 8000);
+    };
 
     let inflight = 0;
 
@@ -138,39 +147,44 @@ window.addEventListener('cart-changed', (event) => {
         // every Livewire request (wire:click, wire:model.live commits, …)
         Livewire.hook('request', ({ respond }) => {
             inflight += 1;
-            showBar();
+            ensureNodes();
+            document.getElementById('ip-loadbar').classList.add('ip-on');
             // the LAST pointerdown before this request wins the busy mark
-            markBusy(origin);
+            if (origin && origin.isConnected) {
+                origin.classList.add('ip-busy');
+            }
             origin = null;
 
             respond(() => {
                 inflight = Math.max(0, inflight - 1);
                 if (inflight === 0) {
-                    hideBar();
-                    clearBusy();
+                    document.getElementById('ip-loadbar')?.classList.remove('ip-on');
+                    document.querySelectorAll('.ip-busy').forEach((el) => el.classList.remove('ip-busy'));
                 }
             });
         });
 
         // wire:navigate page transitions
-        document.addEventListener('livewire:navigate', () => {
-            ensureNodes();
-            veil.classList.add('ip-on');
-        });
+        document.addEventListener('livewire:navigate', showVeil);
 
         document.addEventListener('livewire:navigated', () => {
-            veil && veil.classList.remove('ip-on');
-            hideBar();
-            clearBusy();
             inflight = 0;
+            resetOverlays();
         });
 
         // safety: if a request errors out without respond() firing cleanly
         window.addEventListener('offline', () => {
             inflight = 0;
-            hideBar();
-            clearBusy();
+            resetOverlays();
         });
+    });
+
+    // Back/forward restores swap <body> out from under us (snapshot may
+    // carry baked .ip-on/.ip-busy) and bfcache restores can skip Livewire
+    // events entirely — so clear everything on pageshow, ALWAYS.
+    window.addEventListener('pageshow', () => {
+        inflight = 0;
+        resetOverlays();
     });
 })();
 

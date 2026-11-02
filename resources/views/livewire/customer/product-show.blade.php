@@ -6,7 +6,7 @@
     {{-- ───────── Sticky in-feed header ───────── --}}
     <div class="sticky top-0 z-20 border-b border-slate-200/80 bg-slate-50/95 px-4 py-3 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/95">
         <div class="flex items-center justify-between gap-2">
-            <a href="{{ url()->previous() ?: route('shop.home') }}"
+            <a href="{{ $backUrl }}" wire:navigate
                class="grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                aria-label="بازگشت">
                 <x-icon name="arrow-left" class="size-5" />

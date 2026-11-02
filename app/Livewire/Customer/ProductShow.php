@@ -256,6 +256,27 @@ class ProductShow extends Component
         return $this->product->shop?->storefrontUrl() ?? route('shop.home');
     }
 
+    /**
+     * Where the header «بازگشت» button goes.
+     *
+     * url()->previous() self-references after a refresh or a direct visit
+     * (referer/session point at THIS product page) — clicking «بازگشت» then
+     * reloaded the very same page, i.e. a dead button. Only accept the
+     * previous URL when it is same-origin AND a different page; otherwise
+     * fall back to the store the product belongs to.
+     */
+    public function getBackUrlProperty(): string
+    {
+        $previous = url()->previous();
+        $base     = rtrim(url('/'), '/');
+
+        $valid = $previous
+            && str_starts_with($previous, $base.'/')
+            && rtrim($previous, '/') !== rtrim(url()->current(), '/');
+
+        return $valid ? $previous : ($this->storeUrl ?: route('shop.home'));
+    }
+
     public function getIsFavoriteProperty(): bool
     {
         $customer = auth('customer')->user();
@@ -546,6 +567,7 @@ class ProductShow extends Component
         return view('livewire.customer.product-show', [
             'gallery'        => $this->gallery,
             'storeUrl'       => $this->storeUrl,
+            'backUrl'        => $this->backUrl,
             'isFavorite'     => $this->isFavorite,
             'discount'       => $this->discountPercent,
             'specialEndsMs'  => $this->specialEndsMs,
