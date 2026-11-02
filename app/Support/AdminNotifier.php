@@ -39,6 +39,8 @@ final class AdminNotifier
         'customer.new'    => ['ثبت‌نام مشتری جدید', 'user'],
         'product.new'     => ['محصول جدید', 'package'],
         'wallet.withdraw' => ['درخواست برداشت کیف پول', 'wallet'],
+        'ticket.new'      => ['تیکت پشتیبانی جدید', 'headset'],
+        'ticket.reply'    => ['پاسخ کاربر در تیکت پشتیبانی', 'headset'],
         'security.lockout'=> ['قفل ورود به پنل (امنیت)', 'shield'],
         'system.maintenance' => ['حالت بروزرسانی سایت', 'alert'],
         'system.migration'   => ['اجرای مایگریشن دیتابیس', 'database'],

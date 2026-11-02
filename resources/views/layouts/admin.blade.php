@@ -60,6 +60,7 @@
                 $pendingSellers = \App\Models\Seller::query()->where('status', 'pending')->count();
                 $pendingOrders  = \App\Models\Order::query()->where('status', 'pending')->count();
                 $pendingWithdrawals = \App\Models\WalletTransaction::query()->where('type', 'withdrawal')->where('status', 'pending')->count();
+                $openTickets = \App\Models\SupportTicket::query()->where('status', 'open')->count();
 
                 // Permission-aware menu: items the current admin cannot open
                 // are hidden (super admins always pass).
@@ -69,6 +70,7 @@
                 $navItems = array_values(array_filter([
                     ['route' => 'admin.dashboard',           'icon' => 'chart',       'label' => 'داشبورد',    'match' => 'admin.dashboard',     'badge' => null],
                     ['route' => 'admin.orders',              'icon' => 'bag',         'label' => 'سفارش‌ها',   'match' => 'admin.orders.*',      'badge' => $pendingOrders],
+                    ['route' => 'admin.tickets',             'icon' => 'headset',     'label' => 'تیکت پشتیبانی', 'match' => 'admin.tickets.*',  'badge' => $openTickets],
                     ['route' => 'admin.shops',               'icon' => 'store',       'label' => 'فروشگاه‌ها', 'match' => 'admin.shops',         'badge' => null],
                     ['route' => 'admin.products',            'icon' => 'package',     'label' => 'محصولات',    'match' => 'admin.products',      'badge' => null],
                     ['route' => 'admin.discounts',           'icon' => 'tag',         'label' => 'کدهای تخفیف','match' => 'admin.discounts',     'badge' => null],

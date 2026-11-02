@@ -32,6 +32,8 @@ use App\Livewire\Admin\WithdrawalsPage;
 use App\Livewire\Admin\Settings\SmsSettings;
 use App\Livewire\Admin\Settings\SmsTemplatesCenter;
 use App\Livewire\Admin\Settings\SettingsHub;
+use App\Livewire\Admin\Support\TicketShow;
+use App\Livewire\Admin\Support\TicketsIndex;
 use App\Livewire\Customer\AddressesPage;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\CartPage;
@@ -44,6 +46,8 @@ use App\Livewire\Customer\OrderResultPage;
 use App\Livewire\Customer\OrdersPage;
 use App\Livewire\Customer\ProductShow;
 use App\Livewire\Customer\ProfilePage;
+use App\Livewire\Customer\Support\TicketShowPage as CustomerTicketShowPage;
+use App\Livewire\Customer\Support\TicketsPage as CustomerTicketsPage;
 use App\Livewire\Storefront\StorefrontShow;
 use App\Livewire\Seller\AttributeManager;
 use App\Livewire\Seller\Auth\PhoneAuth;
@@ -63,6 +67,8 @@ use App\Livewire\Seller\ReportsPage;
 use App\Livewire\Seller\ShippingPage;
 use App\Livewire\Seller\ShopEdit;
 use App\Livewire\Seller\ShopIndex;
+use App\Livewire\Seller\Support\TicketShowPage;
+use App\Livewire\Seller\Support\TicketsPage;
 use App\Livewire\Seller\WalletPage;
 use App\Models\Product;
 use Illuminate\Support\Facades\Route;
@@ -125,6 +131,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ── Orders management ──
         Route::get('/orders', OrdersIndex::class)->name('orders');
         Route::get('/orders/{order}', OrderShow::class)->name('orders.show');
+
+        // ── Support tickets (تیکت پشتیبانی مشتریان و فروشندگان) ──
+        Route::get('/tickets', TicketsIndex::class)->name('tickets');
+        Route::get('/tickets/{ticket}', TicketShow::class)->name('tickets.show');
 
         // ── Settings hub: ONE sidebar menu, sections rendered inside the
         //    page itself (عمومی / ظاهر / پیامک / درگاه پرداخت). Old
@@ -216,6 +226,10 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::post('/notifications/subscribe', [PushSubscriptionController::class, 'store'])->name('notifications.subscribe');
         Route::delete('/notifications/subscribe', [PushSubscriptionController::class, 'destroy'])->name('notifications.unsubscribe');
 
+        // ── Support tickets (گفتگو با پشتیبانی مدیر) ──
+        Route::get('/support', TicketsPage::class)->name('support');
+        Route::get('/support/{ticket}', TicketShowPage::class)->name('support.show');
+
         // ── Seller profile (identity, shortcuts, theme, logout) ──
         Route::get('/profile', SellerProfilePage::class)->name('profile');
         Route::get('/guide', GuidePage::class)->name('guide');
@@ -278,6 +292,11 @@ Route::prefix('shop')->name('shop.')->group(function () {
         Route::get('/checkout', CheckoutPage::class)->name('checkout');
         Route::get('/orders', OrdersPage::class)->name('orders');
         Route::get('/orders/{order}', OrderDetailPage::class)->name('orders.show');
+
+        // ── Support tickets (گفتگو با پشتیبانی مدیر) ──
+        Route::get('/support', CustomerTicketsPage::class)->name('support');
+        Route::get('/support/{ticket}', CustomerTicketShowPage::class)->name('support.show');
+
         Route::get('/payment/{order}/go', PaymentRedirect::class)->name('payment.go');
         Route::get('/payment/{order}/result', OrderResultPage::class)->name('payment.result');
 

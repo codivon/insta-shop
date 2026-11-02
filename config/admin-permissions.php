@@ -57,6 +57,14 @@ return [
             ],
         ],
 
+        'support' => [
+            'label' => 'پشتیبانی',
+            'permissions' => [
+                'admin.tickets'      => 'تیکت پشتیبانی (لیست تیکت‌ها)',
+                'admin.tickets.show' => 'جزئیات و پاسخ تیکت',
+            ],
+        ],
+
         // The settings HUB is one sidebar page; each section inside it is
         // its own permission so roles can grant only some sections.
         'settings' => [
