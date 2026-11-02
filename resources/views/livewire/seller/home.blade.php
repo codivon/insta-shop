@@ -96,6 +96,68 @@
             @endif
         </div>
 
+        {{-- ── راه‌اندازی فروشگاه: ۵ مرحله ضروری، به ترتیب ── --}}
+        @if (! $onboarding['allDone'])
+            <div class="mt-4 overflow-hidden rounded-2xl border border-primary-200 bg-white shadow-sm dark:border-primary-900 dark:bg-slate-900" data-testid="onboarding-card">
+                <div class="flex items-center justify-between gap-2 border-b border-slate-100 bg-primary-50/60 px-4 py-3 dark:border-slate-800 dark:bg-primary-950/30">
+                    <h3 class="flex items-center gap-2 text-xs font-extrabold">
+                        <span class="grid size-7 place-items-center rounded-xl bg-primary-600 text-white shadow-sm shadow-primary-600/30"><x-icon name="sparkles" class="size-3.5" /></span>
+                        راه‌اندازی فروشگاه
+                    </h3>
+                    <span class="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400">
+                        {{ \App\Support\Fmt::fa($onboarding['doneCount']) }} از {{ \App\Support\Fmt::fa($onboarding['total']) }} انجام شد
+                    </span>
+                </div>
+
+                {{-- progress --}}
+                <div class="px-4 pt-3">
+                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                        <div class="h-full rounded-full bg-gradient-to-l from-primary-600 to-primary-400 transition-all duration-500"
+                             style="width: {{ (int) round($onboarding['doneCount'] / max($onboarding['total'], 1) * 100) }}%"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-2 p-4">
+                    @foreach ($onboarding['remaining'] as $index => $step)
+                        @if ($index === 0)
+                            {{-- the active step: the ONLY one the seller should do now --}}
+                            <a href="{{ $step['href'] }}" wire:navigate
+                               class="flex items-center gap-3 rounded-2xl border border-primary-300 bg-primary-50/70 p-3.5 transition hover:border-primary-400 hover:bg-primary-50 active:scale-[.99] dark:border-primary-800 dark:bg-primary-950/40 dark:hover:bg-primary-950/60">
+                                <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary-600 text-white shadow-lg shadow-primary-600/30">
+                                    <x-icon name="{{ $step['icon'] }}" class="size-5" />
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="flex items-center gap-1.5 text-xs font-extrabold text-primary-700 dark:text-primary-300">
+                                        {{ $step['title'] }}
+                                        <span class="rounded-full bg-primary-600 px-1.5 py-0.5 text-[8.5px] font-black text-white">قدم بعدی</span>
+                                    </span>
+                                    <span class="mt-0.5 block text-[10px] leading-5 text-slate-500 dark:text-slate-400">{{ $step['desc'] }}</span>
+                                </span>
+                                <span class="grid size-8 shrink-0 place-items-center rounded-xl bg-primary-600 text-white shadow-sm">
+                                    <x-icon name="arrow-left" class="size-4" />
+                                </span>
+                            </a>
+                        @else
+                            {{-- locked until the previous steps are done --}}
+                            <div class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3.5 opacity-60 dark:border-slate-800 dark:bg-slate-900/60">
+                                <span class="grid size-11 shrink-0 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-800">
+                                    <x-icon name="{{ $step['icon'] }}" class="size-5" />
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block text-xs font-extrabold text-slate-500 dark:text-slate-400">{{ $step['title'] }}</span>
+                                    <span class="mt-0.5 block text-[10px] leading-5 text-slate-400 dark:text-slate-500">{{ $step['desc'] }}</span>
+                                </span>
+                                <span class="flex shrink-0 items-center gap-1 rounded-full bg-slate-200/80 px-2 py-1 text-[9px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                    <x-icon name="lock" class="size-3" />
+                                    به ترتیب
+                                </span>
+                            </div>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         {{-- ── quick actions (real links) ── --}}
         <h3 class="mt-6 text-sm font-extrabold">دسترسی سریع</h3>
         <div class="mt-3 grid grid-cols-5 gap-2.5">

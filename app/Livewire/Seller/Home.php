@@ -2,8 +2,11 @@
 
 namespace App\Livewire\Seller;
 
+use App\Models\BankCard;
+use App\Models\Carrier;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\PushSubscription;
 use App\Models\Shop;
 use App\Models\ShopCategory;
 use Carbon\CarbonImmutable;
@@ -83,7 +86,80 @@ class Home extends Component
             'chartOrders'    => $chart['orders'],
             'chartMax'       => $chart['max'],
             'recentProducts' => (clone $base)->with('mainImage')->latest()->take(4)->get(),
+            'onboarding'     => $this->onboarding($shop),
         ])->title('خانه فروشنده');
+    }
+
+    /**
+     * Store-setup checklist for the home page: 5 essential steps the seller
+     * must complete IN ORDER. Completed steps are dropped from the list;
+     * the first unfinished one is the active call-to-action and the rest
+     * stay locked. The whole card disappears once everything is done.
+     */
+    private function onboarding(Shop $shop): array
+    {
+        $seller = auth('seller')->user();
+        $shopId = $shop->id;
+
+        $steps = [
+            [
+                'key'   => 'category',
+                'title' => 'افزودن دسته‌بندی',
+                'desc'  => 'دسته‌بندی بسازید تا مشتری محصولات را راحت‌تر پیدا کند.',
+                'href'  => route('seller.categories'),
+                'icon'  => 'tag',
+                'done'  => ShopCategory::query()->where('shop_id', $shopId)->exists(),
+            ],
+            [
+                'key'   => 'product',
+                'title' => 'افزودن محصول',
+                'desc'  => 'اولین محصول خود را با عکس و قیمت ثبت کنید.',
+                'href'  => route('seller.products.create'),
+                'icon'  => 'package',
+                'done'  => Product::query()->where('shop_id', $shopId)->exists(),
+            ],
+            [
+                'key'   => 'shipping',
+                'title' => 'افزودن روش ارسال',
+                'desc'  => 'روش‌های حمل‌ونقل و هزینه ارسال را تعیین کنید.',
+                'href'  => route('seller.shipping'),
+                'icon'  => 'truck',
+                'done'  => Carrier::query()->where('shop_id', $shopId)->exists(),
+            ],
+            [
+                'key'   => 'card',
+                'title' => 'افزودن کارت بانکی',
+                'desc'  => 'کارت بانکی خود را برای تسویه فروش‌ها ثبت کنید.',
+                'href'  => route('seller.cards'),
+                'icon'  => 'credit-card',
+                'done'  => BankCard::query()->where('seller_id', $seller?->id)->exists(),
+            ],
+            [
+                'key'   => 'push',
+                'title' => 'فعال‌سازی نوتیفیکیشن',
+                'desc'  => 'برای اطلاع فوری از سفارش‌های جدید، نوتیفیکیشن دستگاه را روشن کنید.',
+                'href'  => route('seller.notifications'),
+                'icon'  => 'bell',
+                'done'  => $seller ? PushSubscription::query()
+                    ->where('audience', PushSubscription::AUDIENCE_SELLER)
+                    ->where('seller_id', $seller->id)
+                    ->exists() : false,
+            ],
+        ];
+
+        $doneCount = count(array_filter($steps, fn ($s) => $s['done']));
+
+        $remaining = collect($steps)
+            ->filter(fn ($s) => ! $s['done'])
+            ->values();
+
+        return [
+            'steps'      => $steps,
+            'remaining'  => $remaining,
+            'doneCount'  => $doneCount,
+            'total'      => count($steps),
+            'allDone'    => $doneCount === count($steps),
+        ];
     }
 
     /**
