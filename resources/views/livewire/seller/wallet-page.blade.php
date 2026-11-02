@@ -101,6 +101,82 @@
             </div>
         </div>
 
+        {{-- ───────── نمودار واریز و برداشت ───────── --}}
+        <div class="mt-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900" data-testid="wallet-chart-card">
+            <div class="flex items-center justify-between gap-2">
+                <h3 class="flex items-center gap-2 text-xs font-extrabold">
+                    <span class="grid size-7 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400"><x-icon name="chart" class="size-3.5" /></span>
+                    نمودار واریز و برداشت
+                </h3>
+                <div class="flex items-center gap-3 text-[9px] font-bold text-slate-400">
+                    <span class="flex items-center gap-1"><span class="size-2 rounded-full bg-emerald-500"></span> واریز</span>
+                    <span class="flex items-center gap-1"><span class="size-2 rounded-full bg-amber-400"></span> برداشت</span>
+                </div>
+            </div>
+
+            {{-- granularity tabs — optimistic flip via data-ip-pick so the
+                 tapped tab reacts INSTANTLY; only the chart itself may load --}}
+            <div class="mt-3 flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800" role="group" aria-label="بازه نمودار کیف پول">
+                @foreach ([['key' => 'daily', 'label' => 'روزانه'], ['key' => 'weekly', 'label' => 'هفتگی'], ['key' => 'monthly', 'label' => 'ماهانه'], ['key' => 'yearly', 'label' => 'سالانه']] as $mode)
+                    <button type="button" wire:click="setChartMode('{{ $mode['key'] }}')"
+                            data-ip-pick data-ip-group="wallet-chart-mode"
+                            data-ip-pick-class="bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400"
+                            class="flex-1 rounded-lg px-2 py-1 text-[10px] font-bold transition {{ $chartMode === $mode['key']
+                                ? 'bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400'
+                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
+                        {{ $mode['label'] }}
+                    </button>
+                @endforeach
+            </div>
+
+            {{-- summary --}}
+            <div class="mt-3 grid grid-cols-2 gap-2">
+                <div class="rounded-2xl bg-gradient-to-l from-emerald-600/10 to-emerald-500/5 p-3 dark:from-emerald-600/20 dark:to-emerald-500/10">
+                    <p class="text-[9.5px] font-bold text-slate-400">واریز بازه انتخابی</p>
+                    <p class="mt-0.5 text-sm font-black text-emerald-600 dark:text-emerald-400">{{ \App\Support\Fmt::fa($txChart['depositTotal']) }} <span class="text-[9px] font-bold text-slate-400">تومان</span></p>
+                </div>
+                <div class="rounded-2xl bg-gradient-to-l from-amber-500/10 to-amber-400/5 p-3 dark:from-amber-600/20 dark:to-amber-500/10">
+                    <p class="text-[9.5px] font-bold text-slate-400">برداشت بازه انتخابی</p>
+                    <p class="mt-0.5 text-sm font-black text-amber-600 dark:text-amber-400">{{ \App\Support\Fmt::fa($txChart['withdrawalTotal']) }} <span class="text-[9px] font-bold text-slate-400">تومان</span></p>
+                </div>
+            </div>
+
+            {{-- jalali range pickers --}}
+            <div class="mt-3 grid grid-cols-2 gap-2">
+                <div>
+                    <span class="mb-1 block text-[9.5px] font-bold text-slate-400">از تاریخ</span>
+                    <x-jdate-picker model="chartFrom" placeholder="از تاریخ" />
+                </div>
+                <div>
+                    <span class="mb-1 block text-[9.5px] font-bold text-slate-400">تا تاریخ</span>
+                    <x-jdate-picker model="chartTo" placeholder="تا تاریخ" />
+                </div>
+            </div>
+
+            {{-- paired bars — only this chart area shows activity while it reloads --}}
+            <div class="relative scroll-slim mt-4 overflow-x-auto pb-1">
+                <div wire:loading wire:target="setChartMode, chartFrom, chartTo"
+                     class="absolute inset-0 z-10 grid place-items-center rounded-xl bg-white/60 backdrop-blur-[1px] dark:bg-slate-900/60">
+                    <span class="size-5 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></span>
+                </div>
+                <div class="flex h-28 min-w-full items-end gap-1.5" dir="ltr">
+                    @foreach ($txChart['series'] as $bar)
+                        <div class="flex min-w-7 flex-1 flex-col items-center gap-1" wire:key="txc-{{ $loop->index }}">
+                            <div class="flex w-full flex-1 items-end justify-center gap-0.5">
+                                <div class="w-2.5 rounded-t-lg {{ $bar['today'] ? 'bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-sm shadow-emerald-600/30' : 'bg-emerald-400/80 dark:bg-emerald-900' }}"
+                                     style="height: {{ $bar['deposit'] > 0 ? max(6, (int) round($bar['deposit'] / $txChart['max'] * 100)) : 0 }}%"
+                                     title="واریز {{ $bar['label'] }}: {{ \App\Support\Fmt::money($bar['deposit']) }}"></div>
+                                <div class="w-2.5 rounded-t-lg {{ $bar['today'] ? 'bg-gradient-to-t from-amber-500 to-amber-300 shadow-sm shadow-amber-500/30' : 'bg-amber-300/80 dark:bg-amber-900' }}"
+                                     style="height: {{ $bar['withdrawal'] > 0 ? max(6, (int) round($bar['withdrawal'] / $txChart['max'] * 100)) : 0 }}%"
+                                     title="برداشت {{ $bar['label'] }}: {{ \App\Support\Fmt::money($bar['withdrawal']) }}"></div>
+                            </div>
+                            <span class="whitespace-nowrap text-[8.5px] font-bold {{ $bar['today'] ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}">{{ $bar['label'] }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
         {{-- ───────── transactions ───────── --}}
         <div class="mt-5 flex items-center justify-between">
             <h3 class="flex items-center gap-2 text-sm font-extrabold">
@@ -108,13 +184,33 @@
                 گردش حساب
             </h3>
             <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
-                {{ \App\Support\Fmt::fa($transactions->count()) }} تراکنش
+                {{ \App\Support\Fmt::fa($txTotal) }} تراکنش
             </span>
         </div>
 
+        {{-- ledger date filter --}}
+        <div class="mt-3 grid grid-cols-2 gap-2">
+            <div>
+                <span class="mb-1 block text-[9.5px] font-bold text-slate-400">از تاریخ</span>
+                <x-jdate-picker model="txFrom" placeholder="همه زمان‌ها" />
+            </div>
+            <div>
+                <span class="mb-1 block text-[9.5px] font-bold text-slate-400">تا تاریخ</span>
+                <x-jdate-picker model="txTo" placeholder="همه زمان‌ها" />
+            </div>
+        </div>
+        @if ($txFrom !== '' || $txTo !== '')
+            <button type="button" wire:click="clearTxFilter"
+                    class="mt-2 inline-flex cursor-pointer items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[9.5px] font-bold text-rose-500 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/70">
+                <x-icon name="x" class="size-3" />
+                حذف فیلتر تاریخ
+            </button>
+        @endif
+
         <div class="mt-3 space-y-2 transition" wire:loading.class="opacity-50 pointer-events-none" wire:target="loadMore">
             @forelse ($transactions as $tx)
-                <div class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900" wire:key="tx-{{ $tx->id }}">
+                <button type="button" wire:click="openTxDetails({{ $tx->id }})" wire:key="tx-{{ $tx->id }}"
+                        class="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-right shadow-sm transition hover:border-primary-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-800">
                     <span class="grid size-10 shrink-0 place-items-center rounded-xl {{ $tx->isDeposit()
                             ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-950/50 dark:text-emerald-400'
                             : 'bg-amber-50 text-amber-500 dark:bg-amber-950/50 dark:text-amber-400' }}">
@@ -140,9 +236,13 @@
                         <div class="text-[11.5px] font-black {{ $tx->isDeposit() ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400' }}" dir="ltr">
                             {{ $tx->amountLabel() }}
                         </div>
-                        <div class="text-[9px] font-semibold text-slate-400">تومان</div>
+                        @if ($tx->isDeposit() && $tx->commission > 0)
+                            <div class="text-[8.5px] font-bold text-amber-500/90">کمیسیون: {{ \App\Support\Fmt::fa($tx->commission) }}</div>
+                        @endif
                     </div>
-                </div>
+
+                    <x-icon name="chevron-left" class="size-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
+                </button>
             @empty
                 <div class="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
                     <span class="grid size-16 place-items-center rounded-2xl bg-primary-50 text-primary-400 dark:bg-primary-950">
@@ -258,4 +358,96 @@
             </form>
         </x-modal-panel>
     </div>
+
+    {{-- ═══════════════════ TRANSACTION DETAILS MODAL ═══════════════════ --}}
+    <x-modal-panel open="$wire.detailId !== null" max-width="sm" labelledby="tx-detail-title" in-frame
+                   close-js="__ipOpen = false; $wire.closeTxDetails()">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
+                <h3 id="tx-detail-title" class="flex items-center gap-2 text-sm font-extrabold">
+                    <span class="grid size-8 place-items-center rounded-xl {{ $txDetail && $txDetail->isDeposit() ? 'bg-emerald-600/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400' : 'bg-amber-600/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400' }}">
+                        <x-icon name="{{ $txDetail && $txDetail->isDeposit() ? 'arrow-down-left' : 'arrow-up-right' }}" class="size-4" />
+                    </span>
+                    جزئیات پرداخت
+                </h3>
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeTxDetails()"
+                        class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            </div>
+        </x-slot:header>
+
+        @if ($txDetail)
+            <div class="space-y-3 px-5 py-5">
+                {{-- headline --}}
+                <div class="rounded-2xl {{ $txDetail->isDeposit() ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-amber-50 dark:bg-amber-950/30' }} px-4 py-3.5 text-center">
+                    <p class="text-[10px] font-bold {{ $txDetail->isDeposit() ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300' }}">
+                        {{ $txDetail->typeLabel() }} @unless ($txDetail->isDeposit()) · {{ $txDetail->statusLabel() }} @endunless
+                    </p>
+                    <p class="mt-1 text-xl font-black {{ $txDetail->isDeposit() ? 'text-emerald-700 dark:text-emerald-200' : 'text-amber-700 dark:text-amber-200' }}" dir="ltr">
+                        {{ $txDetail->amountLabel() }}
+                    </p>
+                </div>
+
+                {{-- deposit breakdown: store share + commission --}}
+                @if ($txDetail->isDeposit())
+                    <div class="space-y-1.5 rounded-2xl border border-slate-200 p-3.5 dark:border-slate-800">
+                        <div class="flex items-center justify-between text-[11px]">
+                            <span class="font-bold text-slate-400">مبلغ کالاهای سفارش</span>
+                            <span class="font-black">{{ \App\Support\Fmt::fa($this->txItemsTotal($txDetail)) }} تومان</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[11px]">
+                            <span class="flex items-center gap-1.5 font-bold text-slate-400">
+                                کمیسیون فروشگاه
+                                <span class="rounded-full bg-amber-50 px-1.5 py-0.5 text-[8.5px] font-black text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">{{ \App\Support\Fmt::fa($this->txCommissionPercent($txDetail)) }}٪</span>
+                            </span>
+                            <span class="font-black text-amber-600 dark:text-amber-400">{{ \App\Support\Fmt::fa($txDetail->commission) }} تومان</span>
+                        </div>
+                        <div class="flex items-center justify-between border-t border-dashed border-slate-200 pt-1.5 text-[11px] dark:border-slate-700">
+                            <span class="font-bold text-slate-400">سهم خالص فروشگاه شما</span>
+                            <span class="font-black text-emerald-600 dark:text-emerald-400">{{ \App\Support\Fmt::fa($txDetail->amount) }} تومان</span>
+                        </div>
+                    </div>
+                    <p class="px-1 text-[9.5px] leading-5 text-slate-400">
+                        کمیسیون طبق تنظیمات فروشگاه شما از مبلغ کالاها کسر می‌شود و باقی به‌عنوان سهم خالص به کیف پول واریز شده است.
+                    </p>
+                @endif
+
+                {{-- withdrawal destination --}}
+                @if ($txDetail->isWithdrawal() && $txDetail->sheba)
+                    <div class="flex items-center justify-between rounded-2xl border border-slate-200 p-3.5 text-[11px] dark:border-slate-800">
+                        <span class="shrink-0 font-bold text-slate-400">شبا مقصد</span>
+                        <span dir="ltr" class="font-black">{{ \App\Support\Banking::shebaTail($txDetail->sheba) }}</span>
+                    </div>
+                @endif
+
+                {{-- meta rows --}}
+                <div class="space-y-1.5 rounded-2xl border border-slate-200 p-3.5 dark:border-slate-800">
+                    @if ($txDetail->order_id && $txDetail->order)
+                        <div class="flex items-center justify-between text-[11px]">
+                            <span class="font-bold text-slate-400">سفارش</span>
+                            <a href="{{ route('seller.orders') }}" wire:navigate class="font-black text-primary-600 hover:text-primary-700 dark:text-primary-400">
+                                سفارش #{{ \App\Support\Fmt::fa($txDetail->order->id) }}
+                            </a>
+                        </div>
+                    @endif
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="font-bold text-slate-400">تاریخ</span>
+                        <span class="font-black">{{ \App\Support\JDate::dateTime($txDetail->created_at) }}</span>
+                    </div>
+                    @if ($txDetail->description)
+                        <div class="flex items-start justify-between gap-3 text-[11px]">
+                            <span class="shrink-0 font-bold text-slate-400">توضیحات</span>
+                            <span class="text-left font-bold leading-5">{{ $txDetail->description }}</span>
+                        </div>
+                    @endif
+                </div>
+
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeTxDetails()"
+                        class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">
+                    بستن
+                </button>
+            </div>
+        @endif
+    </x-modal-panel>
 </div>
