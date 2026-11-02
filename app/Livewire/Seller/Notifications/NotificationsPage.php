@@ -5,6 +5,7 @@ namespace App\Livewire\Seller\Notifications;
 use App\Models\SellerNotification;
 use App\Support\WebPusher;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
