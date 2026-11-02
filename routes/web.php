@@ -52,10 +52,12 @@ use App\Livewire\Seller\CategoryManager;
 use App\Livewire\Seller\DiscountForm;
 use App\Livewire\Seller\DiscountIndex;
 use App\Livewire\Seller\FilteringManager;
+use App\Livewire\Seller\GuidePage;
 use App\Livewire\Seller\Home;
 use App\Livewire\Seller\Notifications\NotificationsPage as SellerNotificationsPage;
 use App\Livewire\Seller\OrdersPage as SellerOrdersPage;
 use App\Livewire\Seller\ProductForm;
+use App\Livewire\Seller\ProductViewsPage;
 use App\Livewire\Seller\ProfilePage as SellerProfilePage;
 use App\Livewire\Seller\ReportsPage;
 use App\Livewire\Seller\ShippingPage;
@@ -207,6 +209,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
         // ── Reports (orders & product-visit analytics) ──
         Route::get('/reports', ReportsPage::class)->name('reports');
+        Route::get('/reports/product-views', ProductViewsPage::class)->name('reports.views');
 
         // ── Seller notifications (فقط اعلان‌های خود فروشنده + پوش موبایل/سیستم) ──
         Route::get('/notifications', SellerNotificationsPage::class)->name('notifications');
@@ -215,6 +218,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
         // ── Seller profile (identity, shortcuts, theme, logout) ──
         Route::get('/profile', SellerProfilePage::class)->name('profile');
+        Route::get('/guide', GuidePage::class)->name('guide');
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });
