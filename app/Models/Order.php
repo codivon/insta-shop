@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 #[Fillable([
@@ -48,6 +49,12 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class)->orderBy('id');
+    }
+
+    /** Per-shop shipment slices of this order (one row per shop). */
+    public function shopShipments(): HasMany
+    {
+        return $this->hasMany(OrderShipment::class)->orderBy('id');
     }
 
     /* ─────────────────────── Creation from cart ────────────────────── */
@@ -117,6 +124,7 @@ class Order extends Model
             ]);
 
             $order->items()->createMany($lines->all());
+            $order->ensureShopShipments();
 
             // the code is consumed the moment an order is created for it
             if ($discount instanceof Discount) {
@@ -257,7 +265,253 @@ class Order extends Model
 
     /* ───────────────────────── Shipment lifecycle ───────────────────── */
 
-    /** Persian label of the shipment status. */
+    /**
+     * Make sure every shop that has items in this order owns an
+     * order_shipments slice (legacy orders get backfilled lazily).
+     */
+    public function ensureShopShipments(): void
+    {
+        $existing = OrderShipment::query()->where('order_id', $this->id)->pluck('shop_id')->all();
+
+        $shares = OrderItem::query()
+            ->where('order_id', $this->id)
+            ->selectRaw('shop_id, SUM(unit_price * quantity) as items_total')
+            ->groupBy('shop_id')
+            ->get();
+
+        $grand = max(1, (int) $shares->sum('items_total'));
+
+        foreach ($shares as $share) {
+            $shopId = (int) $share->shop_id;
+
+            if (in_array($shopId, array_map('intval', $existing), true)) {
+                continue;
+            }
+
+            // per-shop carrier cost from the shipments JSON snapshot
+            // (pay-on-delivery carriers are NOT charged online → 0)
+            $shipping = 0;
+
+            foreach ((array) ($this->shipments ?? []) as $entry) {
+                if ((int) ($entry['shop_id'] ?? 0) === $shopId) {
+                    $carrier  = Carrier::query()->find((int) ($entry['carrier_id'] ?? 0));
+                    $shipping = ($carrier && $carrier->isPayOnDelivery())
+                        ? 0
+                        : max(0, (int) ($entry['cost'] ?? 0));
+
+                    break;
+                }
+            }
+
+            // proportional share of the order-level discount code
+            $discount = (int) floor(((int) $this->discount_amount) * ((int) $share->items_total) / $grand);
+            $itemsTotal = max(0, (int) $share->items_total);
+
+            OrderShipment::query()->create([
+                'order_id'        => $this->id,
+                'shop_id'         => $shopId,
+                'items_total'     => $itemsTotal,
+                'shipping_cost'   => $shipping,
+                'discount_amount' => $discount,
+                'total'           => max(0, $itemsTotal + $shipping - $discount),
+            ]);
+        }
+    }
+
+    /** The shipment slice of one shop (row is created on demand). */
+    public function shipmentForShop(int $shopId): OrderShipment
+    {
+        $this->ensureShopShipments();
+
+        return OrderShipment::query()
+            ->where('order_id', $this->id)
+            ->where('shop_id', $shopId)
+            ->first()
+            ?? new OrderShipment(['order_id' => $this->id, 'shop_id' => $shopId]);
+    }
+
+    /**
+     * Transition the shipment state of ONE shop's slice on a PAID order.
+     * «در حال ارسال» requires a post tracking code.
+     */
+    public function setShopShipment(int $shopId, string $status, ?string $trackingCode = null): bool
+    {
+        // re-read status from DB (the in-memory instance can be stale —
+        // e.g. finalizePaid mutates a fresh clone inside its transaction)
+        if (static::query()->whereKey($this->id)->value('status') !== 'paid'
+            || ! in_array($status, OrderShipment::STATUSES, true)) {
+            return false;
+        }
+
+        if (! $this->hasShopItems($shopId)) {
+            return false;
+        }
+
+        $trackingCode = trim((string) $trackingCode);
+
+        if ($status === 'shipped' && $trackingCode === '') {
+            return false;
+        }
+
+        $shipment = $this->shipmentForShop($shopId);
+
+        if ($shipment->isCanceled()) {
+            return false;
+        }
+
+        $shipment->forceFill([
+            'shipment_status'    => $status,
+            'tracking_code'      => $trackingCode !== '' ? $trackingCode : ($status === 'none' ? null : $shipment->tracking_code),
+            'shipment_status_at' => now(),
+        ])->save();
+
+        $this->syncOverallShipment();
+
+        return true;
+    }
+
+    /**
+     * Derive the overall orders.shipment_status from the shop slices so
+     * existing lists/labels keep working: delivered only when EVERY active
+     * slice is delivered, else the furthest state in progress.
+     */
+    public function syncOverallShipment(): void
+    {
+        $rows = OrderShipment::query()->where('order_id', $this->id)->get();
+
+        if ($rows->isEmpty()) {
+            return;
+        }
+
+        $active = $rows->reject(fn (OrderShipment $row) => $row->isCanceled());
+
+        $status = 'none';
+
+        if ($active->isNotEmpty()) {
+            $status = $active->every(fn (OrderShipment $row) => $row->shipment_status === 'delivered')
+                ? 'delivered'
+                : ($active->contains(fn (OrderShipment $row) => $row->shipment_status === 'shipped')
+                    ? 'shipped'
+                    : ($active->contains(fn (OrderShipment $row) => $row->shipment_status === 'processing') ? 'processing' : 'none'));
+        }
+
+        $this->forceFill(['shipment_status' => $status, 'shipment_status_at' => now()])->save();
+
+        // keep a representative tracking code for legacy displays
+        $tracking = $rows->first(fn (OrderShipment $row) => (string) ($row->tracking_code ?? '') !== '')?->tracking_code;
+
+        if ($tracking) {
+            $this->forceFill(['tracking_code' => $tracking])->save();
+        }
+    }
+
+    /**
+     * Cancel ONE shop's slice of a paid order (seller or admin action):
+     * goods return to stock, the seller wallet pays back its credited
+     * share and refund_amount records what must go back to the customer.
+     */
+    public function cancelShopSlice(int $shopId, string $reason, string $by): bool
+    {
+        if (static::query()->whereKey($this->id)->value('status') !== 'paid' || ! $this->hasShopItems($shopId)) {
+            return false;
+        }
+
+        $shipment = $this->shipmentForShop($shopId);
+
+        if ($shipment->isCanceled() || $shipment->shipment_status === 'delivered') {
+            return false;
+        }
+
+        $reason = trim($reason) !== '' ? trim($reason) : 'بدون دلیل ثبت‌شده';
+
+        DB::transaction(function () use ($shopId, $reason, $by, $shipment) {
+            // 1) goods go back to stock (they left at finalizePaid)
+            $items = $this->items()->where('shop_id', $shopId)->get();
+
+            foreach ($items as $item) {
+                if ($item->variant_id > 0) {
+                    ProductVariant::query()->whereKey($item->variant_id)->increment('stock', $item->quantity);
+                } elseif ($item->product_id) {
+                    Product::query()->whereKey($item->product_id)->increment('stock', $item->quantity);
+                }
+            }
+
+            $items->filter(fn ($item) => $item->variant_id > 0)
+                ->map(fn ($item) => $item->product_id)
+                ->unique()
+                ->each(fn ($productId) => Product::query()->find($productId)?->syncAggregates());
+
+            // 2) slice → canceled, refund snapshot frozen
+            $shipment->forceFill([
+                'canceled_at'        => now(),
+                'cancel_reason'      => mb_substr($reason, 0, 300),
+                'canceled_by'        => $by === 'admin' ? 'admin' : 'seller',
+                'refund_amount'      => (int) $shipment->total,
+                'shipment_status'    => 'none',
+                'shipment_status_at' => now(),
+            ])->save();
+
+            // 3) seller wallet pays back the credited payout for this slice
+            $shop = Shop::query()->find($shopId);
+
+            if ($shop && $shop->seller_id) {
+                $seller = Seller::query()->find($shop->seller_id);
+                $payout = max(0, (int) $shipment->items_total - ($seller?->commissionFor((int) $shipment->items_total) ?? 0));
+
+                if ($payout > 0) {
+                    $wallet = Wallet::ensureForSeller((int) $shop->seller_id);
+                    $wallet->decrement('balance', $payout);
+
+                    WalletTransaction::query()->create([
+                        'wallet_id'   => $wallet->id,
+                        'type'        => WalletTransaction::TYPE_WITHDRAWAL,
+                        'amount'      => $payout,
+                        'commission'  => 0,
+                        'status'      => WalletTransaction::STATUS_DONE,
+                        'order_id'    => $this->id,
+                        'description' => 'لغو سهم فروشگاه از سفارش #'.\App\Support\Wallet\WalletService::orderCode($this).' — بازگشت وجه به مشتری',
+                    ]);
+                }
+            }
+        });
+
+        $this->syncOverallShipment();
+
+        // notify the seller of this shop
+        $shop = Shop::query()->find($shopId);
+
+        if ($shop?->seller_id) {
+            \App\Support\SellerNotifier::notify(
+                (int) $shop->seller_id,
+                'order.canceled',
+                'سهم فروشگاه شما از سفارش '.Fmt::fa($this->id).' لغو شد ⛔',
+                'دلیل: '.$reason.' — مبلغ '.Fmt::money((int) $shipment->total).' باید به مشتری بازگردانده شود.',
+                route('seller.orders'),
+                'circle-x',
+                $this,
+            );
+        }
+
+        // and the admin panel
+        \App\Support\AdminNotifier::notify(
+            'order.canceled',
+            'لغو سهم فروشگاه از سفارش '.Fmt::fa($this->id),
+            'توسط '.($by === 'admin' ? 'مدیر' : 'فروشنده').' — دلیل: '.$reason,
+            route('admin.orders.show', $this->id),
+            'circle-x',
+            $this,
+        );
+
+        return true;
+    }
+
+    /** Seller-side guard: does any order item belong to this shop? */
+    public function hasShopItems(int $shopId): bool
+    {
+        return $this->items()->where('shop_id', $shopId)->exists();
+    }
+
+    /** Persian label of the derived overall shipment status. */
     public function shipmentStatusLabel(): string
     {
         return match ($this->shipment_status) {
@@ -268,7 +522,7 @@ class Order extends Model
         };
     }
 
-    /** Tailwind chip classes per shipment status. */
+    /** Tailwind chip classes for the derived overall shipment status. */
     public function shipmentStatusClasses(): string
     {
         return match ($this->shipment_status) {
@@ -277,38 +531,6 @@ class Order extends Model
             'delivered'  => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
             default      => 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
         };
-    }
-
-    /**
-     * Transition the shipment state of a PAID order. «در حال ارسال» requires
-     * a post tracking code. Returns false when the order is not paid or the
-     * status is unknown.
-     */
-    public function setShipment(string $status, ?string $trackingCode = null): bool
-    {
-        if ($this->status !== 'paid' || ! in_array($status, self::SHIPMENT_STATUSES, true)) {
-            return false;
-        }
-
-        $trackingCode = trim((string) $trackingCode);
-
-        if ($status === 'shipped' && $trackingCode === '') {
-            return false;
-        }
-
-        $this->forceFill([
-            'shipment_status'    => $status,
-            'tracking_code'      => $trackingCode !== '' ? $trackingCode : ($status === 'none' ? null : $this->tracking_code),
-            'shipment_status_at' => now(),
-        ])->save();
-
-        return true;
-    }
-
-    /** Seller-side guard: does any order item belong to this shop? */
-    public function hasShopItems(int $shopId): bool
-    {
-        return $this->items()->where('shop_id', $shopId)->exists();
     }
 
     /** Persian (Jalali) creation date, e.g. «۱۴۰۵/۰۸/۰۹ — ۲۳:۲۱». */

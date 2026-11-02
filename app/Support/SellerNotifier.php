@@ -36,6 +36,7 @@ final class SellerNotifier
         'order.new'       => ['سفارش جدید شامل محصولات شما', 'bag'],
         'order.paid'      => ['پرداخت سفارش موفق شد', 'circle-check'],
         'order.status'    => ['تغییر وضعیت سفارش', 'truck'],
+        'order.canceled'  => ['لغو سهم فروشگاه از سفارش', 'circle-x'],
         'wallet.deposit'  => ['واریز به کیف پول', 'wallet'],
         'wallet.withdraw' => ['وضعیت درخواست برداشت', 'wallet'],
         'product.status'  => ['تغییر وضعیت محصول', 'package'],
