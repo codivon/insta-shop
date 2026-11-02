@@ -24,6 +24,45 @@ class Login extends Component
 
     public bool $remember = false;
 
+    /* ── robot check (math captcha, answer lives in the session) ── */
+    public string $captcha = '';
+
+    public function mount(): void
+    {
+        $this->regenerateCaptcha();
+    }
+
+    /** Fresh math challenge: «۷ + ۳ = ؟» — the SUM never leaves the server. */
+    public function regenerateCaptcha(): void
+    {
+        $a = random_int(2, 9);
+        $b = random_int(1, 9);
+
+        // the SUM is the secret; the two numbers are just for display
+        session([
+            'admin_captcha_sum'       => $a + $b,
+            'admin_captcha_display_a' => $a,
+            'admin_captcha_display_b' => $b,
+        ]);
+
+        $this->captcha = '';
+
+        $this->dispatch('admin-captcha-refresh', a: $a, b: $b);
+    }
+
+    /** Persian/Latin digits → int; null when not a number. */
+    protected function captchaValue(string $input): ?int
+    {
+        $normalized = strtr(trim($input), [
+            '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',
+            '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
+            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
+            '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
+        ]);
+
+        return preg_match('/^\d{1,3}$/', $normalized) ? (int) $normalized : null;
+    }
+
     protected function rules(): array
     {
         return [
@@ -72,6 +111,17 @@ class Login extends Component
         $this->resetErrorBag();
         $this->validate();
 
+        /* ── robot check first — no rate-limit burn for bots ── */
+        $expected = (int) session('admin_captcha_sum', -1);
+
+        if ($this->captchaValue($this->captcha) !== $expected || $expected < 0) {
+            $this->addError('captcha', 'جواب عبارت امنیتی درست نیست.');
+
+            $this->regenerateCaptcha();
+
+            return;
+        }
+
         [$max, $minutes] = $this->lockoutConfig();
 
         $key = $this->limiterKey();
@@ -108,10 +158,14 @@ class Login extends Component
             $this->addError('email', 'ایمیل یا رمز عبور نادرست است.'
                 .($left > 0 && $left <= 2 ? ' '.Fmt::fa($left).' تلاش باقی مانده است.' : ''));
 
+            // a failed attempt must NEVER keep the same captcha alive
+            $this->regenerateCaptcha();
+
             return;
         }
 
         RateLimiter::clear($key);
+        session()->forget('admin_captcha_sum');
 
         session()->regenerate();
 

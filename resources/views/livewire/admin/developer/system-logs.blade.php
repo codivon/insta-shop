@@ -160,7 +160,7 @@
     @endif
 
     {{-- ═══════════ destructive confirm modal ═══════════ --}}
-    <x-modal-panel open="$wire.confirmOpen" max-width="sm" close-js="__ipOpen = false; $wire.cancelAction()">
+    <x-modal-panel open="$wire.confirmAction !== null" max-width="sm" close-js="__ipOpen = false; $wire.cancelAction()">
         <div class="p-6 text-center">
             <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-rose-50 text-rose-500 dark:bg-rose-950/40">
                 <x-icon name="alert" class="size-6" />
@@ -183,13 +183,13 @@
                         پاک‌سازی
                     </button>
                 @else
-                    <button type="button" wire:click="deleteOthers" x-on:click="confirmOpen = false" wire:loading.attr="disabled"
+                    <button type="button" wire:click="deleteOthers" x-on:click="__ipOpen = false" wire:loading.attr="disabled"
                             class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-rose-600/25 transition hover:bg-rose-700 disabled:opacity-50">
                         <span wire:loading wire:target="deleteOthers" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                         حذف قطعی
                     </button>
                 @endif
-                <button type="button" x-on:click="confirmOpen = false; $wire.cancelAction()"
+                <button type="button" x-on:click="__ipOpen = false; $wire.cancelAction()"
                         class="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">
                     انصراف
                 </button>

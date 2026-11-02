@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\AdminNotification;
+use App\Models\PushSubscription;
 use App\Models\Setting;
 use Throwable;
 
@@ -31,6 +32,7 @@ final class AdminNotifier
         'order.paid'      => ['پرداخت سفارش موفق شد', 'circle-check'],
         'order.failed'    => ['پرداخت سفارش ناموفق بود', 'alert'],
         'order.status'    => ['تغییر وضعیت سفارش', 'truck'],
+        'order.shipment'  => ['به‌روزرسانی وضعیت ارسال', 'truck'],
         'seller.new'      => ['ثبت‌نام فروشنده جدید', 'store'],
         'seller.approved' => ['تایید فروشنده', 'check'],
         'seller.suspended'=> ['تعلیق فروشنده', 'circle-slash'],
@@ -77,7 +79,7 @@ final class AdminNotifier
 
             // Web Push — best effort, never blocks the request flow.
             if ((bool) Setting::get('notifications.push_enabled', false)) {
-                WebPusher::broadcast($title, $body, $link);
+                WebPusher::broadcast($title, $body, $link, PushSubscription::AUDIENCE_ADMIN);
             }
 
             return $notification;

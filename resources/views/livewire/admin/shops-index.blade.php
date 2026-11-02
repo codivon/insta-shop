@@ -81,6 +81,11 @@
                         {{ $tab['label'] }}
                     </button>
                 @endforeach
+                <button type="button" wire:click="openShopCreate"
+                        class="inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700">
+                    <x-icon name="plus" class="size-4" />
+                    افزودن فروشگاه
+                </button>
             </div>
         </div>
     </div>
@@ -155,13 +160,23 @@
                                 </td>
                                 <td class="px-3 py-3.5 text-[11px] text-slate-400">{{ \App\Support\JDate::date($shop->created_at) }}</td>
                                 <td class="px-5 py-3.5">
-                                    <button type="button" wire:click="toggleStatus({{ $shop->id }})"
-                                            wire:confirm="{{ $shop->status === 'active' ? 'فروشگاه «'.$shop->name.'» متوقف شود؟ از دید مشتریان خارج می‌شود.' : 'فروشگاه «'.$shop->name.'» فعال شود؟' }}"
-                                            class="rounded-lg px-3 py-1.5 text-[11px] font-bold transition {{ $shop->status === 'active'
-                                                ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400'
-                                                : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400' }}">
-                                        {{ $shop->status === 'active' ? 'توقف' : 'فعال‌سازی' }}
-                                    </button>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <button type="button" wire:click="openShopEdit({{ $shop->id }})"
+                                                class="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:text-slate-400" aria-label="ویرایش فروشگاه" title="ویرایش">
+                                            <x-icon name="edit" class="size-3.5" />
+                                        </button>
+                                        <button type="button" wire:click="toggleStatus({{ $shop->id }})"
+                                                wire:confirm="{{ $shop->status === 'active' ? 'فروشگاه «'.$shop->name.'» متوقف شود؟ از دید مشتریان خارج می‌شود.' : 'فروشگاه «'.$shop->name.'» فعال شود؟' }}"
+                                                class="rounded-lg px-3 py-1.5 text-[11px] font-bold transition {{ $shop->status === 'active'
+                                                    ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400'
+                                                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400' }}">
+                                            {{ $shop->status === 'active' ? 'توقف' : 'فعال‌سازی' }}
+                                        </button>
+                                        <button type="button" wire:click="askShopDelete({{ $shop->id }})"
+                                                class="grid size-8 place-items-center rounded-lg border border-rose-200 text-rose-500 transition hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/40" aria-label="حذف فروشگاه" title="حذف">
+                                            <x-icon name="trash" class="size-3.5" />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -183,4 +198,152 @@
     <p class="text-center text-[11px] text-slate-400">
         نمایش {{ \App\Support\Fmt::fa(min($shops->count(), $perPage)) }} از {{ \App\Support\Fmt::fa($stats['all']) }} فروشگاه
     </p>
+
+    {{-- ═══════════ edit shop modal ═══════════ --}}
+    <x-modal-panel open="$wire.editOpen" max-width="md" close-js="__ipOpen = false; $wire.closeShopEdit()">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
+                <h3 class="flex items-center gap-2 text-sm font-extrabold">
+                    <span class="grid size-8 place-items-center rounded-xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
+                        <x-icon name="edit" class="size-4" />
+                    </span>
+                    ویرایش فروشگاه
+                </h3>
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeShopEdit()"
+                        class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            </div>
+        </x-slot:header>
+
+        <form wire:submit="saveShop" class="space-y-4 px-5 py-5">
+            <label class="block">
+                <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">نام فروشگاه <span class="text-rose-500">*</span></span>
+                <input type="text" wire:model="shopName" maxlength="120"
+                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                @error('shopName') <span class="mt-1 block text-[10px] text-rose-500">{{ $message }}</span> @enderror
+            </label>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <label class="block">
+                    <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">آیدی اینستاگرام</span>
+                    <input type="text" wire:model="shopInstagram" dir="ltr" maxlength="60" placeholder="username"
+                           class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                    @error('shopInstagram') <span class="mt-1 block text-[10px] text-rose-500">{{ $message }}</span> @enderror
+                </label>
+                <label class="block">
+                    <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">تلفن</span>
+                    <input type="text" wire:model="shopPhone" dir="ltr" placeholder="09xxxxxxxxx"
+                           class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                    @error('shopPhone') <span class="mt-1 block text-[10px] text-rose-500">{{ $message }}</span> @enderror
+                </label>
+            </div>
+            <label class="block">
+                <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">آدرس</span>
+                <input type="text" wire:model="shopAddress" maxlength="300"
+                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                @error('shopAddress') <span class="mt-1 block text-[10px] text-rose-500">{{ $message }}</span> @enderror
+            </label>
+            <label class="block">
+                <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">درباره فروشگاه</span>
+                <textarea wire:model="shopAbout" rows="3" maxlength="2000"
+                          class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800"></textarea>
+                @error('shopAbout') <span class="mt-1 block text-[10px] text-rose-500">{{ $message }}</span> @enderror
+            </label>
+            <label class="block">
+                <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">وضعیت</span>
+                <select wire:model="shopStatus"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                    <option value="active">فعال (قابل مشاهده)</option>
+                    <option value="paused">متوقف (خارج از دید)</option>
+                </select>
+            </label>
+            <div class="flex gap-2 pt-1">
+                <button type="submit" wire:loading.attr="disabled" wire:target="saveShop"
+                        class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 disabled:opacity-50">
+                    <span wire:loading wire:target="saveShop" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                    ذخیره تغییرات
+                </button>
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeShopEdit()"
+                        class="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">
+                    انصراف
+                </button>
+            </div>
+        </form>
+    </x-modal-panel>
+
+    {{-- ═══════════ create shop modal ═══════════ --}}
+    <x-modal-panel open="$wire.createOpen" max-width="sm" close-js="__ipOpen = false; $wire.closeShopCreate()">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
+                <h3 class="flex items-center gap-2 text-sm font-extrabold">
+                    <span class="grid size-8 place-items-center rounded-xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
+                        <x-icon name="plus" class="size-4" />
+                    </span>
+                    افزودن فروشگاه جدید
+                </h3>
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeShopCreate()"
+                        class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            </div>
+        </x-slot:header>
+
+        <form wire:submit="createShop" class="space-y-4 px-5 py-5">
+            <label class="block">
+                <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">فروشنده <span class="text-rose-500">*</span></span>
+                <select wire:model="createSellerId"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                    <option value="">انتخاب کنید…</option>
+                    @forelse ($this->sellersWithoutShop as $seller)
+                        <option value="{{ $seller->id }}">{{ $seller->full_name }} {{ $seller->instagram_username ? '(@'.$seller->instagram_username.')' : '' }}</option>
+                    @empty
+                        <option value="" disabled>همهٔ فروشنده‌ها فروشگاه دارند</option>
+                    @endforelse
+                </select>
+                @error('createSellerId') <span class="mt-1 block text-[10px] text-rose-500">{{ $message }}</span> @enderror
+            </label>
+            <label class="block">
+                <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">نام فروشگاه <span class="text-rose-500">*</span></span>
+                <input type="text" wire:model="createName" maxlength="120" placeholder="مثلاً: فروشگاه @instagram"
+                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                @error('createName') <span class="mt-1 block text-[10px] text-rose-500">{{ $message }}</span> @enderror
+            </label>
+            <div class="flex gap-2 pt-1">
+                <button type="submit" wire:loading.attr="disabled" wire:target="createShop"
+                        class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 disabled:opacity-50">
+                    <span wire:loading wire:target="createShop" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                    ایجاد فروشگاه
+                </button>
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeShopCreate()"
+                        class="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">
+                    انصراف
+                </button>
+            </div>
+        </form>
+    </x-modal-panel>
+
+    {{-- ═══════════ delete confirm modal ═══════════ --}}
+    <x-modal-panel open="$wire.deleteId !== null" max-width="sm" close-js="__ipOpen = false; $wire.cancelShopDelete()" z-class="z-[75]">
+        <div class="p-6 text-center">
+            <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-rose-50 text-rose-500 dark:bg-rose-950/40">
+                <x-icon name="trash" class="size-6" />
+            </span>
+            <h3 class="mt-4 text-sm font-extrabold">حذف فروشگاه</h3>
+            <p class="mt-2 text-[11px] leading-6 text-slate-400">
+                با حذف فروشگاه، همهٔ محصولات، دسته‌بندی‌ها، ویژگی‌ها و روش‌های ارسال آن هم حذف می‌شوند. سوابق سفارش‌ها حفظ می‌شوند. این اقدام قابل بازگشت نیست.
+            </p>
+            <div class="mt-5 flex gap-2">
+                <button type="button" wire:click="deleteShop" x-on:click="__ipOpen = false" wire:loading.attr="disabled" wire:target="deleteShop"
+                        class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-rose-600/25 transition hover:bg-rose-700 disabled:opacity-50">
+                    <span wire:loading wire:target="deleteShop" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                    حذف قطعی
+                </button>
+                <button type="button" x-on:click="__ipOpen = false; $wire.cancelShopDelete()"
+                        class="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">
+                    انصراف
+                </button>
+            </div>
+        </div>
+    </x-modal-panel>
 </div>
+

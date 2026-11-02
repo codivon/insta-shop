@@ -44,6 +44,9 @@ class ProductsIndex extends Component
 
     public bool $showModal = false;
 
+    /** Shop picker before opening the full product form (create flow). */
+    public bool $shopPickerOpen = false;
+
     public ?int $editId = null;
 
     public int $formShopId = 0;
@@ -99,13 +102,32 @@ class ProductsIndex extends Component
 
     /* ══════════ modal lifecycle ══════════ */
 
+    /**
+     * «افزودن محصول» now opens the SHOP PICKER — the full-featured form
+     * (images, variants, specs, files, special sale) lives on its own page
+     * and needs to know which shop it is creating for.
+     */
     public function openCreateModal(): void
     {
-        $this->resetForm();
         $this->resetErrorBag();
-        $this->showModal = true;
+        $this->shopPickerOpen = true;
     }
 
+    public function closeShopPicker(): void
+    {
+        $this->shopPickerOpen = false;
+    }
+
+    public function createForShop(int $shopId): void
+    {
+        if (! \App\Models\Shop::query()->whereKey($shopId)->exists()) {
+            return;
+        }
+
+        $this->redirect(route('admin.products.create', ['shop' => $shopId]), navigate: true);
+    }
+
+    /** Edit now goes to the FULL-featured product form page. */
     public function openEditModal(int $productId): void
     {
         $product = Product::query()->find($productId);
@@ -114,24 +136,7 @@ class ProductsIndex extends Component
             return;
         }
 
-        $this->resetForm();
-        $this->resetErrorBag();
-
-        $this->editId            = $product->id;
-        $this->formShopId        = (int) $product->shop_id;
-        $this->formCategoryId    = (int) ($product->shop_category_id ?? 0);
-        $this->formName          = (string) $product->name;
-        $this->formSlug          = (string) ($product->slug ?? '');
-        $this->formType          = (string) $product->type;
-        $this->formPrice         = (string) $product->price;
-        $this->formCompareAtPrice = $product->compare_at_price > 0 ? (string) $product->compare_at_price : '';
-        $this->formStock         = (string) $product->stock;
-        $this->formWeight        = $product->weight_grams > 0 ? (string) $product->weight_grams : '';
-        $this->formUnit          = (string) ($product->unit ?? '');
-        $this->formStatus        = (string) $product->status;
-        $this->formDescription   = (string) ($product->description ?? '');
-
-        $this->showModal = true;
+        $this->redirect(route('admin.products.edit', $product), navigate: true);
     }
 
     public function closeModal(): void
@@ -236,6 +241,17 @@ class ProductsIndex extends Component
         }
 
         $product->update(['status' => $product->status === 'published' ? 'draft' : 'published']);
+
+        // seller notification: «تغییر وضعیت محصول»
+        \App\Support\SellerNotifier::notify(
+            $product->shop?->seller_id,
+            'product.status',
+            $product->status === 'published' ? 'محصول شما منتشر شد ✅' : 'محصول شما از انتشار خارج شد',
+            'محصول «'.$product->name.'» اکنون '.($product->status === 'published' ? 'در فروشگاه قابل مشاهده است.' : 'پیش‌نویس است و دیده نمی‌شود.'),
+            route('seller.products.edit', $product),
+            'package',
+            $product,
+        );
 
         session()->flash('admin-catalog-flash', 'وضعیت «'.$product->name.'» تغییر کرد.');
     }

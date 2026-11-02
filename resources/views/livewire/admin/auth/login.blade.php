@@ -1,4 +1,10 @@
-<div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900">
+<div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900"
+     x-data="{
+        a: {{ (int) request()->session()->get('admin_captcha_display_a', 0) }},
+        b: {{ (int) request()->session()->get('admin_captcha_display_b', 0) }},
+        fa: (v) => String(v).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]),
+     }"
+     x-on:admin-captcha-refresh.window="a = event.detail.a; b = event.detail.b">
 
     <form wire:submit="login" class="space-y-4">
         <div>
@@ -17,6 +23,33 @@
                    class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-left text-sm font-bold shadow-sm outline-none transition placeholder:text-slate-300 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/15 dark:border-slate-700 dark:bg-slate-950 dark:placeholder:text-slate-600"
                    wire:model="password" required>
             @error('password') <p class="mt-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+        </div>
+
+        {{-- ── robot check (math captcha) ── ──
+             The challenge numbers are mirrored into the session for the
+             initial render; the sum itself never reaches the browser. --}}
+        <div>
+            <label for="captcha" class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-300">عبارت امنیتی (ربات نیستید؟)</label>
+            <div class="flex items-center gap-2">
+                <span class="flex h-[52px] min-w-[92px] select-none items-center justify-center gap-1.5 rounded-2xl border border-dashed border-primary-300 bg-primary-50 text-base font-black tracking-[0.2em] text-primary-700 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-300">
+                    <span x-text="fa(a)"></span>
+                    <span class="text-primary-400">+</span>
+                    <span x-text="fa(b)"></span>
+                    <span class="text-primary-400">=</span>
+                    <span class="text-primary-300">؟</span>
+                </span>
+                <input id="captcha" type="text" inputmode="numeric" dir="ltr"
+                       placeholder="جواب؟"
+                       maxlength="3"
+                       class="h-[52px] w-full rounded-2xl border border-slate-300 bg-white px-4 text-center text-sm font-bold shadow-sm outline-none transition placeholder:text-slate-300 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/15 dark:border-slate-700 dark:bg-slate-950 dark:placeholder:text-slate-600"
+                       wire:model="captcha" required>
+                <button type="button" wire:click="regenerateCaptcha" wire:loading.attr="disabled" wire:target="regenerateCaptcha"
+                        class="grid size-[52px] shrink-0 place-items-center rounded-2xl border border-slate-200 text-slate-400 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:hover:text-primary-400"
+                        aria-label="تعویض عبارت امنیتی" title="تعویض عبارت امنیتی">
+                    <x-icon name="rotate" class="size-4.5" />
+                </button>
+            </div>
+            @error('captcha') <p class="mt-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
         </div>
 
         <label class="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400">

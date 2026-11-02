@@ -159,130 +159,47 @@
         نمایش {{ \App\Support\Fmt::fa(min($products->count(), $perPage)) }} از {{ \App\Support\Fmt::fa($stats['all']) }} محصول
     </p>
 
-    {{-- ══════════ CREATE / EDIT PRODUCT MODAL (75 + 78) ══════════ --}}
-    <x-modal-panel open="$wire.showModal" maxWidth="2xl" labelledby="product-modal-title"
-                   closeJs="__ipOpen = false; $wire.closeModal()">
+    {{-- ══════════ SHOP PICKER → full product form page ══════════ --}}
+    <x-modal-panel open="$wire.shopPickerOpen" maxWidth="sm" closeJs="__ipOpen = false; $wire.closeShopPicker()">
         <x-slot:header>
             <div class="flex items-center justify-between px-5 py-4">
-                <h2 id="product-modal-title" class="flex items-center gap-2.5 text-sm font-extrabold">
+                <h2 class="flex items-center gap-2.5 text-sm font-extrabold">
                     <span class="grid size-9 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950/60 dark:text-primary-400">
                         <x-icon name="package" class="size-4" />
                     </span>
-                    {{ $editId ? 'ویرایش محصول' : 'محصول جدید' }}
+                    محصول جدید — انتخاب فروشگاه
                 </h2>
-                <button type="button" x-on:click="__ipOpen = false; $wire.closeModal()"
-                        class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800" aria-label="بستن">
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeShopPicker()"
+                        class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
                     <x-icon name="x" class="size-4" />
                 </button>
             </div>
         </x-slot:header>
 
-        <form wire:submit="saveProduct" class="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
-            <div class="sm:col-span-2 lg:col-span-1">
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">فروشگاه مالک <span class="text-rose-500">*</span></label>
-                <select wire:model.live="formShopId"
-                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                    <option value="0">انتخاب فروشگاه…</option>
-                    @foreach ($shopOptions as $shopOption)
-                        <option value="{{ $shopOption->id }}">{{ $shopOption->name }}</option>
-                    @endforeach
-                </select>
-                @error('formShopId') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+        <div class="space-y-3 px-5 py-5">
+            <p class="text-[11px] leading-5 text-slate-400">
+                محصول جدید با همهٔ امکانات (تصاویر، تنوع‌ها، ویژگی‌ها، فایل دانلودی، فروش ویژه و دسته‌بندی) در صفحهٔ اختصاصی ساخته می‌شود — اول فروشگاه را انتخاب کنید.
+            </p>
+            <div class="scroll-slim max-h-[46vh] space-y-1.5 overflow-y-auto">
+                @forelse ($shopOptions as $shop)
+                    <button type="button" wire:click="createForShop({{ $shop->id }})"
+                            class="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-right transition hover:border-primary-300 hover:bg-primary-50/50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-700"
+                            wire:key="pickshop-{{ $shop->id }}">
+                        <span class="flex items-center gap-2 text-xs font-bold">
+                            <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800">
+                                <x-icon name="store" class="size-4" />
+                            </span>
+                            {{ $shop->name }}
+                        </span>
+                        <x-icon name="chevron-left" class="size-4 text-slate-300" />
+                    </button>
+                @empty
+                    <div class="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+                        <p class="text-[11px] font-extrabold">هیچ فروشگاهی وجود ندارد.</p>
+                        <p class="mt-1 text-[10px] text-slate-400">اول از صفحهٔ فروشگاه‌ها یک فروشگاه بسازید.</p>
+                    </div>
+                @endforelse
             </div>
-
-            <div class="sm:col-span-2 lg:col-span-1">
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">دستهٔ فروشگاه</label>
-                <select wire:model="formCategoryId"
-                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                    <option value="0">بدون دسته</option>
-                    @foreach ($formCategories as $category)
-                        <option value="{{ $category->id }}">{{ $category->name }}</option>
-                    @endforeach
-                </select>
-                @error('formCategoryId') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">وضعیت</label>
-                <select wire:model="formStatus"
-                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                    <option value="published">منتشرشده</option>
-                    <option value="draft">پیش‌نویس</option>
-                </select>
-            </div>
-
-            <div class="sm:col-span-2">
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">نام محصول <span class="text-rose-500">*</span></label>
-                <input type="text" wire:model="formName" maxlength="120" placeholder="مثلاً: هودی خاکستری طرح اسپرت"
-                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                @error('formName') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">نوع محصول</label>
-                <select wire:model="formType"
-                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                    <option value="physical">فیزیکی</option>
-                    <option value="downloadable">دانلودی</option>
-                </select>
-            </div>
-
-            <div>
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">قیمت (تومان) <span class="text-rose-500">*</span></label>
-                <input type="text" inputmode="numeric" wire:model.blur="formPrice" placeholder="مثلاً: 450000"
-                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                @error('formPrice') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">قیمت قبل از تخفیف</label>
-                <input type="text" inputmode="numeric" wire:model.blur="formCompareAtPrice" placeholder="اختیاری"
-                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                @error('formCompareAtPrice') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">موجودی</label>
-                <input type="text" inputmode="numeric" wire:model.blur="formStock" placeholder="0"
-                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                @error('formStock') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">وزن (گرم) — مبنای هزینه ارسال</label>
-                <input type="text" inputmode="numeric" wire:model.blur="formWeight" placeholder="مثلاً: 500"
-                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                @error('formWeight') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">واحد</label>
-                <input type="text" wire:model="formUnit" maxlength="30" placeholder="مثلاً: عدد، بسته"
-                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-            </div>
-
-            <div>
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">اسلاگ (اختیاری)</label>
-                <input type="text" wire:model="formSlug" dir="ltr" maxlength="190" placeholder="خالی = از نام ساخته می‌شود"
-                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-right text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-            </div>
-
-            <div class="sm:col-span-2 lg:col-span-3">
-                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">توضیحات</label>
-                <textarea wire:model="formDescription" rows="3" maxlength="5000" placeholder="توضیح کامل محصول…"
-                          class="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm leading-5 outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800"></textarea>
-            </div>
-
-            <div class="flex gap-2 sm:col-span-2 lg:col-span-3">
-                <button type="button" x-on:click="__ipOpen = false; $wire.closeModal()"
-                        class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                    انصراف
-                </button>
-                <button type="submit" wire:loading.attr="disabled" wire:target="saveProduct"
-                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95 disabled:opacity-60">
-                    ذخیره محصول
-                </button>
-            </div>
-        </form>
+        </div>
     </x-modal-panel>
 </div>

@@ -3,6 +3,7 @@
 namespace App\Support\Wallet;
 
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Seller;
 use App\Models\Shop;
 use App\Models\Wallet;
@@ -28,7 +29,14 @@ final class WalletService
     /** Credit the shops of a paid order (called inside finalizePaid). */
     public static function creditOrder(Order $order): void
     {
-        $shares = $order->items()
+        // Query OrderItem DIRECTLY — the Order::items() relation appends
+        // orderBy('id') which would inject "ORDER BY id" into this GROUP BY
+        // aggregate and crash under MySQL 8's ONLY_FULL_GROUP_BY
+        // (SQLSTATE[42000] 1055: "Expression #1 of ORDER BY clause is not
+        // in GROUP BY clause"). Aggregates must never inherit the
+        // relation's default ordering.
+        $shares = OrderItem::query()
+            ->where('order_id', $order->id)
             ->selectRaw('shop_id, SUM(unit_price * quantity) as total')
             ->groupBy('shop_id')
             ->get();
@@ -91,6 +99,16 @@ final class WalletService
                 'order_id'    => $order->id,
                 'description' => self::depositDescription($order, $itemsTotal, $commission, $commissionType, $commissionValue),
             ]);
+
+            // seller notification: «واریز به کیف پول»
+            \App\Support\SellerNotifier::notify(
+                $sellerId,
+                'wallet.deposit',
+                'واریز به کیف پول 💰 '.Fmt::money($payout),
+                self::depositDescription($order, $itemsTotal, $commission, $commissionType, $commissionValue),
+                route('seller.wallet'),
+                'wallet',
+            );
         }
 
         // Persist the settlement snapshot (used by the admin income page).
@@ -151,6 +169,16 @@ final class WalletService
             'description' => 'برداشت تأییدشده — '.$tx->sheba,
         ]);
 
+        \App\Support\SellerNotifier::notify(
+            $tx->wallet?->seller_id,
+            'wallet.withdraw',
+            'درخواست برداشت تأیید شد ✅ '.Fmt::money($tx->amount),
+            'مبلغ برداشت به حساب شما ('.$tx->sheba.') ارسال شد.',
+            route('seller.wallet'),
+            'wallet',
+            $tx,
+        );
+
         return true;
     }
 
@@ -168,6 +196,16 @@ final class WalletService
                 'description' => 'درخواست رد شد — مبلغ به کیف پول بازگشت',
             ]);
         });
+
+        \App\Support\SellerNotifier::notify(
+            $tx->wallet?->seller_id,
+            'wallet.withdraw',
+            'درخواست برداشت رد شد ⛔ '.Fmt::money($tx->amount),
+            'مبلغ به کیف پول فروشگاه شما بازگشت.',
+            route('seller.wallet'),
+            'wallet',
+            $tx,
+        );
 
         return true;
     }

@@ -81,6 +81,12 @@
                                 </td>
                                 <td class="px-4 py-2.5">
                                     <div class="flex items-center justify-end gap-1">
+                                        <button type="button" wire:click="openCities({{ $province->id }})"
+                                                class="inline-flex h-8 items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2.5 text-[10px] font-extrabold text-primary-600 transition hover:bg-primary-100 dark:border-primary-900 dark:bg-primary-950/40 dark:text-primary-300"
+                                                aria-label="مدیریت شهرهای {{ $province->name }}">
+                                            <x-icon name="map-pin" class="size-3.5" />
+                                            شهرها
+                                        </button>
                                         <button type="button" wire:click="openEdit('province', {{ $province->id }})"
                                                 class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-950/40" aria-label="ویرایش">
                                             <x-icon name="edit" class="size-3.5" />
@@ -206,6 +212,66 @@
             </form>
         </div>
     </div>
+
+    {{-- ═══════════ per-province cities drawer ═══════════ --}}
+    <x-modal-panel open="$wire.citiesProvinceId !== null" max-width="md" close-js="__ipOpen = false; $wire.closeCities()">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
+                <div>
+                    <h3 class="flex items-center gap-2 text-sm font-extrabold">
+                        <span class="grid size-8 place-items-center rounded-xl bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
+                            <x-icon name="map-pin" class="size-4" />
+                        </span>
+                        شهرهای استان {{ $citiesProvinceName }}
+                    </h3>
+                    <p class="mt-0.5 text-[10px] text-slate-400">افزودن، ویرایش و حذف شهرهای این استان از همین‌جا</p>
+                </div>
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeCities()"
+                        class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            </div>
+        </x-slot:header>
+
+        <div class="space-y-3 px-5 py-5">
+            <button type="button" wire:click="openCreate('city')"
+                    class="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2.5 text-[11px] font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700">
+                <x-icon name="plus" class="size-4" />
+                افزودن شهر به {{ $citiesProvinceName }}
+            </button>
+
+            <div class="scroll-slim max-h-[46vh] space-y-1.5 overflow-y-auto">
+                @forelse ($provinceCities as $city)
+                    <div class="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 transition hover:border-primary-200 dark:border-slate-800 dark:bg-slate-900"
+                         wire:key="pcity-{{ $city->id }}">
+                        <div class="min-w-0">
+                            <p class="truncate text-[11.5px] font-bold">{{ $city->name }}</p>
+                            <p class="text-[9.5px] text-slate-400">ترتیب {{ \App\Support\Fmt::toFa($city->ordering) }}
+                                · <span class="{{ $city->is_active ? 'text-emerald-500' : 'text-slate-400' }}">{{ $city->is_active ? 'فعال' : 'غیرفعال' }}</span>
+                            </p>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-1">
+                            <button type="button" wire:click="openEdit('city', {{ $city->id }})"
+                                    class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-950/40" aria-label="ویرایش شهر">
+                                <x-icon name="edit" class="size-3.5" />
+                            </button>
+                            <button type="button" wire:click="deleteLocation('city', {{ $city->id }})"
+                                    wire:confirm="شهر «{{ $city->name }}» حذف شود؟"
+                                    class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/40" aria-label="حذف شهر">
+                                <x-icon name="trash" class="size-3.5" />
+                            </button>
+                        </div>
+                    </div>
+                @empty
+                    <div class="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+                        <x-icon name="map-pin" class="mx-auto size-7 text-slate-300 dark:text-slate-600" />
+                        <p class="mt-2.5 text-[11px] font-extrabold">هنوز شهری برای این استان ثبت نشده</p>
+                        <p class="mt-1 text-[10px] text-slate-400">با دکمهٔ بالا اولین شهر را اضافه کنید.</p>
+                    </div>
+                @endforelse
+            </div>
+        </div>
+    </x-modal-panel>
 
     {{-- toast --}}
     <div x-show="toast" x-transition.opacity x-cloak

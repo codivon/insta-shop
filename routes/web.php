@@ -14,16 +14,21 @@ use App\Livewire\Admin\Access\RolesIndex;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Admin\Developer\DeveloperSettings;
 use App\Livewire\Admin\Developer\SystemLogs;
+use App\Livewire\Admin\FinancePage;
 use App\Livewire\Admin\IncomePage;
 use App\Livewire\Admin\Notifications\NotificationsPage;
 use App\Livewire\Admin\OrdersIndex;
 use App\Livewire\Admin\OrderShow;
+use App\Livewire\Admin\ProductForm as AdminProductForm;
+use App\Livewire\Admin\ProfilePage as AdminProfilePage;
 use App\Livewire\Admin\ProductsIndex;
+use App\Livewire\Admin\SettlementsPage;
 use App\Livewire\Admin\ShopsIndex;
 use App\Livewire\Admin\Users\CustomersIndex;
 use App\Livewire\Admin\Users\CustomerShow;
 use App\Livewire\Admin\Users\SellerShow;
 use App\Livewire\Admin\Users\SellersIndex;
+use App\Livewire\Admin\WithdrawalsPage;
 use App\Livewire\Admin\Settings\SmsSettings;
 use App\Livewire\Admin\Settings\SmsTemplatesCenter;
 use App\Livewire\Admin\Settings\SettingsHub;
@@ -48,6 +53,7 @@ use App\Livewire\Seller\DiscountForm;
 use App\Livewire\Seller\DiscountIndex;
 use App\Livewire\Seller\FilteringManager;
 use App\Livewire\Seller\Home;
+use App\Livewire\Seller\Notifications\NotificationsPage as SellerNotificationsPage;
 use App\Livewire\Seller\OrdersPage as SellerOrdersPage;
 use App\Livewire\Seller\ProductForm;
 use App\Livewire\Seller\ProfilePage as SellerProfilePage;
@@ -96,13 +102,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ── Catalog management (shops & products) ──
         Route::get('/shops', ShopsIndex::class)->name('shops');
         Route::get('/products', ProductsIndex::class)->name('products');
+        Route::get('/products/create', AdminProductForm::class)->name('products.create');
+        Route::get('/products/{product}/edit', AdminProductForm::class)->name('products.edit');
         Route::get('/discounts', DiscountsIndex::class)->name('discounts');
 
         // ── Platform income (کمیسیون‌های دریافتی — batch 81) ──
         Route::get('/income', IncomePage::class)->name('income');
 
+        // ── Finance center: financial reports + settlements + withdrawals ──
+        Route::get('/finance', FinancePage::class)->name('finance');
+        Route::get('/settlements', SettlementsPage::class)->name('settlements');
+        Route::get('/withdrawals', WithdrawalsPage::class)->name('withdrawals');
+
         // ── Locations (استان‌ها و شهرها — add/remove ONLY here) ──
         Route::get('/locations', LocationsPage::class)->name('locations');
+
+        // ── Admin profile (ویرایش پروفایل مدیر + تغییر رمز) ──
+        Route::get('/profile', AdminProfilePage::class)->name('profile');
 
         // ── Orders management ──
         Route::get('/orders', OrdersIndex::class)->name('orders');
@@ -191,6 +207,11 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
         // ── Reports (orders & product-visit analytics) ──
         Route::get('/reports', ReportsPage::class)->name('reports');
+
+        // ── Seller notifications (فقط اعلان‌های خود فروشنده + پوش موبایل/سیستم) ──
+        Route::get('/notifications', SellerNotificationsPage::class)->name('notifications');
+        Route::post('/notifications/subscribe', [PushSubscriptionController::class, 'store'])->name('notifications.subscribe');
+        Route::delete('/notifications/subscribe', [PushSubscriptionController::class, 'destroy'])->name('notifications.unsubscribe');
 
         // ── Seller profile (identity, shortcuts, theme, logout) ──
         Route::get('/profile', SellerProfilePage::class)->name('profile');

@@ -71,6 +71,9 @@
                                 <td class="px-3 py-3.5 text-[11px] text-slate-400">{{ $order->dateFa() }}</td>
                                 <td class="px-3 py-3.5">
                                     <span class="rounded-full px-2.5 py-1 text-[10px] font-bold {{ $order->statusClasses() }}">{{ $order->statusLabel() }}</span>
+                                    @if ($order->status === 'paid')
+                                        <span class="rounded-full px-2.5 py-1 text-[10px] font-bold {{ $order->shipmentStatusClasses() }}">{{ $order->shipmentStatusLabel() }}</span>
+                                    @endif
                                 </td>
                                 <td class="px-5 py-3.5">
                                     <a href="{{ route('admin.orders.show', $order) }}" wire:navigate

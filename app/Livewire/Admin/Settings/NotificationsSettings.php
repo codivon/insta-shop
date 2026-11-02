@@ -30,8 +30,11 @@ class NotificationsSettings extends Component
 
     public bool $pushEnabled = false;
 
-    /** @var array<string, bool> event key => enabled */
+    /** @var array<string, bool> event key => enabled (admin panel) */
     public array $events = [];
+
+    /** @var array<string, bool> event key => enabled (seller panel) */
+    public array $sellerEvents = [];
 
     public string $vapidPublic = '';
 
@@ -51,6 +54,11 @@ class NotificationsSettings extends Component
          */
         foreach (AdminNotifier::EVENTS as $key => $meta) {
             $this->events[str_replace('.', '__', $key)] = (bool) Setting::get('notifications.events.'.$key, true);
+        }
+
+        // seller-panel events (seller notifications + their pushes)
+        foreach (\App\Support\SellerNotifier::EVENTS as $key => $meta) {
+            $this->sellerEvents[str_replace('.', '__', $key)] = (bool) Setting::get('notifications.seller_events.'.$key, true);
         }
 
         $this->vapidPublic = (string) Setting::get('notifications.vapid_public', '');
@@ -74,6 +82,16 @@ class NotificationsSettings extends Component
             Setting::set('notifications.events.'.$key, ! empty($this->events[$uiKey]) ? '1' : '0', 'boolean');
 
             $after['notifications.events.'.$key] = (bool) ! empty($this->events[$uiKey]);
+        }
+
+        foreach (\App\Support\SellerNotifier::EVENTS as $key => $meta) {
+            $before['notifications.seller_events.'.$key] = (bool) Setting::get('notifications.seller_events.'.$key, true);
+
+            $uiKey = str_replace('.', '__', $key);
+
+            Setting::set('notifications.seller_events.'.$key, ! empty($this->sellerEvents[$uiKey]) ? '1' : '0', 'boolean');
+
+            $after['notifications.seller_events.'.$key] = (bool) ! empty($this->sellerEvents[$uiKey]);
         }
 
         // keep the activity log honest — only log when something really changed

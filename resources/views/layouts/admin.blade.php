@@ -59,6 +59,7 @@
             @php
                 $pendingSellers = \App\Models\Seller::query()->where('status', 'pending')->count();
                 $pendingOrders  = \App\Models\Order::query()->where('status', 'pending')->count();
+                $pendingWithdrawals = \App\Models\WalletTransaction::query()->where('type', 'withdrawal')->where('status', 'pending')->count();
 
                 // Permission-aware menu: items the current admin cannot open
                 // are hidden (super admins always pass).
@@ -72,6 +73,9 @@
                     ['route' => 'admin.products',            'icon' => 'package',     'label' => 'محصولات',    'match' => 'admin.products',      'badge' => null],
                     ['route' => 'admin.discounts',           'icon' => 'tag',         'label' => 'کدهای تخفیف','match' => 'admin.discounts',     'badge' => null],
                     ['route' => 'admin.income',              'icon' => 'coins',       'label' => 'درآمد',      'match' => 'admin.income',        'badge' => null],
+                    ['route' => 'admin.finance',             'icon' => 'file-text',   'label' => 'گزارش مالی', 'match' => 'admin.finance',       'badge' => null],
+                    ['route' => 'admin.settlements',         'icon' => 'trending-up', 'label' => 'تسویه‌ها',   'match' => 'admin.settlements',   'badge' => null],
+                    ['route' => 'admin.withdrawals',         'icon' => 'wallet',      'label' => 'برداشت‌ها',  'match' => 'admin.withdrawals',   'badge' => $pendingWithdrawals],
                     ['route' => 'admin.locations',           'icon' => 'map-pin',     'label' => 'استان و شهر','match' => 'admin.locations',     'badge' => null],
                     ['route' => 'admin.users.sellers',       'icon' => 'users',       'label' => 'فروشندگان',  'match' => 'admin.users.sellers', 'badge' => $pendingSellers],
                     ['route' => 'admin.users.customers',     'icon' => 'user',        'label' => 'مشتریان',    'match' => 'admin.users.customers','badge' => null],
@@ -220,12 +224,21 @@
                         <span class="block text-[11px] text-slate-400" dir="ltr">{{ auth('admin')->user()?->email ?? 'admin@caffeinet.ir' }}</span>
                     </span>
                 </div>
-                <form method="POST" action="{{ route('admin.logout') }}">
-                    @csrf
-                    <button type="submit" class="grid size-8 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition hover:bg-primary-700" aria-label="خروج از حساب">
-                        <x-icon name="log-out" class="size-4" />
-                    </button>
-                </form>
+                <div class="flex items-center gap-1.5">
+                    @if (\Illuminate\Support\Facades\Route::has('admin.profile'))
+                        <a href="{{ route('admin.profile') }}" wire:navigate
+                           class="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:text-slate-400"
+                           aria-label="پروفایل مدیر" title="پروفایل مدیر">
+                            <x-icon name="settings" class="size-4" />
+                        </a>
+                    @endif
+                    <form method="POST" action="{{ route('admin.logout') }}">
+                        @csrf
+                        <button type="submit" class="grid size-8 place-items-center rounded-lg bg-primary-600 text-white shadow-md shadow-primary-600/30 transition hover:bg-primary-700" aria-label="خروج از حساب">
+                            <x-icon name="log-out" class="size-4" />
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </aside>

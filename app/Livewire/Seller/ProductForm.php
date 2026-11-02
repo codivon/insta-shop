@@ -653,7 +653,13 @@ class ProductForm extends Component
 
         session()->flash('shop-flash', $this->productId ? 'محصول به‌روزرسانی شد.' : 'محصول جدید اضافه شد.');
 
-        $this->redirect(route('seller.shop'), navigate: true);
+        $this->redirect($this->afterSaveUrl(), navigate: true);
+    }
+
+    /** Where the form lands after a successful save (admin subclass overrides). */
+    protected function afterSaveUrl(): string
+    {
+        return route('seller.shop');
     }
 
     /**

@@ -29,6 +29,7 @@ return [
                 'admin.dashboard'  => 'داشبورد',
                 'admin.activity'   => 'فعالیت‌های اخیر (گزارش کامل رویدادها)',
                 'admin.notifications' => 'نوتیفیکیشن‌ها',
+                'admin.profile'    => 'پروفایل مدیر (ویرایش اطلاعات و رمز عبور)',
             ],
         ],
 
@@ -41,6 +42,9 @@ return [
                 'admin.products'    => 'محصولات',
                 'admin.discounts'   => 'کدهای تخفیف',
                 'admin.income'      => 'درآمد و کمیسیون‌ها',
+                'admin.finance'     => 'گزارش مالی',
+                'admin.settlements' => 'تسویه‌ها',
+                'admin.withdrawals' => 'مدیریت برداشت‌ها',
                 'admin.locations'   => 'استان‌ها و شهرها',
             ],
         ],

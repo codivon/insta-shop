@@ -1,6 +1,6 @@
 <div class="ip-fade-up space-y-5"
      x-data="{ open: $wire.modalOpen, deleteOpen: false }"
-     x-on:keydown.escape.window="open = false; deleteOpen = false; $wire.closeModal()"
+     x-on:keydown.escape.window="open = false; $wire.closeModal()"
      x-on:admins-close-modal.window="open = false">
 
     {{-- ── flash ── --}}
@@ -184,7 +184,7 @@
     </x-modal-panel>
 
     {{-- ═══════════ delete confirm modal ═══════════ --}}
-    <x-modal-panel open="$wire.deleteOpen" max-width="sm" close-js="__ipOpen = false" z-class="z-[75]">
+    <x-modal-panel open="$wire.deleteId !== null" max-width="sm" close-js="__ipOpen = false; $wire.cancelDelete()" z-class="z-[75]">
         <div class="p-6 text-center">
             <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-rose-50 text-rose-500 dark:bg-rose-950/40">
                 <x-icon name="trash" class="size-6" />

@@ -39,6 +39,9 @@ class LocationsPage extends Component
     /** null = create, int = editing id */
     public ?int $editingId = null;
 
+    /** Per-province cities drawer (list + add/edit/delete of ONE province). */
+    public ?int $citiesProvinceId = null;
+
     public string $kind = 'province'; // province | city
 
     public string $name = '';
@@ -69,6 +72,40 @@ class LocationsPage extends Component
         // hook kept for future pagination
     }
 
+    /* ─────────────── per-province cities drawer ─────────────── */
+
+    public function openCities(int $provinceId): void
+    {
+        $this->citiesProvinceId = $provinceId;
+    }
+
+    public function closeCities(): void
+    {
+        $this->citiesProvinceId = null;
+    }
+
+    public function getProvinceCitiesProperty(): Collection
+    {
+        if ($this->citiesProvinceId === null) {
+            return collect();
+        }
+
+        return City::query()
+            ->where('province_id', $this->citiesProvinceId)
+            ->orderBy('ordering')
+            ->orderBy('id')
+            ->get(['id', 'name', 'ordering', 'is_active']);
+    }
+
+    public function getCitiesProvinceNameProperty(): string
+    {
+        if ($this->citiesProvinceId === null) {
+            return '';
+        }
+
+        return (string) (Province::query()->find($this->citiesProvinceId)?->name ?? '');
+    }
+
     /* ─────────────── modal lifecycle ─────────────── */
 
     public function openCreate(string $kind): void
@@ -78,7 +115,7 @@ class LocationsPage extends Component
         $this->editingId  = null;
         $this->kind       = $kind === 'city' ? 'city' : 'province';
         $this->name       = '';
-        $this->parentProvinceId = $this->tab === 'cities' && $this->provinceFilter > 0 ? $this->provinceFilter : 0;
+        $this->parentProvinceId = $this->citiesProvinceId ?? ($this->tab === 'cities' && $this->provinceFilter > 0 ? $this->provinceFilter : 0);
         $this->ordering   = $this->nextOrdering();
         $this->isActive   = true;
     }
@@ -251,10 +288,12 @@ class LocationsPage extends Component
     public function render()
     {
         return view('livewire.admin.locations-page', [
-            'provinces'       => $this->provinces,
-            'cities'          => $this->cities,
-            'provinceOptions' => $this->provinceOptions,
-            'stats'           => $this->stats,
+            'provinces'           => $this->provinces,
+            'cities'              => $this->cities,
+            'provinceOptions'     => $this->provinceOptions,
+            'stats'               => $this->stats,
+            'provinceCities'      => $this->provinceCities,
+            'citiesProvinceName'  => $this->citiesProvinceName,
         ])->title('استان‌ها و شهرها');
     }
 }

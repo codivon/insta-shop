@@ -55,6 +55,26 @@
         </div>
     </section>
 
+    {{-- ── seller-panel event switches ── --}}
+    <section class="space-y-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+        <p class="text-[13px] font-bold">اعلان‌های پنل فروشنده</p>
+        <p class="text-[11px] leading-5 text-slate-400">
+            فروشنده فقط اعلان‌های مربوط به فروشگاه خودش را می‌بیند (سفارش‌های شامل محصولاتش، کیف پولش، محصولاتش). با این کلیدها مشخص کنید کدام اتفاق‌ها برای فروشنده اعلان بسازند — پوش گوشی/سیستم هم برای دستگاه‌های فعال‌شدهٔ فروشنده ارسال می‌شود.
+        </p>
+        <div class="grid gap-2.5 sm:grid-cols-2">
+            @foreach (App\Support\SellerNotifier::EVENTS as $key => [$label, $icon])
+                <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 transition hover:border-primary-300 dark:border-slate-700 dark:bg-slate-800/40"
+                       wire:key="sevt-{{ $key }}">
+                    <span class="flex items-center gap-2 text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                        <x-icon name="{{ $icon }}" class="size-4 text-slate-400" />
+                        {{ $label }}
+                    </span>
+                    <input type="checkbox" class="size-4.5 accent-primary-600" wire:model="sellerEvents.{{ str_replace('.', '__', $key) }}">
+                </label>
+            @endforeach
+        </div>
+    </section>
+
     {{-- ── actions ── --}}
     <section class="flex flex-wrap items-center gap-2.5 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
         <button type="button" wire:click="save" wire:loading.attr="disabled" wire:target="save"

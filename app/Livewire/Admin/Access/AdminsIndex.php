@@ -173,6 +173,12 @@ class AdminsIndex extends Component
         $this->deleteId = $id;
     }
 
+    /** Dismiss the delete confirmation without deleting. */
+    public function cancelDelete(): void
+    {
+        $this->deleteId = null;
+    }
+
     public function deleteAdmin(): void
     {
         if ($this->deleteId === null) {

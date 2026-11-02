@@ -81,6 +81,51 @@
         </div>
 
         <div class="space-y-5">
+            {{-- ── shipment lifecycle control (paid orders) ── --}}
+            @if ($order->status === 'paid')
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <h3 class="flex items-center gap-2 text-sm font-extrabold">
+                        <x-icon name="truck" class="size-4 text-primary-500" />
+                        وضعیت ارسال
+                        <span class="ms-auto rounded-full px-2.5 py-1 text-[10px] font-bold {{ $order->shipmentStatusClasses() }}">{{ $order->shipmentStatusLabel() }}</span>
+                    </h3>
+                    <div class="mt-4 grid gap-2 sm:grid-cols-3">
+                        @foreach ([['processing', 'در حال پردازش', 'clock'], ['shipped', 'در حال ارسال', 'truck'], ['delivered', 'تحویل شد', 'circle-check']] as [$value, $label, $icon])
+                            <label class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-bold transition {{ $shipStatus === $value
+                                    ? 'border-primary-400 bg-primary-50 text-primary-700 dark:border-primary-600 dark:bg-primary-950/40 dark:text-primary-300'
+                                    : 'border-slate-200 text-slate-500 hover:border-primary-300 dark:border-slate-700 dark:text-slate-400' }}"
+                                   wire:key="admnship-{{ $value }}">
+                                <input type="radio" value="{{ $value }}" wire:model="shipStatus" class="sr-only">
+                                <x-icon name="{{ $icon }}" class="size-4" />
+                                {{ $label }}
+                            </label>
+                        @endforeach
+                    </div>
+                    <div class="mt-3" x-data="{ open: $wire.shipStatus === 'shipped' }" x-effect="open = $wire.shipStatus === 'shipped'">
+                        <label class="block">
+                            <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                                کد رهگیری پستی <span class="text-rose-500">*</span>
+                                <span class="font-normal text-slate-400">(الزامی برای «در حال ارسال»)</span>
+                            </span>
+                            <input type="text" wire:model="shipTracking" dir="ltr"
+                                   class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                                   placeholder="کد رهگیری مرسوله پستی">
+                            @error('shipTracking') <span class="mt-1 block text-[10px] text-rose-500">{{ $message }}</span> @enderror
+                        </label>
+                    </div>
+                    <button type="button" wire:click="saveShipment" wire:loading.attr="disabled" wire:target="saveShipment"
+                            class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 disabled:opacity-50">
+                        <span wire:loading wire:target="saveShipment" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                        ثبت وضعیت ارسال
+                    </button>
+                    @if ($order->tracking_code)
+                        <p class="mt-2 text-center text-[10px] font-bold text-violet-600 dark:text-violet-400">
+                            کد رهگیری فعلی: <span dir="ltr">{{ \App\Support\Fmt::toFa($order->tracking_code) }}</span>
+                        </p>
+                    @endif
+                </div>
+            @endif
+
             {{-- ── customer & delivery ── --}}
             <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <h3 class="flex items-center gap-2 text-sm font-extrabold">

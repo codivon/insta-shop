@@ -37,13 +37,14 @@
                 ['route' => 'seller.shop',        'icon' => 'store',  'label' => 'فروشگاه من'],
                 ['route' => 'seller.orders',      'icon' => 'bag',    'label' => 'سفارش‌ها'],
                 ['route' => 'seller.wallet',      'icon' => 'wallet', 'label' => 'کیف پول'],
+                ['route' => 'seller.notifications','icon' => 'bell',  'label' => 'اعلان‌ها'],
                 ['route' => 'seller.profile',     'icon' => 'user',   'label' => 'پروفایل'],
             ];
         @endphp
         @unless ($hideTabbar ?? false)
         <nav class="shrink-0 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95"
              aria-label="تب‌های اصلی فروشنده">
-            <div class="grid grid-cols-5">
+            <div class="grid grid-cols-6">
                 @foreach ($sellerTabs as $tab)
                     @php
                         $active = request()->routeIs($tab['route'], $tab['route'].'.*');
@@ -52,12 +53,15 @@
                     @endphp
                     <a href="{{ $href }}" @if ($href !== '#') wire:navigate @endif
                        aria-current="{{ $active ? 'page' : 'false' }}"
-                       class="flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold transition
+                       class="relative flex flex-col items-center gap-1 py-2.5 text-[9.5px] font-semibold transition
                               {{ $active ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300' }}">
                         <span class="grid h-8 w-14 place-items-center rounded-full transition {{ $active ? 'bg-primary-100 dark:bg-primary-950' : '' }}">
                             <x-icon name="{{ $tab['icon'] }}" class="size-5" />
                         </span>
                         {{ $tab['label'] }}
+                        @if ($tab['route'] === 'seller.notifications' && \Illuminate\Support\Facades\Route::has('seller.notifications'))
+                            <livewire:seller.notifications.unread-badge wire:key="seller-tab-badge" />
+                        @endif
                     </a>
                 @endforeach
             </div>
@@ -66,6 +70,72 @@
     </div>
 
     @include('partials.panel-toast')
+
+    {{-- Web-Push registration helper for the seller notifications page —
+         lives in the LAYOUT because Livewire components may only have one
+         root element. Devices are stored scoped to THIS seller. --}}
+    @once
+        <script>
+            (function () {
+                function urlB64ToUint8Array(base64String) {
+                    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+                    const raw = atob(base64);
+                    const output = new Uint8Array(raw.length);
+                    for (let i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+                    return output;
+                }
+
+                window.__ipVapidKey = @js(\App\Support\WebPusher::publicKey());
+                window.__ipPushRoute = @js(route('seller.notifications.subscribe'));
+
+                window.__ipEnablePush = async function () {
+                    try {
+                        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification) {
+                            return;
+                        }
+
+                        const perm = await Notification.requestPermission();
+                        if (perm !== 'granted') return;
+
+                        const reg = await navigator.serviceWorker.register('/sw.js');
+                        await navigator.serviceWorker.ready;
+
+                        let sub = await reg.pushManager.getSubscription();
+                        if (!sub) {
+                            sub = await reg.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: urlB64ToUint8Array(window.__ipVapidKey || ''),
+                            });
+                        }
+
+                        const json = sub.toJSON();
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.content
+                            || window.livewireScriptConfig?.csrf
+                            || '';
+
+                        await fetch(window.__ipPushRoute, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                endpoint: json.endpoint,
+                                keys: json.keys,
+                                device_label: navigator.userAgent.slice(0, 100),
+                            }),
+                        });
+
+                        window.dispatchEvent(new CustomEvent('ip-push-subscribed'));
+                    } catch (e) {
+                        console.warn('push subscribe failed', e);
+                    }
+                };
+            })();
+        </script>
+    @endonce
 
     @stack('scripts')
 </body>

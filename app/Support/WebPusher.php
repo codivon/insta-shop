@@ -72,18 +72,23 @@ final class WebPusher
     }
 
     /**
-     * Send a push to every subscribed device.
+     * Send a push to every subscribed device of ONE panel audience.
      *
+     * @param  string|null $audience  'admin' | 'seller' | null (legacy = every device)
+     * @param  int|null    $sellerId  when audience='seller': only this seller's devices
      * @return int number of deliveries attempted successfully
      */
-    public static function broadcast(string $title, string $body = '', ?string $url = null): int
+    public static function broadcast(string $title, string $body = '', ?string $url = null, ?string $audience = null, ?int $sellerId = null): int
     {
         try {
             if (! SchemaReady::check('push_subscriptions')) {
                 return 0;
             }
 
-            $subscriptions = PushSubscription::query()->get();
+            $subscriptions = PushSubscription::query()
+                ->when($audience !== null, fn ($q) => $q->where('audience', $audience))
+                ->when($audience === PushSubscription::AUDIENCE_SELLER && $sellerId !== null, fn ($q) => $q->where('seller_id', $sellerId))
+                ->get();
 
             if ($subscriptions->isEmpty()) {
                 return 0;

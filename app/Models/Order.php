@@ -15,10 +15,14 @@ use Illuminate\Support\Facades\DB;
     'shipping_cost', 'discount_amount', 'discount_code', 'shipments', 'commissions',
     'receiver_name', 'delivery_phone', 'delivery_address', 'postal_code',
     'gateway', 'gateway_ref', 'receipt_ref', 'paid_at',
+    'shipment_status', 'tracking_code', 'shipment_status_at',
 ])]
 class Order extends Model
 {
     public const STATUSES = ['pending', 'paid', 'failed', 'canceled'];
+
+    /** Shipment lifecycle for paid orders. */
+    public const SHIPMENT_STATUSES = ['none', 'processing', 'shipped', 'delivered'];
 
     protected function casts(): array
     {
@@ -30,6 +34,7 @@ class Order extends Model
             'shipments'       => 'array',
             'commissions'     => 'array',
             'paid_at'         => 'datetime',
+            'shipment_status_at' => 'datetime',
         ];
     }
 
@@ -94,7 +99,7 @@ class Order extends Model
             ? max(0, (int) ($checkout['discount_amount'] ?? 0))
             : 0;
 
-        return DB::transaction(function () use ($customer, $delivery, $gateway, $lines, $shipping, $discount, $discountAmount, $checkout) {
+        $order = DB::transaction(function () use ($customer, $delivery, $gateway, $lines, $shipping, $discount, $discountAmount, $checkout) {
             $order = static::query()->create([
                 'customer_id'      => $customer->id,
                 'status'           => 'pending',
@@ -120,6 +125,20 @@ class Order extends Model
 
             return $order;
         });
+
+        // seller notifications AFTER the transaction (Web Push = HTTP calls
+        // must never hold a DB write lock): «سفارش جدید شامل محصولات شما»
+        \App\Support\SellerNotifier::toShops(
+            $lines->pluck('shop_id')->all(),
+            'order.new',
+            'سفارش جدید '.\App\Support\Fmt::fa($order->id).' ثبت شد 🛍️',
+            \App\Support\Fmt::fa($lines->sum('quantity')).' قلم کالا از فروشگاه شما در این سفارش وجود دارد.',
+            route('seller.orders'),
+            'bag',
+            $order,
+        );
+
+        return $order;
     }
 
     /* ──────────────────────── State transitions ────────────────────── */
@@ -175,6 +194,17 @@ class Order extends Model
             // seller wallets: credit each shop's share of this paid order
             \App\Support\Wallet\WalletService::creditOrder($order);
 
+            // notify every shop's seller: «پرداخت شد — آماده پردازش/ارسال»
+            \App\Support\SellerNotifier::toShops(
+                $order->items->pluck('shop_id')->all(),
+                'order.paid',
+                'پرداخت سفارش '.\App\Support\Fmt::fa($order->id).' موفق شد ✅',
+                'مبلغ '.\App\Support\Fmt::money($order->total_amount).' پرداخت شد — سفارش آماده پردازش و ارسال است.',
+                route('seller.orders'),
+                'circle-check',
+                $order,
+            );
+
             return true;
         });
     }
@@ -223,6 +253,62 @@ class Order extends Model
             'sep'         => 'درگاه سپ',
             default       => 'درگاه آزمایشی (محلی)',
         };
+    }
+
+    /* ───────────────────────── Shipment lifecycle ───────────────────── */
+
+    /** Persian label of the shipment status. */
+    public function shipmentStatusLabel(): string
+    {
+        return match ($this->shipment_status) {
+            'processing' => 'در حال پردازش',
+            'shipped'    => 'در حال ارسال',
+            'delivered'  => 'تحویل شد',
+            default      => 'پردازش نشده',
+        };
+    }
+
+    /** Tailwind chip classes per shipment status. */
+    public function shipmentStatusClasses(): string
+    {
+        return match ($this->shipment_status) {
+            'processing' => 'bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400',
+            'shipped'    => 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400',
+            'delivered'  => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+            default      => 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+        };
+    }
+
+    /**
+     * Transition the shipment state of a PAID order. «در حال ارسال» requires
+     * a post tracking code. Returns false when the order is not paid or the
+     * status is unknown.
+     */
+    public function setShipment(string $status, ?string $trackingCode = null): bool
+    {
+        if ($this->status !== 'paid' || ! in_array($status, self::SHIPMENT_STATUSES, true)) {
+            return false;
+        }
+
+        $trackingCode = trim((string) $trackingCode);
+
+        if ($status === 'shipped' && $trackingCode === '') {
+            return false;
+        }
+
+        $this->forceFill([
+            'shipment_status'    => $status,
+            'tracking_code'      => $trackingCode !== '' ? $trackingCode : ($status === 'none' ? null : $this->tracking_code),
+            'shipment_status_at' => now(),
+        ])->save();
+
+        return true;
+    }
+
+    /** Seller-side guard: does any order item belong to this shop? */
+    public function hasShopItems(int $shopId): bool
+    {
+        return $this->items()->where('shop_id', $shopId)->exists();
     }
 
     /** Persian (Jalali) creation date, e.g. «۱۴۰۵/۰۸/۰۹ — ۲۳:۲۱». */
