@@ -308,13 +308,26 @@
             <span class="text-[11px] font-bold text-slate-400">{{ \App\Support\Fmt::toFa($grid->count()) }} محصول</span>
         </div>
 
-        {{-- toolbar: search + sort chips --}}
+        {{-- toolbar: search + filters + sort chips --}}
         <div class="flex flex-col gap-2.5 rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center dark:border-slate-800 dark:bg-slate-900">
             <label class="flex flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 transition focus-within:border-primary-400 focus-within:bg-white dark:border-slate-700 dark:bg-slate-800">
                 <x-icon name="search" class="size-4 shrink-0 text-slate-400" />
                 <input type="search" wire:model.live.debounce.400ms="q" placeholder="جستجو در محصولات…"
                        class="w-full bg-transparent text-xs outline-none placeholder:text-slate-400">
             </label>
+
+            @if ($filterBlocks->isNotEmpty())
+                <button type="button" wire:click="openFilters" wire:key="open-filters"
+                        class="relative inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3.5 py-2 text-[10.5px] font-extrabold transition active:scale-95 {{ $specPicksCount > 0
+                            ? 'border-primary-600 bg-primary-600 text-white shadow-md shadow-primary-600/25'
+                            : 'border-slate-200 bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700' }}">
+                    <x-icon name="filter" class="size-3.5" />
+                    فیلترها
+                    @if ($specPicksCount > 0)
+                        <span class="grid min-w-4 place-items-center rounded-full bg-white px-1 text-[8.5px] font-black text-primary-700">{{ \App\Support\Fmt::toFa($specPicksCount) }}</span>
+                    @endif
+                </button>
+            @endif
 
             <div class="scrollbar-hide -mx-1 flex gap-1.5 overflow-x-auto px-1" role="group" aria-label="مرتب‌سازی">
                 @foreach ($sorts as $key => $label)
@@ -360,6 +373,75 @@
             </div>
         @endif
     </section>
+
+    {{-- ═══════════════ فیلترها modal (batch 72) ═══════════════ --}}
+    <x-modal-panel open="$wire.showFilters" maxWidth="md"
+                   labelledby="sf-filters-title"
+                   closeJs="__ipOpen = false; $wire.closeFilters()">
+
+        <x-slot:header>
+            <div class="flex items-center justify-between px-4 py-3">
+                <h2 id="sf-filters-title" class="flex items-center gap-2 text-xs font-extrabold">
+                    <span class="grid size-8 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950/60 dark:text-primary-400">
+                        <x-icon name="filter" class="size-4" />
+                    </span>
+                    فیلتر محصولات
+                </h2>
+                <button type="button" class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800"
+                        onclick="__ipOpen = false; $wire.closeFilters()" aria-label="بستن">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            </div>
+        </x-slot:header>
+
+        <div class="p-4">
+            @forelse ($filterBlocks as $row)
+                <div class="mb-4" wire:key="fb-{{ $row['filter']->id }}">
+                    <p class="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold">
+                        <x-icon name="layers" class="size-3.5 text-primary-500" />
+                        {{ $row['filter']->title }}
+                    </p>
+
+                    <div class="space-y-3">
+                        @foreach ($row['blocks'] as $block)
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+                                <p class="mb-2 text-[10px] font-extrabold text-slate-500 dark:text-slate-400">{{ $block['spec'] }}</p>
+                                <div class="flex flex-wrap gap-1.5">
+                                    @foreach ($block['values'] as $value)
+                                        @php $picked = in_array($value, (array) ($specPicks[$block['spec']] ?? []), true); @endphp
+                                        <button type="button" wire:click="toggleSpecPick('{{ $block['spec'] }}', '{{ $value }}')" wire:key="spv-{{ $row['filter']->id }}-{{ $loop->parent->index }}-{{ $loop->index }}"
+                                                class="rounded-full border px-3 py-1.5 text-[10px] font-extrabold transition active:scale-95 {{ $picked
+                                                    ? 'border-primary-600 bg-primary-600 text-white shadow-md shadow-primary-600/25'
+                                                    : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300' }}">
+                                            {{ $value }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @empty
+                <div class="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+                    <p class="text-xs font-extrabold">فیلتری فعال نیست</p>
+                    <p class="mt-1 text-[10px] text-slate-400">فروشنده هنوز فیلتری برای فروشگاهش نساخته است.</p>
+                </div>
+            @endforelse
+        </div>
+
+        <x-slot:footer>
+            <div class="flex items-center gap-2 px-4 py-3">
+                <button type="button" wire:click="clearSpecPicks" wire:loading.attr="disabled"
+                        class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    پاک کردن ({{ \App\Support\Fmt::toFa($specPicksCount) }})
+                </button>
+                <button type="button" onclick="__ipOpen = false; $wire.closeFilters()"
+                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-[11px] font-extrabold text-white shadow-lg shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95">
+                    مشاهده نتایج
+                </button>
+            </div>
+        </x-slot:footer>
+    </x-modal-panel>
 
     {{-- ═══════════════ toast ═══════════════ --}}
     <div x-data="{ show: false, msg: '' }"

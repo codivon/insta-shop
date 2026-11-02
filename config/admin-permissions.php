@@ -37,6 +37,8 @@ return [
                 'admin.orders.show' => 'جزئیات سفارش',
                 'admin.shops'       => 'فروشگاه‌ها',
                 'admin.products'    => 'محصولات',
+                'admin.discounts'   => 'کدهای تخفیف',
+                'admin.income'      => 'درآمد و کمیسیون‌ها',
                 'admin.locations'   => 'استان‌ها و شهرها',
             ],
         ],
@@ -60,6 +62,7 @@ return [
                 'admin.settings.sms'            => 'پیامک و پرووایدر',
                 'admin.settings.sms.templates'  => 'قالب‌های پیامک',
                 'admin.settings.payment'        => 'درگاه پرداخت',
+                'admin.settings.shops'          => 'تنظیمات فروشگاه‌ها (تایید خودکار، کمیسیون)',
             ],
         ],
 

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 #[Fillable([
     'customer_id', 'status', 'total_amount', 'items_count',
-    'shipping_cost', 'discount_amount', 'discount_code', 'shipments',
+    'shipping_cost', 'discount_amount', 'discount_code', 'shipments', 'commissions',
     'receiver_name', 'delivery_phone', 'delivery_address', 'postal_code',
     'gateway', 'gateway_ref', 'receipt_ref', 'paid_at',
 ])]
@@ -28,6 +28,7 @@ class Order extends Model
             'discount_amount' => 'integer',
             'items_count'     => 'integer',
             'shipments'       => 'array',
+            'commissions'     => 'array',
             'paid_at'         => 'datetime',
         ];
     }

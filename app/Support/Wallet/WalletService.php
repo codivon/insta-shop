@@ -3,16 +3,23 @@
 namespace App\Support\Wallet;
 
 use App\Models\Order;
+use App\Models\Seller;
 use App\Models\Shop;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Support\Fmt;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Wallet ledger service.
  *
- * A paid order credits every shop that has items in it — each item's
- * line total (unit_price × quantity) goes to that shop's wallet.
+ * A paid order credits every shop that has items in it — AFTER deducting
+ * the platform commission (batch 80):
+ *   • base = that shop's goods total (unit_price × quantity) — the
+ *     shipping cost and the discount code are NEVER part of the base;
+ *   • the SELLER's own commission override (percent|fixed) wins, else the
+ *     global default from settings («تنظیمات فروشگاه‌ها»);
+ *   • the deposit report states exactly how much commission was cut.
  * Withdrawals reserve the balance immediately (pending); rejecting a
  * withdrawal refunds it.
  */
@@ -26,19 +33,43 @@ final class WalletService
             ->groupBy('shop_id')
             ->get();
 
+        $snapshot = [];
+
         foreach ($shares as $share) {
-            if ((int) $share->total <= 0) {
-                continue;
-            }
+            $shopId = (int) $share->shop_id;
+            $itemsTotal = max(0, (int) $share->total);
 
             // order_items carry shop_id — wallets belong to the seller
-            $sellerId = Shop::query()->whereKey($share->shop_id)->value('seller_id');
+            $shop = Shop::query()->find($shopId);
 
-            if (! $sellerId) {
+            if (! $shop || ! $shop->seller_id) {
                 continue;
             }
 
-            $wallet = Wallet::ensureForSeller((int) $sellerId);
+            $sellerId = (int) $shop->seller_id;
+
+            /** @var Seller $seller */
+            $seller = Seller::query()->find($sellerId);
+
+            [$commissionType, $commissionValue] = $seller?->resolvedCommission() ?? ['percent', 0];
+            $commission   = $itemsTotal > 0 && $seller ? $seller->commissionFor($itemsTotal) : 0;
+            $payout       = max(0, $itemsTotal - $commission);
+
+            $snapshot[] = [
+                'shop_id'           => $shopId,
+                'shop_name'         => (string) ($shop->name ?? ''),
+                'items_total'       => $itemsTotal,
+                'commission_type'   => $commissionType,
+                'commission_value'  => (int) $commissionValue,
+                'commission_amount' => $commission,
+                'payout'            => $payout,
+            ];
+
+            if ($payout <= 0) {
+                continue;
+            }
+
+            $wallet = Wallet::ensureForSeller($sellerId);
 
             $exists = WalletTransaction::query()
                 ->where('wallet_id', $wallet->id)
@@ -49,17 +80,40 @@ final class WalletService
                 continue; // idempotent
             }
 
-            $wallet->increment('balance', (int) $share->total);
+            $wallet->increment('balance', $payout);
 
             WalletTransaction::query()->create([
                 'wallet_id'   => $wallet->id,
                 'type'        => WalletTransaction::TYPE_DEPOSIT,
-                'amount'      => (int) $share->total,
+                'amount'      => $payout,
+                'commission'  => $commission,
                 'status'      => WalletTransaction::STATUS_DONE,
                 'order_id'    => $order->id,
-                'description' => 'سهم فروش از سفارش #'.self::orderCode($order),
+                'description' => self::depositDescription($order, $itemsTotal, $commission, $commissionType, $commissionValue),
             ]);
         }
+
+        // Persist the settlement snapshot (used by the admin income page).
+        if ($snapshot !== [] && ! $order->commissions) {
+            $order->forceFill(['commissions' => $snapshot])->save();
+        }
+    }
+
+    /** Deposit report text — must state the deducted commission explicitly. */
+    private static function depositDescription(Order $order, int $itemsTotal, int $commission, string $type, int $value): string
+    {
+        $code = self::orderCode($order);
+        $base = 'سهم فروش از سفارش #'.$code.' — کالا: '.Fmt::money($itemsTotal);
+
+        if ($commission <= 0) {
+            return $base.' — بدون کمیسیون';
+        }
+
+        $label = $type === 'fixed'
+            ? 'مبلغ ثابت '.Fmt::money($value)
+            : Fmt::toFa($value).'٪';
+
+        return $base.' — کمیسیون ('.$label.'): '.Fmt::money($commission).' کسر شد';
     }
 
     /** Reserve balance and log a pending withdrawal request (null = insufficient). */

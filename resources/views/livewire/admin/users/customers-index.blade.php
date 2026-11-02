@@ -75,18 +75,32 @@
                                     <span class="rounded-full px-2.5 py-1 text-[10px] font-bold {{ $customer->statusClasses() }}">{{ $customer->statusLabel() }}</span>
                                 </td>
                                 <td class="px-5 py-3.5">
-                                    @if ($customer->status === 'blocked')
-                                        <button type="button" wire:click="toggleBlock({{ $customer->id }})"
-                                                class="rounded-lg bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:hover:bg-emerald-950">
-                                            رفع مسدودی
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <a href="{{ route('admin.users.customers.show', $customer) }}" wire:navigate
+                                           class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-bold text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
+                                            نمایش
+                                        </a>
+                                        <button type="button" wire:click="openEditModal({{ $customer->id }})"
+                                                class="rounded-lg bg-primary-50 px-2.5 py-1.5 text-[11px] font-bold text-primary-600 transition hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-400">
+                                            ویرایش
                                         </button>
-                                    @else
-                                        <button type="button" wire:click="toggleBlock({{ $customer->id }})"
-                                                wire:confirm="مشتری «{{ $customer->full_name ?: \App\Support\Fmt::toFa($customer->phone) }}» مسدود شود؟ او نمی‌تواند وارد اپ شود."
-                                                class="rounded-lg bg-rose-50 px-3 py-1.5 text-[11px] font-bold text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-950">
-                                            مسدودسازی
+                                        @if ($customer->status === 'blocked')
+                                            <button type="button" wire:click="toggleBlock({{ $customer->id }})"
+                                                    class="rounded-lg bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:hover:bg-emerald-950">
+                                                رفع مسدودی
+                                            </button>
+                                        @else
+                                            <button type="button" wire:click="toggleBlock({{ $customer->id }})"
+                                                    wire:confirm="مشتری «{{ $customer->full_name ?: \App\Support\Fmt::toFa($customer->phone) }}» مسدود شود؟ او نمی‌تواند وارد اپ شود."
+                                                    class="rounded-lg bg-rose-50 px-3 py-1.5 text-[11px] font-bold text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-950">
+                                                مسدودسازی
+                                            </button>
+                                        @endif
+                                        <button type="button" wire:click="askDelete({{ $customer->id }})"
+                                                class="rounded-lg bg-rose-50 px-2.5 py-1.5 text-[11px] font-bold text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400">
+                                            حذف
                                         </button>
-                                    @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -110,4 +124,93 @@
     <p class="text-center text-[11px] text-slate-400">
         نمایش {{ \App\Support\Fmt::fa(min($customers->count(), $perPage)) }} از {{ \App\Support\Fmt::fa($stats['all']) }} مشتری
     </p>
+
+    {{-- ══════════ EDIT MODAL (75) ══════════ --}}
+    <x-modal-panel open="$wire.showEditModal" maxWidth="md" labelledby="customer-edit-title"
+                   closeJs="__ipOpen = false; $wire.closeEditModal()">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
+                <h2 id="customer-edit-title" class="flex items-center gap-2.5 text-sm font-extrabold">
+                    <span class="grid size-9 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950/60 dark:text-primary-400">
+                        <x-icon name="edit" class="size-4" />
+                    </span>
+                    ویرایش مشتری
+                </h2>
+                <button type="button" onclick="__ipOpen = false; $wire.closeEditModal()"
+                        class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800" aria-label="بستن">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            </div>
+        </x-slot:header>
+
+        <form wire:submit="saveCustomerEdit" class="grid gap-4 p-5 sm:grid-cols-2">
+            <div>
+                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">نام و نام خانوادگی</label>
+                <input type="text" wire:model="editFullName" maxlength="80" placeholder="مثلاً: سارا محمدی"
+                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                @error('editFullName') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">موبایل <span class="text-rose-500">*</span></label>
+                <input type="tel" wire:model="editPhone" inputmode="tel" dir="ltr" maxlength="14" placeholder="09123456789"
+                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-right text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                @error('editPhone') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">وضعیت</label>
+                <select wire:model="editStatus"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                    <option value="active">فعال</option>
+                    <option value="blocked">مسدود</option>
+                </select>
+            </div>
+
+            <div class="flex gap-2 sm:col-span-2">
+                <button type="button" onclick="__ipOpen = false; $wire.closeEditModal()"
+                        class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    انصراف
+                </button>
+                <button type="submit" wire:loading.attr="disabled" wire:target="saveCustomerEdit"
+                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95 disabled:opacity-60">
+                    ذخیره تغییرات
+                </button>
+            </div>
+        </form>
+    </x-modal-panel>
+
+    {{-- ══════════ DELETE CONFIRM (75) — type the phone to confirm ══════════ --}}
+    <x-modal-panel open="$wire.confirmDeleteId !== null" maxWidth="md" zClass="z-[80]"
+                   closeJs="__ipOpen = false; $wire.confirmDeleteId = null">
+        <div class="p-5">
+            <div class="flex items-start gap-3">
+                <span class="grid size-11 shrink-0 place-items-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
+                    <x-icon name="alert" class="size-5" />
+                </span>
+                <div>
+                    <p class="text-sm font-extrabold">حذف کامل مشتری «{{ $deleteCustomer?->full_name ?: \App\Support\Fmt::toFa($deleteCustomer?->phone ?? '') }}»</p>
+                    <p class="mt-1.5 text-[11px] leading-5 text-slate-400">
+                        تمام سفارش‌های او نیز حذف می‌شوند و این عمل بازگشت‌پذیر نیست.
+                    </p>
+                </div>
+            </div>
+
+            <label class="mt-4 block text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                برای تأیید، شماره موبایل مشتری را بنویسید: <span dir="ltr" class="font-mono text-rose-500">{{ $deleteCustomer?->phone }}</span>
+            </label>
+            <input type="text" wire:model="deleteConfirmText" dir="ltr" placeholder="09…"
+                   class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-right text-sm font-mono outline-none transition focus:border-rose-400 dark:border-slate-700 dark:bg-slate-800">
+
+            <div class="mt-4 flex gap-2">
+                <button type="button" onclick="__ipOpen = false; $wire.confirmDeleteId = null"
+                        class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    انصراف
+                </button>
+                <button type="button" wire:click="deleteCustomer" wire:loading.attr="disabled" wire:target="deleteCustomer"
+                        @disabled($deleteConfirmText !== (string) ($deleteCustomer?->phone ?? ''))
+                        class="flex-1 rounded-xl bg-rose-600 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-rose-600/25 transition hover:bg-rose-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40">
+                    حذف قطعی
+                </button>
+            </div>
+        </div>
+    </x-modal-panel>
 </div>

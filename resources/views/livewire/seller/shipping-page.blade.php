@@ -88,10 +88,21 @@
                                     </span>
                                     @if ($carrier->carriage_forward)
                                         <span class="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">پس کرایه</span>
-                                    @elseif ($carrier->base_price > 0)
+                                    @elseif ($carrier->tariffs->isNotEmpty())
                                         <span class="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300">
                                             <x-icon name="coins" class="size-2.5" />
-                                            {{ \App\Support\Fmt::moneyShort($carrier->base_price) }} تومان
+                                            {{ $carrier->tariffSummaryLabel() }}
+                                        </span>
+                                    @elseif ($carrier->base_price > 0)
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                            <x-icon name="coins" class="size-2.5" />
+                                            قیمت پایه {{ \App\Support\Fmt::moneyShort($carrier->base_price) }} (بدون تعرفه)
+                                        </span>
+                                    @endif
+                                    @if (! $carrier->carriage_forward && $carrier->tariffs->isEmpty())
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+                                            <x-icon name="alert" class="size-2.5" />
+                                            بدون تعرفه کار نمی‌کنه
                                         </span>
                                     @endif
                                     @if ($carrier->free_shipping_price > 0 || $carrier->free_shipping_weight > 0)
@@ -339,6 +350,67 @@
                             @endif
                         </div>
                     @endif
+
+                    {{-- ── تعرفه‌های وزنی (batch 74) ── --}}
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-3 sm:col-span-2 lg:col-span-3 dark:border-slate-700 dark:bg-slate-800/40">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <p class="flex items-center gap-1.5 text-[11px] font-extrabold">
+                                    <x-icon name="coins" class="size-3.5 text-primary-500" />
+                                    تعرفه‌های وزنی ارسال
+                                </p>
+                                <p class="mt-0.5 text-[10px] leading-4 text-slate-400">
+                                    نوع منطقه ارسالی (درون/بیرون استانی)، حداکثر وزن و هزینه هر پله — محاسبهٔ هزینه بر اساس وزن بسته و استان گیرنده انجام می‌شود.
+                                </p>
+                            </div>
+                            <button type="button" wire:click="addTariffRow"
+                                    class="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-[10.5px] font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95">
+                                <x-icon name="plus" class="size-3.5" />
+                                افزودن پله تعرفه
+                            </button>
+                        </div>
+
+                        @if (count($createTariffs) === 0)
+                            <div class="mt-2.5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-[10px] font-bold leading-5 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                                <x-icon name="alert" class="mt-0.5 size-3.5 shrink-0" />
+                                <span>بدون تعرفه کار نمی‌کنه — تا وقتی حداقل یک پلهٔ تعرفه ثبت نکنید، این روش ارسال در تکمیل خرید به مشتری نشان داده نمی‌شود.</span>
+                            </div>
+                        @else
+                            <div class="mt-2.5 space-y-2">
+                                @foreach ($createTariffs as $i => $tariff)
+                                    <div class="grid grid-cols-[1fr_1.2fr_1.2fr_auto] items-end gap-2 rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900" wire:key="tariff-{{ $i }}">
+                                        <div>
+                                            <label class="mb-1 block text-[9.5px] font-bold text-slate-400">نوع منطقه ارسالی</label>
+                                            <select wire:model="createTariffs.{{ $i }}.zone_type"
+                                                    class="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-[10.5px] font-semibold outline-none focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                                                <option value="{{ \App\Models\CarrierTariff::ZONE_IN }}">درون استانی</option>
+                                                <option value="{{ \App\Models\CarrierTariff::ZONE_OUT }}">بیرون استانی</option>
+                                            </select>
+                                            @error('createTariffs.'.$i.'.zone_type') <p class="mt-1 text-[9px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div>
+                                            <label class="mb-1 block text-[9.5px] font-bold text-slate-400">حداکثر وزن (گرم)</label>
+                                            <input type="text" inputmode="numeric" wire:model.blur="createTariffs.{{ $i }}.max_weight" placeholder="مثال: 1000"
+                                                   class="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10.5px] font-semibold outline-none focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                                            @error('createTariffs.'.$i.'.max_weight') <p class="mt-1 text-[9px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div>
+                                            <label class="mb-1 block text-[9.5px] font-bold text-slate-400">هزینه ارسال (تومان)</label>
+                                            <input type="text" inputmode="numeric" wire:model.blur="createTariffs.{{ $i }}.cost" placeholder="مثال: 45000"
+                                                   class="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10.5px] font-semibold outline-none focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                                            @error('createTariffs.'.$i.'.cost') <p class="mt-1 text-[9px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                                        </div>
+                                        <button type="button" wire:click="removeTariffRow({{ $i }})"
+                                                class="grid size-9 place-items-center rounded-lg bg-rose-50 text-rose-500 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/70"
+                                                aria-label="حذف پله">
+                                            <x-icon name="trash" class="size-3.5" />
+                                        </button>
+                                    </div>
+                                @endforeach
+                                <p class="text-[9.5px] leading-4 text-slate-400">پله‌ها بر اساس «حداکثر وزن» مرتب می‌شوند؛ بستهٔ سنگین‌تر از آخرین پله، هزینهٔ همان پله را می‌گیرد.</p>
+                            </div>
+                        @endif
+                    </div>
                 </div>
 
                 {{-- ── tab 3: بازه زمانی ارسال ── --}}

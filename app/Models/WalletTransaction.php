@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['wallet_id', 'type', 'amount', 'status', 'order_id', 'description', 'sheba'])]
+#[Fillable(['wallet_id', 'type', 'amount', 'commission', 'status', 'order_id', 'description', 'sheba'])]
 class WalletTransaction extends Model
 {
     public const TYPE_DEPOSIT    = 'deposit';

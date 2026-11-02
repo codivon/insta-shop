@@ -170,10 +170,14 @@ class PhoneAuth extends Component
         }
 
         if ($this->mode === 'register') {
+            // «تایید خودکار فروشنده» (batch 79): when the admin enables it,
+            // new sellers skip the pending queue entirely.
+            $autoApproved = (bool) \App\Models\Setting::get('shops.auto_approve_seller', false);
+
             $seller = Seller::create([
                 'phone' => $this->phone,
                 'instagram_username' => $this->instagram,
-                'status' => 'pending',
+                'status' => $autoApproved ? 'approved' : 'pending',
                 'phone_verified_at' => now(),
                 'last_login_at' => now(),
             ]);

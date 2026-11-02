@@ -68,6 +68,7 @@
                             <th class="px-3 py-3 font-semibold">محصولات</th>
                             <th class="px-3 py-3 font-semibold">عضویت</th>
                             <th class="px-3 py-3 font-semibold">وضعیت</th>
+                            <th class="px-3 py-3 font-semibold">کمیسیون</th>
                             <th class="px-5 py-3 font-semibold">اقدامات</th>
                         </tr>
                     </thead>
@@ -107,8 +108,27 @@
                                 <td class="px-3 py-3.5">
                                     <span class="rounded-full px-2.5 py-1 text-[10px] font-bold {{ $seller->statusClasses() }}">{{ $seller->statusLabel() }}</span>
                                 </td>
+                                <td class="px-3 py-3.5 text-[11px]">
+                                    @if ($seller->hasCommissionOverride())
+                                        <span class="rounded-full bg-amber-50 px-2 py-1 font-bold text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+                                            {{ $seller->commission_type === 'fixed'
+                                                ? 'ثابت '.\App\Support\Fmt::moneyShort($seller->commission_value)
+                                                : \App\Support\Fmt::toFa($seller->commission_value).'٪' }}
+                                        </span>
+                                    @else
+                                        <span class="text-slate-400">پیش‌فرض سراسری</span>
+                                    @endif
+                                </td>
                                 <td class="px-5 py-3.5">
                                     <div class="flex flex-wrap items-center gap-1.5">
+                                        <a href="{{ route('admin.users.sellers.show', $seller) }}" wire:navigate
+                                           class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-bold text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
+                                            نمایش
+                                        </a>
+                                        <button type="button" wire:click="openEditModal({{ $seller->id }})"
+                                                class="rounded-lg bg-primary-50 px-2.5 py-1.5 text-[11px] font-bold text-primary-600 transition hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-400">
+                                            ویرایش
+                                        </button>
                                         @if ($seller->status === 'pending')
                                             <button type="button" wire:click="approve({{ $seller->id }})"
                                                     class="rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm shadow-emerald-600/25 transition hover:bg-emerald-700">
@@ -131,6 +151,11 @@
                                                 فعال‌سازی مجدد
                                             </button>
                                         @endif
+
+                                        <button type="button" wire:click="askDelete({{ $seller->id }})"
+                                                class="rounded-lg bg-rose-50 px-2.5 py-1.5 text-[11px] font-bold text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400">
+                                            حذف
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -153,4 +178,131 @@
     <p class="text-center text-[11px] text-slate-400">
         نمایش {{ \App\Support\Fmt::fa(min($sellers->count(), $perPage)) }} از {{ \App\Support\Fmt::fa($stats['all']) }} فروشنده
     </p>
+
+    {{-- ══════════ EDIT MODAL (76 + 79) ══════════ --}}
+    <x-modal-panel open="$wire.showEditModal" maxWidth="lg" labelledby="seller-edit-title"
+                   closeJs="__ipOpen = false; $wire.closeEditModal()">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
+                <h2 id="seller-edit-title" class="flex items-center gap-2.5 text-sm font-extrabold">
+                    <span class="grid size-9 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950/60 dark:text-primary-400">
+                        <x-icon name="edit" class="size-4" />
+                    </span>
+                    ویرایش فروشنده
+                    @if ($editSeller?->shop)
+                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            فروشگاه: {{ $editSeller->shop->name }}
+                        </span>
+                    @endif
+                </h2>
+                <button type="button" onclick="__ipOpen = false; $wire.closeEditModal()"
+                        class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800" aria-label="بستن">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            </div>
+        </x-slot:header>
+
+        <form wire:submit="saveSellerEdit" class="grid gap-4 p-5 sm:grid-cols-2">
+            <div>
+                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">نام و نام خانوادگی</label>
+                <input type="text" wire:model="editFullName" maxlength="80" placeholder="مثلاً: علی رضایی"
+                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                @error('editFullName') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">شناسه اینستاگرام</label>
+                <input type="text" wire:model="editInstagram" dir="ltr" maxlength="60" placeholder="username"
+                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                @error('editInstagram') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">موبایل <span class="text-rose-500">*</span></label>
+                <input type="tel" wire:model="editPhone" inputmode="tel" dir="ltr" maxlength="14" placeholder="09123456789"
+                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-right text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                @error('editPhone') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">وضعیت</label>
+                <select wire:model="editStatus"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                    <option value="pending">در انتظار تأیید</option>
+                    <option value="approved">تأیید شده</option>
+                    <option value="suspended">غیرفعال</option>
+                </select>
+            </div>
+
+            {{-- ── کمیسیون اختصاصی (79) ── --}}
+            <div class="rounded-2xl border border-dashed border-amber-300 bg-amber-50/50 p-4 sm:col-span-2 dark:border-amber-800 dark:bg-amber-950/20">
+                <p class="flex items-center gap-2 text-xs font-extrabold text-amber-700 dark:text-amber-300">
+                    <x-icon name="coins" class="size-4" />
+                    کمیسیون اختصاصی این فروشنده
+                </p>
+                <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">نوع کمیسیون</label>
+                        <select wire:model.live="editCommissionType"
+                                class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                            <option value="">پیش‌فرض سراسری</option>
+                            <option value="percent">درصدی (٪)</option>
+                            <option value="fixed">مبلغ ثابت (تومان)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">مقدار</label>
+                        <input type="text" inputmode="numeric" wire:model.blur="editCommissionValue" placeholder="0" @disabled($editCommissionType === '')
+                               class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800">
+                        @error('editCommissionValue') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+                <p class="mt-2 text-[10px] leading-5 text-slate-400">هزینهٔ ارسال و کد تخفیف هرگز مشمول کمیسیون نمی‌شوند.</p>
+            </div>
+
+            <div class="flex gap-2 sm:col-span-2">
+                <button type="button" onclick="__ipOpen = false; $wire.closeEditModal()"
+                        class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    انصراف
+                </button>
+                <button type="submit" wire:loading.attr="disabled" wire:target="saveSellerEdit"
+                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95 disabled:opacity-60">
+                    ذخیره تغییرات
+                </button>
+            </div>
+        </form>
+    </x-modal-panel>
+
+    {{-- ══════════ DELETE CONFIRM (75) — type the phone to confirm ══════════ --}}
+    <x-modal-panel open="$wire.confirmDeleteId !== null" maxWidth="md" zClass="z-[80]"
+                   closeJs="__ipOpen = false; $wire.confirmDeleteId = null">
+        <div class="p-5">
+            <div class="flex items-start gap-3">
+                <span class="grid size-11 shrink-0 place-items-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
+                    <x-icon name="alert" class="size-5" />
+                </span>
+                <div>
+                    <p class="text-sm font-extrabold">حذف کامل فروشنده «{{ $deleteSeller?->full_name ?: '@'.$deleteSeller?->instagram_username }}»</p>
+                    <p class="mt-1.5 text-[11px] leading-5 text-slate-400">
+                        فروشگاه، محصولات، دسته‌بندی‌ها، روش‌های ارسال، فیلترها و کدهای تخفیف او نیز حذف می‌شوند و این عمل بازگشت‌پذیر نیست.
+                    </p>
+                </div>
+            </div>
+
+            <label class="mt-4 block text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                برای تأیید، شماره موبایل فروشنده را بنویسید: <span dir="ltr" class="font-mono text-rose-500">{{ $deleteSeller?->phone }}</span>
+            </label>
+            <input type="text" wire:model="deleteConfirmText" dir="ltr" placeholder="09…"
+                   class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-right text-sm font-mono outline-none transition focus:border-rose-400 dark:border-slate-700 dark:bg-slate-800">
+
+            <div class="mt-4 flex gap-2">
+                <button type="button" onclick="__ipOpen = false; $wire.confirmDeleteId = null"
+                        class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    انصراف
+                </button>
+                <button type="button" wire:click="deleteSeller" wire:loading.attr="disabled" wire:target="deleteSeller"
+                        @disabled($deleteConfirmText !== (string) ($deleteSeller?->phone ?? ''))
+                        class="flex-1 rounded-xl bg-rose-600 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-rose-600/25 transition hover:bg-rose-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40">
+                    حذف قطعی
+                </button>
+            </div>
+        </div>
+    </x-modal-panel>
 </div>

@@ -7,6 +7,8 @@ use App\Models\Favorite;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\ShopCategory;
+use App\Models\ShopFilter;
+use App\Models\ShopFilterItem;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -36,6 +38,15 @@ class StorefrontShow extends Component
 
     #[Url(as: 'q')]
     public string $q = '';
+
+    /* ── فیلترها modal (batch 72) ── */
+    public bool $showFilters = false;
+
+    /** Active spec selections: spec_name => [value, …]. */
+    public array $specPicks = [];
+
+    /** Search box inside the filters modal. */
+    public string $specSearch = '';
 
     /* ── grid pagination ── */
     public int $perPage = 12;
@@ -88,6 +99,55 @@ class StorefrontShow extends Component
     public function updatingQ(): void
     {
         $this->resetPagination();
+    }
+
+    public function updatingSpecPicks(): void
+    {
+        $this->resetPagination();
+    }
+
+    /* ───────── فیلترها modal (batch 72) ───────── */
+
+    public function openFilters(): void
+    {
+        $this->showFilters = true;
+    }
+
+    public function closeFilters(): void
+    {
+        $this->showFilters = false;
+    }
+
+    /** Toggle one (spec, value) checkbox. */
+    public function toggleSpecPick(string $spec, string $value): void
+    {
+        $current = (array) ($this->specPicks[$spec] ?? []);
+
+        if (in_array($value, $current, true)) {
+            $current = array_values(array_diff($current, [$value]));
+        } else {
+            $current[] = $value;
+        }
+
+        if ($current === []) {
+            unset($this->specPicks[$spec]);
+        } else {
+            $this->specPicks[$spec] = $current;
+        }
+
+        $this->resetPagination();
+    }
+
+    public function clearSpecPicks(): void
+    {
+        $this->specPicks = [];
+        $this->resetPagination();
+    }
+
+    /** Number of active (spec,value) picks — drives the badge on the button. */
+    public function getSpecPicksCountProperty(): int
+    {
+        return array_sum(array_map('count', $this->specPicks));
     }
 
     private function resetPagination(): void
@@ -255,13 +315,14 @@ class StorefrontShow extends Component
             ->get();
     }
 
-    /** Filtered + sorted main grid. */
+    /** Filtered + sorted main grid (with spec-pick filtering — batch 72). */
     public function getGridProperty(): Collection
     {
         $query = $this->baseQuery()
             ->with(['mainImage', 'category'])
             ->when($this->catId > 0, fn (Builder $q) => $q->where('shop_category_id', $this->catId))
-            ->when($this->q !== '', fn (Builder $q) => $q->where('name', 'like', '%'.$this->q.'%'));
+            ->when($this->q !== '', fn (Builder $q) => $q->where('name', 'like', '%'.$this->q.'%'))
+            ->when($this->specPicks !== [], fn (Builder $q) => $q->whereIn('id', $this->specMatchedIds()));
 
         $query = match ($this->sort) {
             'cheap'     => $query->orderBy('price')->latest(),
@@ -278,6 +339,45 @@ class StorefrontShow extends Component
         $this->hasMore = $total > $this->perPage;
 
         return $rows;
+    }
+
+    /**
+     * Ids of the shop's published products matching ALL active spec picks
+     * (specifications JSON is matched in PHP — portable across MySQL/MariaDB).
+     */
+    private function specMatchedIds(): array
+    {
+        if ($this->specPicks === []) {
+            return [];
+        }
+
+        return $this->baseQuery()
+            ->get(['id', 'specifications'])
+            ->filter(function (Product $product) {
+                $groups = collect($product->specifications ?? [])
+                    ->keyBy(fn ($group) => (string) ($group['name'] ?? ''));
+
+                foreach ($this->specPicks as $spec => $wanted) {
+                    $group = $groups->get((string) $spec);
+
+                    $values = collect($group['items'] ?? [])
+                        ->pluck('value')
+                        ->map(fn ($v) => trim((string) $v))
+                        ->filter()
+                        ->all();
+
+                    // every wanted value of this spec must appear in the product
+                    foreach ((array) $wanted as $needle) {
+                        if (! in_array(trim($needle), $values, true)) {
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
+            })
+            ->pluck('id')
+            ->all();
     }
 
     /** Nearest active special-sale deadline (ms epoch) — drives the section countdown. */
@@ -297,6 +397,63 @@ class StorefrontShow extends Component
         $customer = auth('customer')->user();
 
         return $customer ? $customer->favoriteProductIds() : [];
+    }
+
+    /* ───────────── فیلترهای فروشگاه (batch 72) ───────────── */
+
+    /** Published filters of THIS shop with their spec groups. */
+    public function getPublishedFiltersProperty(): Collection
+    {
+        return ShopFilter::query()
+            ->where('shop_id', $this->shop->id)
+            ->published()
+            ->with('items')
+            ->orderBy('sort')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (ShopFilter $filter) => $filter->items->isNotEmpty())
+            ->values();
+    }
+
+    /**
+     * Distinct values of one spec group across the shop's published
+     * products — the customer-facing options of a filter block.
+     */
+    public function specValues(string $specName): array
+    {
+        $name = trim($specName);
+
+        return $this->baseQuery()
+            ->get(['specifications'])
+            ->flatMap(fn ($product) => collect($product->specifications ?? []))
+            ->filter(fn ($group) => trim((string) ($group['name'] ?? '')) === $name)
+            ->flatMap(fn ($group) => collect($group['items'] ?? []))
+            ->pluck('value')
+            ->map(fn ($value) => trim((string) $value))
+            ->filter(fn ($value) => $value !== '')
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    /** Filters × their values, prepared for the modal (with active-pick counts). */
+    public function getFilterBlocksProperty(): Collection
+    {
+        return $this->publishedFilters->map(function (ShopFilter $filter) {
+            $blocks = $filter->items
+                ->map(fn (ShopFilterItem $item) => [
+                    'spec'   => $item->spec_name,
+                    'values' => $this->specValues($item->spec_name),
+                ])
+                ->filter(fn (array $block) => $block['values'] !== [])
+                ->values();
+
+            return [
+                'filter' => $filter,
+                'blocks' => $blocks,
+            ];
+        })->filter(fn (array $row) => $row['blocks']->isNotEmpty())->values();
     }
 
     /** Distinct cart lines of the current visitor — drives the header badge. */
@@ -327,6 +484,8 @@ class StorefrontShow extends Component
             'favoriteIds'       => $this->favoriteIds,
             'storefrontUrl'     => $this->storefrontUrl,
             'cartCount'         => $this->cartCount,
+            'filterBlocks'      => $this->filterBlocks,
+            'specPicksCount'    => $this->specPicksCount,
         ])->title($this->shop->name);
     }
 }

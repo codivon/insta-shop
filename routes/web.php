@@ -5,21 +5,26 @@ use App\Http\Controllers\Seller\ProductFileDownload;
 use App\Http\Controllers\Shop\PaymentCallback;
 use App\Http\Controllers\Shop\PaymentRedirect;
 use App\Livewire\Admin\Dashboard;
+use App\Livewire\Admin\DiscountsIndex;
 use App\Livewire\Admin\LocationsPage;
 use App\Livewire\Admin\Access\AdminsIndex;
 use App\Livewire\Admin\Access\RolesIndex;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Admin\Developer\DeveloperSettings;
 use App\Livewire\Admin\Developer\SystemLogs;
+use App\Livewire\Admin\IncomePage;
 use App\Livewire\Admin\OrdersIndex;
 use App\Livewire\Admin\OrderShow;
 use App\Livewire\Admin\ProductsIndex;
 use App\Livewire\Admin\ShopsIndex;
 use App\Livewire\Admin\Users\CustomersIndex;
+use App\Livewire\Admin\Users\CustomerShow;
+use App\Livewire\Admin\Users\SellerShow;
 use App\Livewire\Admin\Users\SellersIndex;
 use App\Livewire\Admin\Settings\SmsSettings;
 use App\Livewire\Admin\Settings\SmsTemplatesCenter;
 use App\Livewire\Admin\Settings\SettingsHub;
+use App\Livewire\Customer\AddressesPage;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\CartPage;
 use App\Livewire\Customer\CategoriesPage;
@@ -38,6 +43,7 @@ use App\Livewire\Seller\BankCardsPage;
 use App\Livewire\Seller\CategoryManager;
 use App\Livewire\Seller\DiscountForm;
 use App\Livewire\Seller\DiscountIndex;
+use App\Livewire\Seller\FilteringManager;
 use App\Livewire\Seller\Home;
 use App\Livewire\Seller\OrdersPage as SellerOrdersPage;
 use App\Livewire\Seller\ProductForm;
@@ -72,11 +78,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // ── Users management ──
         Route::get('/users/sellers', SellersIndex::class)->name('users.sellers');
+        Route::get('/users/sellers/{seller}', SellerShow::class)->name('users.sellers.show');
         Route::get('/users/customers', CustomersIndex::class)->name('users.customers');
+        Route::get('/users/customers/{customer}', CustomerShow::class)->name('users.customers.show');
 
         // ── Catalog management (shops & products) ──
         Route::get('/shops', ShopsIndex::class)->name('shops');
         Route::get('/products', ProductsIndex::class)->name('products');
+        Route::get('/discounts', DiscountsIndex::class)->name('discounts');
+
+        // ── Platform income (کمیسیون‌های دریافتی — batch 81) ──
+        Route::get('/income', IncomePage::class)->name('income');
 
         // ── Locations (استان‌ها و شهرها — add/remove ONLY here) ──
         Route::get('/locations', LocationsPage::class)->name('locations');
@@ -158,6 +170,9 @@ Route::prefix('seller')->name('seller.')->group(function () {
         // ── Shipping methods (روش‌های ارسال فروشگاه) ──
         Route::get('/shipping', ShippingPage::class)->name('shipping');
 
+        // ── Storefront filters (فیلترینگ صفحهٔ فروشگاه) ──
+        Route::get('/filters', FilteringManager::class)->name('filters');
+
         // ── Discount codes (کدهای تخفیف فروشگاه) ──
         Route::get('/discounts', DiscountIndex::class)->name('discounts');
         Route::get('/discounts/create', DiscountForm::class)->name('discounts.create');
@@ -219,6 +234,7 @@ Route::prefix('shop')->name('shop.')->group(function () {
     Route::middleware('panel.auth')->group(function () {
         Route::get('/favorites', FavoritesPage::class)->name('favorites');
         Route::get('/profile', ProfilePage::class)->name('profile');
+        Route::get('/addresses', AddressesPage::class)->name('addresses');
 
         // ── Phase 5: checkout & orders ──
         // Login is required HERE (at checkout) — browsing and filling the

@@ -48,6 +48,7 @@ class SettingsHub extends Component
             'admin.settings.appearance',
             'admin.settings.sms',
             'admin.settings.payment',
+            'admin.settings.shops',
         ])->contains(fn (string $p) => $admin->hasPermission($p));
 
         if ($admin->isSuper() || $admin->hasPermission('admin.settings') || $anySection) {
@@ -91,6 +92,12 @@ class SettingsHub extends Component
                 'label'       => 'درگاه پرداخت',
                 'description' => 'زرین‌پال و اعتبارنامه درگاه',
                 'perm'        => 'admin.settings.payment',
+            ],
+            'shops' => [
+                'icon'        => 'store',
+                'label'       => 'تنظیمات فروشگاه‌ها',
+                'description' => 'تایید خودکار فروشنده و کمیسیون',
+                'perm'        => 'admin.settings.shops',
             ],
         ];
 

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-#[Fillable(['phone', 'instagram_username', 'full_name', 'status', 'phone_verified_at'])]
+#[Fillable(['phone', 'instagram_username', 'full_name', 'status', 'phone_verified_at', 'commission_type', 'commission_value'])]
 #[Hidden(['remember_token'])]
 class Seller extends Authenticatable
 {
@@ -17,7 +17,45 @@ class Seller extends Authenticatable
         return [
             'phone_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'commission_value' => 'integer',
         ];
+    }
+
+    /* ───────────────── commission (79) ───────────────── */
+
+    /** Whether the seller has a PERSONAL commission override. */
+    public function hasCommissionOverride(): bool
+    {
+        return in_array($this->commission_type, ['percent', 'fixed'], true)
+            && $this->commission_value !== null;
+    }
+
+    /** Resolved [type, value] — personal override, else the global default (percent 0). */
+    public function resolvedCommission(): array
+    {
+        if ($this->hasCommissionOverride()) {
+            return [$this->commission_type, (int) $this->commission_value];
+        }
+
+        $type = (string) \App\Models\Setting::get('shops.commission_type', 'percent');
+        $type = in_array($type, ['percent', 'fixed'], true) ? $type : 'percent';
+
+        return [$type, (int) \App\Models\Setting::get('shops.commission_value', 0)];
+    }
+
+    /** Commission (تومان) due on a shop goods total — percent on the total, fixed as a flat cut. */
+    public function commissionFor(int $itemsTotal): int
+    {
+        [$type, $value] = $this->resolvedCommission();
+
+        if ($itemsTotal <= 0) {
+            return 0;
+        }
+
+        return match ($type) {
+            'fixed'   => min(max(0, $value), $itemsTotal),
+            default   => min((int) floor($itemsTotal * max(0, min(100, $value)) / 100), $itemsTotal),
+        };
     }
 
     public function shop(): HasOne

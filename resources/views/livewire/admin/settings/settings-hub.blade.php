@@ -65,6 +65,8 @@
                 @livewire(\App\Livewire\Admin\Settings\SmsSettings::class, [], key('settings-sms'))
             @elseif ($tab === 'payment')
                 @livewire(\App\Livewire\Admin\Settings\PaymentSettings::class, [], key('settings-payment'))
+            @elseif ($tab === 'shops')
+                @livewire(\App\Livewire\Admin\Settings\ShopsSettings::class, [], key('settings-shops'))
             @endif
         </div>
     </div>

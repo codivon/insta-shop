@@ -3,6 +3,7 @@
 namespace App\Livewire\Seller;
 
 use App\Models\Carrier;
+use App\Models\CarrierTariff;
 use App\Models\City;
 use App\Models\Province;
 use App\Support\Fmt;
@@ -83,6 +84,9 @@ class ShippingPage extends Component
 
     public string $createDefaultDeliveryRange = '';
 
+    /** Weight tiers (تعرفه‌های وزنی) — batch 74: [{zone_type, max_weight, cost}]. */
+    public array $createTariffs = [];
+
     public function mount(): void
     {
         $this->shop(); // ensure the shop exists
@@ -136,6 +140,16 @@ class ShippingPage extends Component
         $this->createStartDaysAfterOrder = (int) $carrier->start_days_after_order;
         $this->createDefaultDeliveryRange = (string) ($carrier->default_delivery_range ?? '');
 
+        /* ── تعرفه‌های وزنی ── */
+        $this->createTariffs = $carrier->tariffs
+            ->map(fn (CarrierTariff $tariff) => [
+                'zone_type'  => $tariff->zone_type,
+                'max_weight' => (string) $tariff->max_weight,
+                'cost'       => (string) $tariff->cost,
+            ])
+            ->values()
+            ->all();
+
         $this->showCreateModal = true;
 
         $this->dispatch('shipping-modal-open');
@@ -171,6 +185,44 @@ class ShippingPage extends Component
         $this->createDeliveryTimeType    = Carrier::TIME_DEFAULT;
         $this->createStartDaysAfterOrder = 1;
         $this->createDefaultDeliveryRange = '';
+        $this->createTariffs             = [];
+    }
+
+    /* ══════════ tariff rows (74) ══════════ */
+
+    public function addTariffRow(): void
+    {
+        if (count($this->createTariffs) >= 12) {
+            return;
+        }
+
+        $this->createTariffs[] = [
+            'zone_type'  => CarrierTariff::ZONE_IN,
+            'max_weight' => '',
+            'cost'       => '',
+        ];
+    }
+
+    public function removeTariffRow(int $index): void
+    {
+        if (! isset($this->createTariffs[$index])) {
+            return;
+        }
+
+        unset($this->createTariffs[$index]);
+        $this->createTariffs = array_values($this->createTariffs);
+    }
+
+    public function updatedCreateTariffs($value, string $key): void
+    {
+        // Persian digits → latin for the numeric inputs (key = "0.max_weight")
+        if (str_ends_with($key, '.max_weight') || str_ends_with($key, '.cost')) {
+            [$index, $field] = explode('.', $key);
+
+            if (isset($this->createTariffs[(int) $index])) {
+                $this->createTariffs[(int) $index][$field] = Fmt::toLatin((string) $value);
+            }
+        }
     }
 
     /* ══════════ cascades ══════════ */
@@ -224,6 +276,8 @@ class ShippingPage extends Component
     /** wire:submit of the modal — creates when editId is null, updates otherwise. */
     public function createCarrier(): void
     {
+        $wasEditing = $this->editId !== null;
+
         try {
             $this->validate($this->rules(), $this->messages());
         } catch (\Illuminate\Validation\ValidationException $exception) {
@@ -290,9 +344,12 @@ class ShippingPage extends Component
             $this->createCoveredCities === Carrier::COVERED_SELECT_CITY ? array_map('intval', $this->createCoveredCityIds) : []
         );
 
+        /* ── تعرفه‌های وزنی (batch 74) ── */
+        $this->syncTariffs($carrier);
+
         $this->closeCreateModal();
 
-        $this->dispatch('shipping-toast', message: $this->editId
+        $this->dispatch('shipping-toast', message: $wasEditing
             ? 'روش ارسال به‌روزرسانی شد. ✅'
             : 'روش ارسال جدید ایجاد شد. ✅');
     }
@@ -329,6 +386,26 @@ class ShippingPage extends Component
         return Carrier::query()->where('shop_id', $this->shop()->id)->find($id);
     }
 
+    /** Replace the carrier's weight tiers with the modal rows. */
+    private function syncTariffs(Carrier $carrier): void
+    {
+        $rows = collect($this->createTariffs)
+            ->map(fn (array $row) => [
+                'zone_type'  => $row['zone_type'] === CarrierTariff::ZONE_OUT ? CarrierTariff::ZONE_OUT : CarrierTariff::ZONE_IN,
+                'max_weight' => (int) $row['max_weight'],
+                'cost'       => (int) $row['cost'],
+            ])
+            ->filter(fn (array $row) => $row['max_weight'] > 0 && $row['cost'] >= 0)
+            ->sortBy('max_weight')
+            ->values();
+
+        $carrier->tariffs()->delete();
+
+        foreach ($rows as $i => $row) {
+            $carrier->tariffs()->create($row + ['sort' => $i]);
+        }
+    }
+
     /** Which modal tab owns a failing field key (for the auto-jump on errors). */
     private function errorTabOf(string $key): string
     {
@@ -344,7 +421,8 @@ class ShippingPage extends Component
             || str_starts_with($key, 'createBasePrice')
             || str_starts_with($key, 'createFreeShipping')
             || str_starts_with($key, 'createExtraCost')
-            || str_starts_with($key, 'createCovered')) {
+            || str_starts_with($key, 'createCovered')
+            || str_starts_with($key, 'createTariffs')) {
             return 'zones';
         }
 
@@ -377,6 +455,12 @@ class ShippingPage extends Component
             'createDeliveryTimeType'   => ['required', 'in:'.Carrier::TIME_DEFAULT.','.Carrier::TIME_USER_SELECT],
             'createStartDaysAfterOrder'=> ['required', 'integer', 'min:1', 'max:11'],
             'createDefaultDeliveryRange'=> ['exclude_unless:createDeliveryTimeType,'.Carrier::TIME_DEFAULT, 'required', 'string', 'min:3', 'max:150'],
+
+            /* ── تعرفه‌های وزنی (74) ── */
+            'createTariffs'            => ['nullable', 'array', 'max:12'],
+            'createTariffs.*.zone_type'  => ['required', 'in:'.CarrierTariff::ZONE_IN.','.CarrierTariff::ZONE_OUT],
+            'createTariffs.*.max_weight' => ['required', 'integer', 'min:1', 'max:10000000'],
+            'createTariffs.*.cost'       => ['required', 'integer', 'min:0', 'max:999999999999'],
         ];
     }
 
@@ -390,6 +474,10 @@ class ShippingPage extends Component
             'createProvinceId.required' => 'استان فروشگاه (مبدأ ارسال) را انتخاب کنید.',
             'createCoveredCityIds.required' => 'حداقل یک شهر تحت پوشش انتخاب کنید.',
             'createDefaultDeliveryRange.required' => 'متن بازه زمانی ارسال پیش‌فرض را وارد کنید.',
+            'createTariffs.*.zone_type.required'  => 'نوع منطقه ارسالی هر پله تعرفه را انتخاب کنید.',
+            'createTariffs.*.max_weight.required' => 'حداکثر وزن هر پله تعرفه را وارد کنید.',
+            'createTariffs.*.max_weight.min'      => 'حداکثر وزن باید بیشتر از صفر باشد.',
+            'createTariffs.*.cost.required'       => 'هزینه ارسال هر پله تعرفه را وارد کنید.',
         ];
     }
 
@@ -399,7 +487,7 @@ class ShippingPage extends Component
     {
         return Carrier::query()
             ->where('shop_id', $this->shop()->id)
-            ->with(['cities:id,province_id,name', 'originProvince:id,name', 'originCity:id,name'])
+            ->with(['cities:id,province_id,name', 'originProvince:id,name', 'originCity:id,name', 'tariffs'])
             ->orderBy('sort')
             ->orderBy('id')
             ->get();

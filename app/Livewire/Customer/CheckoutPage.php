@@ -4,13 +4,17 @@ namespace App\Livewire\Customer;
 
 use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Carrier;
+use App\Models\City;
 use App\Models\Customer;
+use App\Models\CustomerAddress;
 use App\Models\Discount;
-use App\Models\Order;
+use App\Models\Province;
 use App\Support\Checkout\DiscountEvaluator;
+use App\Support\Fmt;
 use App\Support\Payments\PaymentService;
 use App\Support\Phone;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -26,6 +30,33 @@ class CheckoutPage extends Component
     public string $delivery_address = '';
 
     public string $postal_code = '';
+
+    /* ── آدرس‌های من (73) ── */
+
+    public ?int $selectedAddressId = null;
+
+    public bool $showAddressModal = false;
+
+    /** Inline «افزودن آدرس» form inside the change-address modal. */
+    public bool $showAddressForm = false;
+
+    public string $newTitle = '';
+
+    public string $newRecipient = '';
+
+    public string $newPhone = '';
+
+    public int $newProvinceId = 0;
+
+    public int $newCityId = 0;
+
+    public string $newAddress = '';
+
+    public string $newPostal = '';
+
+    public string $newPlaque = '';
+
+    public string $newUnit = '';
 
     /** shop_id → carrier_id — حامل هر فروشگاه، برای فروشگاه‌های فیزیکی اجباری است. */
     public array $carrierPicks = [];
@@ -46,18 +77,185 @@ class CheckoutPage extends Component
     {
         $customer = $this->customer();
 
-        $this->receiver_name  = (string) ($customer?->full_name ?? '');
-        $this->delivery_phone = Phone::toLocal($customer?->phone);
-        $this->gateway        = PaymentService::activeGateway();
+        $this->gateway = PaymentService::activeGateway();
 
-        // preselect the FIRST active carrier of every physical shop
-        foreach ($this->shopGroups as $group) {
-            $first = $group['carriers']->first();
+        // Preselect the DEFAULT address (or the only one) and fill the
+        // delivery fields from it — batch 73.
+        $default = $this->addresses->firstWhere('is_default', true) ?? $this->addresses->first();
 
-            if ($first) {
-                $this->carrierPicks[(int) $group['shop']->id] = $first->id;
-            }
+        if ($default) {
+            $this->selectAddress((int) $default->id);
+        } else {
+            $this->receiver_name  = (string) ($customer?->full_name ?? '');
+            $this->delivery_phone = Phone::toLocal($customer?->phone);
         }
+
+        // preselect the FIRST usable carrier of every physical shop
+        foreach ($this->shopGroups as $group) {
+            $this->autoPickCarrier((int) $group['shop']->id, $group['carriers']);
+        }
+    }
+
+    /* ───────────────────── address selection (73) ───────────────────── */
+
+    public function getAddressesProperty(): Collection
+    {
+        $customerId = (int) auth('customer')->id();
+
+        return $customerId > 0
+            ? CustomerAddress::query()->forCustomer($customerId)->get()
+            : collect();
+    }
+
+    public function getSelectedAddressProperty(): ?CustomerAddress
+    {
+        return $this->selectedAddressId
+            ? $this->addresses->firstWhere('id', $this->selectedAddressId)
+            : null;
+    }
+
+    /** Open the change-address modal. */
+    public function openAddressModal(): void
+    {
+        $this->showAddressForm = false;
+        $this->resetNewAddressForm();
+        $this->resetErrorBag(['newRecipient', 'newPhone', 'newProvinceId', 'newCityId', 'newAddress', 'newPostal']);
+        $this->showAddressModal = true;
+    }
+
+    public function closeAddressModal(): void
+    {
+        $this->showAddressModal = false;
+        $this->showAddressForm  = false;
+    }
+
+    public function toggleAddressForm(): void
+    {
+        $this->showAddressForm = ! $this->showAddressForm;
+
+        if ($this->showAddressForm) {
+            $this->resetNewAddressForm();
+        }
+    }
+
+    private function resetNewAddressForm(): void
+    {
+        $this->newTitle      = '';
+        $this->newRecipient  = '';
+        $this->newPhone      = '';
+        $this->newProvinceId = 0;
+        $this->newCityId     = 0;
+        $this->newAddress    = '';
+        $this->newPostal     = '';
+        $this->newPlaque     = '';
+        $this->newUnit       = '';
+    }
+
+    public function updatedNewProvinceId(): void
+    {
+        $this->newCityId = 0;
+    }
+
+    public function updatedNewPhone($value): void
+    {
+        $this->newPhone = Fmt::toLatin((string) $value);
+    }
+
+    public function updatedNewPostal($value): void
+    {
+        $this->newPostal = Fmt::toLatin((string) $value);
+    }
+
+    public function updatedNewPlaque($value): void
+    {
+        $this->newPlaque = Fmt::toLatin((string) $value);
+    }
+
+    public function updatedNewUnit($value): void
+    {
+        $this->newUnit = Fmt::toLatin((string) $value);
+    }
+
+    /** Pick an existing address from the modal — fills the delivery fields. */
+    public function pickAddress(int $id): void
+    {
+        $this->selectAddress($id);
+        $this->closeAddressModal();
+
+        $this->dispatch('panel-toast', message: 'آدرس تحویل انتخاب شد. ✅', type: 'success');
+    }
+
+    private function selectAddress(int $id, bool $syncFields = true): void
+    {
+        $address = $this->addresses->firstWhere('id', $id);
+
+        if (! $address) {
+            return;
+        }
+
+        $this->selectedAddressId = $address->id;
+
+        if ($syncFields) {
+            $this->fillDeliveryFromAddress($address);
+        }
+
+        // the carrier zone may flip (درون/بیرون استانی) → re-pick carriers
+        foreach ($this->shopGroups as $group) {
+            $this->autoPickCarrier((int) $group['shop']->id, $group['carriers']);
+        }
+    }
+
+    private function fillDeliveryFromAddress(CustomerAddress $address): void
+    {
+        $this->receiver_name    = (string) ($address->recipient_name ?: $this->customer()?->full_name ?? '');
+        $this->delivery_phone   = $address->phone ? Phone::toLocal($address->phone) : Phone::toLocal($this->customer()?->phone);
+        $this->delivery_address = $address->fullLabel();
+        $this->postal_code      = (string) ($address->postal_code ?? '');
+    }
+
+    /** Inline «افزودن آدرس» — saves and AUTO-SELECTS the new row. */
+    public function saveNewAddress(): void
+    {
+        $this->validateWithToast(fn () => $this->validate($this->newAddressRules(), $this->newAddressMessages()));
+
+        $customer = $this->customer();
+
+        if (! $customer) {
+            return;
+        }
+
+        $province = $this->newProvinceId > 0 ? Province::find($this->newProvinceId) : null;
+        $city     = $this->newCityId > 0 ? City::find($this->newCityId) : null;
+
+        $address = new CustomerAddress([
+            'customer_id'    => $customer->id,
+            'title'          => trim($this->newTitle) !== '' ? trim($this->newTitle) : null,
+            'recipient_name' => trim($this->newRecipient),
+            'phone'          => Phone::normalize($this->newPhone),
+            'province_id'    => $province?->id,
+            'city_id'        => $city?->id,
+            'province_name'  => $province?->name,
+            'city_name'      => $city?->name,
+            'address'        => trim($this->newAddress),
+            'postal_code'    => $this->newPostal !== '' ? $this->newPostal : null,
+            'plaque'         => trim($this->newPlaque) !== '' ? trim($this->newPlaque) : null,
+            'unit'           => trim($this->newUnit) !== '' ? trim($this->newUnit) : null,
+            'is_default'     => false,
+        ]);
+
+        $address->save();
+
+        // exactly one address → it IS the default
+        if (CustomerAddress::query()->where('customer_id', $customer->id)->count() === 1) {
+            $address->forceFill(['is_default' => true])->save();
+        }
+
+        $this->resetNewAddressForm();
+        $this->showAddressForm = false;
+
+        $this->selectAddress($address->id);
+
+        $this->dispatch('panel-toast', message: 'آدرس جدید ذخیره و انتخاب شد. ✅', type: 'success');
     }
 
     protected function rules(): array
@@ -80,6 +278,66 @@ class CheckoutPage extends Component
             'delivery_address.min'      => 'نشانی باید حداقل ۱۰ حرف باشد.',
             'postal_code.regex'         => 'کد پستی باید ۱۰ رقم باشد.',
         ];
+    }
+
+    private function newAddressRules(): array
+    {
+        return [
+            'newTitle'      => ['nullable', 'string', 'max:60'],
+            'newRecipient'  => ['required', 'string', 'min:3', 'max:80'],
+            'newPhone'      => ['required', 'string', 'min:10', 'max:14'],
+            'newProvinceId' => ['required', 'integer', 'min:1', 'exists:provinces,id'],
+            'newCityId'     => ['required', 'integer', 'min:1', Rule::exists('cities', 'id')->where('province_id', $this->newProvinceId)],
+            'newAddress'    => ['required', 'string', 'min:10', 'max:500'],
+            'newPostal'     => ['nullable', 'string', 'regex:/^\d{10}$/'],
+        ];
+    }
+
+    private function newAddressMessages(): array
+    {
+        return [
+            'newRecipient.required' => 'نام گیرنده را وارد کنید.',
+            'newRecipient.min'      => 'نام گیرنده باید حداقل ۳ حرف باشد.',
+            'newPhone.required'     => 'شماره همراه را وارد کنید.',
+            'newPhone.min'          => 'شماره همراه معتبر نیست.',
+            'newProvinceId.required' => 'استان را انتخاب کنید.',
+            'newProvinceId.min'     => 'استان را انتخاب کنید.',
+            'newCityId.required'    => 'شهر را انتخاب کنید.',
+            'newCityId.min'         => 'شهر را انتخاب کنید.',
+            'newCityId.exists'      => 'شهر انتخابی با استان هم‌خوانی ندارد.',
+            'newAddress.required'   => 'نشانی کامل را وارد کنید.',
+            'newAddress.min'        => 'نشانی باید حداقل ۱۰ حرف باشد.',
+            'newPostal.regex'       => 'کد پستی باید ۱۰ رقم باشد.',
+        ];
+    }
+
+    /* ───────────────────── carrier zone (74) ───────────────────── */
+
+    /** درون استانی when the delivery address shares the carrier's origin province. */
+    public function isInProvince(Carrier $carrier): bool
+    {
+        $address = $this->selectedAddress;
+
+        return $address
+            && $address->province_id
+            && $carrier->origin_province_id
+            && (int) $carrier->origin_province_id === (int) $address->province_id;
+    }
+
+    private function autoPickCarrier(int $shopId, Collection $carriers): void
+    {
+        $current = (int) ($this->carrierPicks[$shopId] ?? 0);
+
+        // keep the current pick when it still works for this zone
+        if ($current > 0 && $carriers->contains('id', $current)) {
+            return;
+        }
+
+        $first = $carriers->first();
+
+        if ($first) {
+            $this->carrierPicks[$shopId] = $first->id;
+        }
     }
 
     /* ───────────────────── interactions ───────────────────── */
@@ -133,6 +391,22 @@ class CheckoutPage extends Component
     /** Validate delivery info → snapshot cart (+ carriers/discount/gateway) → gateway. */
     public function placeOrder()
     {
+        $customer = $this->customer();
+
+        if (! $customer) {
+            return $this->redirect(route('shop.login'), navigate: false);
+        }
+
+        // The address book is the source of truth — a customer WITH saved
+        // addresses must have one selected (the manual form is only for
+        // first-time customers without any address).
+        if ($this->addresses->isNotEmpty() && ! $this->selectedAddress) {
+            $this->addError('selectedAddressId', 'آدرس تحویل را انتخاب کنید.');
+            $this->dispatch('panel-toast', message: 'آدرس تحویل را انتخاب کنید.');
+
+            return;
+        }
+
         try {
             $this->validate();
         } catch (\Illuminate\Validation\ValidationException $exception) {
@@ -140,12 +414,6 @@ class CheckoutPage extends Component
                 ?: 'لطفاً اطلاعات تحویل را کامل کنید.');
 
             throw $exception;
-        }
-
-        $customer = $this->customer();
-
-        if (! $customer) {
-            return $this->redirect(route('shop.login'), navigate: false);
         }
 
         // Delivery phone accepts any common Iranian mobile shape.
@@ -184,7 +452,7 @@ class CheckoutPage extends Component
         /* ── discount (fresh server-side evaluation) ── */
         [$discount, $discountAmount] = $this->resolveDiscount();
 
-        /* ── shipments snapshot ── */
+        /* ── shipments snapshot (tariff-aware, batch 74) ── */
         $shipments    = [];
         $shippingCost = 0;
 
@@ -200,7 +468,7 @@ class CheckoutPage extends Component
                 continue;
             }
 
-            $cost = $carrier->costFor((int) $group['subtotal'], (int) $group['weight']);
+            $cost = $carrier->costFor((int) $group['subtotal'], (int) $group['weight'], $this->isInProvince($carrier));
 
             if (! $carrier->isPayOnDelivery()) {
                 $shippingCost += $cost;
@@ -262,7 +530,11 @@ class CheckoutPage extends Component
      * Items grouped by store — each card shows its own thumbnail rows and
      * its own carrier picker (روش ارسال هر فروشگاه، هزینهٔ هر حامل جدا).
      *
-     * @return Collection<int, array{shop, items: Collection, subtotal: int, weight: int, carriers: Collection, needsCarrier: bool}>
+     * Carriers WITHOUT any weight tariff are excluded («بدون تعرفه کار
+     * نمی‌کنه» — batch 74); each kept carrier carries a zone_ok flag for
+     * the current delivery province.
+     *
+     * @return Collection<int, array{shop, items: Collection, subtotal: int, weight: int, carriers: Collection, allCarriers: Collection, needsCarrier: bool}>
      */
     public function getShopGroupsProperty(): Collection
     {
@@ -272,9 +544,13 @@ class CheckoutPage extends Component
                 $shop     = $lines->first()->product->shop;
                 $physical = $lines->contains(fn ($item) => $item->product->type !== \App\Models\Product::TYPE_DOWNLOADABLE);
 
-                $carriers = $physical && $shop
-                    ? Carrier::query()->where('shop_id', $shop->id)->active()->orderBy('sort')->orderBy('id')->get()
+                $allCarriers = $physical && $shop
+                    ? Carrier::query()->where('shop_id', $shop->id)->active()->with('tariffs')->orderBy('sort')->orderBy('id')->get()
                     : collect();
+
+                $carriers = $allCarriers->filter(
+                    fn (Carrier $carrier) => $carrier->isPayOnDelivery() || $carrier->hasTariffs(),
+                )->values();
 
                 return [
                     'shop'         => $shop,
@@ -282,6 +558,7 @@ class CheckoutPage extends Component
                     'subtotal'     => (int) $lines->sum(fn ($item) => $item->lineTotal()),
                     'weight'       => (int) $lines->sum(fn ($item) => (int) ($item->product->weight_grams ?? 0) * (int) $item->quantity),
                     'carriers'     => $carriers,
+                    'allCarriers'  => $allCarriers,
                     'needsCarrier' => $physical,
                 ];
             })
@@ -312,7 +589,7 @@ class CheckoutPage extends Component
             $carrier = $group['carriers']->firstWhere('id', $pick);
 
             if ($carrier && ! $carrier->isPayOnDelivery()) {
-                $sum += $carrier->costFor((int) $group['subtotal'], (int) $group['weight']);
+                $sum += $carrier->costFor((int) $group['subtotal'], (int) $group['weight'], $this->isInProvince($carrier));
             }
         }
 
@@ -364,6 +641,19 @@ class CheckoutPage extends Component
         return PaymentService::availableGateways();
     }
 
+    /** Provinces/cities of the inline «افزودن آدرس» form. */
+    public function getNewProvincesProperty(): Collection
+    {
+        return Province::query()->orderBy('ordering')->orderBy('id')->get(['id', 'name']);
+    }
+
+    public function getNewCitiesProperty(): Collection
+    {
+        return $this->newProvinceId > 0
+            ? City::query()->where('province_id', $this->newProvinceId)->orderBy('ordering')->orderBy('id')->get(['id', 'name'])
+            : collect();
+    }
+
     public function render()
     {
         return view('livewire.customer.checkout-page', [
@@ -377,6 +667,10 @@ class CheckoutPage extends Component
             'payable'      => $this->payable,
             'liveDiscount' => $this->liveDiscount,
             'gateways'     => $this->gateways,
+            'addresses'    => $this->addresses,
+            'selectedAddress' => $this->selectedAddress,
+            'newProvinces' => $this->newProvinces,
+            'newCities'    => $this->newCities,
         ])->title('تکمیل خرید');
     }
 

@@ -81,6 +81,19 @@
 
         {{-- ── settings rows ── --}}
         <div class="mt-4 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+            <a href="{{ route('shop.addresses') }}" wire:navigate
+               class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <span class="flex items-center gap-2.5 text-xs font-bold">
+                    <span class="grid size-9 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950/50 dark:text-primary-400">
+                        <x-icon name="map-pin" class="size-4.5" />
+                    </span>
+                    آدرس‌های من
+                </span>
+                <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                    نشانی‌های تحویل سفارش
+                    <x-icon name="chevron-left" class="size-3.5" />
+                </span>
+            </a>
             <a href="{{ route('shop.orders') }}" wire:navigate
                class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <span class="flex items-center gap-2.5 text-xs font-bold">

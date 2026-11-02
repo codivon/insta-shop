@@ -36,8 +36,58 @@
             @enderror
 
             <form wire:submit="placeOrder">
-                {{-- ── delivery info form ── --}}
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                {{-- ── delivery: آدرس منتخب از دفترچه (73) ── --}}
+                @if ($addresses->isNotEmpty())
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <div class="flex items-center gap-2">
+                            <span class="grid size-9 place-items-center rounded-xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+                                <x-icon name="map-pin" class="size-4.5" />
+                            </span>
+                            <h3 class="text-xs font-extrabold">آدرس تحویل سفارش</h3>
+                        </div>
+
+                        @if ($selectedAddress)
+                            <div class="mt-3 rounded-2xl border border-primary-200 bg-primary-50/50 p-3.5 dark:border-primary-800 dark:bg-primary-950/20" wire:key="sel-addr-{{ $selectedAddress->id }}">
+                                <div class="flex items-start gap-2.5">
+                                    <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400">
+                                        <x-icon name="{{ $selectedAddress->title === 'محل کار' ? 'store' : 'home' }}" class="size-4" />
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-1.5">
+                                            <span class="truncate text-[11px] font-extrabold">{{ $selectedAddress->title ?: 'آدرس تحویل' }}</span>
+                                            @if ($selectedAddress->is_default)
+                                                <span class="rounded-full bg-primary-100 px-1.5 py-0.5 text-[8.5px] font-extrabold text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">پیش‌فرض</span>
+                                            @endif
+                                        </div>
+                                        <p class="mt-1 text-[10.5px] font-bold leading-5 text-slate-600 dark:text-slate-300">{{ $selectedAddress->fullLabel() }}</p>
+                                        <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[9px] text-slate-400">
+                                            @if ($selectedAddress->recipient_name)
+                                                <span class="flex items-center gap-1"><x-icon name="user" class="size-2.5" /> {{ $selectedAddress->recipient_name }}</span>
+                                            @endif
+                                            @if ($selectedAddress->phone)
+                                                <span class="flex items-center gap-1" dir="ltr"><x-icon name="phone" class="size-2.5" /> {{ \App\Support\Fmt::toFa($selectedAddress->phone) }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @else
+                            <div class="mt-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-3 text-[10.5px] font-bold text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                                برای ادامه، یکی از آدرس‌های خود را انتخاب کنید.
+                            </div>
+                        @endif
+
+                        @error('selectedAddressId') <p class="mt-2 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+
+                        <button type="button" wire:click="openAddressModal"
+                                class="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary-300 bg-primary-50/50 py-2.5 text-[11px] font-extrabold text-primary-600 transition hover:bg-primary-100/60 dark:border-primary-800 dark:bg-primary-950/20 dark:text-primary-400 dark:hover:bg-primary-950/40">
+                            <x-icon name="edit" class="size-3.5" />
+                            تغییر آدرس
+                        </button>
+                    </div>
+                @else
+                    {{-- ── delivery info form (بدون آدرس ذخیره‌شده) ── --}}
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div class="flex items-center gap-2">
                         <span class="grid size-9 place-items-center rounded-xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
                             <x-icon name="package" class="size-4.5" />
@@ -76,6 +126,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
 
                 {{-- ── خلاصه سفارش — گروه‌بندی بر اساس فروشگاه + حامل هر فروشگاه ── --}}
                 <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -136,15 +187,20 @@
 
                                         @if ($group['carriers']->isEmpty())
                                             <div class="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-[10px] font-bold leading-5 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-                                                این فروشگاه هنوز روش ارسالی ثبت نکرده است؛ تا اطلاع فروشنده امکان خرید حضوری‌نیست.
+                                                @if ($group['allCarriers']->isNotEmpty())
+                                                    روش‌های ارسال این فروشگاه هنوز تعرفه وزنی ثبت نکرده‌اند؛ تا اطلاع فروشنده امکان خرید ارسالی نیست.
+                                                @else
+                                                    این فروشگاه هنوز روش ارسالی ثبت نکرده است؛ تا اطلاع فروشنده امکان خرید حضوری‌نیست.
+                                                @endif
                                             </div>
                                         @else
                                             <div class="space-y-2" role="radiogroup" aria-label="روش ارسال {{ $group['shop']?->name }}">
                                                 @foreach ($group['carriers'] as $carrier)
                                                     @php
                                                         $picked   = (int) ($carrierPicks[$shopId] ?? 0) === (int) $carrier->id;
-                                                        $cost     = $carrier->costFor((int) $group['subtotal'], (int) $group['weight']);
+                                                        $cost     = $carrier->costFor((int) $group['subtotal'], (int) $group['weight'], $this->isInProvince($carrier));
                                                         $postpaid = $carrier->isPayOnDelivery();
+                                                        $inProv   = $this->isInProvince($carrier);
                                                     @endphp
                                                     <label class="flex cursor-pointer items-center gap-2.5 rounded-xl border p-2.5 transition {{ $picked
                                                         ? 'border-primary-500 bg-primary-50/70 ring-1 ring-primary-500/30 dark:border-primary-600 dark:bg-primary-950/30'
@@ -163,6 +219,10 @@
                                                         <span class="min-w-0 flex-1">
                                                             <span class="block truncate text-[11px] font-extrabold">{{ $carrier->title }}</span>
                                                             <span class="mt-0.5 block truncate text-[9px] font-bold text-slate-400">{{ $carrier->deliveryRangeLabel() }} · {{ $carrier->waiting_time ?: $carrier->coverageLabel() }}</span>
+                                                            <span class="mt-0.5 inline-flex items-center gap-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[8px] font-extrabold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                                                <x-icon name="map-pin" class="size-2.5" />
+                                                                {{ $inProv ? 'درون استانی' : 'بیرون استانی' }}
+                                                            </span>
                                                         </span>
                                                         <span class="shrink-0 text-left">
                                                             @if ($postpaid)
@@ -319,3 +379,130 @@
         @endif
     </div>
 </div>
+
+{{-- ═══════════════ تغییر آدرس — انتخاب از دفترچه + افزودن آدرس (73) ═══════════════ --}}
+<x-modal-panel open="$wire.showAddressModal" maxWidth="md"
+               labelledby="addr-modal-title"
+               closeJs="__ipOpen = false; $wire.closeAddressModal()">
+
+    <x-slot:header>
+        <div class="flex items-center justify-between px-4 py-3">
+            <h2 id="addr-modal-title" class="flex items-center gap-2 text-xs font-extrabold">
+                <span class="grid size-8 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950/60 dark:text-primary-400">
+                    <x-icon name="map-pin" class="size-4" />
+                </span>
+                آدرس‌های من
+            </h2>
+            <button type="button" class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800"
+                    onclick="__ipOpen = false; $wire.closeAddressModal()" aria-label="بستن">
+                <x-icon name="x" class="size-4" />
+            </button>
+        </div>
+    </x-slot:header>
+
+    <div class="p-4">
+        {{-- ── address list ── --}}
+        <div class="space-y-2.5">
+            @foreach ($addresses as $address)
+                <button type="button" wire:click="pickAddress({{ $address->id }})" wire:key="pick-{{ $address->id }}"
+                        class="flex w-full items-start gap-2.5 rounded-2xl border p-3 text-right transition {{ (int) $selectedAddressId === (int) $address->id
+                            ? 'border-primary-500 bg-primary-50/70 ring-1 ring-primary-500/30 dark:border-primary-600 dark:bg-primary-950/30'
+                            : 'border-slate-200 bg-white hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900' }}">
+                    <span class="grid size-9 shrink-0 place-items-center rounded-xl {{ (int) $selectedAddressId === (int) $address->id
+                        ? 'bg-primary-100 text-primary-600 dark:bg-primary-950/60 dark:text-primary-400'
+                        : 'bg-slate-100 text-slate-400 dark:bg-slate-800' }}">
+                        <x-icon name="{{ $address->title === 'محل کار' ? 'store' : 'home' }}" class="size-4" />
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="flex flex-wrap items-center gap-1.5">
+                            <span class="truncate text-[11px] font-extrabold">{{ $address->title ?: 'بدون عنوان' }}</span>
+                            @if ($address->is_default)
+                                <span class="rounded-full bg-primary-100 px-1.5 py-0.5 text-[8px] font-extrabold text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">پیش‌فرض</span>
+                            @endif
+                        </span>
+                        <span class="mt-0.5 block text-[10px] font-bold leading-5 text-slate-500 dark:text-slate-400">{{ $address->fullLabel() }}</span>
+                        @if ($address->recipient_name)
+                            <span class="mt-0.5 block text-[9px] text-slate-400">گیرنده: {{ $address->recipient_name }} @if($address->phone) · {{ \App\Support\Fmt::toFa($address->phone) }} @endif</span>
+                        @endif
+                    </span>
+                    @if ((int) $selectedAddressId === (int) $address->id)
+                        <span class="grid size-5 shrink-0 place-items-center rounded-full bg-primary-600 text-white">
+                            <x-icon name="check" class="size-3" />
+                        </span>
+                    @endif
+                </button>
+            @endforeach
+        </div>
+
+        {{-- ── افزودن آدرس (inline) ── --}}
+        <div class="mt-4 border-t border-dashed border-slate-200 pt-3 dark:border-slate-700">
+            @if (! $showAddressForm)
+                <button type="button" wire:click="toggleAddressForm"
+                        class="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary-300 bg-primary-50/50 py-2.5 text-[11px] font-extrabold text-primary-600 transition hover:bg-primary-100/60 dark:border-primary-800 dark:bg-primary-950/20 dark:text-primary-400 dark:hover:bg-primary-950/40">
+                    <x-icon name="plus" class="size-3.5" />
+                    افزودن آدرس
+                </button>
+            @else
+                <form wire:submit="saveNewAddress" class="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-900/60">
+                    <p class="text-[11px] font-extrabold">آدرس جدید</p>
+
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <input type="text" wire:model="newTitle" maxlength="60" placeholder="عنوان (خانه / محل کار)"
+                               class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                        <input type="text" wire:model="newRecipient" maxlength="80" placeholder="نام گیرنده *"
+                               class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                    </div>
+                    @error('newRecipient') <p class="text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+
+                    <input type="tel" wire:model="newPhone" inputmode="tel" dir="ltr" maxlength="14" placeholder="شماره همراه * (09123456789)"
+                           class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right text-xs outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                    @error('newPhone') <p class="text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <select wire:model.live="newProvinceId"
+                                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                            <option value="0">استان *</option>
+                            @foreach ($newProvinces as $province)
+                                <option value="{{ $province->id }}">{{ $province->name }}</option>
+                            @endforeach
+                        </select>
+                        <select wire:model.live="newCityId"
+                                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                            <option value="0">شهر *</option>
+                            @foreach ($newCities as $city)
+                                <option value="{{ $city->id }}">{{ $city->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @error('newProvinceId') <p class="text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                    @error('newCityId') <p class="text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+
+                    <textarea wire:model="newAddress" rows="2" maxlength="500" placeholder="نشانی کامل * (خیابان، کوچه…)"
+                              class="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs leading-5 outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800"></textarea>
+                    @error('newAddress') <p class="text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <input type="text" wire:model="newPostal" inputmode="numeric" dir="ltr" maxlength="10" placeholder="کد پستی"
+                               class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-right text-xs outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                        <input type="text" wire:model="newPlaque" inputmode="numeric" maxlength="20" placeholder="پلاک"
+                               class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                        <input type="text" wire:model="newUnit" inputmode="numeric" maxlength="20" placeholder="واحد"
+                               class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                    </div>
+                    @error('newPostal') <p class="text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+
+                    <div class="flex gap-2 pt-0.5">
+                        <button type="button" wire:click="toggleAddressForm"
+                                class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                            انصراف
+                        </button>
+                        <button type="submit" wire:loading.attr="disabled" wire:target="saveNewAddress"
+                                class="flex-1 rounded-xl bg-primary-600 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95 disabled:opacity-60">
+                            ذخیره و انتخاب
+                        </button>
+                    </div>
+                </form>
+            @endif
+        </div>
+    </div>
+</x-modal-panel>
