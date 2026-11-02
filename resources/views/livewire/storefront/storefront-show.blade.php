@@ -406,15 +406,18 @@
 
                     <div class="space-y-3">
                         @foreach ($row['blocks'] as $block)
-                            <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-                                <p class="mb-2 text-[10px] font-extrabold text-slate-500 dark:text-slate-400">{{ $block['spec'] }}</p>
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/40" wire:key="fblock-{{ $block['key'] }}">
+                                <p class="mb-2 text-[10px] font-extrabold text-slate-500 dark:text-slate-400">{{ $block['label'] }}</p>
                                 <div class="flex flex-wrap gap-1.5">
                                     @foreach ($block['values'] as $value)
-                                        @php $picked = in_array($value, (array) ($specPicks[$block['spec']] ?? []), true); @endphp
-                                        <button type="button" wire:click="toggleSpecPick('{{ $block['spec'] }}', '{{ $value }}')" wire:key="spv-{{ $row['filter']->id }}-{{ $loop->parent->index }}-{{ $loop->index }}"
-                                                class="rounded-full border px-3 py-1.5 text-[10px] font-extrabold transition active:scale-95 {{ $picked
+                                        @php $picked = in_array($value, (array) ($specPicks[$block['key']] ?? []), true); @endphp
+                                        <button type="button" wire:click="toggleSpecPick('{{ $block['key'] }}', '{{ $value }}')" wire:key="spv-{{ $row['filter']->id }}-{{ $loop->parent->index }}-{{ $loop->index }}"
+                                                class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-extrabold transition active:scale-95 {{ $picked
                                                     ? 'border-primary-600 bg-primary-600 text-white shadow-md shadow-primary-600/25'
                                                     : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300' }}">
+                                            @if (($block['colors'][$value] ?? null) !== null)
+                                                <span class="inline-block size-2.5 shrink-0 rounded-full border border-black/10" style="background: {{ $block['colors'][$value] }}"></span>
+                                            @endif
                                             {{ $value }}
                                         </button>
                                     @endforeach

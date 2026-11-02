@@ -29,7 +29,7 @@
                 <div>
                     <div class="text-xs font-extrabold">فیلترهای فروشگاه</div>
                     <div class="mt-0.5 text-[10px] leading-4 text-slate-400">
-                        هر فیلتر = یک عنوان + چند مشخصهٔ محصولات خودت ({{ \App\Support\Fmt::toFa($productsCount) }} محصول فعال)
+                        هر فیلتر = یک عنوان + ویژگی‌ها و مشخصه‌های محصولات خودت ({{ \App\Support\Fmt::toFa($productsCount) }} محصول فعال)
                     </div>
                 </div>
             </div>
@@ -102,7 +102,7 @@
         <div class="mb-2 mt-4 flex items-start gap-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 text-[10px] font-semibold leading-5 text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
             <x-icon name="info" class="mt-0.5 size-4 shrink-0 text-primary-500" />
             <span>
-                مشخصه‌ها فقط از <b>محصولات خود شما</b> خوانده می‌شوند (رنگ، گارانتی، اندازه صفحه نمایش و…) — فیلترهای فروشندگان دیگر با فروشگاه شما تداخلی ندارند.
+                منبع مشخصه‌ها فقط <b>فروشگاه خود شما</b> است: «ویژگی‌ها» با مقادیر تنوعِ محصولات، و «مشخصه‌ها» از مشخصات محصولات خوانده می‌شوند — فیلترهای فروشندگان دیگر با فروشگاه شما تداخلی ندارند.
             </span>
         </div>
 
@@ -147,15 +147,25 @@
                     </button>
                 </div>
 
-                @if (count($specNames) === 0)
+                @if (count($specNames) === 0 && count($attrIds) === 0)
                     <div class="rounded-xl border border-dashed border-amber-300 bg-amber-50/70 px-3 py-2.5 text-[10px] font-bold leading-5 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
-                        هنوز مشخصه‌ای اضافه نکرده‌اید — با «افزودن مشخصات» از میان مشخصه‌های محصولات خودتان انتخاب کنید.
+                        هنوز مشخصه‌ای اضافه نکرده‌اید — با «افزودن مشخصات» از میان ویژگی‌های فروشگاه و مشخصه‌های محصولات خودتان انتخاب کنید.
                     </div>
                 @else
                     <div class="flex flex-wrap gap-1.5">
+                        @foreach ($attrIds as $attrId)
+                            <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-extrabold text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800" wire:key="chip-a-{{ $attrId }}">
+                                {{ $attrNameById[$attrId] ?? 'ویژگی' }}
+                                <span class="text-[8px] font-black opacity-70">(ویژگی)</span>
+                                <button type="button" wire:click="removeAttr({{ $attrId }})" class="text-amber-400 transition hover:text-rose-500" aria-label="حذف">
+                                    <x-icon name="x" class="size-3" />
+                                </button>
+                            </span>
+                        @endforeach
                         @foreach ($specNames as $name)
                             <span class="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-extrabold text-primary-600 dark:bg-primary-950/40 dark:text-primary-300" wire:key="spec-{{ $loop->index }}">
                                 {{ $name }}
+                                <span class="text-[8px] font-black opacity-60">(مشخصات)</span>
                                 <button type="button" wire:click="removeSpec('{{ $name }}')" class="text-primary-400 transition hover:text-rose-500" aria-label="حذف {{ $name }}">
                                     <x-icon name="x" class="size-3" />
                                 </button>
@@ -211,40 +221,86 @@
                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 pe-10 text-xs outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
             </div>
 
-            <div class="scroll-slim mt-3 max-h-72 space-y-1.5 overflow-y-auto">
-                @if ($availableSpecs->isEmpty())
+            <div class="scroll-slim mt-3 max-h-72 space-y-3 overflow-y-auto">
+                @php $hasAnySource = $availableAttrs->isNotEmpty() || $availableSpecs->isNotEmpty(); @endphp
+
+                @if (! $hasAnySource)
                     <div class="rounded-xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-700">
                         <p class="text-[11px] font-extrabold">مشخصه‌ای پیدا نشد</p>
-                        <p class="mt-1 text-[10px] leading-5 text-slate-400">مشخصه‌ها از بخش «مشخصات» محصولات فروشگاه شما خوانده می‌شوند؛ اول در محصولات، مشخصه ثبت کنید.</p>
+                        <p class="mt-1 text-[10px] leading-5 text-slate-400">ویژگی‌های فروشگاه (رنگ، سایز، گارانتی…) و مشخصه‌های ثبت‌شده در بخش «مشخصات» محصولاتتان اینجا نمایش داده می‌شوند.</p>
                     </div>
                 @else
-                    @foreach ($availableSpecs as $spec)
-                        @php $picked = in_array($spec, $specNames, true); @endphp
-                        <button type="button" wire:click="toggleSpec('{{ $spec }}')" wire:key="avail-{{ $loop->index }}"
-                                class="flex w-full items-center justify-between rounded-xl border p-2.5 text-right transition {{ $picked
-                                    ? 'border-primary-500 bg-primary-50/70 dark:border-primary-600 dark:bg-primary-950/30'
-                                    : 'border-slate-200 bg-white hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900' }}">
-                            <span class="min-w-0">
-                                <span class="block truncate text-[11px] font-extrabold">{{ $spec }}</span>
-                                @if (($specValueCounts[$spec] ?? 0) > 0)
-                                    <span class="mt-0.5 block text-[9px] font-bold text-slate-400">{{ \App\Support\Fmt::toFa($specValueCounts[$spec]) }} مقدار در محصولات شما</span>
-                                @endif
-                            </span>
-                            <span class="grid size-5 shrink-0 place-items-center rounded-md border transition {{ $picked
-                                ? 'border-primary-600 bg-primary-600 text-white'
-                                : 'border-slate-300 dark:border-slate-600' }}">
-                                @if ($picked)
-                                    <x-icon name="check" class="size-3" />
-                                @endif
-                            </span>
-                        </button>
-                    @endforeach
+                    @if ($availableAttrs->isNotEmpty())
+                        <div>
+                            <p class="mb-1.5 flex items-center gap-1.5 text-[9.5px] font-black text-amber-600 dark:text-amber-400">
+                                <x-icon name="swatch-book" class="size-3.5" />
+                                ویژگی‌های فروشگاه — مقادیر از تنوع‌های محصولات
+                            </p>
+                            <div class="space-y-1.5">
+                                @foreach ($availableAttrs as $attr)
+                                    @php $picked = in_array($attr->id, $attrIds, true); @endphp
+                                    <button type="button" wire:click="toggleAttr({{ $attr->id }})" wire:key="avail-a-{{ $attr->id }}"
+                                            class="flex w-full items-center justify-between rounded-xl border p-2.5 text-right transition {{ $picked
+                                                ? 'border-amber-500 bg-amber-50/70 dark:border-amber-600 dark:bg-amber-950/30'
+                                                : 'border-slate-200 bg-white hover:border-amber-300 dark:border-slate-700 dark:bg-slate-900' }}">
+                                        <span class="min-w-0">
+                                            <span class="block truncate text-[11px] font-extrabold">{{ $attr->name }} <span class="text-[9px] font-black text-amber-500">(ویژگی)</span></span>
+                                            @if (($attrUsedCounts[$attr->id] ?? 0) > 0)
+                                                <span class="mt-0.5 block text-[9px] font-bold text-slate-400">{{ \App\Support\Fmt::toFa($attrUsedCounts[$attr->id]) }} مقدار در محصولات شما</span>
+                                            @else
+                                                <span class="mt-0.5 block text-[9px] font-bold text-slate-400">هنوز در تنوع محصولات استفاده نشده</span>
+                                            @endif
+                                        </span>
+                                        <span class="grid size-5 shrink-0 place-items-center rounded-md border transition {{ $picked
+                                            ? 'border-amber-600 bg-amber-600 text-white'
+                                            : 'border-slate-300 dark:border-slate-600' }}">
+                                            @if ($picked)
+                                                <x-icon name="check" class="size-3" />
+                                            @endif
+                                        </span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    @if ($availableSpecs->isNotEmpty())
+                        <div>
+                            <p class="mb-1.5 flex items-center gap-1.5 text-[9.5px] font-black text-slate-500 dark:text-slate-400">
+                                <x-icon name="layers" class="size-3.5" />
+                                مشخصه‌های محصولات
+                            </p>
+                            <div class="space-y-1.5">
+                                @foreach ($availableSpecs as $spec)
+                                    @php $picked = in_array($spec, $specNames, true); @endphp
+                                    <button type="button" wire:click="toggleSpec('{{ $spec }}')" wire:key="avail-{{ $loop->index }}"
+                                            class="flex w-full items-center justify-between rounded-xl border p-2.5 text-right transition {{ $picked
+                                                ? 'border-primary-500 bg-primary-50/70 dark:border-primary-600 dark:bg-primary-950/30'
+                                                : 'border-slate-200 bg-white hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900' }}">
+                                        <span class="min-w-0">
+                                            <span class="block truncate text-[11px] font-extrabold">{{ $spec }} <span class="text-[9px] font-black text-slate-400">(مشخصات)</span></span>
+                                            @if (($specValueCounts[$spec] ?? 0) > 0)
+                                                <span class="mt-0.5 block text-[9px] font-bold text-slate-400">{{ \App\Support\Fmt::toFa($specValueCounts[$spec]) }} مقدار در محصولات شما</span>
+                                            @endif
+                                        </span>
+                                        <span class="grid size-5 shrink-0 place-items-center rounded-md border transition {{ $picked
+                                            ? 'border-primary-600 bg-primary-600 text-white'
+                                            : 'border-slate-300 dark:border-slate-600' }}">
+                                            @if ($picked)
+                                                <x-icon name="check" class="size-3" />
+                                            @endif
+                                        </span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 @endif
             </div>
 
             <button type="button" wire:click="closeSpecPicker"
                     class="mt-3 w-full rounded-xl bg-slate-900 py-2.5 text-[11px] font-extrabold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
-                تمام — {{ \App\Support\Fmt::toFa(count($specNames)) }} مشخصه انتخاب شد
+                تمام — {{ \App\Support\Fmt::toFa(count($specNames) + count($attrIds)) }} مشخصه انتخاب شد
             </button>
         </div>
     </x-modal-panel>

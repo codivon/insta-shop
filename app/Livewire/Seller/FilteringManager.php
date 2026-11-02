@@ -3,23 +3,27 @@
 namespace App\Livewire\Seller;
 
 use App\Livewire\Concerns\NotifiesOnValidation;
+use App\Models\Product;
+use App\Models\ProductVariantValue;
+use App\Models\Shop;
+use App\Models\ShopAttribute;
 use App\Models\ShopFilter;
 use App\Models\ShopFilterItem;
-use App\Models\Shop;
-use App\Models\Product;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * «فیلترینگ» — seller-defined storefront filters (batch 72).
+ * «فیلترینگ» — seller-defined storefront filters (batch 72 + attribute rework).
  *
- * A filter = یک عنوان + چند مشخصه (سایز، نسخه بلوتوث، نور پس‌زمینه…).
- * The spec attributes are collected ONLY from THIS seller's own products
- * (the attribute titles inside the specifications groups), so filters
- * never collide with other sellers' specs. On the storefront, every
- * published filter becomes a block per attribute with the distinct
- * values the seller actually used on their products.
+ * A filter = یک عنوان + چند مشخصه. Two kinds of filterable attributes:
+ *   • مشخصات محصولات — attribute titles INSIDE the specifications groups of
+ *     THIS seller's own products (سایز، نسخه بلوتوث، نور پس‌زمینه…).
+ *   • ویژگی‌های فروشگاه — the shop's own attribute fields (رنگ، گارانتی،
+ *     سایز و…) with the values actually used on the products' variants.
+ * On the storefront, every published filter becomes a block per attribute
+ * with the distinct values the seller actually used.
  */
 #[Layout('layouts.seller-slot')]
 class FilteringManager extends Component
@@ -40,6 +44,9 @@ class FilteringManager extends Component
 
     /** Selected spec attribute titles of the filter (سایز، نسخه بلوتوث…). */
     public array $specNames = [];
+
+    /** Selected shop attribute ids of the filter (رنگ، سایز، گارانتی…). */
+    public array $attrIds = [];
 
     /* ══════════ spec picker modal ══════════ */
 
@@ -83,7 +90,8 @@ class FilteringManager extends Component
         $this->editId    = $filter->id;
         $this->title     = (string) $filter->title;
         $this->published = (bool) $filter->published;
-        $this->specNames = $filter->items->pluck('spec_name')->all();
+        $this->specNames = $filter->items->where('kind', ShopFilterItem::KIND_SPEC)->pluck('spec_name')->all();
+        $this->attrIds   = $filter->items->where('kind', ShopFilterItem::KIND_ATTRIBUTE)->pluck('shop_attribute_id')->map(fn ($id) => (int) $id)->all();
 
         $this->showModal = true;
     }
@@ -100,6 +108,7 @@ class FilteringManager extends Component
         $this->title      = '';
         $this->published  = true;
         $this->specNames  = [];
+        $this->attrIds    = [];
         $this->specSearch = '';
     }
 
@@ -130,7 +139,7 @@ class FilteringManager extends Component
             return;
         }
 
-        if (count($this->specNames) >= 8) {
+        if ($this->pickedCount() >= 8) {
             $this->dispatch('filters-toast', message: 'حداکثر ۸ مشخصه برای هر فیلتر.');
 
             return;
@@ -142,6 +151,39 @@ class FilteringManager extends Component
     public function removeSpec(string $name): void
     {
         $this->specNames = array_values(array_diff($this->specNames, [$name]));
+    }
+
+    /** Toggle one shop attribute (ویژگی) of this filter. */
+    public function toggleAttr(int $id): void
+    {
+        if (in_array($id, $this->attrIds, true)) {
+            $this->attrIds = array_values(array_diff($this->attrIds, [$id]));
+
+            return;
+        }
+
+        if (! $this->shop()->attributes()->whereKey($id)->exists()) {
+            return; // never touch another shop's attributes
+        }
+
+        if ($this->pickedCount() >= 8) {
+            $this->dispatch('filters-toast', message: 'حداکثر ۸ مشخصه برای هر فیلتر.');
+
+            return;
+        }
+
+        $this->attrIds[] = $id;
+    }
+
+    public function removeAttr(int $id): void
+    {
+        $this->attrIds = array_values(array_diff($this->attrIds, [$id]));
+    }
+
+    /** specNames + attrIds — the «حداکثر ۸ مشخصه» budget. */
+    private function pickedCount(): int
+    {
+        return count($this->specNames) + count($this->attrIds);
     }
 
     /* ══════════ persistence ══════════ */
@@ -171,13 +213,27 @@ class FilteringManager extends Component
 
         $filter->save();
 
-        // replace the spec items
+        // replace the spec/attribute items
         $filter->items()->delete();
 
         foreach (array_values(array_unique($this->specNames)) as $name) {
             ShopFilterItem::query()->create([
                 'shop_filter_id' => $filter->id,
                 'spec_name'      => $name,
+                'kind'           => ShopFilterItem::KIND_SPEC,
+            ]);
+        }
+
+        // ویژگی‌های فروشگاه — spec_name carries the attribute name as a
+        // denormalized display label so the storefront never needs a join.
+        $attributes = $this->shop()->attributes()->whereIn('id', $this->attrIds)->get();
+
+        foreach ($attributes as $attribute) {
+            ShopFilterItem::query()->create([
+                'shop_filter_id'    => $filter->id,
+                'spec_name'         => $attribute->name,
+                'kind'              => ShopFilterItem::KIND_ATTRIBUTE,
+                'shop_attribute_id' => $attribute->id,
             ]);
         }
 
@@ -230,8 +286,10 @@ class FilteringManager extends Component
         return [
             'title'     => ['required', 'string', 'min:2', 'max:80'],
             'published' => ['boolean'],
-            'specNames' => ['required', 'array', 'min:1', 'max:8'],
+            'specNames' => ['required_without:attrIds', 'nullable', 'array', 'max:8'],
             'specNames.*' => ['string', 'max:80'],
+            'attrIds'   => ['required_without:specNames', 'nullable', 'array', 'max:8'],
+            'attrIds.*' => ['integer', Rule::exists('shop_attributes', 'id')->where('shop_id', $this->shop()->id)],
         ];
     }
 
@@ -240,8 +298,9 @@ class FilteringManager extends Component
         return [
             'title.required' => 'عنوان فیلتر را وارد کنید.',
             'title.min'      => 'عنوان فیلتر حداقل ۲ کاراکتر است.',
-            'specNames.required' => 'حداقل یک مشخصه به فیلتر اضافه کنید.',
-            'specNames.min'      => 'حداقل یک مشخصه به فیلتر اضافه کنید.',
+            'specNames.required_without' => 'حداقل یک مشخصه به فیلتر اضافه کنید.',
+            'attrIds.required_without'   => 'حداقل یک مشخصه به فیلتر اضافه کنید.',
+            'attrIds.*.exists' => 'یکی از ویژگی‌های انتخابی معتبر نیست.',
         ];
     }
 
@@ -285,6 +344,62 @@ class FilteringManager extends Component
         }
 
         return $names;
+    }
+
+    /**
+     * The shop's own attribute fields (ویژگی‌ها — رنگ، سایز، گارانتی و…),
+     * searchable with the same box. These read their values from the
+     * products' VARIANTS (ProductVariantValue), so the storefront filter
+     * shows exactly the values the seller actually used.
+     */
+    public function getAvailableAttrsProperty(): Collection
+    {
+        $search = trim($this->specSearch);
+
+        $attrs = $this->shop()->attributes()->orderBy('sort')->orderBy('id')->get(['id', 'name', 'type']);
+
+        if ($search !== '') {
+            $attrs = $attrs->filter(fn ($attr) => mb_strpos(trim((string) $attr->name), $search) !== false)->values();
+        }
+
+        return $attrs;
+    }
+
+    /** id → name of the shop's attributes — renders the selected chips. */
+    public function getAttrNameByIdProperty(): array
+    {
+        return $this->shop()->attributes()->pluck('name', 'id')->all();
+    }
+
+    /**
+     * Distinct value counts per attribute as USED on this shop's published
+     * products' variants (مثلاً «رنگ · ۵ مقدار در محصولات شما»).
+     */
+    public function getAttrUsedValueCountsProperty(): array
+    {
+        return $this->usedVariantValues()
+            ->toBase() // Eloquent::unique() expects models — group plain strings on the base collection
+            ->mapToGroups(fn (ProductVariantValue $row) => [
+                (int) $row->shop_attribute_id => trim((string) ($row->value_text ?: ($row->value->value ?? ''))),
+            ])
+            ->map(fn ($groups) => $groups->filter()->unique()->count())
+            ->all();
+    }
+
+    /**
+     * Every variant-value row of the shop's published products
+     * (variant → product → shop), with the preset value preloaded.
+     */
+    private function usedVariantValues(): Collection
+    {
+        return ProductVariantValue::query()
+            ->whereHas('variant', fn ($q) => $q
+                ->where('status', 'active')
+                ->whereHas('product', fn ($p) => $p
+                    ->where('shop_id', $this->shop()->id)
+                    ->where('status', 'published')))
+            ->with('value:id,shop_attribute_id,value,color_hex')
+            ->get(['shop_attribute_id', 'shop_attribute_value_id', 'value_text']);
     }
 
     /**
@@ -332,6 +447,9 @@ class FilteringManager extends Component
             'filters'          => $this->filters,
             'availableSpecs'   => $this->availableSpecs,
             'specValueCounts'  => $this->specValueCounts,
+            'availableAttrs'   => $this->availableAttrs,
+            'attrNameById'     => $this->attrNameById,
+            'attrUsedCounts'   => $this->attrUsedValueCounts,
             'productsCount'    => $this->productsCount,
         ])->title('فیلترینگ');
     }

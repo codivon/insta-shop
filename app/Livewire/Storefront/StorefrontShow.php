@@ -5,7 +5,9 @@ namespace App\Livewire\Storefront;
 use App\Models\Cart;
 use App\Models\Favorite;
 use App\Models\Product;
+use App\Models\ProductVariantValue;
 use App\Models\Shop;
+use App\Models\ShopAttribute;
 use App\Models\ShopCategory;
 use App\Models\ShopFilter;
 use App\Models\ShopFilterItem;
@@ -42,7 +44,7 @@ class StorefrontShow extends Component
     /* ── فیلترها modal (batch 72) ── */
     public bool $showFilters = false;
 
-    /** Active spec selections: spec_name => [value, …]. */
+    /** Active picks: block key => [value, …] — keys: «s:{spec title}» / «a:{attribute id}». */
     public array $specPicks = [];
 
     /** Search box inside the filters modal. */
@@ -118,10 +120,10 @@ class StorefrontShow extends Component
         $this->showFilters = false;
     }
 
-    /** Toggle one (spec, value) checkbox. */
-    public function toggleSpecPick(string $spec, string $value): void
+    /** Toggle one value checkbox inside a filter block (spec or attribute). */
+    public function toggleSpecPick(string $key, string $value): void
     {
-        $current = (array) ($this->specPicks[$spec] ?? []);
+        $current = (array) ($this->specPicks[$key] ?? []);
 
         if (in_array($value, $current, true)) {
             $current = array_values(array_diff($current, [$value]));
@@ -130,9 +132,9 @@ class StorefrontShow extends Component
         }
 
         if ($current === []) {
-            unset($this->specPicks[$spec]);
+            unset($this->specPicks[$key]);
         } else {
-            $this->specPicks[$spec] = $current;
+            $this->specPicks[$key] = $current;
         }
 
         $this->resetPagination();
@@ -342,8 +344,11 @@ class StorefrontShow extends Component
     }
 
     /**
-     * Ids of the shop's published products matching ALL active spec picks.
-     * A pick is (attribute title, value) — e.g. («نسخه بلوتوث», «5.3»).
+     * Ids of the shop's published products matching ALL active picks.
+     * A pick is either a spec title («s:نسخه بلوتوث» → values from the
+     * specifications JSON) or a shop attribute («a:12» → values from the
+     * products' variant combinations). Inside ONE attribute any value
+     * matches (OR); across attributes every pick must match (AND).
      * specifications JSON is matched in PHP — portable across MySQL/MariaDB.
      */
     private function specMatchedIds(): array
@@ -352,25 +357,51 @@ class StorefrontShow extends Component
             return [];
         }
 
+        $specPicks = [];
+        $attrPicks = [];
+
+        foreach ($this->specPicks as $key => $wanted) {
+            if (str_starts_with((string) $key, 'a:')) {
+                $attrPicks[(int) substr((string) $key, 2)] = array_map(fn ($v) => trim((string) $v), (array) $wanted);
+            } else {
+                $specPicks[(string) substr((string) $key, 2)] = array_map(fn ($v) => trim((string) $v), (array) $wanted);
+            }
+        }
+
         return $this->baseQuery()
+            ->when($attrPicks !== [], fn (Builder $q) => $q->with('activeVariants.values.value'))
             ->get(['id', 'specifications'])
-            ->filter(function (Product $product) {
+            ->filter(function (Product $product) use ($specPicks, $attrPicks) {
                 $items = collect($product->specifications ?? [])
                     ->flatMap(fn ($group) => collect($group['items'] ?? []))
                     ->groupBy(fn ($item) => trim((string) ($item['title'] ?? '')));
 
-                foreach ($this->specPicks as $spec => $wanted) {
+                foreach ($specPicks as $spec => $wanted) {
                     $values = ($items->get((string) $spec) ?? collect())
                         ->pluck('value')
                         ->map(fn ($v) => trim((string) $v))
                         ->filter()
                         ->all();
 
-                    // every wanted value of this attribute must appear on the product
-                    foreach ((array) $wanted as $needle) {
-                        if (! in_array(trim($needle), $values, true)) {
-                            return false;
-                        }
+                    // ANY wanted value of this attribute on the product (OR)
+                    $hit = collect($wanted)->contains(fn ($needle) => in_array($needle, $values, true));
+
+                    if (! $hit) {
+                        return false;
+                    }
+                }
+
+                foreach ($attrPicks as $attributeId => $wanted) {
+                    // ANY active variant carrying ANY wanted value of this attribute
+                    $hit = $product->activeVariants->contains(
+                        fn ($variant) => $variant->values->contains(
+                            fn ($v) => (int) $v->shop_attribute_id === (int) $attributeId
+                                && in_array(trim((string) ($v->value_text ?: ($v->value->value ?? ''))), $wanted, true)
+                        )
+                    );
+
+                    if (! $hit) {
+                        return false;
                     }
                 }
 
@@ -439,16 +470,96 @@ class StorefrontShow extends Component
             ->all();
     }
 
+    /**
+     * Distinct values of ONE shop attribute (ویژگی) as used on the shop's
+     * published products' active variants — the customer-facing options of
+     * an attribute filter block, plus the color hex per value when the
+     * attribute is رنگی.
+     */
+    public function attributeFilterData(int $attributeId): array
+    {
+        $attribute = ShopAttribute::query()
+            ->where('shop_id', $this->shop->id)
+            ->find($attributeId);
+
+        if (! $attribute) {
+            return ['values' => [], 'colors' => []];
+        }
+
+        $rows = ProductVariantValue::query()
+            ->where('shop_attribute_id', $attributeId)
+            ->whereHas('variant', fn ($q) => $q
+                ->where('status', 'active')
+                ->whereHas('product', fn ($p) => $p
+                    ->where('shop_id', $this->shop->id)
+                    ->where('status', 'published')))
+            ->with('value:id,shop_attribute_id,value,color_hex')
+            ->get(['shop_attribute_value_id', 'value_text']);
+
+        $values = $rows
+            ->toBase() // Eloquent::unique() expects models — dedupe plain strings on the base collection
+            ->map(fn ($row) => trim((string) ($row->value_text ?: ($row->value->value ?? ''))))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        $colors = [];
+
+        if ($attribute->type === 'color') {
+            foreach ($rows as $row) {
+                $preset = $row->value;
+
+                if ($row->value_text || ! $preset || ! $preset->color_hex) {
+                    continue;
+                }
+
+                $label = trim((string) $preset->value);
+
+                if ($label !== '') {
+                    $colors[$label] = $preset->color_hex;
+                }
+            }
+        }
+
+        return ['values' => $values->all(), 'colors' => $colors];
+    }
+
     /** Filters × their values, prepared for the modal (with active-pick counts). */
     public function getFilterBlocksProperty(): Collection
     {
         return $this->publishedFilters->map(function (ShopFilter $filter) {
             $blocks = $filter->items
-                ->map(fn (ShopFilterItem $item) => [
-                    'spec'   => $item->spec_name,
-                    'values' => $this->specValues($item->spec_name),
-                ])
-                ->filter(fn (array $block) => $block['values'] !== [])
+                ->map(function (ShopFilterItem $item) {
+                    if ($item->isAttribute()) {
+                        $data = $this->attributeFilterData((int) $item->shop_attribute_id);
+
+                        if ($data['values'] === []) {
+                            return null;
+                        }
+
+                        return [
+                            'key'    => 'a:'.$item->shop_attribute_id,
+                            'label'  => $item->spec_name,
+                            'values' => $data['values'],
+                            'colors' => $data['colors'],
+                        ];
+                    }
+
+                    $values = $this->specValues($item->spec_name);
+
+                    if ($values === []) {
+                        return null;
+                    }
+
+                    return [
+                        'key'    => 's:'.$item->spec_name,
+                        'label'  => $item->spec_name,
+                        'values' => $values,
+                        'colors' => [],
+                    ];
+                })
+                ->filter()
                 ->values();
 
             return [
