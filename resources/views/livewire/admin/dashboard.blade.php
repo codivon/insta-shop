@@ -46,8 +46,8 @@
         </a>
     @endif
 
-    {{-- ── stat cards ── --}}
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    {{-- ── stat cards — 2 compact columns on mobile so nothing looks cut-off/empty ── --}}
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
         @php
             $cards = [
                 ['icon' => 'store',       'label' => 'فروشندگان',  'value' => \App\Support\Fmt::fa($sellers['total']),
@@ -84,15 +84,15 @@
         @endphp
         @foreach ($cards as $card)
             <a href="{{ $card['href'] }}"
-               class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+               class="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5 dark:border-slate-800 dark:bg-slate-900">
                 <div class="flex items-center justify-between">
-                    <span class="grid size-11 place-items-center rounded-2xl {{ $card['tone'] }}">
+                    <span class="grid size-10 place-items-center rounded-2xl sm:size-11 {{ $card['tone'] }}">
                         <x-icon name="{{ $card['icon'] }}" class="size-5" />
                     </span>
-                    <x-icon name="chevron-left" class="size-4 text-slate-300 transition group-hover:text-primary-500" />
+                    <x-icon name="chevron-left" class="size-4 shrink-0 text-slate-300 transition group-hover:text-primary-500" />
                 </div>
-                <div class="mt-4 text-2xl font-extrabold">{{ $card['value'] }}</div>
-                <div class="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">{{ $card['label'] }}</div>
+                <div class="mt-3 text-xl font-extrabold sm:mt-4 sm:text-2xl">{{ $card['value'] }}</div>
+                <div class="mt-1 text-[13px] font-semibold text-slate-600 sm:text-sm dark:text-slate-300">{{ $card['label'] }}</div>
                 <div class="mt-0.5 text-[11px] {{ $card['hintTone'] }}">{{ $card['hint'] }}</div>
             </a>
         @endforeach

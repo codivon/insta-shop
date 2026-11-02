@@ -97,7 +97,7 @@
 
             @foreach ($navItems as $item)
                 @php $isActive = request()->routeIs($item['match']); @endphp
-                <a href="{{ route($item['route']) }}" wire:navigate
+                <a href="{{ route($item['route']) }}" wire:navigate data-close-sidebar
                    class="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition
                           {{ $isActive
                               ? 'bg-primary-600 font-bold text-white shadow-md shadow-primary-600/25'
@@ -139,7 +139,7 @@
                 <div id="admin-managers-menu" x-show="open" x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="-translate-y-1 opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-cloak class="mt-1 space-y-0.5 border-e-2 border-slate-100 pe-1 dark:border-slate-800">
                     @foreach ($managersItems as $item)
                         @php $isActive = request()->routeIs($item['route']); @endphp
-                        <a href="{{ route($item['route']) }}" wire:navigate
+                        <a href="{{ route($item['route']) }}" wire:navigate data-close-sidebar
                            class="ms-4 flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] transition
                                   {{ $isActive
                                       ? 'bg-primary-50 font-extrabold text-primary-700 dark:bg-primary-950/50 dark:text-primary-300'
@@ -154,7 +154,7 @@
 
             {{-- settings: SINGLE menu item — sections are inside the page --}}
             @if ($showSettings)
-                <a href="{{ route('admin.settings') }}" wire:navigate
+                <a href="{{ route('admin.settings') }}" wire:navigate data-close-sidebar
                    class="mt-5 flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition
                           {{ request()->routeIs('admin.settings')
                               ? 'bg-primary-600 font-bold text-white shadow-md shadow-primary-600/25'
@@ -186,7 +186,7 @@
                 </button>
 
                 <div id="admin-developer-menu" x-show="open" x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="-translate-y-1 opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-cloak class="mt-1 space-y-0.5 border-e-2 border-slate-100 pe-1 dark:border-slate-800">
-                    <a href="{{ route('admin.developer.settings') }}" wire:navigate
+                    <a href="{{ route('admin.developer.settings') }}" wire:navigate data-close-sidebar
                        class="ms-4 flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] transition
                               {{ request()->routeIs('admin.developer.settings')
                                   ? 'bg-amber-50 font-extrabold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
@@ -194,7 +194,7 @@
                         <x-icon name="terminal" class="size-3.5 {{ request()->routeIs('admin.developer.settings') ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400' }}" />
                         تنظیمات برنامه‌نویس
                     </a>
-                    <a href="{{ route('admin.developer.logs') }}" wire:navigate
+                    <a href="{{ route('admin.developer.logs') }}" wire:navigate data-close-sidebar
                        class="ms-4 flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] transition
                               {{ request()->routeIs('admin.developer.logs')
                                   ? 'bg-amber-50 font-extrabold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
@@ -229,8 +229,10 @@
         </div>
     </aside>
 
-    {{-- sidebar overlay (mobile) --}}
-    <div id="admin-sidebar-overlay" class="fixed inset-0 z-40 hidden bg-slate-950/40 backdrop-blur-sm lg:hidden"></div>
+    {{-- sidebar overlay (mobile) — shown while <html> carries .admin-drawer-open --}}
+    <div id="admin-sidebar-overlay"
+         class="fixed inset-0 z-40 bg-slate-950/40 opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-sm lg:hidden"
+         aria-hidden="true"></div>
 
     {{-- ───────── Main area ───────── --}}
     <div class="flex min-h-screen flex-col lg:mr-[260px]">
@@ -281,21 +283,44 @@
     </div>
 
     @once
+        <style>
+            /* drawer state is driven by ONE class on <html> — sidebar and
+               overlay can never fall out of sync (half-open sidebar with no
+               dim overlay was possible with the old two-element toggling) */
+            @media (max-width: 1023.98px) {
+                /* Tailwind v4 hides the sidebar with the CSS `translate`
+                   property (translate-x-full) — reset THAT, not transform */
+                html.admin-drawer-open #admin-sidebar { translate: 0 0; transform: none; }
+                html.admin-drawer-open #admin-sidebar-overlay { opacity: 1; pointer-events: auto; }
+                html.admin-drawer-open, html.admin-drawer-open body { overflow: hidden; }
+            }
+        </style>
         <script>
-            // admin sidebar drawer (mobile)
-            document.addEventListener('click', (e) => {
-                const sidebar = document.getElementById('admin-sidebar');
-                const overlay = document.getElementById('admin-sidebar-overlay');
-                if (!sidebar || !overlay) return;
+            // admin sidebar drawer (mobile) — IIFE so a wire:navigate script
+            // re-run can never hit a "already declared" SyntaxError
+            (function () {
+                const open  = () => document.documentElement.classList.add('admin-drawer-open');
+                const close = () => document.documentElement.classList.remove('admin-drawer-open');
 
-                if (e.target.closest('[data-open-sidebar]')) {
-                    sidebar.classList.remove('translate-x-full');
-                    overlay.classList.remove('hidden');
-                } else if (e.target.closest('[data-close-sidebar]') || e.target === overlay) {
-                    sidebar.classList.add('translate-x-full');
-                    overlay.classList.add('hidden');
-                }
-            });
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('[data-open-sidebar]')) {
+                        open();
+                    } else if (e.target.closest('[data-close-sidebar]')) {
+                        close();
+                    }
+                });
+
+                // tapping the dim overlay closes the drawer
+                document.addEventListener('pointerdown', (e) => {
+                    if (e.target.id === 'admin-sidebar-overlay') {
+                        close();
+                    }
+                });
+
+                // after any Livewire client-side navigation the fresh page
+                // starts with the drawer closed — never a half-open state
+                document.addEventListener('livewire:navigated', close);
+            })();
         </script>
     @endonce
 

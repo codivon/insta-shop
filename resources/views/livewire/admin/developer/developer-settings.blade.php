@@ -18,7 +18,8 @@
 
         {{-- ── tabs ── --}}
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div class="scroll-slim flex gap-1 overflow-x-auto border-b border-slate-100 px-2 pt-2 dark:border-slate-800" role="tablist" aria-label="تنظیمات برنامه‌نویس">
+            {{-- tabs — wrap into a grid on mobile instead of a cut-off horizontal strip --}}
+            <div class="flex flex-wrap gap-1 border-b border-slate-100 p-2 sm:gap-0 sm:flex-nowrap sm:overflow-x-auto sm:p-0 sm:px-2 sm:pt-2 dark:border-slate-800" role="tablist" aria-label="تنظیمات برنامه‌نویس">
                 <button type="button" role="tab" :aria-selected="tab === 'cron'" x-on:click="tab = 'cron'"
                         class="ap-dev-tab relative whitespace-nowrap" :class="tab === 'cron' ? 'is-active' : ''">
                     <span class="flex items-center gap-1.5">
@@ -557,6 +558,26 @@
         color: #64748b;
         border-bottom: 2px solid transparent;
         transition: color .2s, border-color .2s, background .2s;
+    }
+
+    /* mobile: tabs wrap — chip look instead of the underline strip */
+    @media (max-width: 639px) {
+        .ap-dev-tab {
+            flex: 1 1 40%;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            background: #f8fafc;
+            text-align: center;
+            padding: 0.6rem 0.5rem;
+            font-size: 0.72rem;
+            line-height: 1.6;
+            white-space: normal;
+        }
+        .dark .ap-dev-tab { border-color: #1e293b; background: #0f172a80; }
+        .ap-dev-tab.is-active {
+            border-color: color-mix(in srgb, var(--ip-primary, #D62976) 45%, transparent);
+            background: color-mix(in srgb, var(--ip-primary, #D62976) 12%, transparent);
+        }
     }
     .ap-dev-tab:hover { color: #334155; }
     .dark .ap-dev-tab { color: #94a3b8; }
