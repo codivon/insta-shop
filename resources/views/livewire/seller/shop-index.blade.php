@@ -12,6 +12,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-1">
+                <x-seller-notif-bell />
                 <x-theme-toggle class="size-10 text-slate-500" />
                 @if ($storefrontUrl)
                     <a href="{{ $storefrontUrl }}" target="_blank" rel="noopener noreferrer"

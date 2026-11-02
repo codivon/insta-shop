@@ -11,6 +11,7 @@
                     <div class="text-[11px] text-slate-400">درآمد فروش و برداشت‌ها</div>
                 </div>
             </div>
+            <x-seller-notif-bell class="ms-auto" />
             <x-theme-toggle class="size-10 text-slate-500" />
         </div>
     </div>

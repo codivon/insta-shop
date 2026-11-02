@@ -15,6 +15,7 @@
                     <div class="text-[11px] text-slate-400">فیلترهای صفحهٔ فروشگاه برای خریداران</div>
                 </div>
             </div>
+            <x-seller-notif-bell class="ms-auto" />
             <x-theme-toggle class="size-10 text-slate-500" />
         </div>
     </div>

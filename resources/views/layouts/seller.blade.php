@@ -32,19 +32,20 @@
 
         {{-- ───────── Bottom tab bar (pinned bottom · hidden on focused full-screen pages) ───────── --}}
         @php
+            // Notifications live in the HEADER bell (x-seller-notif-bell),
+            // not the tab bar — keeps the bar at a clean 5 tabs.
             $sellerTabs = [
                 ['route' => 'seller.home',        'icon' => 'home',   'label' => 'خانه'],
                 ['route' => 'seller.shop',        'icon' => 'store',  'label' => 'فروشگاه من'],
                 ['route' => 'seller.orders',      'icon' => 'bag',    'label' => 'سفارش‌ها'],
                 ['route' => 'seller.wallet',      'icon' => 'wallet', 'label' => 'کیف پول'],
-                ['route' => 'seller.notifications','icon' => 'bell',  'label' => 'اعلان‌ها'],
                 ['route' => 'seller.profile',     'icon' => 'user',   'label' => 'پروفایل'],
             ];
         @endphp
         @unless ($hideTabbar ?? false)
         <nav class="shrink-0 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95"
              aria-label="تب‌های اصلی فروشنده">
-            <div class="grid grid-cols-6">
+            <div class="grid grid-cols-5">
                 @foreach ($sellerTabs as $tab)
                     @php
                         $active = request()->routeIs($tab['route'], $tab['route'].'.*');
@@ -59,9 +60,6 @@
                             <x-icon name="{{ $tab['icon'] }}" class="size-5" />
                         </span>
                         {{ $tab['label'] }}
-                        @if ($tab['route'] === 'seller.notifications' && \Illuminate\Support\Facades\Route::has('seller.notifications'))
-                            <livewire:seller.notifications.unread-badge wire:key="seller-tab-badge" />
-                        @endif
                     </a>
                 @endforeach
             </div>

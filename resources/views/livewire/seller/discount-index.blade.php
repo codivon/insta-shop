@@ -11,6 +11,7 @@
                     <div class="text-[11px] text-slate-400">کدهای خرید فروشگاه شما</div>
                 </div>
             </div>
+            <x-seller-notif-bell class="ms-auto" />
             <a href="{{ route('seller.discounts.create') }}" wire:navigate
                class="flex items-center gap-1.5 rounded-2xl bg-primary-600 px-3.5 py-2.5 text-[11px] font-extrabold text-white shadow-lg shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95">
                 <x-icon name="plus" class="size-4" />

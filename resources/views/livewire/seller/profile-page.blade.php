@@ -9,6 +9,7 @@
                 <div class="text-sm font-extrabold leading-5">پروفایل فروشنده</div>
                 <div class="text-[11px] text-slate-400">حساب کاربری و دسترسی سریع</div>
             </div>
+            <x-seller-notif-bell class="ms-auto" />
         </div>
     </div>
 

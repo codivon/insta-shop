@@ -12,6 +12,7 @@
                 </div>
             </div>
             <a href="{{ route('seller.profile') }}" wire:navigate
+            <x-seller-notif-bell class="ms-auto" />
                class="grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بازگشت">
                 <x-icon name="arrow-right" class="size-5" />
             </a>

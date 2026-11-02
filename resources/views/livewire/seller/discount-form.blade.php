@@ -15,6 +15,7 @@
                 <div class="text-[11px] text-slate-400">کد تخفیف فروشگاه شما</div>
             </div>
             <x-theme-toggle class="mr-auto size-10 text-slate-500" />
+            <x-seller-notif-bell />
         </div>
     </div>
 
