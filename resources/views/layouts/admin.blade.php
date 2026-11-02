@@ -82,6 +82,7 @@
                     ['route' => 'admin.users.sellers',       'icon' => 'users',       'label' => 'فروشندگان',  'match' => 'admin.users.sellers', 'badge' => $pendingSellers],
                     ['route' => 'admin.users.customers',     'icon' => 'user',        'label' => 'مشتریان',    'match' => 'admin.users.customers','badge' => null],
                     ['route' => 'admin.activity',            'icon' => 'clock',       'label' => 'فعالیت‌های اخیر', 'match' => 'admin.activity',  'badge' => null],
+                    ['route' => 'admin.backups',             'icon' => 'database',    'label' => 'پشتیبان‌گیری', 'match' => 'admin.backups',       'badge' => null],
                 ], fn ($item) => $can($item['route'])));
 
                 // ── مدیران group (لیست مدیران + نقش‌ها) ──
@@ -96,7 +97,8 @@
                     || $can('admin.settings.general')
                     || $can('admin.settings.appearance')
                     || $can('admin.settings.sms')
-                    || $can('admin.settings.payment');
+                    || $can('admin.settings.payment')
+                    || $can('admin.settings.backups');
 
                 // ── برنامه‌نویس: super admin (سازنده) ONLY — never in roles ──
                 $showDeveloper = $admin?->isSuper() ?? false;

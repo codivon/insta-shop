@@ -42,6 +42,9 @@ final class AdminNotifier
         'ticket.new'      => ['تیکت پشتیبانی جدید', 'headset'],
         'ticket.reply'    => ['پاسخ کاربر در تیکت پشتیبانی', 'headset'],
         'security.lockout'=> ['قفل ورود به پنل (امنیت)', 'shield'],
+        'backup.completed'=> ['پشتیبان‌گیری کامل شد', 'database'],
+        'backup.failed'   => ['پشتیبان‌گیری/بازگردانی ناموفق بود', 'alert'],
+        'backup.restored' => ['بازگردانی پشتیبان کامل شد', 'upload'],
         'system.maintenance' => ['حالت بروزرسانی سایت', 'alert'],
         'system.migration'   => ['اجرای مایگریشن دیتابیس', 'database'],
     ];

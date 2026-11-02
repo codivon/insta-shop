@@ -65,6 +65,15 @@ return [
             ],
         ],
 
+        'system' => [
+            'label' => 'سیستم',
+            'permissions' => [
+                'admin.backups'          => 'پشتیبان‌گیری و بازگردانی (صفحهٔ مدیریت پشتیبان‌ها)',
+                'admin.backups.download' => 'دانلود فایل پشتیبان',
+                'admin.backups.upload'   => 'بارگذاری فایل پشتیبان (بازگردانی)',
+            ],
+        ],
+
         // The settings HUB is one sidebar page; each section inside it is
         // its own permission so roles can grant only some sections.
         'settings' => [
@@ -78,6 +87,7 @@ return [
                 'admin.settings.payment'        => 'درگاه پرداخت',
                 'admin.settings.shops'          => 'تنظیمات فروشگاه‌ها (تایید خودکار، کمیسیون)',
                 'admin.settings.notifications'  => 'نوتیفیکیشن‌ها (پوش و رویدادها)',
+                'admin.settings.backups'        => 'پشتیبان‌گیری خودکار + ایمیل و SMTP',
             ],
         ],
 

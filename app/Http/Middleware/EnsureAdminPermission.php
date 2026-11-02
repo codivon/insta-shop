@@ -50,6 +50,9 @@ class EnsureAdminPermission
             'admin.settings.appearance',
             'admin.settings.sms',
             'admin.settings.payment',
+            'admin.settings.shops',
+            'admin.settings.notifications',
+            'admin.settings.backups',
         ])->contains(fn (string $p) => $admin->hasPermission($p))) {
             return $next($request);
         }

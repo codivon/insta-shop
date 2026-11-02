@@ -31,3 +31,41 @@ Schedule::call(function () {
     ->everyMinute()
     ->name('instashop-cron-heartbeat')
     ->withoutOverlapping();
+
+/*
+|--------------------------------------------------------------------------
+| Queue worker tick (shared hosting friendly)
+|--------------------------------------------------------------------------
+|
+| Drains the `database` queue and exits — backup / restore jobs are
+| pushed there so web requests never time out. The Backups page also
+| tries to start a worker instantly (best effort); this tick guarantees
+| the job runs within a minute even when that is impossible (php-fpm).
+|
+*/
+Schedule::command('queue:work database --stop-when-empty --max-time=240 --sleep=1 --tries=1')
+    ->everyMinute()
+    ->name('instashop-queue-worker')
+    ->withoutOverlapping(10);
+
+/*
+|--------------------------------------------------------------------------
+| Automatic backups (تنظیمات → پشتیبان‌گیری خودکار)
+|--------------------------------------------------------------------------
+|
+| `backups:auto` checks (every 10 min) whether the admin-configured
+| schedule is due — روزانه / هفتگی / ماهانه / بازهٔ دلخواه + ساعت اجرا —
+| and when it is, dumps the full database, notifies the admins and
+| optionally emails the archive (split into parts when large).
+| `backups:cleanup` deletes auto backups older than the retention window.
+|
+*/
+Schedule::command('backups:auto')
+    ->everyTenMinutes()
+    ->name('instashop-backups-auto')
+    ->withoutOverlapping(10);
+
+Schedule::command('backups:cleanup')
+    ->dailyAt('03:30')
+    ->name('instashop-backups-cleanup')
+    ->withoutOverlapping(30);

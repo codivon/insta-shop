@@ -57,4 +57,41 @@ class Fmt
     {
         return self::fa($amount);
     }
+
+    /** Human file size in Persian: 868352 → «۸۴۸ کیلوبایت». */
+    public static function bytes(null|int|float $bytes): string
+    {
+        $bytes = max(0.0, (float) $bytes);
+
+        if ($bytes < 1024) {
+            return self::fa((int) round($bytes)).' بایت';
+        }
+
+        $units = [
+            'کیلوبایت' => 1024,
+            'مگابایت'  => 1024 ** 2,
+            'گیگابایت' => 1024 ** 3,
+        ];
+
+        $previous = 1024;
+        $previousLabel = 'کیلوبایت';
+
+        foreach ($units as $label => $divisor) {
+            if ($bytes < $divisor * 1024) {
+                $value = $bytes / $previous;
+
+                $text = $value < 10
+                    ? number_format($value, 1, '٫', '٬')
+                    : number_format((int) round($value), 0, '.', '٬');
+
+                return self::toFa($text).' '.$label;
+            }
+            $previous = $divisor;
+            $previousLabel = $label;
+        }
+
+        $text = number_format($bytes / $previous, 1, '٫', '٬');
+
+        return self::toFa($text).' '.$previousLabel;
+    }
 }

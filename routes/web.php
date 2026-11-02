@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Controllers\Admin\BackupDownload;
+use App\Http\Controllers\Admin\BackupUpload;
 use App\Http\Controllers\Admin\PushSubscriptionController;
 use App\Http\Controllers\Auth\PanelLogout;
 use App\Http\Controllers\Seller\ProductFileDownload;
 use App\Http\Controllers\Shop\PaymentCallback;
 use App\Http\Controllers\Shop\PaymentRedirect;
 use App\Livewire\Admin\ActivityPage;
+use App\Livewire\Admin\BackupsPage;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\DiscountsIndex;
 use App\Livewire\Admin\LocationsPage;
@@ -135,6 +138,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ── Support tickets (تیکت پشتیبانی مشتریان و فروشندگان) ──
         Route::get('/tickets', TicketsIndex::class)->name('tickets');
         Route::get('/tickets/{ticket}', TicketShow::class)->name('tickets.show');
+
+        // ── Backups (پشتیبان‌گیری از کل دیتابیس + بارگذاری/بازگردانی) ──
+        Route::get('/backups', BackupsPage::class)->name('backups');
+        Route::get('/backups/{backup}/download', BackupDownload::class)->name('backups.download');
+        Route::post('/backups/upload', [BackupUpload::class, 'store'])->name('backups.upload');
 
         // ── Settings hub: ONE sidebar menu, sections rendered inside the
         //    page itself (عمومی / ظاهر / پیامک / درگاه پرداخت). Old

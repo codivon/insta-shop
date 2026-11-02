@@ -69,6 +69,8 @@
                 @livewire(\App\Livewire\Admin\Settings\ShopsSettings::class, [], key('settings-shops'))
             @elseif ($tab === 'notifications')
                 @livewire(\App\Livewire\Admin\Settings\NotificationsSettings::class, [], key('settings-notifications'))
+            @elseif ($tab === 'backups')
+                @livewire(\App\Livewire\Admin\Settings\BackupSettings::class, [], key('settings-backups'))
             @endif
         </div>
     </div>

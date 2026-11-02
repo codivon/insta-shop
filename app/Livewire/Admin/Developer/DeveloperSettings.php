@@ -156,7 +156,7 @@ class DeveloperSettings extends Component
         $base = base_path();
 
         $schedule = "* * * * * cd {$base} && {$php} artisan schedule:run >> /dev/null 2>&1";
-        $queue    = "* * * * * cd {$base} && {$php} artisan queue:work --tries=3 --sleep=3 --stop-when-empty";
+        $queue    = "* * * * * cd {$base} && {$php} artisan queue:work database --tries=3 --sleep=3 --stop-when-empty";
 
         return [$schedule, $queue];
     }
