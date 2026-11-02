@@ -390,7 +390,7 @@
                     فیلتر محصولات
                 </h2>
                 <button type="button" class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800"
-                        onclick="__ipOpen = false; $wire.closeFilters()" aria-label="بستن">
+                        x-on:click="__ipOpen = false; $wire.closeFilters()" aria-label="بستن">
                     <x-icon name="x" class="size-4" />
                 </button>
             </div>
@@ -437,7 +437,7 @@
                         class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                     پاک کردن ({{ \App\Support\Fmt::toFa($specPicksCount) }})
                 </button>
-                <button type="button" onclick="__ipOpen = false; $wire.closeFilters()"
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeFilters()"
                         class="flex-1 rounded-xl bg-primary-600 py-2.5 text-[11px] font-extrabold text-white shadow-lg shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95">
                     مشاهده نتایج
                 </button>

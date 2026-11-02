@@ -29,7 +29,7 @@
                 <div>
                     <div class="text-xs font-extrabold">فیلترهای فروشگاه</div>
                     <div class="mt-0.5 text-[10px] leading-4 text-slate-400">
-                        هر فیلتر = یک عنوان + چند گروه مشخصه از محصولات خودت ({{ \App\Support\Fmt::toFa($productsCount) }} محصول فعال)
+                        هر فیلتر = یک عنوان + چند مشخصهٔ محصولات خودت ({{ \App\Support\Fmt::toFa($productsCount) }} محصول فعال)
                     </div>
                 </div>
             </div>
@@ -47,7 +47,7 @@
                     <x-icon name="filter" class="size-7 text-slate-300 dark:text-slate-600" />
                 </span>
                 <p class="mt-3 text-xs font-extrabold">هنوز فیلتری نساخته‌اید</p>
-                <p class="mt-1 text-[10px] text-slate-400">مثال: فیلتر «رنگ» از مشخصهٔ رنگ محصولات، یا «گارانتی» از مشخصهٔ گارانتی.</p>
+                <p class="mt-1 text-[10px] text-slate-400">مثال: مشخصهٔ «سایز» با همهٔ سایزهای محصولات، یا «نسخه بلوتوث» با همهٔ نسخه‌ها.</p>
             </div>
         @else
             <div class="mt-4 space-y-3">
@@ -123,7 +123,7 @@
                     {{ $editId ? 'ویرایش فیلتر' : 'فیلتر جدید' }}
                 </h2>
                 <button type="button" class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800"
-                        onclick="__ipOpen = false; $wire.closeFilterModal()" aria-label="بستن">
+                        x-on:click="__ipOpen = false; $wire.closeFilterModal()" aria-label="بستن">
                     <x-icon name="x" class="size-4" />
                 </button>
             </div>
@@ -172,7 +172,7 @@
             </label>
 
             <div class="flex gap-2 pt-1">
-                <button type="button" onclick="__ipOpen = false; $wire.closeFilterModal()"
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeFilterModal()"
                         class="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800">
                     انصراف
                 </button>
@@ -198,7 +198,7 @@
                     انتخاب مشخصات
                 </h2>
                 <button type="button" class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800"
-                        onclick="__ipOpen = false; $wire.closeSpecPicker()" aria-label="بستن">
+                        x-on:click="__ipOpen = false; $wire.closeSpecPicker()" aria-label="بستن">
                     <x-icon name="x" class="size-4" />
                 </button>
             </div>
@@ -224,8 +224,13 @@
                                 class="flex w-full items-center justify-between rounded-xl border p-2.5 text-right transition {{ $picked
                                     ? 'border-primary-500 bg-primary-50/70 dark:border-primary-600 dark:bg-primary-950/30'
                                     : 'border-slate-200 bg-white hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900' }}">
-                            <span class="text-[11px] font-extrabold">{{ $spec }}</span>
-                            <span class="grid size-5 place-items-center rounded-md border transition {{ $picked
+                            <span class="min-w-0">
+                                <span class="block truncate text-[11px] font-extrabold">{{ $spec }}</span>
+                                @if (($specValueCounts[$spec] ?? 0) > 0)
+                                    <span class="mt-0.5 block text-[9px] font-bold text-slate-400">{{ \App\Support\Fmt::toFa($specValueCounts[$spec]) }} مقدار در محصولات شما</span>
+                                @endif
+                            </span>
+                            <span class="grid size-5 shrink-0 place-items-center rounded-md border transition {{ $picked
                                 ? 'border-primary-600 bg-primary-600 text-white'
                                 : 'border-slate-300 dark:border-slate-600' }}">
                                 @if ($picked)
@@ -255,7 +260,7 @@
             <p class="mt-1 text-[10px] leading-5 text-slate-400">این فیلتر از صفحهٔ فروشگاه شما برداشته می‌شود.</p>
 
             <div class="mt-4 flex gap-2">
-                <button type="button" onclick="__ipOpen = false; $wire.confirmDeleteId = null"
+                <button type="button" x-on:click="__ipOpen = false; $wire.confirmDeleteId = null"
                         class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                     انصراف
                 </button>

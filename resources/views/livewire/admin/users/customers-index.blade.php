@@ -136,7 +136,7 @@
                     </span>
                     ویرایش مشتری
                 </h2>
-                <button type="button" onclick="__ipOpen = false; $wire.closeEditModal()"
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeEditModal()"
                         class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800" aria-label="بستن">
                     <x-icon name="x" class="size-4" />
                 </button>
@@ -166,7 +166,7 @@
             </div>
 
             <div class="flex gap-2 sm:col-span-2">
-                <button type="button" onclick="__ipOpen = false; $wire.closeEditModal()"
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeEditModal()"
                         class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                     انصراف
                 </button>
@@ -201,7 +201,7 @@
                    class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-right text-sm font-mono outline-none transition focus:border-rose-400 dark:border-slate-700 dark:bg-slate-800">
 
             <div class="mt-4 flex gap-2">
-                <button type="button" onclick="__ipOpen = false; $wire.confirmDeleteId = null"
+                <button type="button" x-on:click="__ipOpen = false; $wire.confirmDeleteId = null"
                         class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                     انصراف
                 </button>

@@ -3,7 +3,8 @@
     // property directly, e.g. open="$wire.modalOpen". A local x-data copy
     // (open="modalOpen") would never re-sync when the server flips it.
     'open'       => '',
-    // max-w-* key: sm | md | lg | xl | 2xl
+    // max-w-* key: sm | md | lg | xl | 2xl | full
+    // «full» = full-screen sheet on phones, centered panel on ≥sm screens
     'maxWidth'   => 'lg',
     // stacking: zClass for the overlay (raise when modals stack on each other)
     'zClass'     => 'z-[70]',
@@ -23,8 +24,19 @@
         'md'    => 'max-w-md',
         'xl'    => 'max-w-xl',
         '2xl'   => 'max-w-2xl',
+        'full'  => 'max-w-full sm:max-w-lg',
         default => 'max-w-lg',
     };
+
+    // full-screen sheet on phones → the panel fills the viewport (no max-h);
+    // centered floating panel from sm: up (keeps rounded corners + max-h).
+    if ($maxWidth === 'full') {
+        $fullPanel  = 'h-[calc(100dvh-1.5rem)] sm:h-auto rounded-none sm:rounded-2xl sm:max-h-[calc(100dvh-1.5rem)]';
+        $panelMaxH  = '';
+    } else {
+        $fullPanel  = '';
+        $panelMaxH  = 'max-h-[calc(100vh-1.5rem)] supports-[height:100dvh]:max-h-[calc(100dvh-1.5rem)]';
+    }
 @endphp
 
 <div x-data="{ __ipOpen: false }"
@@ -44,7 +56,7 @@
          scrolls from the top, so the header can never end up unreachable
          (the old flex + m-auto pattern clipped the top inside scroll). --}}
     <div class="flex min-h-full items-center justify-center p-3 sm:p-4">
-        <div class="flex max-h-[calc(100vh-1.5rem)] w-full {{ $mw }} flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl supports-[height:100dvh]:max-h-[calc(100dvh-1.5rem)] dark:border-slate-800 dark:bg-slate-900"
+        <div class="flex w-full {{ $mw }} {{ $fullPanel }} {{ $panelMaxH }} flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
              x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="translate-y-4 opacity-0" x-transition:enter-end="translate-y-0 opacity-100">
 
             @if (isset($header) && $header->isNotEmpty())

@@ -166,7 +166,7 @@
                     </span>
                     {{ $editId ? 'ویرایش کد تخفیف' : 'کد تخفیف جدید' }}
                 </h2>
-                <button type="button" onclick="__ipOpen = false; $wire.closeModal()"
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeModal()"
                         class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800" aria-label="بستن">
                     <x-icon name="x" class="size-4" />
                 </button>
@@ -264,7 +264,7 @@
             </label>
 
             <div class="flex gap-2 sm:col-span-2">
-                <button type="button" onclick="__ipOpen = false; $wire.closeModal()"
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeModal()"
                         class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                     انصراف
                 </button>

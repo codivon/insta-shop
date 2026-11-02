@@ -14,11 +14,12 @@ use Livewire\Component;
 /**
  * «فیلترینگ» — seller-defined storefront filters (batch 72).
  *
- * A filter = یک عنوان + چند گروه مشخصات (رنگ، گارانتی، اندازه صفحه
- * نمایش، …). The spec groups are collected ONLY from this seller's own
- * products, so filters never collide with other sellers' specs.
- * On the storefront, every published filter becomes a block inside the
- * «فیلترها» modal with the distinct values of its spec groups.
+ * A filter = یک عنوان + چند مشخصه (سایز، نسخه بلوتوث، نور پس‌زمینه…).
+ * The spec attributes are collected ONLY from THIS seller's own products
+ * (the attribute titles inside the specifications groups), so filters
+ * never collide with other sellers' specs. On the storefront, every
+ * published filter becomes a block per attribute with the distinct
+ * values the seller actually used on their products.
  */
 #[Layout('layouts.seller-slot')]
 class FilteringManager extends Component
@@ -37,7 +38,7 @@ class FilteringManager extends Component
 
     public bool $published = true;
 
-    /** Selected spec group names of the filter (رنگ، گارانتی…). */
+    /** Selected spec attribute titles of the filter (سایز، نسخه بلوتوث…). */
     public array $specNames = [];
 
     /* ══════════ spec picker modal ══════════ */
@@ -257,9 +258,10 @@ class FilteringManager extends Component
     }
 
     /**
-     * ALL spec group names found in THIS seller's own products —
-     * the searchable picker source (رنگ / گارانتی / اندازه صفحه نمایش…).
-     * Fully isolated per seller: other shops' specs never leak in.
+     * ALL spec attribute titles (مشخصه‌ها) found in THIS seller's own
+     * products — the searchable picker source (سایز / نسخه بلوتوث /
+     * نور پس‌زمینه…). These are the item titles INSIDE the specification
+     * groups, not the group headers. Fully isolated per seller.
      */
     public function getAvailableSpecsProperty(): Collection
     {
@@ -270,9 +272,10 @@ class FilteringManager extends Component
             ->whereNotNull('specifications')
             ->get(['specifications'])
             ->flatMap(fn ($product) => collect($product->specifications ?? []))
-            ->pluck('name')
-            ->map(fn ($name) => trim((string) $name))
-            ->filter(fn ($name) => $name !== '')
+            ->flatMap(fn ($group) => collect($group['items'] ?? []))
+            ->pluck('title')
+            ->map(fn ($title) => trim((string) $title))
+            ->filter(fn ($title) => $title !== '')
             ->unique()
             ->sort()
             ->values();
@@ -282,6 +285,36 @@ class FilteringManager extends Component
         }
 
         return $names;
+    }
+
+    /**
+     * Distinct value counts per attribute title — shown as a hint inside
+     * the picker so the seller sees how many values the shop actually uses
+     * (مثلاً «نسخه بلوتوث · ۳ مقدار»).
+     */
+    public function getSpecValueCountsProperty(): array
+    {
+        return Product::query()
+            ->where('shop_id', $this->shop()->id)
+            ->whereNotNull('specifications')
+            ->get(['specifications'])
+            ->flatMap(fn ($product) => collect($product->specifications ?? []))
+            ->flatMap(fn ($group) => collect($group['items'] ?? []))
+            ->groupBy(fn ($item) => trim((string) ($item['title'] ?? '')))
+            ->mapWithKeys(function ($items, $title) {
+                if ($title === '') {
+                    return [];
+                }
+
+                $count = $items->pluck('value')
+                    ->map(fn ($value) => trim((string) $value))
+                    ->filter()
+                    ->unique()
+                    ->count();
+
+                return [$title => $count];
+            })
+            ->all();
     }
 
     /** Count of the shop's published products (hint text). */
@@ -296,9 +329,10 @@ class FilteringManager extends Component
     public function render()
     {
         return view('livewire.seller.filtering-manager', [
-            'filters'        => $this->filters,
-            'availableSpecs' => $this->availableSpecs,
-            'productsCount'  => $this->productsCount,
+            'filters'          => $this->filters,
+            'availableSpecs'   => $this->availableSpecs,
+            'specValueCounts'  => $this->specValueCounts,
+            'productsCount'    => $this->productsCount,
         ])->title('فیلترینگ');
     }
 }

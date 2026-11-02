@@ -342,8 +342,9 @@ class StorefrontShow extends Component
     }
 
     /**
-     * Ids of the shop's published products matching ALL active spec picks
-     * (specifications JSON is matched in PHP — portable across MySQL/MariaDB).
+     * Ids of the shop's published products matching ALL active spec picks.
+     * A pick is (attribute title, value) — e.g. («نسخه بلوتوث», «5.3»).
+     * specifications JSON is matched in PHP — portable across MySQL/MariaDB.
      */
     private function specMatchedIds(): array
     {
@@ -354,19 +355,18 @@ class StorefrontShow extends Component
         return $this->baseQuery()
             ->get(['id', 'specifications'])
             ->filter(function (Product $product) {
-                $groups = collect($product->specifications ?? [])
-                    ->keyBy(fn ($group) => (string) ($group['name'] ?? ''));
+                $items = collect($product->specifications ?? [])
+                    ->flatMap(fn ($group) => collect($group['items'] ?? []))
+                    ->groupBy(fn ($item) => trim((string) ($item['title'] ?? '')));
 
                 foreach ($this->specPicks as $spec => $wanted) {
-                    $group = $groups->get((string) $spec);
-
-                    $values = collect($group['items'] ?? [])
+                    $values = ($items->get((string) $spec) ?? collect())
                         ->pluck('value')
                         ->map(fn ($v) => trim((string) $v))
                         ->filter()
                         ->all();
 
-                    // every wanted value of this spec must appear in the product
+                    // every wanted value of this attribute must appear on the product
                     foreach ((array) $wanted as $needle) {
                         if (! in_array(trim($needle), $values, true)) {
                             return false;
@@ -416,8 +416,10 @@ class StorefrontShow extends Component
     }
 
     /**
-     * Distinct values of one spec group across the shop's published
-     * products — the customer-facing options of a filter block.
+     * Distinct values of ONE attribute title (e.g. «نسخه بلوتوث») across
+     * the shop's published products — the customer-facing options of a
+     * filter block. Titles are matched INSIDE every specification group,
+     * so all 10 phones contribute their own bluetooth version.
      */
     public function specValues(string $specName): array
     {
@@ -426,8 +428,8 @@ class StorefrontShow extends Component
         return $this->baseQuery()
             ->get(['specifications'])
             ->flatMap(fn ($product) => collect($product->specifications ?? []))
-            ->filter(fn ($group) => trim((string) ($group['name'] ?? '')) === $name)
             ->flatMap(fn ($group) => collect($group['items'] ?? []))
+            ->filter(fn ($item) => trim((string) ($item['title'] ?? '')) === $name)
             ->pluck('value')
             ->map(fn ($value) => trim((string) $value))
             ->filter(fn ($value) => $value !== '')

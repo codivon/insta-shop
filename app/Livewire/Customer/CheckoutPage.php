@@ -36,10 +36,14 @@ class CheckoutPage extends Component
 
     public ?int $selectedAddressId = null;
 
+    /** لیست آدرس‌ها — مودال تمام‌صفحه روی موبایل (کارت ← لیست ← افزودن/ویرایش). */
     public bool $showAddressModal = false;
 
-    /** Inline «افزودن آدرس» form inside the change-address modal. */
+    /** مودال افزودن/ویرایش آدرس — همان فرم «آدرس‌های من». */
     public bool $showAddressForm = false;
+
+    /** When set, the form modal edits this address instead of creating. */
+    public ?int $addressEditId = null;
 
     public string $newTitle = '';
 
@@ -58,6 +62,8 @@ class CheckoutPage extends Component
     public string $newPlaque = '';
 
     public string $newUnit = '';
+
+    public bool $newIsDefault = false;
 
     /** shop_id → carrier_id — حامل هر فروشگاه، برای فروشگاه‌های فیزیکی اجباری است. */
     public array $carrierPicks = [];
@@ -115,12 +121,12 @@ class CheckoutPage extends Component
             : null;
     }
 
-    /** Open the change-address modal. */
+    /** Open the address-book modal (لیست آدرس‌ها — full-screen on phones). */
     public function openAddressModal(): void
     {
         $this->showAddressForm = false;
-        $this->resetNewAddressForm();
-        $this->resetErrorBag(['newRecipient', 'newPhone', 'newProvinceId', 'newCityId', 'newAddress', 'newPostal']);
+        $this->addressEditId   = null;
+        $this->resetErrorBag();
         $this->showAddressModal = true;
     }
 
@@ -128,19 +134,67 @@ class CheckoutPage extends Component
     {
         $this->showAddressModal = false;
         $this->showAddressForm  = false;
+        $this->addressEditId    = null;
     }
 
-    public function toggleAddressForm(): void
+    /** Open the «افزودن آدرس» modal — the same form as the address book. */
+    public function openAddAddress(): void
     {
-        $this->showAddressForm = ! $this->showAddressForm;
+        $customer = $this->customer();
 
-        if ($this->showAddressForm) {
-            $this->resetNewAddressForm();
+        $this->resetNewAddressForm();
+        $this->addressEditId = null;
+
+        // prefill from the profile — saves typing on the first address
+        $this->newRecipient = (string) ($customer?->full_name ?? '');
+        $this->newPhone     = Phone::toLocal($customer?->phone);
+        $this->newIsDefault = $this->addresses->isEmpty();
+
+        $this->resetErrorBag();
+
+        $this->showAddressModal = false;
+        $this->showAddressForm  = true;
+    }
+
+    /** Open the «ویرایش آدرس» modal for one saved address. */
+    public function openEditAddress(int $id): void
+    {
+        $address = $this->addresses->firstWhere('id', $id);
+
+        if (! $address) {
+            return;
         }
+
+        $this->resetNewAddressForm();
+        $this->resetErrorBag();
+
+        $this->addressEditId = $address->id;
+        $this->newTitle      = (string) ($address->title ?? '');
+        $this->newRecipient  = (string) ($address->recipient_name ?? '');
+        $this->newPhone      = Phone::toLocal($address->phone);
+        $this->newProvinceId = (int) ($address->province_id ?? 0);
+        $this->newCityId     = (int) ($address->city_id ?? 0);
+        $this->newAddress    = (string) $address->address;
+        $this->newPostal     = (string) ($address->postal_code ?? '');
+        $this->newPlaque     = (string) ($address->plaque ?? '');
+        $this->newUnit       = (string) ($address->unit ?? '');
+        $this->newIsDefault  = (bool) $address->is_default;
+
+        $this->showAddressModal = false;
+        $this->showAddressForm  = true;
+    }
+
+    /** Back from the form modal to the address-book list. */
+    public function backToAddressList(): void
+    {
+        $this->showAddressForm = false;
+        $this->addressEditId   = null;
+        $this->showAddressModal = true;
     }
 
     private function resetNewAddressForm(): void
     {
+        $this->addressEditId = null;
         $this->newTitle      = '';
         $this->newRecipient  = '';
         $this->newPhone      = '';
@@ -150,6 +204,7 @@ class CheckoutPage extends Component
         $this->newPostal     = '';
         $this->newPlaque     = '';
         $this->newUnit       = '';
+        $this->newIsDefault  = false;
     }
 
     public function updatedNewProvinceId(): void
@@ -214,8 +269,8 @@ class CheckoutPage extends Component
         $this->postal_code      = (string) ($address->postal_code ?? '');
     }
 
-    /** Inline «افزودن آدرس» — saves and AUTO-SELECTS the new row. */
-    public function saveNewAddress(): void
+    /** Save the add/edit form — same semantics as the address book page. */
+    public function saveAddressForm(): void
     {
         $this->validateWithToast(fn () => $this->validate($this->newAddressRules(), $this->newAddressMessages()));
 
@@ -228,11 +283,20 @@ class CheckoutPage extends Component
         $province = $this->newProvinceId > 0 ? Province::find($this->newProvinceId) : null;
         $city     = $this->newCityId > 0 ? City::find($this->newCityId) : null;
 
-        $address = new CustomerAddress([
-            'customer_id'    => $customer->id,
+        $address = $this->addressEditId
+            ? CustomerAddress::query()->where('customer_id', $customer->id)->find($this->addressEditId)
+            : new CustomerAddress(['customer_id' => $customer->id]);
+
+        if (! $address) {
+            return;
+        }
+
+        $wasEditing = $this->addressEditId !== null;
+
+        $address->fill([
             'title'          => trim($this->newTitle) !== '' ? trim($this->newTitle) : null,
-            'recipient_name' => trim($this->newRecipient),
-            'phone'          => Phone::normalize($this->newPhone),
+            'recipient_name' => trim($this->newRecipient) !== '' ? trim($this->newRecipient) : null,
+            'phone'          => $this->newPhone !== '' ? Phone::normalize($this->newPhone) : null,
             'province_id'    => $province?->id,
             'city_id'        => $city?->id,
             'province_name'  => $province?->name,
@@ -241,22 +305,42 @@ class CheckoutPage extends Component
             'postal_code'    => $this->newPostal !== '' ? $this->newPostal : null,
             'plaque'         => trim($this->newPlaque) !== '' ? trim($this->newPlaque) : null,
             'unit'           => trim($this->newUnit) !== '' ? trim($this->newUnit) : null,
-            'is_default'     => false,
+            'is_default'     => $this->newIsDefault,
         ]);
 
         $address->save();
 
-        // exactly one address → it IS the default
-        if (CustomerAddress::query()->where('customer_id', $customer->id)->count() === 1) {
-            $address->forceFill(['is_default' => true])->save();
+        // default promotion — exactly one row is default by definition
+        $book = CustomerAddress::query()->where('customer_id', $customer->id);
+
+        if ($this->newIsDefault) {
+            (clone $book)->whereKeyNot($address->id)->update(['is_default' => false]);
+        } elseif ((clone $book)->count() <= 1) {
+            (clone $book)->update(['is_default' => true]);
+        } elseif (! (clone $book)->where('is_default', true)->exists()) {
+            $book->orderByDesc('id')->first()?->forceFill(['is_default' => true])->save();
         }
 
         $this->resetNewAddressForm();
-        $this->showAddressForm = false;
 
-        $this->selectAddress($address->id);
+        // (re)select: a fresh address is always picked; an edited one only
+        // when it is the current selection — delivery fields stay in sync.
+        $reselect = ! $wasEditing || (int) $this->selectedAddressId === (int) $address->id;
 
-        $this->dispatch('panel-toast', message: 'آدرس جدید ذخیره و انتخاب شد. ✅', type: 'success');
+        if ($reselect) {
+            $this->selectAddress($address->id);
+        }
+
+        if ($wasEditing) {
+            $this->backToAddressList();
+
+            $this->dispatch('panel-toast', message: 'آدرس به‌روزرسانی شد. ✅', type: 'success');
+        } else {
+            // new address → selected already → back to the checkout with the card
+            $this->closeAddressModal();
+
+            $this->dispatch('panel-toast', message: 'آدرس جدید ذخیره و انتخاب شد. ✅', type: 'success');
+        }
     }
 
     protected function rules(): array
@@ -291,6 +375,9 @@ class CheckoutPage extends Component
             'newCityId'     => ['required', 'integer', 'min:1', Rule::exists('cities', 'id')->where('province_id', $this->newProvinceId)],
             'newAddress'    => ['required', 'string', 'min:10', 'max:500'],
             'newPostal'     => ['nullable', 'string', 'regex:/^\d{10}$/'],
+            'newPlaque'     => ['nullable', 'string', 'max:20'],
+            'newUnit'       => ['nullable', 'string', 'max:20'],
+            'newIsDefault'  => ['boolean'],
         ];
     }
 

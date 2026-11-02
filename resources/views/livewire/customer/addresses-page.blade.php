@@ -128,7 +128,7 @@
                     {{ $editId ? 'ویرایش آدرس' : 'آدرس جدید' }}
                 </h2>
                 <button type="button" class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800"
-                        onclick="__ipOpen = false; $wire.closeAddModal()" aria-label="بستن">
+                        x-on:click="__ipOpen = false; $wire.closeAddModal()" aria-label="بستن">
                     <x-icon name="x" class="size-4" />
                 </button>
             </div>
@@ -213,7 +213,7 @@
             </label>
 
             <div class="flex gap-2 pt-1">
-                <button type="button" onclick="__ipOpen = false; $wire.closeAddModal()"
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeAddModal()"
                         class="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800">
                     انصراف
                 </button>
@@ -236,7 +236,7 @@
             <p class="mt-1 text-[10px] leading-5 text-slate-400">این نشانی از دفترچه آدرس‌های شما برداشته می‌شود.</p>
 
             <div class="mt-4 flex gap-2">
-                <button type="button" onclick="__ipOpen = false; $wire.confirmDeleteId = null"
+                <button type="button" x-on:click="__ipOpen = false; $wire.confirmDeleteId = null"
                         class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                     انصراف
                 </button>
