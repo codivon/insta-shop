@@ -74,6 +74,21 @@ class NotificationsBell extends Component
         $this->pushState = 'subscribed';
     }
 
+    /**
+     * JS bridge: the browser reported an unsuitable push state on page
+     * load (unsupported / denied) so the UI can show the right hint
+     * instead of a dead enable button.
+     */
+    #[On('ip-push-state')]
+    public function browserPushState($state = null): void
+    {
+        if (is_array($state)) {
+            $state = $state['state'] ?? null;
+        }
+
+        $this->setPushState((string) $state);
+    }
+
     public function render()
     {
         return view('livewire.admin.notifications.notifications-bell');

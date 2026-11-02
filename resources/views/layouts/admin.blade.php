@@ -353,12 +353,42 @@
                     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
                     const raw = atob(base64);
                     const output = new Uint8Array(raw.length);
-                    for (let i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+                    for (let i = 0; i < output.length; ++i) output[i] = raw.charCodeAt(i);
                     return output;
                 }
 
                 window.__ipVapidKey = @js(\App\Support\WebPusher::publicKey());
                 window.__ipPushRoute = @js(route('admin.notifications.subscribe'));
+
+                function csrf() {
+                    return document.querySelector('meta[name="csrf-token"]')?.content
+                        || window.livewireScriptConfig?.csrf
+                        || '';
+                }
+
+                /* Save the subscription on the server (idempotent upsert) and
+                   flip every bell/page to the green «فعال است» state. */
+                async function upsertSubscription(sub) {
+                    const json = sub.toJSON();
+
+                    const res = await fetch(window.__ipPushRoute, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrf(),
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            endpoint: json.endpoint,
+                            keys: json.keys,
+                            device_label: navigator.userAgent.slice(0, 100),
+                        }),
+                    });
+
+                    if (!res.ok) throw new Error('push upsert failed: ' + res.status);
+
+                    window.dispatchEvent(new CustomEvent('ip-push-subscribed'));
+                }
 
                 window.__ipEnablePush = async function () {
                     try {
@@ -367,7 +397,12 @@
                         }
 
                         const perm = await Notification.requestPermission();
-                        if (perm !== 'granted') return;
+                        if (perm !== 'granted') {
+                            if (perm === 'denied') {
+                                window.dispatchEvent(new CustomEvent('ip-push-state', { detail: { state: 'denied' } }));
+                            }
+                            return;
+                        }
 
                         const reg = await navigator.serviceWorker.register('/sw.js');
                         await navigator.serviceWorker.ready;
@@ -380,30 +415,56 @@
                             });
                         }
 
-                        const json = sub.toJSON();
-                        const csrf = document.querySelector('meta[name="csrf-token"]')?.content
-                            || window.livewireScriptConfig?.csrf
-                            || '';
-
-                        await fetch(window.__ipPushRoute, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrf,
-                                'Accept': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                endpoint: json.endpoint,
-                                keys: json.keys,
-                                device_label: navigator.userAgent.slice(0, 100),
-                            }),
-                        });
-
-                        window.dispatchEvent(new CustomEvent('ip-push-subscribed'));
+                        await upsertSubscription(sub);
                     } catch (e) {
                         console.warn('push subscribe failed', e);
                     }
                 };
+
+                /* Restore the push state on every page load / wire:navigate —
+                   the bell is a fresh Livewire component each time (always
+                   «default»), but the BROWSER remembers the subscription, so
+                   ask it and sync the row back to the server (heals lost
+                   rows too). Without this the green «نوتیفیکیشن دستگاه
+                   فعال است» chip vanished on every refresh. */
+                window.__ipSyncPush = async function () {
+                    if (Date.now() - (window.__ipLastPushSync || 0) < 1500) return;
+                    window.__ipLastPushSync = Date.now();
+
+                    try {
+                        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification) {
+                            window.dispatchEvent(new CustomEvent('ip-push-state', { detail: { state: 'unsupported' } }));
+                            return;
+                        }
+
+                        if (Notification.permission === 'denied') {
+                            window.dispatchEvent(new CustomEvent('ip-push-state', { detail: { state: 'denied' } }));
+                            return;
+                        }
+
+                        if (Notification.permission !== 'granted') return;
+
+                        let reg = await navigator.serviceWorker.getRegistration();
+                        if (!reg) reg = await navigator.serviceWorker.register('/sw.js');
+                        if (!reg) return;
+
+                        const sub = await reg.pushManager.getSubscription();
+                        if (!sub) return; /* this device never subscribed — keep the enable button */
+
+                        await upsertSubscription(sub);
+                    } catch (e) {
+                        /* restore is best-effort — never break the panel */
+                    }
+                };
+
+                /* livewire:navigated also fires on the FIRST load, so one
+                   hook covers both full reloads and SPA navigations (the
+                   bell re-mounts as «default» on each one). */
+                if (!window.__ipPushSyncHooked) {
+                    window.__ipPushSyncHooked = true;
+                    document.addEventListener('livewire:navigated', () => window.__ipSyncPush && window.__ipSyncPush());
+                }
+                window.__ipSyncPush();
             })();
         </script>
     @endonce

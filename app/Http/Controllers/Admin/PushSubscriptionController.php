@@ -31,19 +31,26 @@ class PushSubscriptionController extends Controller
         [$audience, $sellerId] = $this->audience();
 
         try {
-            PushSubscription::updateOrCreate(
+            // Upsert by endpoint hash. created_at is only stamped on CREATE —
+            // the panel now re-syncs an existing subscription on every page
+            // load (state restore), which must not churn the first-seen date.
+            $subscription = PushSubscription::query()->firstOrNew(
                 ['endpoint_hash' => hash('sha1', $data['endpoint'])],
-                [
-                    'endpoint'     => $data['endpoint'],
-                    'p256dh'       => $data['keys']['p256dh'],
-                    'auth'         => $data['keys']['auth'],
-                    'user_agent'   => mb_substr((string) $request->userAgent(), 0, 490),
-                    'device_label' => $data['device_label'] ?? '',
-                    'audience'     => $audience,
-                    'seller_id'    => $sellerId,
-                    'created_at'   => now(),
-                ],
             );
+
+            $subscription->endpoint     = $data['endpoint'];
+            $subscription->p256dh       = $data['keys']['p256dh'];
+            $subscription->auth         = $data['keys']['auth'];
+            $subscription->user_agent   = mb_substr((string) $request->userAgent(), 0, 490);
+            $subscription->device_label = $data['device_label'] ?? '';
+            $subscription->audience     = $audience;
+            $subscription->seller_id    = $sellerId;
+
+            if (! $subscription->exists) {
+                $subscription->created_at = now();
+            }
+
+            $subscription->save();
         } catch (Throwable $e) {
             return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
         }
