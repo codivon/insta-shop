@@ -17,7 +17,11 @@ VERSION="${1:-v0.7.0}"
 OUT_DIR="$APP_DIR/../instashop-dist"
 OUT_FILE="$OUT_DIR/instashop-$VERSION-host.zip"
 
-export PATH="$HOME/.local/bin:$HOME/.local/opt/mysql/bin:$PATH"
+# ~/.local/php84bin MUST come first: it holds the static PHP 8.4 build that
+# matches composer.lock platform requirements. ~/.local/bin/php84 is PHP 8.3
+# and makes `composer install` fail with "lock file does not contain a
+# compatible set of packages".
+export PATH="$HOME/.local/php84bin:$HOME/.local/bin:$HOME/.local/opt/mysql/bin:$PATH"
 export LD_LIBRARY_PATH="$HOME/.local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 [ -f "$HOME/.local/bin/composer" ] || { echo "❌ composer not found"; exit 1; }
@@ -38,7 +42,7 @@ EOF
 
 echo "── [2/5] composer install --no-dev (production vendor) ──"
 cd "$TMP"
-composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --quiet 2>&1 | tail -3 || true
+composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist 2>&1 | tail -3
 
 echo "── [3/5] Sanity checks ──"
 [ -f "$TMP/vendor/autoload.php" ]            || { echo "❌ vendor/autoload.php missing"; exit 1; }
