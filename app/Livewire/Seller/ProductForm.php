@@ -721,11 +721,33 @@ class ProductForm extends Component
             ? ProductImage::query()->where('product_id', $this->productId)->count()
             : 0;
 
+        // دسته‌بندی الزامی است — هر محصول باید به یکی از دسته‌های همین فروشگاه
+        // وصل باشد (خواستهٔ کاربر: هم پنل فروشنده هم پنل مدیریت).
+        $categoryIds = $this->shop()->categories()->pluck('id')->all();
+
         $this->validate([
             'name'        => ['required', 'string', 'min:2', 'max:150'],
             'slug'        => ['nullable', 'string', 'max:190', 'regex:/^[a-z0-9\x{0600}-\x{06FF}]+(?:-[a-z0-9\x{0600}-\x{06FF}]+)*$/u'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'categoryId'  => ['nullable', 'integer', Rule::in(array_merge([0], $this->shop()->categories()->pluck('id')->all()))],
+            // یک قانون واحد → دقیقاً یک پیام: خالی = «انتخاب کنید»، فروشگاه
+            // بدون دسته = راهنمای ساخت دسته، شناسهٔ غریبه = «تعلق ندارد»
+            'categoryId'  => ['required', 'integer', function ($attribute, $value, $fail) use ($categoryIds) {
+                if ($categoryIds === []) {
+                    $fail('ابتدا از «مدیریت دسته‌بندی‌ها» یک دسته‌بندی بسازید، سپس محصول را ثبت کنید.');
+
+                    return;
+                }
+
+                if ((int) $value < 1) {
+                    $fail('دسته‌بندی محصول را انتخاب کنید.');
+
+                    return;
+                }
+
+                if (! in_array((int) $value, $categoryIds, true)) {
+                    $fail('دستهٔ انتخابی به این فروشگاه تعلق ندارد.');
+                }
+            }],
             'productType' => ['required', 'in:'.Product::TYPE_PHYSICAL.','.Product::TYPE_DOWNLOADABLE],
             // کالای فیزیکی بدون وزن پذیرفته نمی‌شود (حمل‌ونقل بر اساس وزن)
             'weight'      => ['exclude_unless:productType,'.Product::TYPE_PHYSICAL, 'required', 'numeric', 'min:1', 'max:10000000'],
@@ -744,6 +766,7 @@ class ProductForm extends Component
         ], [
             'name.required'  => 'نام محصول را وارد کنید.',
             'name.min'       => 'نام محصول حداقل ۲ کاراکتر است.',
+            'categoryId.required' => 'دسته‌بندی محصول را انتخاب کنید.',
             'slug.regex'     => 'آدرس محصول فقط می‌تواند شامل حروف کوچک انگلیسی، حروف فارسی، عدد و خط تیره باشد (بدون فاصله).',
             'slug.max'       => 'آدرس محصول حداکثر ۱۹۰ کاراکتر است.',
             'photos.max'     => 'حداکثر ۶ تصویر برای هر محصول مجاز است (تصاویر فعلی + جدید).',

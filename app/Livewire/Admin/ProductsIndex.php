@@ -281,7 +281,8 @@ class ProductsIndex extends Component
     {
         return [
             'formShopId'        => ['required', 'integer', 'min:1', 'exists:shops,id'],
-            'formCategoryId'    => ['nullable', 'integer', Rule::exists('shop_categories', 'id')->where('shop_id', $this->formShopId)],
+            // دسته‌بندی الزامی است (هماهنگ با فرم کامل محصول)
+            'formCategoryId'    => ['required', 'integer', 'min:1', Rule::exists('shop_categories', 'id')->where('shop_id', $this->formShopId)],
             'formName'          => ['required', 'string', 'min:2', 'max:120'],
             'formSlug'          => ['nullable', 'string', 'max:190'],
             'formType'          => ['required', 'in:'.Product::TYPE_PHYSICAL.','.Product::TYPE_DOWNLOADABLE],
@@ -304,6 +305,8 @@ class ProductsIndex extends Component
             'formName.min'        => 'نام محصول حداقل ۲ کاراکتر است.',
             'formPrice.required'  => 'قیمت محصول را وارد کنید.',
             'formPrice.integer'   => 'قیمت باید عدد باشد.',
+            'formCategoryId.required' => 'دسته‌بندی محصول را انتخاب کنید.',
+            'formCategoryId.min'      => 'دسته‌بندی محصول را انتخاب کنید.',
             'formCategoryId.exists' => 'دستهٔ انتخابی به این فروشگاه تعلق ندارد.',
         ];
     }

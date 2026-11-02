@@ -153,12 +153,12 @@
 
                 {{-- ── دسته‌بندی با جستجو (combobox) ── --}}
                 <div class="mt-3">
-                    <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">دسته‌بندی</label>
+                    <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">دسته‌بندی <span class="text-rose-500" title="الزامی">*</span></label>
                     <div class="relative" @click.outside="catOpen = false">
                         <button type="button" @click="catOpen = !catOpen" :aria-expanded="catOpen"
                                 class="flex w-full items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold outline-none transition hover:border-slate-300 focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
                             <span class="truncate" :class="$wire.categoryId > 0 ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400'"
-                                  x-text="$wire.categoryId > 0 ? (({{ str_replace('"', "'", $shopCategories->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->toJson()) }}).find(c => c.id === $wire.categoryId)?.name ?? 'بدون دسته') : 'بدون دسته — انتخاب کنید'">
+                                  x-text="$wire.categoryId > 0 ? (({{ str_replace('"', "'", $shopCategories->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->toJson()) }}).find(c => c.id === $wire.categoryId)?.name ?? 'دستهٔ نامعتبر') : 'انتخاب دسته‌بندی…'">
                                 انتخاب دسته‌بندی
                             </span>
                             <span class="shrink-0 text-slate-400 transition-transform" :class="catOpen ? 'rotate-180' : ''">
@@ -178,13 +178,6 @@
                                 </div>
                             </div>
                             <div class="scroll-slim max-h-44 overflow-y-auto p-1.5">
-                                <button type="button" x-show="catQuery.trim() === ''"
-                                        @click="$wire.set('categoryId', 0); catOpen = false"
-                                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-bold transition"
-                                        :class="$wire.categoryId === 0 ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300' : 'text-slate-500 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'">
-                                    <x-icon name="circle-slash" class="size-3.5 opacity-50" />
-                                    بدون دسته
-                                </button>
                                 @foreach ($shopCategories as $cat)
                                     <button type="button" x-show="catQuery.trim() === '' || '{{ e($cat->name) }}'.includes(catQuery.trim())" wire:key="cat-opt-{{ $cat->id }}"
                                             @click="$wire.set('categoryId', {{ $cat->id }}); catOpen = false"
@@ -200,7 +193,7 @@
                                     </button>
                                 @endforeach
                                 @if ($shopCategories->isEmpty())
-                                    <p class="px-3 py-4 text-center text-[10px] font-bold text-slate-400">دسته‌بندی‌ای نساخته‌اید — از «مدیریت دسته‌بندی‌ها» اضافه کنید.</p>
+                                    <p class="px-3 py-4 text-center text-[10px] font-bold text-slate-400">دسته‌بندی الزامی است — ابتدا از «مدیریت دسته‌بندی‌ها» یک دسته بسازید.</p>
                                 @endif
                             </div>
                         </div>
