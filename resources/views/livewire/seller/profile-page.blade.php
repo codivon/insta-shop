@@ -197,6 +197,19 @@
                     <x-icon name="chevron-left" class="size-3.5" />
                 </span>
             </a>
+            <a href="{{ route('seller.guide') }}" wire:navigate
+               class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <span class="flex items-center gap-2.5 text-xs font-bold">
+                    <span class="grid size-9 place-items-center rounded-xl bg-teal-100 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400">
+                        <x-icon name="file-text" class="size-4.5" />
+                    </span>
+                    راهنمای استفاده
+                </span>
+                <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                    آموزش کامل هر بخش با اسکرین‌شات
+                    <x-icon name="chevron-left" class="size-3.5" />
+                </span>
+            </a>
             <button type="button" data-theme-toggle
                     class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <span class="flex items-center gap-2.5 text-xs font-bold">
