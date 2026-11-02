@@ -48,19 +48,13 @@ class Fmt
         return self::fa($amount).' تومان';
     }
 
-    /** Compact money for tight spots: 4200000 → «۴٫۲م» / 120000 → «۱۲۰ه». */
+    /**
+     * Money digits WITHOUT the «تومان» suffix — always exact,
+     * never abbreviated: 120000 → «۱۲۰٬۰۰۰» (was «۱۲۰ه», which
+     * read as broken/unclear to users and is now retired).
+     */
     public static function moneyShort(int|float $amount): string
     {
-        if ($amount >= 1_000_000) {
-            $m = $amount / 1_000_000;
-
-            return self::toFa(rtrim(rtrim(number_format($m, 1, '.', ''), '0'), '.')).'م';
-        }
-
-        if ($amount >= 1_000) {
-            return self::toFa((string) intdiv((int) $amount, 1_000)).'ه';
-        }
-
         return self::fa($amount);
     }
 }
