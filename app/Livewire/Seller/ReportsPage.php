@@ -11,6 +11,7 @@ use App\Support\JDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -187,19 +188,35 @@ class ReportsPage extends Component
 
         return view('livewire.seller.reports-page', [
             'shop'        => $shop,
-            'orderStats'  => $this->orderStats($shopId),
-            'viewStats'   => $this->viewStats($shopId),
+            'orderStats'  => $this->orderStats,
+            'viewStats'   => $this->viewStats,
             'sales'       => $sales,
             'views'       => $views,
             'viewsDays'   => $viewsDays,
-            'topProducts' => $this->topProducts($shopId),
+            'topProducts' => $this->topProducts,
         ])->title('گزارش‌ها');
     }
 
-    /* ───────────────────────── data ───────────────────────── */
+    /* ───────────────────────── data ─────────────────────────
+     * Period-independent stats are memoized computed properties
+     * AND 60 s cached — a mode/range click must NOT re-run them.
+     * The two charts are cached per (shop, mode, window) for 60 s
+     * so flipping granularities back and forth is near-instant.
+     * Only the chart the user actually switched may take time. */
 
     /** Order funnel of this shop (via order_items) + revenue + buyers. */
-    private function orderStats(int $shopId): array
+    public function getOrderStatsProperty(): array
+    {
+        $shopId = (int) (auth('seller')->user()?->shop?->id ?? 0);
+
+        return Cache::remember(
+            'ip:reports:order-stats:v2:'.$shopId,
+            60,
+            fn () => $this->computeOrderStats($shopId),
+        );
+    }
+
+    private function computeOrderStats(int $shopId): array
     {
         if ($shopId === 0) {
             return [
@@ -250,7 +267,18 @@ class ReportsPage extends Component
     }
 
     /** Total + windowed view counters (cumulative products.views + daily log). */
-    private function viewStats(int $shopId): array
+    public function getViewStatsProperty(): array
+    {
+        $shopId = (int) (auth('seller')->user()?->shop?->id ?? 0);
+
+        return Cache::remember(
+            'ip:reports:view-stats:v2:'.$shopId,
+            60,
+            fn () => $this->computeViewStats($shopId),
+        );
+    }
+
+    private function computeViewStats(int $shopId): array
     {
         if ($shopId === 0) {
             return ['total' => 0, 'today' => 0, 'd7' => 0, 'd30' => 0];
@@ -271,9 +299,13 @@ class ReportsPage extends Component
         ];
     }
 
-    /** Top 6 products by cumulative views. */
-    private function topProducts(int $shopId): Collection
+    /** Top 6 products by cumulative views (computed only — Eloquent models
+     * must never go through the cache, which unserializes with
+     * allowed_classes=false and turns them into __PHP_Incomplete_Class). */
+    public function getTopProductsProperty(): Collection
     {
+        $shopId = (int) (auth('seller')->user()?->shop?->id ?? 0);
+
         return Product::query()
             ->where('shop_id', $shopId)
             ->with('mainImage')
@@ -285,6 +317,15 @@ class ReportsPage extends Component
 
     /** Paid-sales series: buckets for the mode+range, values from paid order_items. */
     private function salesChart(int $shopId, string $mode, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        return Cache::remember(
+            'ip:reports:sales:v2:'.$shopId.':'.$mode.':'.$from->format('YmdHi').':'.$to->format('YmdHi'),
+            60,
+            fn () => $this->computeSalesChart($shopId, $mode, $from, $to),
+        );
+    }
+
+    private function computeSalesChart(int $shopId, string $mode, CarbonImmutable $from, CarbonImmutable $to): array
     {
         $buckets = $this->periodBuckets($mode, $from, $to);
         $total   = 0;
@@ -320,6 +361,15 @@ class ReportsPage extends Component
 
     /** Views series: buckets for the mode+range, values from product_views day rows. */
     private function viewsChart(int $shopId, string $mode, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        return Cache::remember(
+            'ip:reports:views:v2:'.$shopId.':'.$mode.':'.$from->format('YmdHi').':'.$to->format('YmdHi'),
+            60,
+            fn () => $this->computeViewsChart($shopId, $mode, $from, $to),
+        );
+    }
+
+    private function computeViewsChart(int $shopId, string $mode, CarbonImmutable $from, CarbonImmutable $to): array
     {
         $buckets = $this->periodBuckets($mode, $from, $to);
         $total   = 0;
@@ -479,7 +529,10 @@ class ReportsPage extends Component
         return $buckets;
     }
 
-    /** Normalize buckets into the series shape the blade renders. */
+    /** Normalize buckets into the series shape the blade renders.
+     * The series MUST be a plain array — the cache unserializes with
+     * allowed_classes=false, so Collections/objects do not survive
+     * a cache round-trip. */
     private function chartResult(array $buckets, array $extra = []): array
     {
         $series = collect($buckets)
@@ -492,7 +545,7 @@ class ReportsPage extends Component
             ->values();
 
         return array_merge([
-            'series' => $series,
+            'series' => $series->all(),
             'total'  => (int) $series->sum('value'),
             'max'    => max($series->max('value'), 1),
         ], $extra);

@@ -41,10 +41,13 @@
                 </div>
             </div>
 
-            {{-- granularity tabs --}}
+            {{-- granularity tabs — optimistic flip via data-ip-pick so the
+                 tapped tab reacts INSTANTLY; only the chart itself may load --}}
             <div class="mt-3 flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800" role="group" aria-label="بازه نمودار فروش">
                 @foreach ([['key' => 'daily', 'label' => 'روزانه'], ['key' => 'weekly', 'label' => 'هفتگی'], ['key' => 'monthly', 'label' => 'ماهانه'], ['key' => 'yearly', 'label' => 'سالانه']] as $mode)
-                    <button type="button" wire:click="setSalesMode('{{ $mode['key'] }}')" wire:loading.attr="disabled" wire:target="setSalesMode"
+                    <button type="button" wire:click="setSalesMode('{{ $mode['key'] }}')"
+                            data-ip-pick data-ip-group="sales-mode"
+                            data-ip-pick-class="bg-white text-emerald-600 shadow-sm dark:bg-slate-900 dark:text-emerald-400"
                             class="flex-1 rounded-lg px-2 py-1 text-[10px] font-bold transition {{ $salesMode === $mode['key']
                                 ? 'bg-white text-emerald-600 shadow-sm dark:bg-slate-900 dark:text-emerald-400'
                                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
@@ -57,7 +60,7 @@
             <div class="mt-3 grid grid-cols-2 gap-2">
                 <div class="rounded-2xl bg-gradient-to-l from-emerald-600/10 to-emerald-500/5 p-3 dark:from-emerald-600/20 dark:to-emerald-500/10">
                     <p class="text-[9.5px] font-bold text-slate-400">فروش بازه انتخابی</p>
-                    <p class="mt-0.5 text-sm font-black text-emerald-600 dark:text-emerald-400">{{ \App\Support\Fmt::money($sales['total']) }} <span class="text-[9px] font-bold text-slate-400">تومان</span></p>
+                    <p class="mt-0.5 text-sm font-black text-emerald-600 dark:text-emerald-400">{{ \App\Support\Fmt::fa($sales['total']) }} <span class="text-[9px] font-bold text-slate-400">تومان</span></p>
                 </div>
                 <div class="rounded-2xl bg-primary-50 p-3 dark:bg-primary-950/30">
                     <p class="text-[9.5px] font-bold text-slate-400">سفارش‌های پرداخت‌شده</p>
@@ -77,8 +80,12 @@
                 </div>
             </div>
 
-            {{-- bars --}}
-            <div class="scroll-slim mt-4 overflow-x-auto pb-1">
+            {{-- bars — only THIS chart area shows activity while it reloads --}}
+            <div class="relative scroll-slim mt-4 overflow-x-auto pb-1">
+                <div wire:loading wire:target="setSalesMode, salesFrom, salesTo"
+                     class="absolute inset-0 z-10 grid place-items-center rounded-xl bg-white/60 backdrop-blur-[1px] dark:bg-slate-900/60">
+                    <span class="size-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></span>
+                </div>
                 <div class="flex h-28 min-w-full items-end gap-1.5" dir="ltr">
                     @forelse ($sales['series'] as $bar)
                         <div class="flex min-w-7 flex-1 flex-col items-center gap-1" wire:key="sales-{{ $loop->index }}">
@@ -118,7 +125,9 @@
 
             <div class="mt-3 flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800" role="group" aria-label="بازه نمودار بازدید">
                 @foreach ([['key' => 'daily', 'label' => 'روزانه'], ['key' => 'weekly', 'label' => 'هفتگی'], ['key' => 'monthly', 'label' => 'ماهانه'], ['key' => 'yearly', 'label' => 'سالانه']] as $mode)
-                    <button type="button" wire:click="setViewsMode('{{ $mode['key'] }}')" wire:loading.attr="disabled" wire:target="setViewsMode"
+                    <button type="button" wire:click="setViewsMode('{{ $mode['key'] }}')"
+                            data-ip-pick data-ip-group="views-mode"
+                            data-ip-pick-class="bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400"
                             class="flex-1 rounded-lg px-2 py-1 text-[10px] font-bold transition {{ $viewsMode === $mode['key']
                                 ? 'bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400'
                                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
@@ -150,7 +159,11 @@
                 </div>
             </div>
 
-            <div class="scroll-slim mt-4 overflow-x-auto pb-1">
+            <div class="relative scroll-slim mt-4 overflow-x-auto pb-1">
+                <div wire:loading wire:target="setViewsMode, viewsFrom, viewsTo"
+                     class="absolute inset-0 z-10 grid place-items-center rounded-xl bg-white/60 backdrop-blur-[1px] dark:bg-slate-900/60">
+                    <span class="size-5 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></span>
+                </div>
                 <div class="flex h-24 min-w-full items-end gap-1.5" dir="ltr">
                     @forelse ($views['series'] as $bar)
                         <div class="flex min-w-7 flex-1 flex-col items-center gap-1" wire:key="views-{{ $loop->index }}">

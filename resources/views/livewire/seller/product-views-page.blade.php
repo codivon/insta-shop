@@ -35,6 +35,8 @@
         <div class="mt-4 flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800" role="group" aria-label="بازه بازدید">
             @foreach ([['key' => 'all', 'label' => 'همه'], ['key' => 'today', 'label' => 'امروز'], ['key' => 'd7', 'label' => '۷ روز'], ['key' => 'd30', 'label' => '۳۰ روز'], ['key' => 'custom', 'label' => 'بازه']] as $r)
                 <button type="button" wire:click="$set('range', '{{ $r['key'] }}')"
+                        data-ip-pick data-ip-group="views-range"
+                        data-ip-pick-class="bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400"
                         class="flex-1 rounded-lg px-1.5 py-1.5 text-[10px] font-bold transition {{ $range === $r['key']
                             ? 'bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400'
                             : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
