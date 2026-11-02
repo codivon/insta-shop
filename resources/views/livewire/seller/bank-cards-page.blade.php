@@ -11,11 +11,13 @@
                     <div class="text-[11px] text-slate-400">حساب‌های واریز و برداشت شما</div>
                 </div>
             </div>
-            <a href="{{ route('seller.profile') }}" wire:navigate
-            <x-seller-notif-bell class="ms-auto" />
-               class="grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بازگشت">
-                <x-icon name="arrow-right" class="size-5" />
-            </a>
+            <div class="flex items-center gap-1">
+                <x-seller-notif-bell />
+                <a href="{{ route('seller.profile') }}" wire:navigate
+                   class="grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بازگشت">
+                    <x-icon name="arrow-right" class="size-5" />
+                </a>
+            </div>
         </div>
     </div>
 
