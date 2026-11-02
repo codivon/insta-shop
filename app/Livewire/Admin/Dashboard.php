@@ -31,10 +31,36 @@ class Dashboard extends Component
     // slow shared hosting they were the biggest page-load cost (N9).
     private const STATS_TTL = 60;
 
+    // v2: JSON-ONLY payloads. config/cache.php ships «serializable_classes =>
+    // false» (gadget-chain hardening), so any OBJECT read back from cache
+    // unserializes to __PHP_Incomplete_Class — the chart Collection crashed
+    // every dashboard load with «Return value must be of type ...Collection,
+    // __PHP_Incomplete_Class returned». Strings survive the round-trip
+    // untouched; the new key namespace also orphans any poisoned old entry.
     private function cached(string $key, callable $compute): mixed
     {
+        $cacheKey = 'admin.dash.v2.'.$key;
+
         try {
-            return Cache::remember('admin.dash.'.$key, self::STATS_TTL, $compute);
+            $hit = Cache::get($cacheKey);
+
+            if (is_string($hit)) {
+                try {
+                    $decoded = json_decode($hit, true, 512, JSON_THROW_ON_ERROR);
+                } catch (\JsonException) {
+                    $decoded = null; // corrupted payload → recompute below
+                }
+
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
+            }
+
+            $fresh = $compute();
+
+            Cache::put($cacheKey, json_encode($fresh, JSON_UNESCAPED_UNICODE), self::STATS_TTL);
+
+            return $fresh;
         } catch (\Throwable) {
             return $compute(); // cache store unavailable → compute directly
         }
@@ -129,10 +155,12 @@ class Dashboard extends Component
         });
     }
 
-    /** Orders per day for the last 7 days (count + paid amount). */
+    /** Orders per day for the last 7 days (count + paid amount).
+     *  Computes a PLAIN ARRAY (JSON-cache friendly) and wraps it in a
+     *  Collection so the view keeps its ->sum()/->max() API. */
     public function getChartProperty(): Collection
     {
-        return $this->cached('chart', function (): Collection {
+        return collect($this->cached('chart', function (): array {
             $from = Carbon::today()->subDays(6);
 
             $rows = Order::query()
@@ -143,23 +171,23 @@ class Dashboard extends Component
                 ->get()
                 ->keyBy(fn ($row) => (string) $row->day);
 
-            $out = collect();
+            $out = [];
 
             for ($i = 0; $i < 7; $i++) {
                 $day = $from->copy()->addDays($i);
                 $key = $day->toDateString();
                 $row = $rows[$key] ?? null;
 
-                $out->push([
+                $out[] = [
                     'label' => $day->locale('fa')->dayName,
                     'orders' => (int) ($row->orders ?? 0),
                     'amount' => (int) ($row->amount ?? 0),
                     'today' => $i === 6,
-                ]);
+                ];
             }
 
             return $out;
-        });
+        }));
     }
 
     public function getRecentOrdersProperty(): Collection
