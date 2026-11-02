@@ -38,6 +38,20 @@ body {
     overscroll-behavior: none;
 }
 
+/* ── No sideways page scroll, ever. The panel drawers (admin/seller)
+   park themselves OUTSIDE the viewport with `translate-x-full` while
+   closed — a transformed fixed box widens the document's scrollable
+   area, and mobile Chrome then zooms the whole panel out to fit it
+   (the «پنل در گوشی بهم‌ریخته» bug). `clip` cuts that overflow without
+   creating a scroll container (sticky bars stay safe); `hidden` is the
+   fallback for engines without clip. BOTH html and body are required —
+   clipping only one still left the page 186px too wide in testing. ── */
+html,
+body {
+    overflow-x: hidden;
+    overflow-x: clip;
+}
+
 body {
     @apply font-sans antialiased;
 }
