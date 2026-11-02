@@ -197,7 +197,34 @@ class OrdersPage extends Component
         session()->flash('seller-orders-flash', 'وضعیت ارسال با موفقیت ثبت شد.');
     }
 
+    /** This shop's slice of the order currently opened in the shipment modal. */
+    public function getShipSliceProperty(): ?OrderShipment
+    {
+        if ($this->shipOrderId === null) {
+            return null;
+        }
+
+        return OrderShipment::query()
+            ->where('order_id', $this->shipOrderId)
+            ->where('shop_id', $this->shop()->id)
+            ->first();
+    }
+
     /* ── cancel flow (this shop's slice) ───────────────────────────── */
+
+    /** «لغو» lives INSIDE the shipment options modal as the last,
+     * divider-separated entry — this bridges the two modals in one
+     * request so they never fight over visibility. */
+    public function openCancelFromShipment(): void
+    {
+        $orderId = $this->shipOrderId;
+
+        $this->closeShipment();
+
+        if ($orderId !== null) {
+            $this->openCancel($orderId);
+        }
+    }
 
     public function openCancel(int $id): void
     {

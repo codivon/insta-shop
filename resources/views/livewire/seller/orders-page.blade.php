@@ -121,13 +121,6 @@
                                         <x-icon name="truck" class="size-3.5" />
                                         وضعیت ارسال
                                     </button>
-                                    @if ($slice->shipment_status !== 'delivered')
-                                        <button type="button" wire:click="openCancel({{ $order->id }})"
-                                                class="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[10px] font-bold text-rose-500 transition hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/40">
-                                            <x-icon name="circle-x" class="size-3.5" />
-                                            لغو
-                                        </button>
-                                    @endif
                                 @endif
                             </div>
                         </div>
@@ -346,6 +339,27 @@
                         <input type="radio" value="{{ $value }}" wire:model="shipStatus" class="size-4" style="accent-color: var(--ip-primary)">
                     </label>
                 @endforeach
+
+                @php
+                    $shipSlice = $this->shipSlice;
+                    $canCancelSlice = $shipSlice && ! $shipSlice->isCanceled() && $shipSlice->shipment_status !== 'delivered';
+                @endphp
+                @if ($canCancelSlice)
+                    {{-- لغو — deliberately the LAST option, separated from the send options by a divider line --}}
+                    <div class="border-t border-dashed border-slate-200 pt-2.5 dark:border-slate-700">
+                        <button type="button" wire:click="openCancelFromShipment"
+                                class="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-rose-200 px-3.5 py-3 text-xs font-bold text-rose-500 transition hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/40">
+                            <span class="flex items-center gap-2">
+                                <x-icon name="circle-x" class="size-4" />
+                                لغو سهم فروشگاه از این سفارش
+                            </span>
+                            <x-icon name="chevron-left" class="size-3.5 opacity-50" />
+                        </button>
+                        <p class="mt-1.5 px-1 text-[10px] leading-4 text-slate-400">
+                            کالاها به موجودی انبار برمی‌گردند و مبلغ سهم فروشگاه به مشتری بازگردانده می‌شود.
+                        </p>
+                    </div>
+                @endif
             </div>
 
             <div x-show="shipStatus === 'shipped'" x-cloak x-transition.opacity>
