@@ -7,6 +7,8 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 
 use App\Models\Seller;
 use App\Models\Shop;
+use App\Support\ActivityLogger;
+use App\Support\AdminNotifier;
 use App\Support\Fmt;
 use App\Support\Phone;
 use Illuminate\Support\Collection;
@@ -97,8 +99,15 @@ class SellersIndex extends Component
     {
         $seller = Seller::query()->findOrFail($sellerId);
 
+        $before = ['status' => $seller->status];
         $seller->forceFill(['status' => 'approved'])->save();
-        session()->flash('admin-users-flash', 'فروشنده «'.($seller->full_name ?: '@'.$seller->instagram_username).'» تأیید شد؛ فروشگاه او اکنون برای مشتریان قابل مشاهده است.');
+
+        $name = '@'.$seller->instagram_username;
+
+        ActivityLogger::log('seller.approved', 'فروشنده '.$name.' تایید شد — فروشگاهش برای مشتریان فعال است', subject: $seller, before: $before, after: ['status' => 'approved']);
+        AdminNotifier::notify('seller.approved', 'فروشنده تایید شد ✅ '.$name, 'فروشگاه او اکنون برای مشتریان قابل مشاهده است.', route('admin.users.sellers'), 'check', $seller);
+
+        session()->flash('admin-users-flash', 'فروشنده «'.($seller->full_name ?: $name).'» تأیید شد؛ فروشگاه او اکنون برای مشتریان قابل مشاهده است.');
     }
 
     public function reject(int $sellerId): void
@@ -109,16 +118,29 @@ class SellersIndex extends Component
             return;
         }
 
+        $before = ['status' => $seller->status];
         $seller->forceFill(['status' => 'suspended'])->save();
-        session()->flash('admin-users-flash', 'درخواست فروشنده «'.($seller->full_name ?: '@'.$seller->instagram_username).'» رد شد.');
+
+        $name = '@'.$seller->instagram_username;
+
+        ActivityLogger::log('seller.suspended', 'درخواست فروشنده '.$name.' رد شد', subject: $seller, before: $before, after: ['status' => 'suspended']);
+
+        session()->flash('admin-users-flash', 'درخواست فروشنده «'.($seller->full_name ?: $name).'» رد شد.');
     }
 
     public function suspend(int $sellerId): void
     {
         $seller = Seller::query()->findOrFail($sellerId);
 
+        $before = ['status' => $seller->status];
         $seller->forceFill(['status' => 'suspended'])->save();
-        session()->flash('admin-users-flash', 'فروشنده «'.($seller->full_name ?: '@'.$seller->instagram_username).'» غیرفعال شد؛ فروشگاه او از دید مشتریان خارج شد.');
+
+        $name = '@'.$seller->instagram_username;
+
+        ActivityLogger::log('seller.suspended', 'فروشنده '.$name.' تعلیق شد — فروشگاهش از دید مشتریان خارج شد', subject: $seller, before: $before, after: ['status' => 'suspended']);
+        AdminNotifier::notify('seller.suspended', 'فروشنده تعلیق شد ⛔ '.$name, 'فروشگاه او از دید مشتریان خارج شد.', route('admin.users.sellers'), 'circle-slash', $seller);
+
+        session()->flash('admin-users-flash', 'فروشنده «'.($seller->full_name ?: $name).'» غیرفعال شد؛ فروشگاه او از دید مشتریان خارج شد.');
     }
 
     /* ══════════ edit modal ══════════ */
@@ -171,6 +193,8 @@ class SellersIndex extends Component
             return;
         }
 
+        $before = $seller->only(['full_name', 'instagram_username', 'phone', 'status', 'commission_type', 'commission_value']);
+
         $seller->fill([
             'full_name'         => trim($this->editFullName) !== '' ? trim($this->editFullName) : null,
             'instagram_username' => trim($this->editInstagram) !== '' ? trim($this->editInstagram) : null,
@@ -193,6 +217,14 @@ class SellersIndex extends Component
         if ($seller->shop && $seller->instagram_username) {
             Shop::query()->whereKey($seller->shop->id)->update(['instagram_username' => $seller->instagram_username]);
         }
+
+        ActivityLogger::log(
+            'seller.updated',
+            'اطلاعات فروشنده @'.($seller->instagram_username ?: '—').' ویرایش شد',
+            subject: $seller,
+            before: array_filter($before, fn ($v) => $v !== null),
+            after: $seller->only(['full_name', 'instagram_username', 'phone', 'status', 'commission_type', 'commission_value']),
+        );
 
         $this->closeEditModal();
 

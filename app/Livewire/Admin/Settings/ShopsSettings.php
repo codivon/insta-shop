@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\Settings;
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Setting;
+use App\Support\ActivityLogger;
 use Livewire\Component;
 
 /**
@@ -70,9 +71,19 @@ class ShopsSettings extends Component
     {
         $this->validateWithToast(fn () => $this->validate($this->rules(), $this->messages()));
 
+        $pairs = [
+            'shops.auto_approve_seller' => $this->autoApprove ? '1' : '0',
+            'shops.commission_type'     => $this->commissionType,
+            'shops.commission_value'    => (int) $this->commissionValue,
+        ];
+
+        $snapshot = ActivityLogger::settingsSnapshot(array_keys($pairs));
+
         Setting::set('shops.auto_approve_seller', $this->autoApprove, 'boolean');
         Setting::set('shops.commission_type', $this->commissionType, 'text');
         Setting::set('shops.commission_value', (int) $this->commissionValue, 'number');
+
+        ActivityLogger::logSettingsChanged('تنظیمات فروشگاه‌ها (تایید خودکار و کمیسیون) ویرایش شد', $snapshot, $pairs);
 
         $this->dispatch('panel-toast', message: 'تنظیمات فروشگاه‌ها ذخیره شد. ✅', type: 'success');
     }

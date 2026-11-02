@@ -176,12 +176,14 @@
 
             {{-- category chips (horizontal scroll) --}}
             <div class="scroll-slim -mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-1">
-                <button type="button" wire:click="$set('categoryFilter', 0)"
+                <button type="button" wire:click="$set('categoryFilter', 0)" data-ip-pick data-ip-group="seller-cat"
+                        data-ip-pick-class="bg-primary-600 text-white shadow shadow-primary-600/30"
                         class="shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition {{ $categoryFilter === 0 ? 'bg-primary-600 text-white shadow shadow-primary-600/30' : 'border border-slate-200 bg-white text-slate-500 hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300' }}">
                     همه دسته‌ها
                 </button>
                 @foreach ($categories as $cat)
-                    <button type="button" wire:click="$set('categoryFilter', {{ $cat->id }})"
+                    <button type="button" wire:click="$set('categoryFilter', {{ $cat->id }})" data-ip-pick data-ip-group="seller-cat"
+                            data-ip-pick-class="bg-primary-600 text-white shadow shadow-primary-600/30"
                             class="shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition {{ $categoryFilter === $cat->id ? 'bg-primary-600 text-white shadow shadow-primary-600/30' : 'border border-slate-200 bg-white text-slate-500 hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300' }}">
                         {{ $cat->name }}
                         <span class="opacity-60">{{ \App\Support\Fmt::fa($cat->products_count) }}</span>
@@ -193,7 +195,8 @@
             <div class="mt-1.5 grid grid-cols-2 gap-2">
                 <div class="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800" role="group" aria-label="فیلتر وضعیت انتشار">
                     @foreach (['all' => 'همه', 'published' => 'منتشرشده', 'draft' => 'پیش‌نویس'] as $key => $label)
-                        <button type="button" wire:click="$set('statusFilter', '{{ $key }}')"
+                        <button type="button" wire:click="$set('statusFilter', '{{ $key }}')" data-ip-pick data-ip-group="seller-status"
+                                data-ip-pick-class="bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400"
                                 class="flex-1 rounded-lg py-1.5 text-[10px] font-bold transition {{ $statusFilter === $key ? 'bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
                             {{ $label }}
                         </button>
@@ -201,7 +204,8 @@
                 </div>
                 <div class="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800" role="group" aria-label="فیلتر موجودی">
                     @foreach (['all' => 'همه', 'in' => 'موجود', 'out' => 'ناموجود'] as $key => $label)
-                        <button type="button" wire:click="$set('stockFilter', '{{ $key }}')"
+                        <button type="button" wire:click="$set('stockFilter', '{{ $key }}')" data-ip-pick data-ip-group="seller-stock"
+                                data-ip-pick-class="bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400"
                                 class="flex-1 rounded-lg py-1.5 text-[10px] font-bold transition {{ $stockFilter === $key ? 'bg-white text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
                             {{ $label }}
                         </button>
@@ -212,7 +216,8 @@
             {{-- special-sale filter (فروش ویژه) --}}
             <div class="mt-2 flex rounded-xl border border-rose-200 bg-rose-50/70 p-1 dark:border-rose-900/60 dark:bg-rose-950/30" role="group" aria-label="فیلتر فروش ویژه">
                 @foreach (['all' => 'همه محصولات', 'special' => 'فروش ویژه', 'plain' => 'غیر ویژه'] as $key => $label)
-                    <button type="button" wire:click="$set('specialFilter', '{{ $key }}')"
+                    <button type="button" wire:click="$set('specialFilter', '{{ $key }}')" data-ip-pick data-ip-group="seller-special"
+                            data-ip-pick-class="bg-white text-rose-600 shadow-sm dark:bg-slate-900 dark:text-rose-400"
                             class="flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-bold transition {{ $specialFilter === $key ? 'bg-white text-rose-600 shadow-sm dark:bg-slate-900 dark:text-rose-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
                         @if ($key === 'special')
                             <x-icon name="flame" class="size-3" />

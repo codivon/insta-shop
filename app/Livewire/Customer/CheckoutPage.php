@@ -12,6 +12,8 @@ use App\Models\Order;
 use App\Models\Province;
 use App\Models\Shop;
 use App\Support\Checkout\DiscountEvaluator;
+use App\Support\ActivityLogger;
+use App\Support\AdminNotifier;
 use App\Support\Fmt;
 use App\Support\Payments\PaymentService;
 use App\Support\Phone;
@@ -589,6 +591,22 @@ class CheckoutPage extends Component
 
             return;
         }
+
+        ActivityLogger::log(
+            'order.created',
+            'سفارش جدید '.Fmt::fa($order->id).' ثبت شد — مبلغ '.Fmt::money($order->total_amount),
+            subject: $order,
+            after: ['status' => 'pending', 'gateway' => $this->gateway],
+        );
+
+        AdminNotifier::notify(
+            'order.new',
+            'سفارش جدید 🛍️ '.Fmt::fa($order->id),
+            'مبلغ '.Fmt::money($order->total_amount).' — در انتظار پرداخت',
+            route('admin.orders.show', $order->id),
+            'bag',
+            $order,
+        );
 
         // Full page load (not wire:navigate) — the next response is the
         // gateway's redirection form, not a Livewire page.

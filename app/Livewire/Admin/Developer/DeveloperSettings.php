@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\Developer;
 
 use App\Livewire\Admin\Concerns\GuardsSuperAdmin;
 use App\Models\Setting;
+use App\Support\ActivityLogger;
 use App\Support\EnvEditor;
 use App\Support\MigrationInspector;
 use Illuminate\Support\Facades\Artisan;
@@ -162,7 +163,16 @@ class DeveloperSettings extends Component
 
     public function saveCron(): void
     {
+        $before = ['developer.queue_shared_hosting' => (bool) Setting::get('developer.queue_shared_hosting', false)];
+
         Setting::set('developer.queue_shared_hosting', $this->sharedHostingCronEnabled ? '1' : '0', 'boolean');
+
+        ActivityLogger::log(
+            'settings.updated',
+            'تنظیمات کرون جاب ذخیره شد',
+            before: $before,
+            after: ['developer.queue_shared_hosting' => $this->sharedHostingCronEnabled],
+        );
 
         session()->flash('admin-developer-flash', 'تنظیمات کرون جاب ذخیره شد.');
     }
@@ -196,6 +206,8 @@ class DeveloperSettings extends Component
 
         Cache::forget('instashop.settings');
 
+        ActivityLogger::log('system.maintenance', 'حالت بروزرسانی سایت فعال شد — سایت برای بازدیدکنندگان بسته است', after: ['developer.maintenance.enabled' => true]);
+
         session()->flash('admin-developer-flash', 'حالت بروزرسانی فعال شد — سایت برای بازدیدکنندگان بسته است.');
     }
 
@@ -205,6 +217,8 @@ class DeveloperSettings extends Component
         Cache::forget('instashop.settings');
 
         $this->maintenanceEnabled = false;
+
+        ActivityLogger::log('system.maintenance', 'حالت بروزرسانی سایت غیرفعال شد — سایت دوباره در دسترس است', after: ['developer.maintenance.enabled' => false]);
 
         session()->flash('admin-developer-flash', 'حالت بروزرسانی غیرفعال شد — سایت دوباره در دسترس است.');
     }
@@ -294,14 +308,25 @@ class DeveloperSettings extends Component
         // settings table before).
         [$ok, $error] = EnvEditor::set('APP_DEBUG', $this->devMode ? 'true' : 'false');
 
-        // Take effect on this request too.
-        config(['app.debug' => $this->devMode]);
+        // NOTE: deliberately NOT flipping config('app.debug') for the current
+        // request. Flipping debug ON mid-request makes Livewire's profiling
+        // code reference an unassigned $start variable and the whole update
+        // crashes with "Undefined variable $start" (settings save, but the
+        // success flash never reaches the browser). EnvEditor already cleared
+        // the config caches, so the very next request sees the new value.
 
         if (! $ok) {
             session()->flash('admin-developer-error', 'حالت توسعه‌ای در تنظیمات ذخیره شد اما نوشتن APP_DEBUG در فایل .env ناموفق بود: '.$error);
 
             return;
         }
+
+        ActivityLogger::log(
+            'settings.updated',
+            $this->devMode ? 'حالت توسعه‌ای (نمایش جزئیات خطاها) فعال شد' : 'حالت توسعه‌ای (نمایش جزئیات خطاها) غیرفعال شد',
+            before: ['developer.dev_mode' => ! $this->devMode, 'APP_DEBUG' => $this->devMode ? 'false' : 'true'],
+            after: ['developer.dev_mode' => $this->devMode, 'APP_DEBUG' => $this->devMode ? 'true' : 'false'],
+        );
 
         session()->flash('admin-developer-flash', $this->devMode
             ? 'حالت توسعه‌ای فعال شد — از این پس جزئیات کامل خطاها نمایش داده می‌شود. پس از رفع مشکل آن را خاموش کنید.'
@@ -335,14 +360,21 @@ class DeveloperSettings extends Component
             return;
         }
 
-        // Take effect on this request too.
-        config(['app.env' => $env, 'app.debug' => $env === 'local']);
+        // NOTE: like toggleDevMode, no mid-request config() flip here — the
+        // written .env + config:clear apply from the next request onward.
 
         // Dev-mode toggle in the UI mirrors the new APP_DEBUG.
         Setting::set('developer.dev_mode', $env === 'local' ? '1' : '0', 'boolean');
         $this->devMode = $env === 'local';
 
         Cache::forget('instashop.settings');
+
+        ActivityLogger::log(
+            'settings.updated',
+            'محیط برنامه (APP_ENV) روی '.$env.' تنظیم شد',
+            before: ['APP_ENV' => config('app.env')],
+            after: ['APP_ENV' => $env, 'APP_DEBUG' => $env === 'local' ? 'true' : 'false'],
+        );
 
         session()->flash('admin-developer-flash', $env === 'production'
             ? 'محیط برنامه روی production تنظیم شد — کش‌ها فعال و خطاها مخفی می‌شوند.'
@@ -397,7 +429,94 @@ class DeveloperSettings extends Component
 
         $this->clearingCache = false;
 
+        ActivityLogger::log('cache.cleared', 'کش‌های سرور پاک‌سازی شد: '.implode('، ', $done));
+
         session()->flash('admin-developer-flash', 'پاک‌سازی انجام شد: '.implode('، ', $done).'.');
+    }
+
+    /**
+     * «بهینه‌سازی سرعت» — bake the config/view/event caches. On shared
+     * hosting this is THE biggest speed win: every request stops
+     * re-parsing hundreds of config files and re-compiling Blade views.
+     * Must be re-run after every deploy (config:clear etc. undo it).
+     */
+    public function optimize(): void
+    {
+        $this->clearingCache = true;
+
+        $done = [];
+
+        try {
+            @set_time_limit(180);
+
+            Artisan::call('view:cache');
+            $done[] = 'کش نماها';
+
+            Artisan::call('event:cache');
+            $done[] = 'کش رویدادها';
+
+            // config:cache MUST NOT run through Artisan inside a request: it
+            // boots a SECOND app instance (getFreshConfiguration) which swaps
+            // the static Facade roots and breaks the current request (the
+            // "$errors undefined" crash). The same file is written directly
+            // from the in-memory config instead — identical result on the
+            // next boot, zero side effects on this request.
+            if ($this->writeConfigCache()) {
+                $done[] = 'کش پیکربندی';
+            }
+        } catch (\Throwable $e) {
+            $this->clearingCache = false;
+
+            session()->flash('admin-developer-error', 'بهینه‌سازی ناموفق بود: '.$e->getMessage());
+
+            return;
+        }
+
+        $this->clearingCache = false;
+
+        ActivityLogger::log('cache.optimized', 'بهینه‌سازی سرعت اجرا شد — '.implode('، ', $done).' ساخته شد');
+
+        session()->flash('admin-developer-flash', 'بهینه‌سازی انجام شد ✅ ('.implode('، ', $done).' ساخته شد) — سایت حالا سریع‌تر بارگذاری می‌شود. پس از هر استقرار جدید یک‌بار اجرا کنید.');
+    }
+
+    /**
+     * Write bootstrap/cache/config.php from the CURRENT in-memory config —
+     * the same artifact `artisan config:cache` produces, but without booting
+     * a second app (see optimize()). The written file is require()'d as a
+     * guard; anything non-serializable deletes the file and fails soft.
+     */
+    protected function writeConfigCache(): bool
+    {
+        try {
+            $path = base_path('bootstrap/cache/config.php');
+
+            if (! is_dir(dirname($path)) || ! is_writable(dirname($path))) {
+                return false;
+            }
+
+            $content = '<?php return '.var_export(config()->all(), true).';'.PHP_EOL;
+
+            file_put_contents($path, $content, LOCK_EX);
+
+            // guard: an unserializable value (a Closure in some config key…)
+            // would fatal the NEXT request — validate and roll back at once.
+            // NOTE: `include` (not require) returns false on failure instead
+            // of fatalling, and parentheses are MANDATORY here:
+            // `include $path === false` would parse as `include ($path === false)`.
+            $loaded = include $path;
+
+            if (! is_array($loaded)) {
+                @unlink($path);
+
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable) {
+            @unlink(base_path('bootstrap/cache/config.php'));
+
+            return false;
+        }
     }
 
     /* ════════════════════════ MIGRATIONS ════════════════════════ */
@@ -421,6 +540,16 @@ class DeveloperSettings extends Component
         $this->runningMigrations = false;
 
         if ($ok) {
+            ActivityLogger::log('system.migration', 'مایگریشن‌ها و سیدرهای جدید با موفقیت اجرا شدند', after: ['output' => mb_substr($output, 0, 400)]);
+
+            // New tables/columns exist now — cached views/config built for the
+            // old schema are refreshed so the speed caches never serve stale logic.
+            try {
+                Artisan::call('view:cache');
+            } catch (\Throwable) {
+                // best effort
+            }
+
             session()->flash('admin-developer-flash', 'مایگریشن‌ها و سیدرهای جدید با موفقیت اجرا شدند.');
         } else {
             session()->flash('admin-developer-error', 'اجرای مایگریشن‌ها ناموفق بود: '.$output);
@@ -496,6 +625,27 @@ class DeveloperSettings extends Component
 
         // Apply immediately to the running request as well.
         config(['session.lifetime' => $this->sessionLifetime]);
+
+        ActivityLogger::log(
+            'settings.updated',
+            'تنظیمات امنیت ذخیره و اعمال شد',
+            before: [
+                'security.force_https'          => (bool) Setting::get('security.force_https', false),
+                'security.headers_enabled'      => (bool) Setting::get('security.headers_enabled', false),
+                'security.bot_blocking'         => (bool) Setting::get('security.bot_blocking', false),
+                'security.login_max_attempts'   => (int) Setting::get('security.login_max_attempts', 5),
+                'security.login_lockout_minutes' => (int) Setting::get('security.login_lockout_minutes', 10),
+                'security.session_lifetime'     => (int) Setting::get('security.session_lifetime', 120),
+            ],
+            after: [
+                'security.force_https'          => $this->forceHttps,
+                'security.headers_enabled'      => $this->securityHeaders,
+                'security.bot_blocking'         => $this->botBlocking,
+                'security.login_max_attempts'   => $this->loginMaxAttempts,
+                'security.login_lockout_minutes' => $this->loginLockoutMinutes,
+                'security.session_lifetime'     => $this->sessionLifetime,
+            ],
+        );
 
         session()->flash('admin-developer-flash', 'تنظیمات امنیت ذخیره و اعمال شد.');
     }

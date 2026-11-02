@@ -363,6 +363,25 @@
                         پاک‌سازی همه‌ی کش‌ها
                     </button>
                     <span wire:loading wire:target="clearCache" class="ms-1 text-[11px] font-bold text-primary-600 dark:text-primary-400">در حال پاک‌سازی…</span>
+
+                    {{-- ── speed optimize (N9) ── --}}
+                    <div class="flex flex-col gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3.5 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-900 dark:bg-emerald-950/20">
+                        <div>
+                            <p class="flex items-center gap-1.5 text-[12.5px] font-extrabold text-emerald-800 dark:text-emerald-300">
+                                <x-icon name="trending-up" class="size-4" />
+                                بهینه‌سازی سرعت سایت
+                            </p>
+                            <p class="mt-1 text-[11px] leading-5 text-emerald-700/90 dark:text-emerald-300/80">
+                                کش پیکربندی، نماها و رویدادها ساخته می‌شود — بزرگ‌ترین شتاب بارگذاری روی هاست اشتراکی. پس از هر استقرار یا بروزرسانی سایت، یک‌بار این دکمه را بزنید.
+                            </p>
+                        </div>
+                        <button type="button" wire:click="optimize" wire:loading.attr="disabled" wire:target="optimize"
+                                class="inline-flex shrink-0 items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-emerald-600/25 transition hover:bg-emerald-700 disabled:opacity-50">
+                            <span wire:loading wire:target="optimize" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                            <span wire:loading.remove wire:target="optimize"><x-icon name="check" class="size-3.5" /></span>
+                            اجرای بهینه‌سازی
+                        </button>
+                    </div>
                 </section>
 
                 {{-- ── pending migrations (auto-hidden) ── --}}

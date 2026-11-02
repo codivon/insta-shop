@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 
 use App\Models\Setting;
+use App\Support\ActivityLogger;
 use App\Support\Color;
 use App\Support\Theme;
 use Livewire\Attributes\Layout;
@@ -112,12 +113,18 @@ class AppearanceSettings extends Component
             return;
         }
 
-        Setting::setMany([
+        $appearancePairs = [
             'theme.preset' => $this->preset,
             'theme.primary' => Color::normalize($this->effectivePrimary()),
             'theme.warmth' => $this->preset === 'custom' ? 0 : $this->warmth,
             'theme.default_mode' => $this->defaultMode,
-        ]);
+        ];
+
+        $snapshot = ActivityLogger::settingsSnapshot(array_keys($appearancePairs));
+
+        Setting::setMany($appearancePairs);
+
+        ActivityLogger::logSettingsChanged('تنظیمات ظاهر و رنگ‌بندی ویرایش شد', $snapshot, $appearancePairs);
 
         // keep the form in sync with what was stored
         $this->primary = Color::normalize($this->effectivePrimary());

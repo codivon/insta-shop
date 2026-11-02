@@ -6,6 +6,7 @@ use App\Livewire\Admin\Concerns\GuardsPermissions;
 
 use App\Models\Setting;
 use App\Models\SmsLog;
+use App\Support\ActivityLogger;
 use App\Support\Phone;
 use App\Support\Sms\SmsManager;
 use App\Support\Sms\SmsMessage;
@@ -76,7 +77,15 @@ class SmsSettings extends Component
             $pairs["sms.{$this->driver}.{$field}"] = trim((string) ($this->fields[$this->driver][$field] ?? ''));
         }
 
+        $snapshot = ActivityLogger::settingsSnapshot(array_keys($pairs));
+
         Setting::setMany($pairs);
+
+        ActivityLogger::logSettingsChanged(
+            'تنظیمات پیامک ویرایش شد (پروایدر فعال: '.($drivers->firstWhere('name', $this->driver)['label'] ?? $this->driver).')',
+            $snapshot,
+            $pairs,
+        );
 
         session()->flash('admin-sms-flash', 'تنظیمات پیامک ذخیره شد؛ پروایدر فعال اکنون «'.($drivers->firstWhere('name', $this->driver)['label'] ?? $this->driver).'» است.');
     }

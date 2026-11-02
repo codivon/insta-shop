@@ -6,6 +6,7 @@ use App\Livewire\Admin\Concerns\GuardsPermissions;
 
 use App\Models\PaymentLog;
 use App\Models\Setting;
+use App\Support\ActivityLogger;
 use App\Support\Payments\PaymentService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -51,7 +52,15 @@ class PaymentSettings extends Component
             $pairs["payment.{$this->gateway}.{$field}"] = trim((string) ($this->fields[$this->gateway][$field] ?? ''));
         }
 
+        $snapshot = ActivityLogger::settingsSnapshot(array_keys($pairs));
+
         Setting::setMany($pairs);
+
+        ActivityLogger::logSettingsChanged(
+            'تنظیمات درگاه پرداخت ویرایش شد (درگاه فعال: '.PaymentService::GATEWAYS[$this->gateway].')',
+            $snapshot,
+            $pairs,
+        );
 
         session()->flash('admin-payment-flash', 'تنظیمات پرداخت ذخیره شد؛ درگاه فعال اکنون «'.PaymentService::GATEWAYS[$this->gateway].'» است.');
     }

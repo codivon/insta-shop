@@ -225,3 +225,18 @@ body {
 .cart-pop {
     animation: cart-pop .35s cubic-bezier(.34,1.56,.64,1);
 }
+
+/* ── Instant filter-pick feedback (optimistic, server reconciles) ──
+   Tapping a filter chip highlights it IMMEDIATELY via the delegated
+   data-ip-pick handler in app.js — the Livewire morph then confirms
+   the real state. On slow shared hosts this removes the perceived
+   lag between the tap and the visual response. */
+@layer utilities {
+    [data-ip-pick].ip-picked {
+        border-color: var(--ip-primary-600, var(--ip-primary, #7c3aed));
+        background-color: var(--ip-primary-600, var(--ip-primary, #7c3aed));
+        background-image: var(--ip-gradient);
+        color: var(--ip-on-primary, #fff);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+    }
+}

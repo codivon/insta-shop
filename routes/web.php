@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Admin\PushSubscriptionController;
 use App\Http\Controllers\Auth\PanelLogout;
 use App\Http\Controllers\Seller\ProductFileDownload;
 use App\Http\Controllers\Shop\PaymentCallback;
 use App\Http\Controllers\Shop\PaymentRedirect;
+use App\Livewire\Admin\ActivityPage;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\DiscountsIndex;
 use App\Livewire\Admin\LocationsPage;
@@ -13,6 +15,7 @@ use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Admin\Developer\DeveloperSettings;
 use App\Livewire\Admin\Developer\SystemLogs;
 use App\Livewire\Admin\IncomePage;
+use App\Livewire\Admin\Notifications\NotificationsPage;
 use App\Livewire\Admin\OrdersIndex;
 use App\Livewire\Admin\OrderShow;
 use App\Livewire\Admin\ProductsIndex;
@@ -75,6 +78,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::middleware(['panel.auth', 'admin.permission'])->group(function () {
         Route::get('/', Dashboard::class)->name('dashboard');
+
+        // ── Activity trail (فعالیت‌های اخیر — audit log) ──
+        Route::get('/activity', ActivityPage::class)->name('activity');
+
+        // ── Notifications (همهٔ اتفاق‌های سایت + پوش موبایل/سیستم) ──
+        Route::get('/notifications', NotificationsPage::class)->name('notifications');
+        Route::post('/notifications/subscribe', [PushSubscriptionController::class, 'store'])->name('notifications.subscribe');
+        Route::delete('/notifications/subscribe', [PushSubscriptionController::class, 'destroy'])->name('notifications.unsubscribe');
 
         // ── Users management ──
         Route::get('/users/sellers', SellersIndex::class)->name('users.sellers');

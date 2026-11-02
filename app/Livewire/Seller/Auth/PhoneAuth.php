@@ -5,6 +5,9 @@ namespace App\Livewire\Seller\Auth;
 use App\Models\Seller;
 use App\Models\Shop;
 use App\Services\OtpService;
+use App\Support\ActivityLogger;
+use App\Support\AdminNotifier;
+use App\Support\Fmt;
 use App\Support\Phone;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -181,6 +184,22 @@ class PhoneAuth extends Component
                 'phone_verified_at' => now(),
                 'last_login_at' => now(),
             ]);
+
+            ActivityLogger::log(
+                'seller.new',
+                'فروشنده جدید ثبت‌نام کرد — @'.$this->instagram.($autoApproved ? ' (تایید خودکار)' : ' (در انتظار تایید)'),
+                subject: $seller,
+                after: ['status' => $autoApproved ? 'approved' : 'pending'],
+            );
+
+            AdminNotifier::notify(
+                'seller.new',
+                'فروشنده جدید 🏪 @'.$this->instagram,
+                $autoApproved ? 'با تایید خودکار فعال شد.' : 'در انتظار تایید شماست.',
+                route('admin.users.sellers'),
+                'store',
+                $seller,
+            );
         } else {
             $seller = Seller::where('phone', $this->phone)->first();
 

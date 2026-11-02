@@ -217,4 +217,35 @@
             </a>
         @endforeach
     </div>
+
+    {{-- ── recent activities (فعالیت‌های اخیر) ── --}}
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+            <div class="flex items-center gap-2.5">
+                <span class="grid size-9 place-items-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    <x-icon name="clock" class="size-4.5" />
+                </span>
+                <div>
+                    <p class="text-sm font-extrabold">فعالیت‌های اخیر</p>
+                    <p class="text-[10.5px] text-slate-400">هر اتفاقی که در سایت می‌افتد ثبت می‌شود</p>
+                </div>
+            </div>
+            <a href="{{ route('admin.activity') }}" wire:navigate
+               class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-500 transition hover:border-primary-300 hover:text-primary-700 dark:border-slate-700 dark:text-slate-300">
+                مشاهده همه
+                <x-icon name="arrow-left" class="size-3" />
+            </a>
+        </div>
+
+        @forelse ($recentActivities as $act)
+            <div class="flex items-center gap-3 border-b border-slate-50 px-5 py-2.5 last:border-0 dark:border-slate-800/60" wire:key="dash-act-{{ $act->id }}">
+                <span class="size-1.5 shrink-0 rounded-full {{ $act->actor_type === 'admin' ? 'bg-primary-500' : ($act->actor_type === 'seller' ? 'bg-emerald-500' : ($act->actor_type === 'customer' ? 'bg-sky-500' : 'bg-slate-300')) }}"></span>
+                <p class="min-w-0 flex-1 truncate text-[12px] font-semibold text-slate-600 dark:text-slate-300">{{ $act->title }}</p>
+                <span class="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[9.5px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">{{ $act->actorLabel() }}</span>
+                <span class="w-20 shrink-0 text-end text-[10px] text-slate-400">{{ \App\Support\JDate::ago($act->created_at) }}</span>
+            </div>
+        @empty
+            <p class="px-5 py-8 text-center text-xs font-semibold text-slate-400">هنوز فعالیتی ثبت نشده است</p>
+        @endforelse
+    </div>
 </div>

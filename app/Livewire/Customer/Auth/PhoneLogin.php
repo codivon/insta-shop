@@ -4,6 +4,9 @@ namespace App\Livewire\Customer\Auth;
 
 use App\Models\Customer;
 use App\Services\OtpService;
+use App\Support\ActivityLogger;
+use App\Support\AdminNotifier;
+use App\Support\Fmt;
 use App\Support\Phone;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -118,6 +121,20 @@ class PhoneLogin extends Component
             ['phone' => $this->phone],
             ['status' => 'active', 'phone_verified_at' => now()],
         );
+
+        // wasCreated → a brand-new visitor just became a customer
+        if ($customer->wasRecentlyCreated) {
+            ActivityLogger::log('customer.new', 'مشتری جدید ثبت‌نام کرد — '.Fmt::fa($this->phone), subject: $customer);
+
+            AdminNotifier::notify(
+                'customer.new',
+                'مشتری جدید 👤',
+                'شماره '.Fmt::fa($this->phone).' ثبت‌نام کرد.',
+                route('admin.users.customers.show', $customer->id),
+                'user',
+                $customer,
+            );
+        }
 
         if ($customer->status === 'blocked') {
             $this->addError('code', 'حساب شما مسدود شده است. با پشتیبانی تماس بگیرید.');

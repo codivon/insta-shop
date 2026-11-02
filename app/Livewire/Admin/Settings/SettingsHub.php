@@ -49,6 +49,7 @@ class SettingsHub extends Component
             'admin.settings.sms',
             'admin.settings.payment',
             'admin.settings.shops',
+            'admin.settings.notifications',
         ])->contains(fn (string $p) => $admin->hasPermission($p));
 
         if ($admin->isSuper() || $admin->hasPermission('admin.settings') || $anySection) {
@@ -98,6 +99,12 @@ class SettingsHub extends Component
                 'label'       => 'تنظیمات فروشگاه‌ها',
                 'description' => 'تایید خودکار فروشنده و کمیسیون',
                 'perm'        => 'admin.settings.shops',
+            ],
+            'notifications' => [
+                'icon'        => 'bell',
+                'label'       => 'نوتیفیکیشن‌ها',
+                'description' => 'اعلان رویدادها + پوش گوشی و سیستم',
+                'perm'        => 'admin.settings.notifications',
             ],
         ];
 

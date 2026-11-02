@@ -592,6 +592,9 @@ class ProductForm extends Component
 
         abort_if($product->exists && $product->shop_id !== $this->shop()->id, 404);
 
+        // capture BEFORE the save mutates the model — needed for the audit diff
+        $originalStatus = $product->exists ? $product->getOriginal('status') : null;
+
         DB::transaction(function () use ($product) {
             $product->fill([
                 'shop_id'          => $this->shop()->id,
@@ -628,6 +631,25 @@ class ProductForm extends Component
 
             $product->syncAggregates();
         });
+
+        \App\Support\ActivityLogger::log(
+            $this->productId ? 'product.updated' : 'product.created',
+            'محصول «'.$product->name.'» '.($this->productId ? 'ویرایش' : 'ایجاد').($this->status === 'published' ? ' شد (منتشر)' : ' شد (پیش‌نویس)'),
+            subject: $product,
+            before: $originalStatus ? ['status' => $originalStatus] : [],
+            after: ['status' => $this->status],
+        );
+
+        if (! $this->productId && $this->status === 'published') {
+            \App\Support\AdminNotifier::notify(
+                'product.new',
+                'محصول جدید 📦 '.$product->name,
+                'از فروشگاه '.($product->shop?->name ?: '—').' منتشر شد.',
+                $product->publicUrl(),
+                'package',
+                $product,
+            );
+        }
 
         session()->flash('shop-flash', $this->productId ? 'محصول به‌روزرسانی شد.' : 'محصول جدید اضافه شد.');
 

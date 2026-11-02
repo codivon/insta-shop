@@ -4,6 +4,8 @@ namespace App\Livewire\Admin\Auth;
 
 use App\Models\Admin;
 use App\Models\Setting;
+use App\Support\ActivityLogger;
+use App\Support\AdminNotifier;
 use App\Support\Fmt;
 use App\Support\SchemaReady;
 use Illuminate\Support\Facades\Auth;
@@ -77,6 +79,16 @@ class Login extends Component
         if (RateLimiter::tooManyAttempts($key, $max)) {
             $seconds = RateLimiter::availableIn($key);
 
+            ActivityLogger::log('security.lockout', 'ورود پنل مدیریت موقتاً قفل شد — تلاش‌های ناموفق مکرر برای '.$this->email);
+
+            AdminNotifier::notify(
+                'security.lockout',
+                'قفل ورود پنل مدیریت 🔒',
+                'تلاش‌های ناموفق مکرر برای '.$this->email.' — ورود '.Fmt::fa((int) ceil($seconds / 60)).' دقیقه قفل شد.',
+                route('admin.developer.settings'),
+                'shield',
+            );
+
             $this->addError('email', 'به دلیل تلاش‌های ناموفق مکرر، ورود موقتاً قفل شده است. لطفاً '
                 .Fmt::fa((int) ceil($seconds / 60)).' دقیقه دیگر دوباره تلاش کنید.');
 
@@ -106,6 +118,8 @@ class Login extends Component
         /** @var Admin $admin */
         $admin = Auth::guard('admin')->user();
         $admin->forceFill(['last_login_at' => now()])->save();
+
+        ActivityLogger::log('auth.login', 'مدیر «'.$admin->name.'» وارد پنل مدیریت شد');
 
         $this->redirect(route('admin.dashboard'), navigate: true);
     }

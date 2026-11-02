@@ -26,7 +26,9 @@ return [
         'overview' => [
             'label' => 'نمای کلی',
             'permissions' => [
-                'admin.dashboard' => 'داشبورد',
+                'admin.dashboard'  => 'داشبورد',
+                'admin.activity'   => 'فعالیت‌های اخیر (گزارش کامل رویدادها)',
+                'admin.notifications' => 'نوتیفیکیشن‌ها',
             ],
         ],
 
@@ -63,6 +65,7 @@ return [
                 'admin.settings.sms.templates'  => 'قالب‌های پیامک',
                 'admin.settings.payment'        => 'درگاه پرداخت',
                 'admin.settings.shops'          => 'تنظیمات فروشگاه‌ها (تایید خودکار، کمیسیون)',
+                'admin.settings.notifications'  => 'نوتیفیکیشن‌ها (پوش و رویدادها)',
             ],
         ],
 

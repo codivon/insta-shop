@@ -77,6 +77,22 @@ class JDate
         return self::fa($jd).' '.self::MONTHS[$jm].' '.self::fa($jy);
     }
 
+    /** «چند لحظه پیش» / «۵ دقیقه پیش» / «۳ ساعت پیش» / «دیروز» / تاریخ کامل */
+    public static function ago(CarbonInterface $date): string
+    {
+        $diff = (int) abs($date->timestamp - time());
+
+        return match (true) {
+            $diff < 45        => 'چند لحظه پیش',
+            $diff < 90        => 'یک دقیقه پیش',
+            $diff < 3600      => self::fa((string) (int) round($diff / 60)).' دقیقه پیش',
+            $diff < 7200      => 'یک ساعت پیش',
+            $diff < 86400     => self::fa((string) (int) round($diff / 3600)).' ساعت پیش',
+            $diff < 172800    => 'دیروز',
+            default           => self::dateTime($date),
+        };
+    }
+
     private static function fa(string $value): string
     {
         return strtr($value, self::FA_DIGITS);

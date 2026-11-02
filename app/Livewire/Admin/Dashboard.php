@@ -11,6 +11,7 @@ use App\Models\Seller;
 use App\Models\Shop;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -25,115 +26,140 @@ class Dashboard extends Component
 
     protected static string $permission = 'admin.dashboard';
     // ── Computed stats ───────────────────────────────────────────────
+    // Every aggregate below goes through Cache::remember with a 60s TTL —
+    // the dashboard re-runs these GROUP BY queries on every render and on
+    // slow shared hosting they were the biggest page-load cost (N9).
+    private const STATS_TTL = 60;
+
+    private function cached(string $key, callable $compute): mixed
+    {
+        try {
+            return Cache::remember('admin.dash.'.$key, self::STATS_TTL, $compute);
+        } catch (\Throwable) {
+            return $compute(); // cache store unavailable → compute directly
+        }
+    }
 
     public function getSellersProperty(): array
     {
-        $byStatus = Seller::query()
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
+        return $this->cached('sellers', function (): array {
+            $byStatus = Seller::query()
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status');
 
-        return [
-            'total' => (int) $byStatus->sum(),
-            'pending' => (int) ($byStatus['pending'] ?? 0),
-            'approved' => (int) ($byStatus['approved'] ?? 0),
-        ];
+            return [
+                'total' => (int) $byStatus->sum(),
+                'pending' => (int) ($byStatus['pending'] ?? 0),
+                'approved' => (int) ($byStatus['approved'] ?? 0),
+            ];
+        });
     }
 
     public function getCustomersProperty(): array
     {
-        $byStatus = Customer::query()
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
+        return $this->cached('customers', function (): array {
+            $byStatus = Customer::query()
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status');
 
-        return [
-            'total' => (int) $byStatus->sum(),
-            'blocked' => (int) ($byStatus['blocked'] ?? 0),
-        ];
+            return [
+                'total' => (int) $byStatus->sum(),
+                'blocked' => (int) ($byStatus['blocked'] ?? 0),
+            ];
+        });
     }
 
     public function getShopsProperty(): array
     {
-        $byStatus = Shop::query()
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
+        return $this->cached('shops', function (): array {
+            $byStatus = Shop::query()
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status');
 
-        return [
-            'total' => (int) $byStatus->sum(),
-            'active' => (int) ($byStatus['active'] ?? 0),
-        ];
+            return [
+                'total' => (int) $byStatus->sum(),
+                'active' => (int) ($byStatus['active'] ?? 0),
+            ];
+        });
     }
 
     public function getProductsProperty(): array
     {
-        $byStatus = Product::query()
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
+        return $this->cached('products', function (): array {
+            $byStatus = Product::query()
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status');
 
-        return [
-            'total' => (int) $byStatus->sum(),
-            'published' => (int) ($byStatus['published'] ?? 0),
-            'draft' => (int) ($byStatus['draft'] ?? 0),
-        ];
+            return [
+                'total' => (int) $byStatus->sum(),
+                'published' => (int) ($byStatus['published'] ?? 0),
+                'draft' => (int) ($byStatus['draft'] ?? 0),
+            ];
+        });
     }
 
     public function getOrderStatsProperty(): array
     {
-        $byStatus = Order::query()
-            ->selectRaw('status, count(*) as total, coalesce(sum(total_amount),0) as amount')
-            ->groupBy('status')
-            ->get()
-            ->keyBy('status');
+        return $this->cached('orderStats', function (): array {
+            $byStatus = Order::query()
+                ->selectRaw('status, count(*) as total, coalesce(sum(total_amount),0) as amount')
+                ->groupBy('status')
+                ->get()
+                ->keyBy('status');
 
-        $paidAmount = (int) ($byStatus['paid']->amount ?? 0);
+            $paidAmount = (int) ($byStatus['paid']->amount ?? 0);
 
-        $today = Order::query()
-            ->whereDate('created_at', Carbon::today())
-            ->selectRaw('count(*) as total, coalesce(sum(case when status = ? then total_amount else 0 end),0) as paid_amount', ['paid'])
-            ->first();
+            $today = Order::query()
+                ->whereDate('created_at', Carbon::today())
+                ->selectRaw('count(*) as total, coalesce(sum(case when status = ? then total_amount else 0 end),0) as paid_amount', ['paid'])
+                ->first();
 
-        return [
-            'total' => (int) $byStatus->sum('total'),
-            'paid' => (int) ($byStatus['paid']->total ?? 0),
-            'pending' => (int) ($byStatus['pending']->total ?? 0),
-            'paidAmount' => $paidAmount,
-            'todayCount' => (int) ($today->total ?? 0),
-            'todayPaid' => (int) ($today->paid_amount ?? 0),
-        ];
+            return [
+                'total' => (int) $byStatus->sum('total'),
+                'paid' => (int) ($byStatus['paid']->total ?? 0),
+                'pending' => (int) ($byStatus['pending']->total ?? 0),
+                'paidAmount' => $paidAmount,
+                'todayCount' => (int) ($today->total ?? 0),
+                'todayPaid' => (int) ($today->paid_amount ?? 0),
+            ];
+        });
     }
 
     /** Orders per day for the last 7 days (count + paid amount). */
     public function getChartProperty(): Collection
     {
-        $from = Carbon::today()->subDays(6);
+        return $this->cached('chart', function (): Collection {
+            $from = Carbon::today()->subDays(6);
 
-        $rows = Order::query()
-            ->whereBetween('created_at', [$from->copy()->startOfDay(), Carbon::today()->endOfDay()])
-            ->selectRaw("date(created_at) as day, count(*) as orders,
-                coalesce(sum(case when status = 'paid' then total_amount else 0 end),0) as amount")
-            ->groupBy('day')
-            ->get()
-            ->keyBy(fn ($row) => (string) $row->day);
+            $rows = Order::query()
+                ->whereBetween('created_at', [$from->copy()->startOfDay(), Carbon::today()->endOfDay()])
+                ->selectRaw("date(created_at) as day, count(*) as orders,
+                    coalesce(sum(case when status = 'paid' then total_amount else 0 end),0) as amount")
+                ->groupBy('day')
+                ->get()
+                ->keyBy(fn ($row) => (string) $row->day);
 
-        $out = collect();
+            $out = collect();
 
-        for ($i = 0; $i < 7; $i++) {
-            $day = $from->copy()->addDays($i);
-            $key = $day->toDateString();
-            $row = $rows[$key] ?? null;
+            for ($i = 0; $i < 7; $i++) {
+                $day = $from->copy()->addDays($i);
+                $key = $day->toDateString();
+                $row = $rows[$key] ?? null;
 
-            $out->push([
-                'label' => $day->locale('fa')->dayName,
-                'orders' => (int) ($row->orders ?? 0),
-                'amount' => (int) ($row->amount ?? 0),
-                'today' => $i === 6,
-            ]);
-        }
+                $out->push([
+                    'label' => $day->locale('fa')->dayName,
+                    'orders' => (int) ($row->orders ?? 0),
+                    'amount' => (int) ($row->amount ?? 0),
+                    'today' => $i === 6,
+                ]);
+            }
 
-        return $out;
+            return $out;
+        });
     }
 
     public function getRecentOrdersProperty(): Collection
@@ -155,7 +181,22 @@ class Dashboard extends Component
             'orderStats' => $this->orderStats,
             'chart' => $this->chart,
             'recentOrders' => $this->recentOrders,
+            'recentActivities' => $this->recentActivities(),
         ])->title('داشبورد مدیریت')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — داشبورد']);
+    }
+
+    /** Latest audit-trail entries for the «فعالیت‌های اخیر» widget. */
+    protected function recentActivities()
+    {
+        try {
+            if (! \App\Support\SchemaReady::check('activity_logs')) {
+                return collect();
+            }
+
+            return \App\Models\ActivityLog::query()->latest()->limit(7)->get();
+        } catch (\Throwable) {
+            return collect();
+        }
     }
 }

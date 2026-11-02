@@ -6,6 +6,7 @@ use App\Models\BankCard;
 use App\Models\Shop;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Support\AdminNotifier;
 use App\Support\Fmt;
 use App\Support\Wallet\WalletService;
 use Illuminate\Support\Collection;
@@ -116,6 +117,22 @@ class WalletPage extends Component
 
             return;
         }
+
+        \App\Support\ActivityLogger::log(
+            'wallet.withdraw',
+            'درخواست برداشت '.Fmt::money($amount).' از کیف پول فروشگاه '.($this->shop()?->name ?: '—').' ثبت شد',
+            subject: $tx,
+            after: ['amount' => $amount, 'sheba' => '••••'.mb_substr($this->withdrawSheba, -4)],
+        );
+
+        AdminNotifier::notify(
+            'wallet.withdraw',
+            'درخواست برداشت 💰 '.Fmt::money($amount),
+            'فروشگاه '.($this->shop()?->name ?: '—').' درخواست برداشت ثبت کرد — نیاز به تایید شما.',
+            route('admin.income'),
+            'wallet',
+            $tx,
+        );
 
         $this->withdrawOpen   = false;
         $this->withdrawAmount = '';

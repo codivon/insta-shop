@@ -419,7 +419,7 @@
                                 <div class="flex flex-wrap gap-1.5">
                                     @foreach ($block['values'] as $value)
                                         @php $picked = in_array($value, (array) ($specPicks[$block['key']] ?? []), true); @endphp
-                                        <button type="button" wire:click="toggleSpecPick('{{ $block['key'] }}', '{{ $value }}')" wire:key="spv-{{ $row['filter']->id }}-{{ $loop->parent->index }}-{{ $loop->index }}"
+                                        <button type="button" data-ip-pick wire:click="toggleSpecPick('{{ $block['key'] }}', '{{ $value }}')" wire:key="spv-{{ $row['filter']->id }}-{{ $loop->parent->index }}-{{ $loop->index }}"
                                                 class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-extrabold transition active:scale-95 {{ $picked
                                                     ? 'border-primary-600 bg-primary-600 text-white shadow-md shadow-primary-600/25'
                                                     : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300' }}">

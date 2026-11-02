@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Shop;
 
 use App\Models\Order;
 use App\Models\PaymentLog;
+use App\Support\ActivityLogger;
+use App\Support\AdminNotifier;
+use App\Support\Fmt;
 use App\Support\Payments\PaymentService;
 use Illuminate\Http\Request;
 use Throwable;
@@ -38,6 +41,22 @@ class PaymentCallback
         try {
             $receipt = PaymentService::verify($order);
             $order->finalizePaid($receipt->getReferenceId());
+
+            ActivityLogger::log(
+                'order.paid',
+                'پرداخت سفارش '.Fmt::fa($order->id).' موفق شد — مبلغ '.Fmt::money($order->total_amount),
+                subject: $order,
+                after: ['status' => 'paid'],
+            );
+
+            AdminNotifier::notify(
+                'order.paid',
+                'پرداخت موفق ✅ سفارش '.Fmt::fa($order->id),
+                'مبلغ '.Fmt::money($order->total_amount).' پرداخت شد.',
+                route('admin.orders.show', $order->id),
+                'circle-check',
+                $order,
+            );
         } catch (Throwable $e) {
             // the exact reason lands in payment_logs — the developer panel
             // (and the payment log table) can now show WHY it failed.
@@ -52,6 +71,22 @@ class PaymentCallback
             );
 
             $order->markFailed();
+
+            ActivityLogger::log(
+                'order.failed',
+                'پرداخت سفارش '.Fmt::fa($order->id).' ناموفق بود',
+                subject: $order,
+                after: ['status' => 'failed', 'reason' => mb_substr($e->getMessage(), 0, 190)],
+            );
+
+            AdminNotifier::notify(
+                'order.failed',
+                'پرداخت ناموفق ⚠️ سفارش '.Fmt::fa($order->id),
+                mb_substr($e->getMessage(), 0, 150),
+                route('admin.orders.show', $order->id),
+                'alert',
+                $order,
+            );
         }
 
         return redirect()->route('shop.payment.result', $order->id);

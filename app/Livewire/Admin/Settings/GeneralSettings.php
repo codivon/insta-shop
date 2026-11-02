@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\Settings;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Models\Setting;
+use App\Support\ActivityLogger;
 use App\Support\Branding;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -82,7 +83,16 @@ class GeneralSettings extends Component
     {
         $this->validateWithToast(fn () => $this->validate());
 
+        $snapshot = ActivityLogger::settingsSnapshot(['theme.app_name', 'seo.meta_description', 'store.phone', 'store.instagram']);
+
         Setting::setMany([
+            'theme.app_name' => $this->appName,
+            'seo.meta_description' => $this->metaDescription,
+            'store.phone' => $this->storePhone,
+            'store.instagram' => $this->storeInstagram,
+        ]);
+
+        ActivityLogger::logSettingsChanged('تنظیمات عمومی (عنوان، توضیح، تماس) ویرایش شد', $snapshot, [
             'theme.app_name' => $this->appName,
             'seo.meta_description' => $this->metaDescription,
             'store.phone' => $this->storePhone,

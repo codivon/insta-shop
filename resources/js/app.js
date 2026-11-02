@@ -173,3 +173,61 @@ window.addEventListener('cart-changed', (event) => {
         });
     });
 })();
+
+/* ═══════════════════════════════════════════════════════════════
+   Instant filter-pick feedback — delegated optimistic toggle.
+   Any element carrying [data-ip-pick] (storefront filter chips,
+   attribute picks, seller product-list chips, …) flips to its
+   "picked" look the moment it is tapped; the Livewire morph that
+   follows confirms the real state.
+
+   • data-ip-pick          → simple toggle (multi-select chips);
+                             uses the generic .ip-picked look
+   • data-ip-pick + data-ip-group="x"
+                           → single-select: clears the siblings in
+                             the same group first, then highlights
+                             this one (category pills, sort tabs, …)
+   • data-ip-pick + data-ip-pick-class="bg-white …"
+                           → apply THESE Tailwind classes instead of
+                             .ip-picked, i.e. exactly the classes the
+                             server uses for the selected state — so
+                             the optimistic flash is pixel-identical
+                             to the settled state (no style jump)
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-ip-pick]');
+    if (! el) {
+        return;
+    }
+
+    const custom = (el.getAttribute('data-ip-pick-class') || '')
+        .split(/\s+/)
+        .filter(Boolean);
+    const group = el.getAttribute('data-ip-group');
+
+    if (group) {
+        // single-select: the tapped chip wins immediately
+        document
+            .querySelectorAll('[data-ip-group="' + group + '"]')
+            .forEach((sib) => {
+                if (custom.length) {
+                    sib.classList.remove(...custom);
+                }
+                sib.classList.remove('ip-picked');
+            });
+
+        if (custom.length) {
+            el.classList.add(...custom);
+        } else {
+            el.classList.add('ip-picked');
+        }
+
+        return;
+    }
+
+    if (custom.length) {
+        custom.forEach((c) => el.classList.toggle(c));
+    } else {
+        el.classList.toggle('ip-picked');
+    }
+}, true);

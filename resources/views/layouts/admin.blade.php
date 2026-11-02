@@ -75,6 +75,7 @@
                     ['route' => 'admin.locations',           'icon' => 'map-pin',     'label' => 'استان و شهر','match' => 'admin.locations',     'badge' => null],
                     ['route' => 'admin.users.sellers',       'icon' => 'users',       'label' => 'فروشندگان',  'match' => 'admin.users.sellers', 'badge' => $pendingSellers],
                     ['route' => 'admin.users.customers',     'icon' => 'user',        'label' => 'مشتریان',    'match' => 'admin.users.customers','badge' => null],
+                    ['route' => 'admin.activity',            'icon' => 'clock',       'label' => 'فعالیت‌های اخیر', 'match' => 'admin.activity',  'badge' => null],
                 ], fn ($item) => $can($item['route'])));
 
                 // ── مدیران group (لیست مدیران + نقش‌ها) ──
@@ -261,10 +262,7 @@
                         سیستم آنلاین
                     </span>
                     <x-theme-toggle class="size-10 text-slate-500" />
-                    <button type="button" class="relative grid size-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="اعلان‌ها">
-                        <x-icon name="bell" class="size-5" />
-                        <span class="absolute right-2.5 top-2.5 size-2 rounded-full bg-primary-500 ring-2 ring-white dark:ring-slate-900"></span>
-                    </button>
+                    @livewire('admin.notifications.notifications-bell')
                     <button type="button" class="grid size-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="جستجو">
                         <x-icon name="search" class="size-5" />
                     </button>
@@ -325,6 +323,72 @@
     @endonce
 
     @livewireScripts
+
+    {{-- Web-Push registration helper for the admin notifications bell —
+         lives in the LAYOUT (not the bell component) because Livewire
+         components may only have one root element. --}}
+    @once
+        <script>
+            (function () {
+                function urlB64ToUint8Array(base64String) {
+                    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+                    const raw = atob(base64);
+                    const output = new Uint8Array(raw.length);
+                    for (let i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+                    return output;
+                }
+
+                window.__ipVapidKey = @js(\App\Support\WebPusher::publicKey());
+                window.__ipPushRoute = @js(route('admin.notifications.subscribe'));
+
+                window.__ipEnablePush = async function () {
+                    try {
+                        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification) {
+                            return;
+                        }
+
+                        const perm = await Notification.requestPermission();
+                        if (perm !== 'granted') return;
+
+                        const reg = await navigator.serviceWorker.register('/sw.js');
+                        await navigator.serviceWorker.ready;
+
+                        let sub = await reg.pushManager.getSubscription();
+                        if (!sub) {
+                            sub = await reg.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: urlB64ToUint8Array(window.__ipVapidKey || ''),
+                            });
+                        }
+
+                        const json = sub.toJSON();
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.content
+                            || window.livewireScriptConfig?.csrf
+                            || '';
+
+                        await fetch(window.__ipPushRoute, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                endpoint: json.endpoint,
+                                keys: json.keys,
+                                device_label: navigator.userAgent.slice(0, 100),
+                            }),
+                        });
+
+                        window.dispatchEvent(new CustomEvent('ip-push-subscribed'));
+                    } catch (e) {
+                        console.warn('push subscribe failed', e);
+                    }
+                };
+            })();
+        </script>
+    @endonce
 
     @include('partials.panel-toast')
 
