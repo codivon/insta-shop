@@ -251,7 +251,12 @@
     {{-- ───────── Main area ───────── --}}
     <div class="flex min-h-screen flex-col lg:mr-[260px]">
         {{-- topbar --}}
-        <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/90">
+        <header class="sticky top-0 z-30 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            {{-- NOTE: NO backdrop-blur here on purpose — backdrop-filter makes
+                 the header a CONTAINING BLOCK for position:fixed descendants,
+                 which would shrink the bell dropdown's full-screen close
+                 backdrop (fixed inset-0) to the 64px header strip, so tapping
+                 «around» the dropdown on a phone never closed it. --}}
             <div class="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
                 <div class="flex items-center gap-3">
                     <button type="button" data-open-sidebar

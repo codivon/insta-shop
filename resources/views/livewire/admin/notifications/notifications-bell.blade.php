@@ -22,10 +22,16 @@
              wire:key="bell-open">
             <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
                 <p class="text-[13px] font-extrabold">اعلان‌ها</p>
-                <button type="button" wire:click="markAllRead"
-                        class="text-[11px] font-bold text-primary-600 transition hover:text-primary-700 dark:text-primary-400">
-                    علامت‌گذاری همه به‌عنوان خوانده‌شده
-                </button>
+                <div class="flex items-center gap-1">
+                    <button type="button" wire:click="markAllRead"
+                            class="text-[11px] font-bold text-primary-600 transition hover:text-primary-700 dark:text-primary-400">
+                        علامت‌گذاری همه به‌عنوان خوانده‌شده
+                    </button>
+                    <button type="button" wire:click="toggle" aria-label="بستن"
+                            class="grid size-7 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200">
+                        <x-icon name="x" class="size-4" />
+                    </button>
+                </div>
             </div>
 
             <div class="scroll-slim max-h-[330px] overflow-y-auto">
