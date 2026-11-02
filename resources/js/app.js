@@ -75,3 +75,101 @@ window.addEventListener('cart-changed', (event) => {
         badge.classList.add('cart-pop');
     });
 });
+
+// ── Global loading feedback (every panel) ────────────────────────────
+// The user asked for loading feedback on the PAGE and on the BUTTON they
+// clicked, for every clickable thing in every panel, until the content is
+// fully loaded. One shared runtime does it all:
+//
+//   1. #ip-loadbar  — slim indeterminate progress bar on top, visible for
+//                     EVERY Livewire request (commits included).
+//   2. .ip-busy     — the element that was actually clicked gets a busy
+//                     treatment (inline spinner + muted + inert) for the
+//                     duration of that request.
+//   3. #ip-navveil  — soft full-viewport veil while a wire:navigate page
+//                     transition fetches the next document.
+//
+// The DOM nodes are injected once from JS, so no layout file needs edits.
+(function () {
+    let bar, veil;
+
+    const ensureNodes = () => {
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'ip-loadbar';
+            document.body.appendChild(bar);
+        }
+        if (!veil) {
+            veil = document.createElement('div');
+            veil.id = 'ip-navveil';
+            veil.setAttribute('aria-hidden', 'true');
+            veil.innerHTML = '<div class="ip-navveil-spin"></div>';
+            document.body.appendChild(veil);
+        }
+    };
+
+    /* the element the user interacted with last (capture phase, before
+       Livewire sees the click) */
+    let origin = null;
+    const busyTargets = new Set();
+
+    document.addEventListener('pointerdown', (e) => {
+        const el = e.target.closest('button, a, [role="button"], label, summary, [wire\\:click]');
+        origin = el || null;
+    }, { capture: true });
+
+    const markBusy = (el) => {
+        if (!el || !el.isConnected) return;
+        el.classList.add('ip-busy');
+        busyTargets.add(el);
+    };
+
+    const clearBusy = () => {
+        busyTargets.forEach((el) => el.classList.remove('ip-busy'));
+        busyTargets.clear();
+    };
+
+    const showBar = () => { ensureNodes(); bar.classList.add('ip-on'); };
+    const hideBar = () => { bar && bar.classList.remove('ip-on'); };
+
+    let inflight = 0;
+
+    document.addEventListener('livewire:init', () => {
+        // every Livewire request (wire:click, wire:model.live commits, …)
+        Livewire.hook('request', ({ respond }) => {
+            inflight += 1;
+            showBar();
+            // the LAST pointerdown before this request wins the busy mark
+            markBusy(origin);
+            origin = null;
+
+            respond(() => {
+                inflight = Math.max(0, inflight - 1);
+                if (inflight === 0) {
+                    hideBar();
+                    clearBusy();
+                }
+            });
+        });
+
+        // wire:navigate page transitions
+        document.addEventListener('livewire:navigate', () => {
+            ensureNodes();
+            veil.classList.add('ip-on');
+        });
+
+        document.addEventListener('livewire:navigated', () => {
+            veil && veil.classList.remove('ip-on');
+            hideBar();
+            clearBusy();
+            inflight = 0;
+        });
+
+        // safety: if a request errors out without respond() firing cleanly
+        window.addEventListener('offline', () => {
+            inflight = 0;
+            hideBar();
+            clearBusy();
+        });
+    });
+})();

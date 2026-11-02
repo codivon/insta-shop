@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Shop;
 
 use App\Models\Order;
+use App\Models\PaymentLog;
 use App\Support\Payments\PaymentService;
 use Illuminate\Http\Request;
 use Throwable;
@@ -29,10 +30,27 @@ class PaymentCallback
             return redirect()->route('shop.payment.result', $order->id);
         }
 
+        /*
+         * The success path itself is hardened inside
+         * PaymentService::verify() — the local driver's transactionId is
+         * restored from the order whenever the callback loses it.
+         */
         try {
             $receipt = PaymentService::verify($order);
             $order->finalizePaid($receipt->getReferenceId());
         } catch (Throwable $e) {
+            // the exact reason lands in payment_logs — the developer panel
+            // (and the payment log table) can now show WHY it failed.
+            PaymentLog::record(
+                $order,
+                (string) ($order->gateway ?: 'local'),
+                'callback_failed',
+                (string) $order->gateway_ref,
+                (int) $order->total_amount,
+                false,
+                $e->getMessage(),
+            );
+
             $order->markFailed();
         }
 

@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\Developer;
 
 use App\Livewire\Admin\Concerns\GuardsSuperAdmin;
 use App\Models\Setting;
+use App\Support\EnvEditor;
 use App\Support\MigrationInspector;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -61,6 +62,11 @@ class DeveloperSettings extends Component
 
     public bool $clearingCache = false;
 
+    /* ── APP_ENV — محیط برنامه (written into .env) ── */
+    public string $appEnv = 'production';
+
+    public bool $savingAppEnv = false;
+
     /* ── Migrations ── */
     public bool $runningMigrations = false;
 
@@ -97,6 +103,13 @@ class DeveloperSettings extends Component
 
         /* ── Other ── */
         $this->devMode = (bool) Setting::get('developer.dev_mode');
+
+        /* ── APP_ENV — the .env file is the source of truth (fallback: runtime config) ── */
+        $this->appEnv = EnvEditor::get('APP_ENV') ?: (string) config('app.env', 'production');
+
+        if (! in_array($this->appEnv, ['production', 'staging', 'local'], true)) {
+            $this->appEnv = 'production';
+        }
 
         /* ── Security ── */
         $this->forceHttps         = (bool) Setting::get('security.force_https');
@@ -276,12 +289,64 @@ class DeveloperSettings extends Component
         // before this change-handler ran) — persist it as-is.
         Setting::set('developer.dev_mode', $this->devMode ? '1' : '0', 'boolean');
 
+        // APP_DEBUG must mirror dev mode IN THE .env FILE so the choice
+        // survives redeploys and config caches (bug: it only lived in the
+        // settings table before).
+        [$ok, $error] = EnvEditor::set('APP_DEBUG', $this->devMode ? 'true' : 'false');
+
         // Take effect on this request too.
         config(['app.debug' => $this->devMode]);
+
+        if (! $ok) {
+            session()->flash('admin-developer-error', 'حالت توسعه‌ای در تنظیمات ذخیره شد اما نوشتن APP_DEBUG در فایل .env ناموفق بود: '.$error);
+
+            return;
+        }
 
         session()->flash('admin-developer-flash', $this->devMode
             ? 'حالت توسعه‌ای فعال شد — از این پس جزئیات کامل خطاها نمایش داده می‌شود. پس از رفع مشکل آن را خاموش کنید.'
             : 'حالت توسعه‌ای غیرفعال شد — خطاها به‌صورت کلی نمایش داده می‌شوند.');
+    }
+
+    /* ════════════════════ OTHER — APP ENV ════════════════════ */
+
+    /**
+     * Save «محیط برنامه» — writes APP_ENV into the .env FILE and mirrors
+     * APP_DEBUG with it (production/staging hide errors, local shows them).
+     */
+    public function saveAppEnv(): void
+    {
+        $this->savingAppEnv = true;
+
+        $env = in_array($this->appEnv, ['production', 'staging', 'local'], true)
+            ? $this->appEnv
+            : 'production';
+
+        [$ok, $error] = EnvEditor::setMany([
+            'APP_ENV'   => $env,
+            'APP_DEBUG' => $env === 'local' ? 'true' : 'false',
+        ]);
+
+        $this->savingAppEnv = false;
+
+        if (! $ok) {
+            session()->flash('admin-developer-error', 'نوشتن محیط برنامه در فایل .env ناموفق بود: '.$error);
+
+            return;
+        }
+
+        // Take effect on this request too.
+        config(['app.env' => $env, 'app.debug' => $env === 'local']);
+
+        // Dev-mode toggle in the UI mirrors the new APP_DEBUG.
+        Setting::set('developer.dev_mode', $env === 'local' ? '1' : '0', 'boolean');
+        $this->devMode = $env === 'local';
+
+        Cache::forget('instashop.settings');
+
+        session()->flash('admin-developer-flash', $env === 'production'
+            ? 'محیط برنامه روی production تنظیم شد — کش‌ها فعال و خطاها مخفی می‌شوند.'
+            : 'محیط برنامه روی '.$env.' تنظیم شد'.($env === 'local' ? ' — جزئیات خطاها نمایش داده می‌شود.' : '.'));
     }
 
     /* ══════════════════════ OTHER — CACHE ══════════════════════ */

@@ -21,7 +21,7 @@
     <a href="{{ $product->publicUrl() }}" wire:navigate
        class="relative block {{ $variant === 'grid' ? 'aspect-square' : 'h-28 sm:h-36' }} overflow-hidden {{ $variant === 'special' ? 'bg-rose-50 dark:bg-slate-800' : 'bg-slate-100 dark:bg-slate-800' }}">
         @if ($product->mainImage)
-            <img src="{{ $product->mainImage->url() }}" alt="{{ $product->name }}" loading="lazy"
+            <img src="{{ $product->mainImage->url() }}" alt="{{ $product->name }}" loading="lazy" decoding="async"
                  class="size-full object-cover transition duration-300 group-hover/card:scale-[1.04]">
         @else
             <span class="grid size-full place-items-center">

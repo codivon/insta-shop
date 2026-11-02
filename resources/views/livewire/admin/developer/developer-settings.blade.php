@@ -253,6 +253,48 @@
             {{-- ═══════════════════ TAB 4: OTHER («تنظیمات دیگر») ═══════════════════ --}}
             <div x-show="tab === 'other'" class="animate-fade-in space-y-5 p-5 sm:p-6" role="tabpanel">
 
+                {{-- ── محیط برنامه (APP_ENV → .env) ── --}}
+                <section class="space-y-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <label for="app-env-select" class="flex items-center gap-1.5 text-[13px] font-bold">
+                                <x-icon name="globe" class="size-4 text-primary-600 dark:text-primary-400" />
+                                محیط برنامه
+                            </label>
+                            <span class="mt-1 block text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                                APP_ENV — این مقدار مستقیماً در فایل <span class="font-mono font-bold" dir="ltr">.env</span> نوشته می‌شود؛ در پروداکشن کش‌ها فعال و خطاها مخفی می‌شوند.
+                            </span>
+                        </div>
+                        <span class="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold {{ $appEnv === 'production'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                            : ($appEnv === 'local'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                                : 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300') }}" dir="ltr">
+                            {{ $appEnv }}
+                        </span>
+                    </div>
+
+                    <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+                        <select id="app-env-select" wire:model="appEnv" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold outline-none transition focus:border-primary-400 sm:w-56 dark:border-slate-700 dark:bg-slate-800" dir="ltr">
+                            <option value="production">production</option>
+                            <option value="staging">staging</option>
+                            <option value="local">local</option>
+                        </select>
+
+                        <button type="button" wire:click="saveAppEnv" wire:loading.attr="disabled" wire:target="saveAppEnv"
+                                class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-[11px] font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95 disabled:opacity-60">
+                            <span wire:loading wire:target="saveAppEnv" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                            <span wire:loading.remove wire:target="saveAppEnv"><x-icon name="check" class="size-3.5" /></span>
+                            ذخیره محیط
+                        </button>
+                    </div>
+
+                    <p class="flex items-start gap-1.5 text-[11px] font-semibold leading-5 text-amber-700 dark:text-amber-400">
+                        <x-icon name="alert" class="me-1 mt-0.5 inline size-3.5 shrink-0" aria-hidden="true" />
+                        برای سرعت، سایت فعال باید روی production باشد.
+                    </p>
+                </section>
+
                 {{-- ── development mode ── --}}
                 <section class="space-y-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
                     <div class="flex items-center justify-between gap-3">

@@ -151,7 +151,21 @@ class PaymentService
             'redirecting customer to gateway',
         );
 
-        return $manager->pay();
+        $form = $manager->pay();
+
+        /*
+         * The local TEST gateway gets our own modern sandbox page (a card
+         * styled like a real bank gateway) instead of the vendor's plain
+         * form. setViewPath is STATIC — set it only for the local driver
+         * and reset it for real banks so they keep the default view.
+         */
+        if ($gateway === 'local') {
+            RedirectionForm::setViewPath(resource_path('views/vendor/multipay/local-form.php'));
+        } else {
+            RedirectionForm::setViewPath(RedirectionForm::getDefaultViewPath());
+        }
+
+        return $form;
     }
 
     /**
@@ -162,6 +176,24 @@ class PaymentService
     public static function verify(Order $order): Receipt
     {
         $gateway = $order->gateway ?: self::activeGateway();
+
+        /*
+         * Success-path hardening (the «پرداخت موفق → ناموفق» bug): the local
+         * test gateway POSTs to a URL whose QUERY string carries the
+         * transactionId, and the shetabit Laravel provider feeds the driver
+         * from the CURRENT Laravel request (`Request::overwrite('input', …)`).
+         * Whenever that marker is lost along the way (proxies stripping the
+         * query on POST, odd PHP builds, double redirects) the Local driver
+         * would wrongly treat the payment as CANCELLED. The order already
+         * stores the reference at purchase time — restore it here so the
+         * verify() call is self-sufficient for the local driver.
+         */
+        if ($gateway === 'local'
+            && (string) $order->gateway_ref !== ''
+            && ! request()->filled('transactionId')
+            && ! request()->boolean('cancel')) {
+            request()->merge(['transactionId' => (string) $order->gateway_ref]);
+        }
 
         try {
             $receipt = Payment::config(self::runtimeDriversConfig($gateway))

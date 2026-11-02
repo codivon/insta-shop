@@ -92,7 +92,7 @@
     @if ($tab === 'orders')
         <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="flex flex-wrap gap-1.5">
-                @foreach (array_merge(['all' => 'همه'], collect(Order::STATUSES)->mapWithKeys(fn ($s) => [$s => ['pending' => 'در انتظار', 'paid' => 'پرداخت‌شده', 'failed' => 'ناموفق', 'canceled' => 'لغوشده'][$s]])->all()) as $key => $label)
+                @foreach (array_merge(['all' => 'همه'], collect(\App\Models\Order::STATUSES)->mapWithKeys(fn ($s) => [$s => ['pending' => 'در انتظار', 'paid' => 'پرداخت‌شده', 'failed' => 'ناموفق', 'canceled' => 'لغوشده'][$s]])->all()) as $key => $label)
                     <button type="button" wire:click="$set('orderStatus', '{{ $key }}')"
                             class="rounded-xl px-3 py-2 text-[11px] font-bold transition {{ $orderStatus === $key
                                 ? 'bg-primary-600 text-white shadow-md shadow-primary-600/25'

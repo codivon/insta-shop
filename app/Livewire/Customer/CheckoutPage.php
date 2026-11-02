@@ -10,6 +10,7 @@ use App\Models\CustomerAddress;
 use App\Models\Discount;
 use App\Models\Order;
 use App\Models\Province;
+use App\Models\Shop;
 use App\Support\Checkout\DiscountEvaluator;
 use App\Support\Fmt;
 use App\Support\Payments\PaymentService;
@@ -715,6 +716,24 @@ class CheckoutPage extends Component
         return [$amount, $discount];
     }
 
+    /**
+     * The shop whose products the applied code discounts — seller codes are
+     * scoped to their OWN shop only, so the checkout labels it explicitly
+     * (the discount never touches the other shops' products).
+     */
+    public function getDiscountShopProperty(): ?Shop
+    {
+        if (! $this->discountApplied) {
+            return null;
+        }
+
+        $discount = Discount::findActive(trim($this->discountCode));
+
+        return $discount?->shop_id
+            ? Shop::query()->find($discount->shop_id)
+            : null;
+    }
+
     /** Payable = items + online shipping − discount. */
     public function getPayableProperty(): int
     {
@@ -785,12 +804,16 @@ class CheckoutPage extends Component
 
         $discount = Discount::findActive($code);
 
+        // A seller's code is evaluated against ONLY that seller's cart lines —
+        // when the shop has no items (or the include/exclude scope filters
+        // everything out) the discount is worth nothing and must not ride
+        // onto the order.
         $groupLines = $discount
             ? ($this->shopGroups->first(fn ($g) => (int) $g['shop']->id === (int) $discount->shop_id)['items'] ?? collect())
             : collect();
 
-        [, $amount] = DiscountEvaluator::evaluate($discount, $this->customer(), $groupLines);
+        [$ok, $amount] = DiscountEvaluator::evaluate($discount, $this->customer(), $groupLines);
 
-        return [$discount, $amount];
+        return $ok ? [$discount, $amount] : [null, 0];
     }
 }

@@ -122,6 +122,12 @@
                                         <x-icon name="store" class="size-3.5" />
                                     </span>
                                     <span class="min-w-0 truncate text-[11px] font-extrabold">{{ $group['shop']?->name ?? 'کالاهای بدون فروشگاه' }}</span>
+                                    @if ($this->discountShop && (int) $this->discountShop->id === $shopId && $liveDiscount[0] > 0)
+                                        <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[8.5px] font-extrabold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" title="کد تخفیف فقط روی محصولات همین فروشگاه اعمال می‌شود">
+                                            <x-icon name="tag" class="size-2.5" />
+                                            کد تخفیف روی این فروشگاه − {{ \App\Support\Fmt::moneyShort($liveDiscount[0]) }}
+                                        </span>
+                                    @endif
                                     <span class="mr-auto shrink-0 text-[9.5px] font-bold text-slate-400">جمع {{ \App\Support\Fmt::moneyShort($group['subtotal']) }} تومان</span>
                                 </div>
 
@@ -235,6 +241,13 @@
                                     <span class="min-w-0">
                                         <span class="block truncate font-mono text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300" dir="ltr">{{ mb_strtoupper(trim($discountCode)) }}</span>
                                         <span class="block text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400">{{ \App\Support\Fmt::money($discountAmount) }} تومان تخفیف اعمال شد</span>
+                                        <span class="mt-0.5 block text-[9px] font-bold text-emerald-600/80 dark:text-emerald-400/80">
+                                            @if ($this->discountShop)
+                                                فقط برای محصولات فروشگاه «{{ $this->discountShop->name }}»
+                                            @else
+                                                فقط برای محصولات همان فروشگاهی که این کد را ساخته است
+                                            @endif
+                                        </span>
                                     </span>
                                 </span>
                                 <button type="button" wire:click="removeDiscount"
@@ -315,11 +328,11 @@
                         @endif
                         @if ($discountApplied && $liveDiscount[0] > 0)
                             <div class="flex items-center justify-between text-[10.5px] text-emerald-600 dark:text-emerald-400">
-                                <span class="flex items-center gap-1">
-                                    <x-icon name="tag" class="size-3" />
-                                    تخفیف ({{ mb_strtoupper(trim($discountCode)) }})
+                                <span class="flex min-w-0 items-center gap-1">
+                                    <x-icon name="tag" class="size-3 shrink-0" />
+                                    <span class="truncate">تخفیف فروشگاه «{{ $this->discountShop?->name ?? '—' }}» ({{ mb_strtoupper(trim($discountCode)) }})</span>
                                 </span>
-                                <span class="font-extrabold">− {{ \App\Support\Fmt::money($liveDiscount[0]) }}</span>
+                                <span class="shrink-0 font-extrabold">− {{ \App\Support\Fmt::money($liveDiscount[0]) }}</span>
                             </div>
                         @endif
                         <div class="flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">

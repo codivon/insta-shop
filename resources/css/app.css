@@ -82,6 +82,94 @@ body {
     animation: ip-fade-up 0.28s ease-out;
 }
 
+/* ── Storefront performance: off-screen sections (product sliders) skip
+   layout/paint until scrolled near the viewport — the browser only loads
+   and renders what is (almost) visible. `contain-intrinsic-size` keeps
+   the scrollbar stable with an estimated section height. ── */
+.cv-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 420px;
+}
+
+/* ── Global Livewire loading (B8) ─────────────────────────────────────
+   A slim top progress bar shows for EVERY Livewire request; the element
+   that was clicked gets a busy treatment (inline spinner + no pointer). */
+#ip-loadbar {
+    position: fixed;
+    inset-inline: 0;
+    top: 0;
+    z-index: 9999;
+    height: 3px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s ease;
+}
+#ip-loadbar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+        var(--ip-primary-500, #e4405f),
+        var(--ip-primary-600, #d62976),
+        var(--ip-primary-400, #f77f6e));
+    transform-origin: right;
+    animation: ip-loadbar 1s ease-in-out infinite;
+}
+#ip-loadbar.ip-on { opacity: 1; }
+@keyframes ip-loadbar {
+    0%   { transform: translateX(100%) scaleX(.35); }
+    55%  { transform: translateX(30%) scaleX(.55); }
+    100% { transform: translateX(-110%) scaleX(.4); }
+}
+
+/* clicked element while a Livewire request started by it is in flight */
+.ip-busy {
+    position: relative;
+    opacity: .65;
+    pointer-events: none;
+    transition: opacity .15s ease;
+}
+.ip-busy::after {
+    content: "";
+    width: 1em;
+    height: 1em;
+    border-radius: 999px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    display: inline-block;
+    vertical-align: -0.15em;
+    margin-inline-start: .45em;
+    animation: ip-busy-spin .7s linear infinite;
+}
+@keyframes ip-busy-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* page-transition dim during wire:navigate fetches */
+#ip-navveil {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    display: grid;
+    place-items: center;
+    background: rgba(15, 23, 42, .28);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease;
+}
+#ip-navveil.ip-on { opacity: 1; }
+#ip-navveil .ip-navveil-spin {
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    border: 3px solid rgba(255, 255, 255, .35);
+    border-top-color: #fff;
+    background: #d62976;
+    background: color-mix(in srgb, var(--ip-primary-600, #d62976) 88%, #000);
+    animation: ip-busy-spin .7s linear infinite;
+}
+
 /* ── Alpine: hide until initialized ── */
 [x-cloak] { display: none !important; }
 

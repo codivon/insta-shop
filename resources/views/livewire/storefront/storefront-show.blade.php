@@ -189,7 +189,7 @@
 
     {{-- ═══════════════ فروش ویژه — SPECIAL SALE (dedicated, with live countdown) ═══════════════ --}}
     @if ($special->isNotEmpty() && ! $filtersActive)
-        <section class="mx-auto max-w-6xl px-4 pt-7 sm:px-6" aria-label="فروش ویژه">
+        <section class="cv-auto mx-auto max-w-6xl px-4 pt-7 sm:px-6" aria-label="فروش ویژه">
             <div class="relative overflow-hidden rounded-3xl bg-gradient-to-bl from-rose-600 via-rose-500 to-orange-500 p-4 shadow-xl shadow-rose-500/25 sm:p-5">
                 {{-- decorative glow --}}
                 <div class="pointer-events-none absolute inset-0 opacity-25" aria-hidden="true">
@@ -262,7 +262,7 @@
         @foreach ($sliders as $slider)
             @if (! isset($slider['onlyIf']) || $slider['onlyIf'])
                 @if ($slider['items']->isNotEmpty())
-                    <section class="mx-auto max-w-6xl px-4 pt-8 sm:px-6" aria-label="{{ $slider['title'] }}">
+                    <section class="cv-auto mx-auto max-w-6xl px-4 pt-8 sm:px-6" aria-label="{{ $slider['title'] }}">
                         <div class="flex items-center justify-between pb-3">
                             <div class="flex items-center gap-2">
                                 <span class="grid size-7 place-items-center rounded-lg bg-gradient-to-bl text-white shadow-md {{ $slider['accent'] }}">
@@ -366,12 +366,20 @@
             @endforelse
         </div>
 
-        {{-- lazy-load sentinel --}}
+        {{-- lazy-load sentinel: auto-load on scroll + a manual fallback
+             button for when IntersectionObserver can't fire (old browsers,
+             JS hiccups, print rendering…) --}}
         @if ($hasMore && $grid->isNotEmpty())
             <div x-data
-                 x-init="new IntersectionObserver((entries) => { if (entries[0].isIntersecting) $wire.call('loadMore') }, { rootMargin: '320px' }).observe($el)"
-                 class="mt-6 grid place-items-center py-2">
-                <span class="inline-block size-6 animate-spin rounded-full border-2 border-primary-600 border-t-transparent"></span>
+                 x-init="new IntersectionObserver((entries, obs) => { if (entries[0].isIntersecting) $wire.call('loadMore') }, { rootMargin: '320px' }).observe($el)"
+                 class="mt-6 grid place-items-center gap-3 py-2">
+                <span wire:loading wire:target="loadMore" class="inline-block size-6 animate-spin rounded-full border-2 border-primary-600 border-t-transparent"></span>
+
+                <button type="button" wire:click="loadMore" wire:loading.attr="disabled" wire:target="loadMore"
+                        class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-[11px] font-extrabold text-slate-600 shadow-sm transition hover:border-primary-300 hover:text-primary-600 active:scale-95 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-primary-800 dark:hover:text-primary-400">
+                    <span wire:loading.remove wire:target="loadMore"><x-icon name="plus" class="size-3.5" /></span>
+                    بارگذاری محصولات بیشتر
+                </button>
             </div>
         @endif
     </section>
