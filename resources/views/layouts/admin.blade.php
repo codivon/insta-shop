@@ -106,18 +106,18 @@
 
             @foreach ($navItems as $item)
                 @php $isActive = request()->routeIs($item['match']); @endphp
+                {{-- State styling lives in .admin-nav-item (app.css) and is driven by
+                     data-active — the layout script re-derives it after EVERY
+                     wire:navigate, so the highlight can never go stale. --}}
                 <a href="{{ route($item['route']) }}" wire:navigate data-close-sidebar
-                   class="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition
-                          {{ $isActive
-                              ? 'bg-primary-600 font-bold text-white shadow-md shadow-primary-600/25'
-                              : 'font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}">
+                   data-active="{{ $isActive ? '1' : '0' }}"
+                   class="admin-nav-item flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition">
                     <span class="flex items-center gap-2.5">
-                        <x-icon name="{{ $item['icon'] }}" class="size-4.5 {{ $isActive ? 'text-white' : 'text-slate-400' }}" />
+                        <x-icon name="{{ $item['icon'] }}" class="admin-nav-icon size-4.5" />
                         {{ $item['label'] }}
                     </span>
                     @if ($item['badge'] > 0)
-                        <span class="rounded-md px-1.5 py-0.5 text-[10px] font-bold
-                                     {{ $isActive ? 'bg-white text-primary-700' : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400' }}">
+                        <span class="admin-nav-badge rounded-md px-1.5 py-0.5 text-[10px] font-bold">
                             {{ \App\Support\Fmt::fa($item['badge']) }}
                         </span>
                     @endif
@@ -133,27 +133,23 @@
             @if ($showManagers)
             <div x-data="{ open: {{ $managersOpen ? 'true' : 'false' }} }" class="pt-5">
                 <button type="button" x-on:click="open = !open"
-                        class="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition
-                               {{ $managersOpen
-                                   ? 'bg-primary-600 font-bold text-white shadow-md shadow-primary-600/25'
-                                   : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}"
+                        data-active="{{ $managersOpen ? '1' : '0' }}"
+                        class="admin-nav-item flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition"
                         :aria-expanded="open" aria-controls="admin-managers-menu">
                     <span class="flex items-center gap-2.5">
-                        <x-icon name="users" class="size-4.5 {{ $managersOpen ? 'text-white' : 'text-slate-400' }}" />
+                        <x-icon name="users" class="admin-nav-icon size-4.5" />
                         مدیران
                     </span>
-                    <x-icon name="chevron-down" class="size-3.5 transition-transform duration-300 {{ $managersOpen ? 'text-white' : 'text-slate-400' }}" x-bind:class="open ? 'rotate-180' : ''" />
+                    <x-icon name="chevron-down" class="admin-nav-icon size-3.5 transition-transform duration-300" x-bind:class="open ? 'rotate-180' : ''" />
                 </button>
 
                 <div id="admin-managers-menu" x-show="open" x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="-translate-y-1 opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-cloak class="mt-1 space-y-0.5 border-e-2 border-slate-100 pe-1 dark:border-slate-800">
                     @foreach ($managersItems as $item)
                         @php $isActive = request()->routeIs($item['route']); @endphp
                         <a href="{{ route($item['route']) }}" wire:navigate data-close-sidebar
-                           class="ms-4 flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] transition
-                                  {{ $isActive
-                                      ? 'bg-primary-50 font-extrabold text-primary-700 dark:bg-primary-950/50 dark:text-primary-300'
-                                      : 'font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800' }}">
-                            <x-icon name="{{ $item['icon'] }}" class="size-3.5 {{ $isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}" />
+                           data-active="{{ $isActive ? '1' : '0' }}"
+                           class="admin-nav-sub admin-nav-sub--primary ms-4 flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] transition">
+                            <x-icon name="{{ $item['icon'] }}" class="admin-nav-icon size-3.5" />
                             {{ $item['label'] }}
                         </a>
                     @endforeach
@@ -164,15 +160,13 @@
             {{-- settings: SINGLE menu item — sections are inside the page --}}
             @if ($showSettings)
                 <a href="{{ route('admin.settings') }}" wire:navigate data-close-sidebar
-                   class="mt-5 flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition
-                          {{ request()->routeIs('admin.settings')
-                              ? 'bg-primary-600 font-bold text-white shadow-md shadow-primary-600/25'
-                              : 'font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}">
+                   data-active="{{ request()->routeIs('admin.settings') ? '1' : '0' }}"
+                   class="admin-nav-item mt-5 flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition">
                     <span class="flex items-center gap-2.5">
-                        <x-icon name="settings" class="size-4.5 {{ request()->routeIs('admin.settings') ? 'text-white' : 'text-slate-400' }}" />
+                        <x-icon name="settings" class="admin-nav-icon size-4.5" />
                         تنظیمات
                     </span>
-                    <span class="rounded-md px-1.5 py-0.5 text-[10px] font-bold {{ request()->routeIs('admin.settings') ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500' }}">
+                    <span class="admin-nav-chip rounded-md px-1.5 py-0.5 text-[10px] font-bold">
                         بخش‌ها در صفحه
                     </span>
                 </a>
@@ -182,33 +176,27 @@
             @if ($showDeveloper)
             <div x-data="{ open: {{ $developerOpen ? 'true' : 'false' }} }">
                 <button type="button" x-on:click="open = !open"
-                        class="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition
-                               {{ $developerOpen
-                                   ? 'bg-amber-500 font-bold text-white shadow-md shadow-amber-500/25'
-                                   : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}"
+                        data-active="{{ $developerOpen ? '1' : '0' }}"
+                        class="admin-nav-item admin-nav-item--amber flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition"
                         :aria-expanded="open" aria-controls="admin-developer-menu">
                     <span class="flex items-center gap-2.5">
-                        <x-icon name="alert" class="size-4.5 {{ $developerOpen ? 'text-white' : 'text-amber-500' }}" />
+                        <x-icon name="alert" class="admin-nav-icon size-4.5" />
                         برنامه‌نویس
                     </span>
-                    <x-icon name="chevron-down" class="size-3.5 transition-transform duration-300 {{ $developerOpen ? 'text-white' : 'text-slate-400' }}" x-bind:class="open ? 'rotate-180' : ''" />
+                    <x-icon name="chevron-down" class="admin-nav-icon size-3.5 transition-transform duration-300" x-bind:class="open ? 'rotate-180' : ''" />
                 </button>
 
                 <div id="admin-developer-menu" x-show="open" x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="-translate-y-1 opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-cloak class="mt-1 space-y-0.5 border-e-2 border-slate-100 pe-1 dark:border-slate-800">
                     <a href="{{ route('admin.developer.settings') }}" wire:navigate data-close-sidebar
-                       class="ms-4 flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] transition
-                              {{ request()->routeIs('admin.developer.settings')
-                                  ? 'bg-amber-50 font-extrabold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
-                                  : 'font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800' }}">
-                        <x-icon name="terminal" class="size-3.5 {{ request()->routeIs('admin.developer.settings') ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400' }}" />
+                       data-active="{{ request()->routeIs('admin.developer.settings') ? '1' : '0' }}"
+                       class="admin-nav-sub admin-nav-sub--amber ms-4 flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] transition">
+                        <x-icon name="terminal" class="admin-nav-icon size-3.5" />
                         تنظیمات برنامه‌نویس
                     </a>
                     <a href="{{ route('admin.developer.logs') }}" wire:navigate data-close-sidebar
-                       class="ms-4 flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] transition
-                              {{ request()->routeIs('admin.developer.logs')
-                                  ? 'bg-amber-50 font-extrabold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
-                                  : 'font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800' }}">
-                        <x-icon name="file-text" class="size-3.5 {{ request()->routeIs('admin.developer.logs') ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400' }}" />
+                       data-active="{{ request()->routeIs('admin.developer.logs') ? '1' : '0' }}"
+                       class="admin-nav-sub admin-nav-sub--amber ms-4 flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] transition">
+                        <x-icon name="file-text" class="admin-nav-icon size-3.5" />
                         لاگ سیستم
                     </a>
                 </div>
@@ -319,7 +307,11 @@
             // admin sidebar drawer (mobile) — IIFE so a wire:navigate script
             // re-run can never hit a "already declared" SyntaxError
             (function () {
-                const open  = () => document.documentElement.classList.add('admin-drawer-open');
+                const open  = () => {
+                    document.documentElement.classList.add('admin-drawer-open');
+                    // the active item must be in view the moment the drawer opens
+                    setTimeout(syncAdminNav, 60);
+                };
                 const close = () => document.documentElement.classList.remove('admin-drawer-open');
 
                 document.addEventListener('click', (e) => {
@@ -337,9 +329,60 @@
                     }
                 });
 
-                // after any Livewire client-side navigation the fresh page
-                // starts with the drawer closed — never a half-open state
-                document.addEventListener('livewire:navigated', close);
+                /* ── active-item sync (works around stale sidebar states after
+                   wire:navigate / back-forward restores): re-derive which menu
+                   item matches the CURRENT path, flip data-active, open the
+                   parent group, and keep the item inside the scrolled menu. ── */
+                function syncAdminNav() {
+                    const nav = document.querySelector('#admin-sidebar nav');
+                    if (!nav) return;
+
+                    const here = window.location.pathname;
+                    let active = null;
+
+                    nav.querySelectorAll('a[data-active]').forEach((a) => {
+                        let target;
+                        try { target = new URL(a.getAttribute('href'), window.location.origin).pathname; }
+                        catch (e) { return; }
+
+                        // exact page, or a detail page INSIDE the section
+                        // (/admin/orders vs /admin/orders/5) — never a bare
+                        // prefix, and /admin itself matches ONLY the dashboard
+                        const on = here === target
+                            || (target !== '/admin' && here.startsWith(target.endsWith('/') ? target : target + '/'));
+
+                        a.dataset.active = on ? '1' : '0';
+                        if (on) active = a;
+                    });
+
+                    if (! active) return;
+
+                    // a collapsed group whose child is active must open up
+                    const group = active.closest('[x-data]');
+                    if (group && window.Alpine) {
+                        try { Alpine.$data(group).open = true; } catch (e) { /* not a group */ }
+                    }
+
+                    // keep the active row visible inside the scrolled menu —
+                    // scroll ONLY the nav container (scrollIntoView would also
+                    // drag the whole page)
+                    const box = nav.getBoundingClientRect();
+                    const row = active.getBoundingClientRect();
+                    if (row.top < box.top || row.bottom > box.bottom) {
+                        const target = nav.scrollTop + (row.top + row.bottom) / 2 - (box.top + box.bottom) / 2;
+                        nav.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+                    }
+                }
+
+                window.syncAdminNav = syncAdminNav;
+                syncAdminNav();
+                // Alpine (and the collapsible groups) come alive with the
+                // Livewire bundle at the end of <body> — re-run after load
+                window.addEventListener('load', syncAdminNav);
+                document.addEventListener('livewire:navigated', () => {
+                    close();
+                    syncAdminNav();
+                });
             })();
         </script>
     @endonce

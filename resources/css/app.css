@@ -105,6 +105,122 @@ body {
     contain-intrinsic-size: auto 420px;
 }
 
+/* ── Customer app shell height ────────────────────────────────────────
+   100vh with a 100dvh override (same property, later declaration wins on
+   dvh-capable browsers, drops cleanly on the rest) — the shell can never
+   collapse to content height on a phone without the dvh unit. ── */
+.ip-app-shell {
+    height: 100vh;
+    height: 100dvh;
+}
+
+/* ── Admin sidebar states (data-active driven) ────────────────────────
+   The layout script re-derives the active item after EVERY wire:navigate
+   (and on back/forward restores), so the highlight can never go stale —
+   the server only renders the INITIAL value of data-active. ── */
+.admin-nav-item {
+    color: #475569; /* slate-600 */
+    font-weight: 500;
+}
+.dark .admin-nav-item {
+    color: #cbd5e1; /* slate-300 */
+}
+.admin-nav-item:hover {
+    background: #f1f5f9; /* slate-100 */
+}
+.dark .admin-nav-item:hover {
+    background: #1e293b; /* slate-800 */
+}
+.admin-nav-item .admin-nav-icon {
+    color: #94a3b8; /* slate-400 */
+}
+.admin-nav-item--amber .admin-nav-icon {
+    color: #94a3b8;
+}
+.admin-nav-item[data-active="1"] {
+    background: var(--ip-primary-600, #d62976);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.12);
+}
+.admin-nav-item[data-active="1"] .admin-nav-icon {
+    color: #fff;
+}
+.admin-nav-item--amber[data-active="1"] {
+    background: #f59e0b; /* amber-500 */
+    box-shadow: none;
+}
+.admin-nav-badge {
+    background: #fef3c7; /* amber-100 */
+    color: #b45309; /* amber-700 */
+}
+.dark .admin-nav-badge {
+    background: rgb(120 53 15 / 0.6); /* amber-950/60 */
+    color: #fbbf24; /* amber-400 */
+}
+.admin-nav-item[data-active="1"] .admin-nav-badge {
+    background: #fff;
+    color: var(--ip-primary-700, #ba2467);
+}
+.admin-nav-chip {
+    background: #f1f5f9; /* slate-100 */
+    color: #94a3b8; /* slate-400 */
+}
+.dark .admin-nav-chip {
+    background: #1e293b; /* slate-800 */
+    color: #64748b; /* slate-500 */
+}
+.admin-nav-item[data-active="1"] .admin-nav-chip {
+    background: rgb(255 255 255 / 0.2);
+    color: #fff;
+}
+.admin-nav-sub {
+    color: #64748b; /* slate-500 */
+    font-weight: 500;
+}
+.dark .admin-nav-sub {
+    color: #94a3b8; /* slate-400 */
+}
+.admin-nav-sub:hover {
+    background: #f1f5f9;
+}
+.dark .admin-nav-sub:hover {
+    background: #1e293b;
+}
+.admin-nav-sub .admin-nav-icon {
+    color: #94a3b8;
+}
+.admin-nav-sub--primary[data-active="1"] {
+    background: var(--ip-primary-50, #fdf2f8);
+    color: var(--ip-primary-700, #ba2467);
+    font-weight: 800;
+}
+.admin-nav-sub--primary[data-active="1"] .admin-nav-icon {
+    color: var(--ip-primary-600, #d62976);
+}
+.dark .admin-nav-sub--primary[data-active="1"] {
+    background: color-mix(in srgb, var(--ip-primary-950, #500736) 50%, transparent);
+    color: var(--ip-primary-300, #f77f6e);
+}
+.dark .admin-nav-sub--primary[data-active="1"] .admin-nav-icon {
+    color: var(--ip-primary-400, #f2559a);
+}
+.admin-nav-sub--amber[data-active="1"] {
+    background: #fffbeb; /* amber-50 */
+    color: #b45309; /* amber-700 */
+    font-weight: 800;
+}
+.admin-nav-sub--amber[data-active="1"] .admin-nav-icon {
+    color: #d97706; /* amber-600 */
+}
+.dark .admin-nav-sub--amber[data-active="1"] {
+    background: rgb(120 53 15 / 0.5); /* amber-950/50 */
+    color: #fcd34d; /* amber-300 */
+}
+.dark .admin-nav-sub--amber[data-active="1"] .admin-nav-icon {
+    color: #fbbf24; /* amber-400 */
+}
+
 /* ── Global Livewire loading (B8) ─────────────────────────────────────
    A slim top progress bar shows for EVERY Livewire request; the element
    that was clicked gets a busy treatment (inline spinner + no pointer). */

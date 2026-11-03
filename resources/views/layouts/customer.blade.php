@@ -17,8 +17,11 @@
 <body class="min-h-screen bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
 
     {{-- App shell: exactly viewport height on every device → the header and
-         tab bar stay pinned and ONLY <main> scrolls (also on real phones). --}}
-    <div class="relative mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-slate-50 shadow-2xl dark:bg-slate-950 lg:my-6 lg:h-[calc(100vh-3rem)] lg:min-h-0 lg:rounded-[2.5rem] lg:overflow-hidden lg:border lg:border-slate-300 dark:lg:border-slate-800">
+         tab bar stay pinned and ONLY <main> scrolls (also on real phones).
+         .ip-app-shell (app.css) sets 100vh WITH a 100dvh override — on the
+         rare phone without the dvh unit the vh fallback keeps the shell full
+         height instead of letting it collapse to content height. --}}
+    <div class="ip-app-shell relative mx-auto flex w-full max-w-[430px] flex-col overflow-hidden bg-slate-50 shadow-2xl dark:bg-slate-950 lg:my-6 lg:h-[calc(100vh-3rem)] lg:min-h-0 lg:rounded-[2.5rem] lg:overflow-hidden lg:border lg:border-slate-300 dark:lg:border-slate-800">
 
         {{-- ───────── App header (pinned top) ───────── --}}
         <header class="relative z-30 shrink-0 border-b border-slate-200/80 bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/90">
@@ -38,7 +41,12 @@
 
         {{-- ───────── Bottom tab bar ─────────
               Hidden on the single product page: there the fixed
-              add-to-cart bar (inside the page component) takes over. ───────── --}}
+              add-to-cart bar (inside the page component) takes over.
+              sticky bottom-0: EVEN IF the flex shell misbehaves on some
+              device (dvh/flex quirks on real phones) the tab bar can never
+              float mid-page — it is glued to the viewport bottom while its
+              natural position is below the fold, and rests exactly there
+              (shell bottom = viewport bottom) when the shell is healthy. ───────── --}}
         @php
             $customerTabs = [
                 ['route' => 'shop.home',      'icon' => 'home',   'label' => 'خانه'],
@@ -58,7 +66,7 @@
             $showTabBar = ! request()->routeIs(['shop.product.show', 'shop.storefront.product']);
         @endphp
         @if ($showTabBar)
-            <nav class="shrink-0 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95"
+            <nav class="sticky bottom-0 z-30 shrink-0 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95"
                  aria-label="تب‌های اصلی فروشگاه">
             <div class="grid grid-cols-5">
                 @foreach ($customerTabs as $tab)

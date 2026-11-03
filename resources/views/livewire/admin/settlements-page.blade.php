@@ -84,13 +84,19 @@
                 <span class="ms-auto text-[9.5px] font-bold text-slate-400">۸ هفتهٔ اخیر (برداشت‌های تأییدشده)</span>
             </h3>
             @php $maxSettled = max($weekly->max('settled'), 1); @endphp
-            <div class="mt-4 flex h-44 items-end gap-2">
+            {{-- Bars are percentage-heights of a DEDICATED plot row (flex-1
+                 items-end) — never of the whole column. The old markup sized
+                 them against the full h-44 column INCLUDING the labels, so a
+                 100% bar pushed its labels out and overflowed the card. --}}
+            <div class="mt-4 flex h-44 items-stretch gap-1.5 sm:gap-2">
                 @foreach ($weekly as $bar)
-                    <div class="group flex h-full flex-1 flex-col items-center justify-end gap-1">
+                    <div class="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
                         <span class="text-[9px] font-bold text-slate-400 opacity-0 transition group-hover:opacity-100">{{ \App\Support\Fmt::money($bar['settled']) }}</span>
-                        <div class="w-full rounded-t-lg bg-gradient-to-t from-emerald-600 to-emerald-400 transition-all group-hover:from-emerald-700 group-hover:to-emerald-500"
-                             style="height: {{ max(4, (int) round($bar['settled'] / $maxSettled * 100)) }}%"></div>
-                        <span class="truncate text-[9px] font-bold text-slate-400" title="{{ $bar['label'] }}">{{ $bar['label'] }}</span>
+                        <div class="flex w-full flex-1 items-end justify-center">
+                            <div class="w-full rounded-t-lg bg-gradient-to-t from-emerald-600 to-emerald-400 transition-all group-hover:from-emerald-700 group-hover:to-emerald-500"
+                                 style="height: {{ max(4, (int) round($bar['settled'] / $maxSettled * 100)) }}%"></div>
+                        </div>
+                        <span class="max-w-full truncate text-[9px] font-bold text-slate-400" title="{{ $bar['label'] }}">{{ $bar['label'] }}</span>
                     </div>
                 @endforeach
             </div>
