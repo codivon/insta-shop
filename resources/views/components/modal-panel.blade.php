@@ -39,7 +39,7 @@
     }
 @endphp
 
-<div x-data="{ __ipOpen: false }"
+<div {{ $attributes->merge(['x-data' => '{ __ipOpen: false }']) }}
      x-effect="__ipOpen = !!({{ $open }})"
      x-cloak x-show="__ipOpen"
      @if ($closeJs !== '')

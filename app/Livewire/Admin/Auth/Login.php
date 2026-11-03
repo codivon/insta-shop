@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
 use App\Support\Fmt;
+use App\Support\ImageCaptcha;
 use App\Support\SchemaReady;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -24,7 +25,7 @@ class Login extends Component
 
     public bool $remember = false;
 
-    /* ── robot check (math captcha, answer lives in the session) ── */
+    /* ── robot check — the answer lives ONLY in the session ── */
     public string $captcha = '';
 
     public function mount(): void
@@ -32,9 +33,21 @@ class Login extends Component
         $this->regenerateCaptcha();
     }
 
-    /** Fresh math challenge: «۷ + ۳ = ؟» — the SUM never leaves the server. */
+    /**
+     * Fresh challenge. When GD is available the admin gets a drawn PNG
+     * (the answer is OCR-proof and never in the DOM); on exotic hosts
+     * without GD the legacy math challenge stays as a fallback.
+     */
     public function regenerateCaptcha(): void
     {
+        $this->captcha = '';
+
+        if (ImageCaptcha::available()) {
+            ImageCaptcha::issue();
+
+            return;
+        }
+
         $a = random_int(2, 9);
         $b = random_int(1, 9);
 
@@ -45,9 +58,13 @@ class Login extends Component
             'admin_captcha_display_b' => $b,
         ]);
 
-        $this->captcha = '';
-
         $this->dispatch('admin-captcha-refresh', a: $a, b: $b);
+    }
+
+    /** The PNG data-URI of the current image challenge ('' → math fallback). */
+    public function getCaptchaImageProperty(): string
+    {
+        return ImageCaptcha::available() ? ImageCaptcha::dataUri() : '';
     }
 
     /** Persian/Latin digits → int; null when not a number. */
@@ -112,10 +129,15 @@ class Login extends Component
         $this->validate();
 
         /* ── robot check first — no rate-limit burn for bots ── */
-        $expected = (int) session('admin_captcha_sum', -1);
+        if (ImageCaptcha::available()) {
+            $captchaOk = ImageCaptcha::verify($this->captcha);
+        } else {
+            $expected  = (int) session('admin_captcha_sum', -1);
+            $captchaOk = $expected >= 0 && $this->captchaValue($this->captcha) === $expected;
+        }
 
-        if ($this->captchaValue($this->captcha) !== $expected || $expected < 0) {
-            $this->addError('captcha', 'جواب عبارت امنیتی درست نیست.');
+        if (! $captchaOk) {
+            $this->addError('captcha', 'کد امنیتی درست نیست.');
 
             $this->regenerateCaptcha();
 
@@ -165,6 +187,7 @@ class Login extends Component
         }
 
         RateLimiter::clear($key);
+        ImageCaptcha::forget();
         session()->forget('admin_captcha_sum');
 
         session()->regenerate();
@@ -180,7 +203,9 @@ class Login extends Component
 
     public function render()
     {
-        return view('livewire.admin.auth.login');
+        return view('livewire.admin.auth.login', [
+            'captchaImage' => $this->captchaImage,
+        ]);
     }
 }
 

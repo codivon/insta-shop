@@ -234,18 +234,23 @@
                                                         <span class="ms-auto text-[9px] font-bold text-slate-400">از {{ \App\Support\Fmt::toFa($userSelectCarrier->start_days_after_order) }} روز بعد — {{ \App\Support\Fmt::toFa(count($deliveryDays)) }} روز</span>
                                                     </p>
 
+                                                    {{-- انتخاب روز = تماماً سمت مرورگر: چیپ با peer-checked هایلایت
+                                                         می‌شود و wire:model (بدون live) فقط هنگام اولین
+                                                         درخواست بعدی مقدار را همگام می‌کند — هیچ roundtrip
+                                                         و هیچ re-renderی روی این تعامل سوار نیست، پس
+                                                         هیچ چیزی نمی‌تواند صفحه را به هم بریزد.
+                                                         اعتبارسنجی نهایی همچنان سمت سرور است. --}}
                                                     <div class="scroll-slim flex gap-1.5 overflow-x-auto pb-1" role="radiogroup" aria-label="روز تحویل سفارش {{ $group['shop']?->name }}">
                                                         @foreach ($deliveryDays as $day)
-                                                            @php $dayPicked = (string) ($deliveryPicks[$shopId] ?? '') === $day['date']; @endphp
-                                                            <label class="flex shrink-0 cursor-pointer flex-col items-center gap-0.5 rounded-xl border px-3 py-2 text-center transition {{ $dayPicked
-                                                                ? 'border-primary-500 bg-white ring-1 ring-primary-500/30 dark:border-primary-600 dark:bg-slate-900'
-                                                                : 'border-slate-200 bg-white hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900' }}"
-                                                                title="{{ $day['long'] }}{{ !empty($day['holiday']) ? ' — '.$day['holiday'] : '' }}" wire:key="dday-{{ $shopId }}-{{ $day['date'] }}">
+                                                            <label class="block shrink-0 cursor-pointer"
+                                                                   title="{{ $day['long'] }}{{ !empty($day['holiday']) ? ' — '.$day['holiday'] : '' }}" wire:key="dday-{{ $shopId }}-{{ $day['date'] }}">
                                                                 <input type="radio" name="delivery-day-{{ $shopId }}" value="{{ $day['date'] }}"
-                                                                       wire:model.live="deliveryPicks.{{ $shopId }}" class="sr-only"
+                                                                       wire:model="deliveryPicks.{{ $shopId }}" class="peer sr-only"
                                                                        aria-label="{{ $day['long'] }}">
-                                                                <span class="text-[10px] font-extrabold {{ $dayPicked ? 'text-primary-700 dark:text-primary-300' : 'text-slate-600 dark:text-slate-300' }}">{{ $day['weekday'] }}</span>
-                                                                <span class="text-[9px] font-bold {{ $dayPicked ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}">{{ $day['jdate'] }}</span>
+                                                                <span class="flex flex-col items-center gap-0.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center transition hover:border-primary-300 peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500/30 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:border-primary-600 dark:peer-checked:bg-primary-950/40">
+                                                                    <span class="text-[10px] font-extrabold text-slate-600 dark:text-slate-300">{{ $day['weekday'] }}</span>
+                                                                    <span class="text-[9px] font-bold text-slate-400">{{ $day['jdate'] }}</span>
+                                                                </span>
                                                             </label>
                                                         @endforeach
                                                     </div>
@@ -403,7 +408,7 @@
     {{-- ═══════════════ تغییر آدرس — انتخاب از دفترچه + افزودن آدرس (73) ═══════════════ --}}
 
     {{-- ═══════════════ لیست آدرس‌ها — مودال تمام‌صفحه روی موبایل (73) ═══════════════ --}}
-    <x-modal-panel open="$wire.showAddressModal" maxWidth="full"
+    <x-modal-panel open="$wire.showAddressModal" maxWidth="full" wire:key="ck-addr-list"
                labelledby="addr-modal-title"
                closeJs="__ipOpen = false; $wire.closeAddressModal()">
 
@@ -487,7 +492,7 @@
 </x-modal-panel>
 
     {{-- ═══════════════ افزودن / ویرایش آدرس — همان فرم «آدرس‌های من» (73) ═══════════════ --}}
-    <x-modal-panel open="$wire.showAddressForm" maxWidth="md" zClass="z-[80]"
+    <x-modal-panel open="$wire.showAddressForm" maxWidth="md" zClass="z-[80]" wire:key="ck-addr-form"
                labelledby="addr-form-title"
                closeJs="__ipOpen = false; $wire.backToAddressList()">
 
