@@ -7,23 +7,23 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['wallet_id', 'type', 'amount', 'commission', 'status', 'order_id', 'description', 'sheba'])]
+#[Fillable(['wallet_id', 'type', 'amount', 'commission', 'status', 'order_id', 'description', 'sheba', 'card_number', 'admin_note'])]
 class WalletTransaction extends Model
 {
-    public const TYPE_DEPOSIT    = 'deposit';
+    public const TYPE_DEPOSIT = 'deposit';
 
     public const TYPE_WITHDRAWAL = 'withdrawal';
 
-    public const STATUS_DONE     = 'done';
+    public const STATUS_DONE = 'done';
 
-    public const STATUS_PENDING  = 'pending';
+    public const STATUS_PENDING = 'pending';
 
     public const STATUS_REJECTED = 'rejected';
 
     protected function casts(): array
     {
         return [
-            'amount'   => 'integer',
+            'amount' => 'integer',
             'order_id' => 'integer',
         ];
     }
@@ -58,18 +58,18 @@ class WalletTransaction extends Model
     public function statusLabel(): string
     {
         return match ($this->status) {
-            self::STATUS_PENDING  => 'در انتظار تأیید',
+            self::STATUS_PENDING => 'در انتظار تأیید',
             self::STATUS_REJECTED => 'رد شد',
-            default               => 'تسویه شد',
+            default => 'تسویه شد',
         };
     }
 
     public function statusClasses(): string
     {
         return match ($this->status) {
-            self::STATUS_PENDING  => 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
+            self::STATUS_PENDING => 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
             self::STATUS_REJECTED => 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300',
-            default               => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
+            default => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
         };
     }
 

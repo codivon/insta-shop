@@ -322,38 +322,50 @@
                     @error('withdrawAmount') <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                 </label>
 
-                <label class="block">
-                    <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">شماره شبا <span class="text-rose-500">*</span></span>
-                    @if ($cards->isNotEmpty())
-                        <div class="mb-2 flex flex-wrap gap-1.5">
-                            @foreach ($cards as $card)
-                                <button type="button" wire:click="$set('withdrawSheba', '{{ $card->sheba }}')"
-                                        class="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9.5px] font-bold transition {{ $withdrawSheba === $card->sheba
-                                            ? 'border-primary-400 bg-primary-50 text-primary-600 dark:border-primary-700 dark:bg-primary-950/40 dark:text-primary-300'
-                                            : 'border-slate-200 text-slate-500 hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:text-slate-300' }}">
-                                    <x-icon name="credit-card" class="size-3" />
-                                    {{ $card->bankName() }} · {{ \App\Support\Fmt::toFa(\App\Support\Banking::shebaTail($card->sheba)) }}
-                                </button>
-                            @endforeach
-                        </div>
-                        <a href="{{ route('seller.cards') }}" wire:navigate class="mb-2 inline-flex items-center gap-1 text-[9.5px] font-bold text-violet-600 hover:text-violet-700 dark:text-violet-400">
-                            <x-icon name="external-link" class="size-3" />
-                            مدیریت کارت‌های بانکی
+                {{-- مقصد برداشت = کارت بانکی پیش‌فرض فروشنده (بدون ورودی شبا).
+                     اگر کارتی ثبت نکرده باشد: هشدار + دکمهٔ غیرفعال. --}}
+                <div class="rounded-2xl border p-3.5 {{ $cards->isEmpty() ? 'border-amber-200 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/30' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60' }}">
+                    @if ($cards->isEmpty())
+                        <p class="flex items-start gap-2 text-[11px] font-bold leading-5 text-amber-700 dark:text-amber-300">
+                            <x-icon name="triangle-alert" class="mt-0.5 size-4 shrink-0" />
+                            <span>هنوز کارت بانکی ثبت نکرده‌اید؛ اول از صفحهٔ «کارت‌های بانکی» کارت خود را وارد کنید، بعد درخواست برداشت بدهید.</span>
+                        </p>
+                        <a href="{{ route('seller.cards') }}" wire:navigate
+                           class="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-amber-500 py-2.5 text-[11px] font-extrabold text-white shadow-md shadow-amber-500/25 transition hover:bg-amber-600 active:scale-95">
+                            <x-icon name="credit-card" class="size-3.5" />
+                            ثبت کارت بانکی
                         </a>
+                    @else
+                        @php $destCard = $cards->firstWhere('is_default') ?? $cards->first(); @endphp
+                        <div class="flex items-center gap-2.5">
+                            <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-slate-500 shadow-sm dark:bg-slate-900">
+                                <x-icon name="credit-card" class="size-4.5" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[10px] font-bold text-slate-400">واریز به کارت پیش‌فرض شما</p>
+                                <p class="mt-0.5 text-[11.5px] font-extrabold text-slate-700 dark:text-slate-200">{{ $destCard->bankName() }} · {{ $destCard->maskedCard() }}</p>
+                            </div>
+                            <a href="{{ route('seller.cards') }}" wire:navigate
+                               class="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[9.5px] font-bold text-slate-500 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:text-slate-300"
+                               title="مدیریت کارت‌های بانکی">
+                                تغییر کارت
+                            </a>
+                        </div>
                     @endif
-                    <input type="text" dir="ltr" wire:model="withdrawSheba" placeholder="IR062980000000123456789001" maxlength="26"
-                           class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-xs font-extrabold tracking-wide outline-none transition placeholder:text-slate-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800">
-                    @error('withdrawSheba') <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-                </label>
+                </div>
 
-                <button type="submit" wire:loading.attr="disabled"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-xs font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 disabled:opacity-50">
+                @error('withdrawCard')
+                    <p class="rounded-xl bg-rose-50 px-3 py-2 text-[10.5px] font-bold leading-5 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">{{ $message }}</p>
+                @enderror
+
+                <button type="submit" wire:loading.attr="disabled" @if ($cards->isEmpty()) disabled @endif
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-xs font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">
                     <span wire:loading wire:target="submitWithdraw" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                     ثبت درخواست برداشت
                 </button>
 
                 <p class="text-center text-[9.5px] leading-5 text-slate-400">
-                    مبلغ درخواستی بلافاصله از موجودی کسر و پس از تأیید مدیر به شبا واریز می‌شود.
+                    مبلغ درخواستی بلافاصله از موجودی کسر و پس از تأیید مدیر به کارت بانکی پیش‌فرض شما واریز می‌شود.
                 </p>
             </form>
         </x-modal-panel>
@@ -413,11 +425,22 @@
                     </p>
                 @endif
 
-                {{-- withdrawal destination --}}
-                @if ($txDetail->isWithdrawal() && $txDetail->sheba)
+                {{-- withdrawal destination: کارت مقصد (شبا فقط برای رکوردهای قدیمی) --}}
+                @if ($txDetail->isWithdrawal() && ($txDetail->card_number || $txDetail->sheba))
                     <div class="flex items-center justify-between rounded-2xl border border-slate-200 p-3.5 text-[11px] dark:border-slate-800">
-                        <span class="shrink-0 font-bold text-slate-400">شبا مقصد</span>
-                        <span dir="ltr" class="font-black">{{ \App\Support\Banking::shebaTail($txDetail->sheba) }}</span>
+                        <span class="shrink-0 font-bold text-slate-400">کارت مقصد</span>
+                        <span dir="ltr" class="font-black">{{ $txDetail->card_number ? \App\Support\Banking::maskCard($txDetail->card_number) : 'IR…'.\App\Support\Banking::shebaTail($txDetail->sheba) }}</span>
+                    </div>
+                @endif
+
+                {{-- admin note (توضیح مدیر برای تأیید/رد برداشت) --}}
+                @if ($txDetail->isWithdrawal() && $txDetail->status !== \App\Models\WalletTransaction::STATUS_PENDING && $txDetail->admin_note)
+                    <div class="flex items-start gap-2 rounded-2xl border border-primary-200 bg-primary-50/60 p-3.5 text-[11px] leading-5 dark:border-primary-900 dark:bg-primary-950/25">
+                        <x-icon name="info" class="mt-0.5 size-4 shrink-0 text-primary-500" />
+                        <div class="min-w-0">
+                            <p class="font-extrabold text-primary-700 dark:text-primary-300">توضیح مدیر</p>
+                            <p class="mt-0.5 font-bold text-slate-600 dark:text-slate-300">{{ $txDetail->admin_note }}</p>
+                        </div>
                     </div>
                 @endif
 

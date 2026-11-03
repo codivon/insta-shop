@@ -6,6 +6,7 @@ use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\WalletTransaction;
 use App\Support\ActivityLogger;
+use App\Support\Banking;
 use App\Support\Fmt;
 use App\Support\JDate;
 use App\Support\Wallet\WalletService;
@@ -45,6 +46,29 @@ class WithdrawalsPage extends Component
 
     public string $confirmAction = ''; // approve | reject
 
+    /** Admin note (توضیحات) — mandatory-ish helper text sent to the seller. */
+    public string $confirmNote = '';
+
+    /**
+     * One-tap preset notes per action — clicking a chip drops the text into
+     * the note box (the seller reads it verbatim in their wallet page).
+     */
+    public const NOTE_PRESETS = [
+        'approve' => [
+            'مبلغ به کارت بانکی شما واریز شد. ✅',
+            'واریز انجام شد؛ در صورت تأخیر بانکی حداکثر تا ۷۲ ساعت صبر کنید.',
+            'واریز از طرف حساب مرکزی انجام شد — رسید نزد پشتیبانی موجود است.',
+            'تسویهٔ دورهٔ قبل شما پرداخت شد؛ درخواست‌های بعدی طبق روال بررسی می‌شود.',
+        ],
+        'reject' => [
+            'شماره کارت و شبا صحیح نمی‌باشد؛ لطفاً کارت را اصلاح و دوباره درخواست بدهید.',
+            'اطلاعات حساب با نام صاحب حساب هم‌خوانی ندارد؛ کارت به نام خودتان باشد.',
+            'کارت بانکی مسدود یا غیرفعال است؛ لطفاً کارت دیگری ثبت کنید.',
+            'خطای شبکهٔ بانکی رخ داد — لطفاً بعداً دوباره درخواست بدهید.',
+            'درخواست شما پس از بررسی رد شد؛ برای اطلاعات بیشتر با پشتیبانی تماس بگیرید.',
+        ],
+    ];
+
     public function updating(string $property): void
     {
         if (in_array($property, ['statusFilter', 'fromDate', 'toDate'], true)) {
@@ -62,13 +86,13 @@ class WithdrawalsPage extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 20;
+        $this->perPage += 20;
     }
 
     protected function range(): array
     {
         $from = JDate::parse($this->fromDate)?->startOfDay();
-        $to   = JDate::parse($this->toDate)?->endOfDay();
+        $to = JDate::parse($this->toDate)?->endOfDay();
 
         if ($from && $to && $from->gt($to)) {
             [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
@@ -92,7 +116,7 @@ class WithdrawalsPage extends Component
 
     public function getRowsProperty()
     {
-        $rows  = $this->query()->limit($this->perPage)->get();
+        $rows = $this->query()->limit($this->perPage)->get();
         $total = (clone $this->query())->count();
 
         $this->hasMore = $total > $this->perPage;
@@ -112,14 +136,14 @@ class WithdrawalsPage extends Component
             ->when($to = $this->range()[1], fn ($q) => $q->where('created_at', '<=', $to));
 
         $pending = (clone $base)->where('status', 'pending');
-        $done    = (clone $base)->where('status', 'done');
-        $rej     = (clone $base)->where('status', 'rejected');
+        $done = (clone $base)->where('status', 'done');
+        $rej = (clone $base)->where('status', 'rejected');
 
         return [
-            'pending_sum'    => (int) $pending->sum('amount'),
-            'pending_count'  => (int) $pending->count(),
-            'done_sum'       => (int) $done->sum('amount'),
-            'rejected_sum'   => (int) $rej->sum('amount'),
+            'pending_sum' => (int) $pending->sum('amount'),
+            'pending_count' => (int) $pending->count(),
+            'done_sum' => (int) $done->sum('amount'),
+            'rejected_sum' => (int) $rej->sum('amount'),
             'rejected_count' => (int) $rej->count(),
         ];
     }
@@ -128,20 +152,29 @@ class WithdrawalsPage extends Component
 
     public function askApprove(int $id): void
     {
-        $this->confirmId     = $id;
+        $this->confirmId = $id;
         $this->confirmAction = 'approve';
+        $this->confirmNote = '';
     }
 
     public function askReject(int $id): void
     {
-        $this->confirmId     = $id;
+        $this->confirmId = $id;
         $this->confirmAction = 'reject';
+        $this->confirmNote = '';
     }
 
     public function cancelConfirm(): void
     {
-        $this->confirmId     = null;
+        $this->confirmId = null;
         $this->confirmAction = '';
+        $this->confirmNote = '';
+    }
+
+    /** Drop a preset note into the confirm modal's note box (by index). */
+    public function useNotePreset(int $index): void
+    {
+        $this->confirmNote = self::NOTE_PRESETS[$this->confirmAction][$index] ?? '';
     }
 
     public function execute(): void
@@ -150,8 +183,9 @@ class WithdrawalsPage extends Component
             return;
         }
 
-        $tx    = WalletTransaction::query()->with('wallet')->find($this->confirmId);
-        $mode  = $this->confirmAction; // capture BEFORE the confirm state resets
+        $tx = WalletTransaction::query()->with('wallet')->find($this->confirmId);
+        $mode = $this->confirmAction; // capture BEFORE the confirm state resets
+        $note = $this->confirmNote;   // same — cancelConfirm() wipes it
         $this->cancelConfirm();
 
         if (! $tx) {
@@ -159,11 +193,11 @@ class WithdrawalsPage extends Component
         }
 
         if ($mode === 'approve') {
-            $ok = WalletService::approveWithdrawal($tx);
+            $ok = WalletService::approveWithdrawal($tx, $note);
 
             ActivityLogger::log(
                 'wallet.withdraw',
-                'درخواست برداشت '.Fmt::money($tx->amount).' تأیید شد'.($tx->sheba ? ' — شبا: '.$tx->sheba : ''),
+                'درخواست برداشت '.Fmt::money($tx->amount).' تأیید شد — مقصد: '.($tx->card_number ? 'کارت '.Banking::maskCard($tx->card_number) : ($tx->sheba ?: '—')).($note !== '' ? ' | توضیح: '.$note : ''),
                 subject: $tx,
                 after: ['status' => 'done', 'amount' => $tx->amount],
             );
@@ -173,11 +207,11 @@ class WithdrawalsPage extends Component
             return;
         }
 
-        $ok = WalletService::rejectWithdrawal($tx);
+        $ok = WalletService::rejectWithdrawal($tx, $note);
 
         ActivityLogger::log(
             'wallet.withdraw',
-            'درخواست برداشت '.Fmt::money($tx->amount).' رد شد — مبلغ به کیف پول بازگشت',
+            'درخواست برداشت '.Fmt::money($tx->amount).' رد شد — مبلغ به کیف پول بازگشت'.($note !== '' ? ' | توضیح: '.$note : ''),
             subject: $tx,
             after: ['status' => 'rejected', 'amount' => $tx->amount],
         );
@@ -188,8 +222,8 @@ class WithdrawalsPage extends Component
     public function render()
     {
         return view('livewire.admin.withdrawals-page', [
-            'rows'    => $this->rows,
-            'total'   => $this->total,
+            'rows' => $this->rows,
+            'total' => $this->total,
             'metrics' => $this->metrics,
         ])->title('مدیریت برداشت‌ها')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — مالی و حسابداری — مدیریت برداشت‌ها']);

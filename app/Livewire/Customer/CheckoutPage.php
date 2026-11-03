@@ -9,17 +9,19 @@ use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\Discount;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\Province;
 use App\Models\Shop;
-use App\Support\Checkout\DiscountEvaluator;
 use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
+use App\Support\Checkout\DiscountEvaluator;
 use App\Support\Fmt;
 use App\Support\IranCalendar;
 use App\Support\Payments\PaymentService;
 use App\Support\Phone;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -100,7 +102,7 @@ class CheckoutPage extends Component
         if ($default) {
             $this->selectAddress((int) $default->id);
         } else {
-            $this->receiver_name  = (string) ($customer?->full_name ?? '');
+            $this->receiver_name = (string) ($customer?->full_name ?? '');
             $this->delivery_phone = Phone::toLocal($customer?->phone);
         }
 
@@ -132,7 +134,7 @@ class CheckoutPage extends Component
     public function openAddressModal(): void
     {
         $this->showAddressForm = false;
-        $this->addressEditId   = null;
+        $this->addressEditId = null;
         $this->resetErrorBag();
         $this->showAddressModal = true;
     }
@@ -140,8 +142,8 @@ class CheckoutPage extends Component
     public function closeAddressModal(): void
     {
         $this->showAddressModal = false;
-        $this->showAddressForm  = false;
-        $this->addressEditId    = null;
+        $this->showAddressForm = false;
+        $this->addressEditId = null;
     }
 
     /** Open the «افزودن آدرس» modal — the same form as the address book. */
@@ -154,13 +156,13 @@ class CheckoutPage extends Component
 
         // prefill from the profile — saves typing on the first address
         $this->newRecipient = (string) ($customer?->full_name ?? '');
-        $this->newPhone     = Phone::toLocal($customer?->phone);
+        $this->newPhone = Phone::toLocal($customer?->phone);
         $this->newIsDefault = $this->addresses->isEmpty();
 
         $this->resetErrorBag();
 
         $this->showAddressModal = false;
-        $this->showAddressForm  = true;
+        $this->showAddressForm = true;
     }
 
     /** Open the «ویرایش آدرس» modal for one saved address. */
@@ -176,42 +178,42 @@ class CheckoutPage extends Component
         $this->resetErrorBag();
 
         $this->addressEditId = $address->id;
-        $this->newTitle      = (string) ($address->title ?? '');
-        $this->newRecipient  = (string) ($address->recipient_name ?? '');
-        $this->newPhone      = Phone::toLocal($address->phone);
+        $this->newTitle = (string) ($address->title ?? '');
+        $this->newRecipient = (string) ($address->recipient_name ?? '');
+        $this->newPhone = Phone::toLocal($address->phone);
         $this->newProvinceId = (int) ($address->province_id ?? 0);
-        $this->newCityId     = (int) ($address->city_id ?? 0);
-        $this->newAddress    = (string) $address->address;
-        $this->newPostal     = (string) ($address->postal_code ?? '');
-        $this->newPlaque     = (string) ($address->plaque ?? '');
-        $this->newUnit       = (string) ($address->unit ?? '');
-        $this->newIsDefault  = (bool) $address->is_default;
+        $this->newCityId = (int) ($address->city_id ?? 0);
+        $this->newAddress = (string) $address->address;
+        $this->newPostal = (string) ($address->postal_code ?? '');
+        $this->newPlaque = (string) ($address->plaque ?? '');
+        $this->newUnit = (string) ($address->unit ?? '');
+        $this->newIsDefault = (bool) $address->is_default;
 
         $this->showAddressModal = false;
-        $this->showAddressForm  = true;
+        $this->showAddressForm = true;
     }
 
     /** Back from the form modal to the address-book list. */
     public function backToAddressList(): void
     {
         $this->showAddressForm = false;
-        $this->addressEditId   = null;
+        $this->addressEditId = null;
         $this->showAddressModal = true;
     }
 
     private function resetNewAddressForm(): void
     {
         $this->addressEditId = null;
-        $this->newTitle      = '';
-        $this->newRecipient  = '';
-        $this->newPhone      = '';
+        $this->newTitle = '';
+        $this->newRecipient = '';
+        $this->newPhone = '';
         $this->newProvinceId = 0;
-        $this->newCityId     = 0;
-        $this->newAddress    = '';
-        $this->newPostal     = '';
-        $this->newPlaque     = '';
-        $this->newUnit       = '';
-        $this->newIsDefault  = false;
+        $this->newCityId = 0;
+        $this->newAddress = '';
+        $this->newPostal = '';
+        $this->newPlaque = '';
+        $this->newUnit = '';
+        $this->newIsDefault = false;
     }
 
     public function updatedNewProvinceId(): void
@@ -266,14 +268,18 @@ class CheckoutPage extends Component
         foreach ($this->shopGroups as $group) {
             $this->autoPickCarrier((int) $group['shop']->id, $group['carriers']);
         }
+
+        // the browser re-syncs the delivery-day section from the freshly
+        // rendered carrier picks (the zone flip may auto-pick another carrier)
+        $this->dispatch('address-picked');
     }
 
     private function fillDeliveryFromAddress(CustomerAddress $address): void
     {
-        $this->receiver_name    = (string) ($address->recipient_name ?: $this->customer()?->full_name ?? '');
-        $this->delivery_phone   = $address->phone ? Phone::toLocal($address->phone) : Phone::toLocal($this->customer()?->phone);
+        $this->receiver_name = (string) ($address->recipient_name ?: $this->customer()?->full_name ?? '');
+        $this->delivery_phone = $address->phone ? Phone::toLocal($address->phone) : Phone::toLocal($this->customer()?->phone);
         $this->delivery_address = $address->fullLabel();
-        $this->postal_code      = (string) ($address->postal_code ?? '');
+        $this->postal_code = (string) ($address->postal_code ?? '');
     }
 
     /** Save the add/edit form — same semantics as the address book page. */
@@ -288,7 +294,7 @@ class CheckoutPage extends Component
         }
 
         $province = $this->newProvinceId > 0 ? Province::find($this->newProvinceId) : null;
-        $city     = $this->newCityId > 0 ? City::find($this->newCityId) : null;
+        $city = $this->newCityId > 0 ? City::find($this->newCityId) : null;
 
         $address = $this->addressEditId
             ? CustomerAddress::query()->where('customer_id', $customer->id)->find($this->addressEditId)
@@ -301,18 +307,18 @@ class CheckoutPage extends Component
         $wasEditing = $this->addressEditId !== null;
 
         $address->fill([
-            'title'          => trim($this->newTitle) !== '' ? trim($this->newTitle) : null,
+            'title' => trim($this->newTitle) !== '' ? trim($this->newTitle) : null,
             'recipient_name' => trim($this->newRecipient) !== '' ? trim($this->newRecipient) : null,
-            'phone'          => $this->newPhone !== '' ? Phone::normalize($this->newPhone) : null,
-            'province_id'    => $province?->id,
-            'city_id'        => $city?->id,
-            'province_name'  => $province?->name,
-            'city_name'      => $city?->name,
-            'address'        => trim($this->newAddress),
-            'postal_code'    => $this->newPostal !== '' ? $this->newPostal : null,
-            'plaque'         => trim($this->newPlaque) !== '' ? trim($this->newPlaque) : null,
-            'unit'           => trim($this->newUnit) !== '' ? trim($this->newUnit) : null,
-            'is_default'     => $this->newIsDefault,
+            'phone' => $this->newPhone !== '' ? Phone::normalize($this->newPhone) : null,
+            'province_id' => $province?->id,
+            'city_id' => $city?->id,
+            'province_name' => $province?->name,
+            'city_name' => $city?->name,
+            'address' => trim($this->newAddress),
+            'postal_code' => $this->newPostal !== '' ? $this->newPostal : null,
+            'plaque' => trim($this->newPlaque) !== '' ? trim($this->newPlaque) : null,
+            'unit' => trim($this->newUnit) !== '' ? trim($this->newUnit) : null,
+            'is_default' => $this->newIsDefault,
         ]);
 
         $address->save();
@@ -353,38 +359,38 @@ class CheckoutPage extends Component
     protected function rules(): array
     {
         return [
-            'receiver_name'    => ['required', 'string', 'min:3', 'max:80'],
-            'delivery_phone'   => ['required', 'string'],
+            'receiver_name' => ['required', 'string', 'min:3', 'max:80'],
+            'delivery_phone' => ['required', 'string'],
             'delivery_address' => ['required', 'string', 'min:10', 'max:500'],
-            'postal_code'      => ['nullable', 'string', 'regex:/^\d{10}$/'],
+            'postal_code' => ['nullable', 'string', 'regex:/^\d{10}$/'],
         ];
     }
 
     protected function messages(): array
     {
         return [
-            'receiver_name.required'    => 'نام گیرنده را وارد کنید.',
-            'receiver_name.min'         => 'نام گیرنده باید حداقل ۳ حرف باشد.',
-            'delivery_phone.required'   => 'شماره تماس گیرنده را وارد کنید.',
+            'receiver_name.required' => 'نام گیرنده را وارد کنید.',
+            'receiver_name.min' => 'نام گیرنده باید حداقل ۳ حرف باشد.',
+            'delivery_phone.required' => 'شماره تماس گیرنده را وارد کنید.',
             'delivery_address.required' => 'نشانی کامل تحویل را وارد کنید.',
-            'delivery_address.min'      => 'نشانی باید حداقل ۱۰ حرف باشد.',
-            'postal_code.regex'         => 'کد پستی باید ۱۰ رقم باشد.',
+            'delivery_address.min' => 'نشانی باید حداقل ۱۰ حرف باشد.',
+            'postal_code.regex' => 'کد پستی باید ۱۰ رقم باشد.',
         ];
     }
 
     private function newAddressRules(): array
     {
         return [
-            'newTitle'      => ['nullable', 'string', 'max:60'],
-            'newRecipient'  => ['required', 'string', 'min:3', 'max:80'],
-            'newPhone'      => ['required', 'string', 'min:10', 'max:14'],
+            'newTitle' => ['nullable', 'string', 'max:60'],
+            'newRecipient' => ['required', 'string', 'min:3', 'max:80'],
+            'newPhone' => ['required', 'string', 'min:10', 'max:14'],
             'newProvinceId' => ['required', 'integer', 'min:1', 'exists:provinces,id'],
-            'newCityId'     => ['required', 'integer', 'min:1', Rule::exists('cities', 'id')->where('province_id', $this->newProvinceId)],
-            'newAddress'    => ['required', 'string', 'min:10', 'max:500'],
-            'newPostal'     => ['nullable', 'string', 'regex:/^\d{10}$/'],
-            'newPlaque'     => ['nullable', 'string', 'max:20'],
-            'newUnit'       => ['nullable', 'string', 'max:20'],
-            'newIsDefault'  => ['boolean'],
+            'newCityId' => ['required', 'integer', 'min:1', Rule::exists('cities', 'id')->where('province_id', $this->newProvinceId)],
+            'newAddress' => ['required', 'string', 'min:10', 'max:500'],
+            'newPostal' => ['nullable', 'string', 'regex:/^\d{10}$/'],
+            'newPlaque' => ['nullable', 'string', 'max:20'],
+            'newUnit' => ['nullable', 'string', 'max:20'],
+            'newIsDefault' => ['boolean'],
         ];
     }
 
@@ -392,17 +398,17 @@ class CheckoutPage extends Component
     {
         return [
             'newRecipient.required' => 'نام گیرنده را وارد کنید.',
-            'newRecipient.min'      => 'نام گیرنده باید حداقل ۳ حرف باشد.',
-            'newPhone.required'     => 'شماره همراه را وارد کنید.',
-            'newPhone.min'          => 'شماره همراه معتبر نیست.',
+            'newRecipient.min' => 'نام گیرنده باید حداقل ۳ حرف باشد.',
+            'newPhone.required' => 'شماره همراه را وارد کنید.',
+            'newPhone.min' => 'شماره همراه معتبر نیست.',
             'newProvinceId.required' => 'استان را انتخاب کنید.',
-            'newProvinceId.min'     => 'استان را انتخاب کنید.',
-            'newCityId.required'    => 'شهر را انتخاب کنید.',
-            'newCityId.min'         => 'شهر را انتخاب کنید.',
-            'newCityId.exists'      => 'شهر انتخابی با استان هم‌خوانی ندارد.',
-            'newAddress.required'   => 'نشانی کامل را وارد کنید.',
-            'newAddress.min'        => 'نشانی باید حداقل ۱۰ حرف باشد.',
-            'newPostal.regex'       => 'کد پستی باید ۱۰ رقم باشد.',
+            'newProvinceId.min' => 'استان را انتخاب کنید.',
+            'newCityId.required' => 'شهر را انتخاب کنید.',
+            'newCityId.min' => 'شهر را انتخاب کنید.',
+            'newCityId.exists' => 'شهر انتخابی با استان هم‌خوانی ندارد.',
+            'newAddress.required' => 'نشانی کامل را وارد کنید.',
+            'newAddress.min' => 'نشانی باید حداقل ۱۰ حرف باشد.',
+            'newPostal.regex' => 'کد پستی باید ۱۰ رقم باشد.',
         ];
     }
 
@@ -452,22 +458,39 @@ class CheckoutPage extends Component
         return $carrier?->selectableDeliveryDays() ?? [];
     }
 
-    /** The picked user_select carrier of a shop (null when not applicable). */
-    public function userSelectCarrierFor(int $shopId): ?Carrier
+    /**
+     * Switching the carrier invalidates a no-longer-valid delivery day.
+     *
+     * The browser already drops an obsolete pick the moment the carrier
+     * changes (zero-roundtrip checkout). This hook is the server-side
+     * safety net — and it MUST be order-safe: when carrier + day updates
+     * ride the SAME deferred commit (e.g. a quick 1→2→1 switch then a day
+     * pick), Livewire can run this hook AFTER the day-pick update has been
+     * applied. So never unset blindly: only drop the pick when it is
+     * genuinely invalid for the NEW carrier.
+     */
+    public function updatedCarrierPicks($value, string $shopId): void
     {
+        $shopId = (int) $shopId;
+
         $group = $this->shopGroups->first(fn ($g) => (int) $g['shop']->id === $shopId);
 
         $carrier = $group
-            ? $group['carriers']->firstWhere('id', (int) ($this->carrierPicks[$shopId] ?? 0))
+            ? $group['carriers']->firstWhere('id', (int) $value)
             : null;
 
-        return ($carrier && $carrier->delivery_time_type === Carrier::TIME_USER_SELECT) ? $carrier : null;
-    }
+        // a non-user_select carrier has no day picker at all → drop the pick
+        if (! $carrier || $carrier->delivery_time_type !== Carrier::TIME_USER_SELECT) {
+            unset($this->deliveryPicks[$shopId]);
 
-    /** Switching the carrier invalidates the previously picked delivery day. */
-    public function updatedCarrierPicks($value, string $shopId): void
-    {
-        unset($this->deliveryPicks[$shopId]);
+            return;
+        }
+
+        // user_select carrier: keep the pick when it is still inside the
+        // new carrier's selectable days (IranCalendar filters Fridays…)
+        if (! IranCalendar::isAllowedPick($carrier->selectableDeliveryDays(), (string) ($this->deliveryPicks[$shopId] ?? ''))) {
+            unset($this->deliveryPicks[$shopId]);
+        }
     }
 
     /* ───────────────────── interactions ───────────────────── */
@@ -475,9 +498,9 @@ class CheckoutPage extends Component
     /** «اعمال» click — validates the code against the CURRENT cart groups. */
     public function applyDiscount(): void
     {
-        $this->discountApplied  = false;
-        $this->discountAmount   = 0;
-        $this->discountMessage  = '';
+        $this->discountApplied = false;
+        $this->discountAmount = 0;
+        $this->discountMessage = '';
 
         $code = trim($this->discountCode);
 
@@ -497,12 +520,16 @@ class CheckoutPage extends Component
         [$ok, $amount, $message] = DiscountEvaluator::evaluate($discount, $this->customer(), $groupLines);
 
         $this->discountApplied = $ok;
-        $this->discountAmount  = $amount;
+        $this->discountAmount = $amount;
         $this->discountMessage = $message;
 
         if ($ok) {
             $this->dispatch('panel-toast', message: $message.' ✅', type: 'success');
             $this->resetErrorBag('discountCode');
+
+            // the payable total is owned by the browser (zero-roundtrip
+            // checkout) — hand the fresh amount over so it re-renders live
+            $this->dispatch('discount-updated', amount: $amount);
         } else {
             $this->addError('discountCode', $message);
         }
@@ -511,11 +538,13 @@ class CheckoutPage extends Component
     /** «حذف کد» — clears the applied discount. */
     public function removeDiscount(): void
     {
-        $this->discountCode     = '';
-        $this->discountApplied  = false;
-        $this->discountAmount   = 0;
-        $this->discountMessage  = '';
+        $this->discountCode = '';
+        $this->discountApplied = false;
+        $this->discountAmount = 0;
+        $this->discountMessage = '';
         $this->resetErrorBag('discountCode');
+
+        $this->dispatch('discount-updated', amount: 0);
     }
 
     /** Validate delivery info → snapshot cart (+ carriers/discount/gateway) → gateway. */
@@ -539,7 +568,7 @@ class CheckoutPage extends Component
 
         try {
             $this->validate();
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             $this->dispatch('panel-toast', message: collect($exception->errors())->flatten()->filter()->first()
                 ?: 'لطفاً اطلاعات تحویل را کامل کنید.');
 
@@ -578,7 +607,7 @@ class CheckoutPage extends Component
                 continue;
             }
 
-            $shopId  = (int) $group['shop']->id;
+            $shopId = (int) $group['shop']->id;
             $carrier = $group['carriers']->firstWhere('id', (int) ($this->carrierPicks[$shopId] ?? 0));
 
             if (! $carrier || $carrier->delivery_time_type !== Carrier::TIME_USER_SELECT) {
@@ -606,7 +635,7 @@ class CheckoutPage extends Component
         [$discount, $discountAmount] = $this->resolveDiscount();
 
         /* ── shipments snapshot (tariff-aware, batch 74) ── */
-        $shipments    = [];
+        $shipments = [];
         $shippingCost = 0;
 
         foreach ($this->shopGroups as $group) {
@@ -614,7 +643,7 @@ class CheckoutPage extends Component
                 continue;
             }
 
-            $pick    = (int) ($this->carrierPicks[(int) $group['shop']->id] ?? 0);
+            $pick = (int) ($this->carrierPicks[(int) $group['shop']->id] ?? 0);
             $carrier = $group['carriers']->firstWhere('id', $pick);
 
             if (! $carrier) {
@@ -628,10 +657,10 @@ class CheckoutPage extends Component
             }
 
             $shipments[] = [
-                'shop_id'       => (int) $group['shop']->id,
-                'carrier_id'    => $carrier->id,
+                'shop_id' => (int) $group['shop']->id,
+                'carrier_id' => $carrier->id,
                 'carrier_title' => $carrier->title,
-                'cost'          => $cost,
+                'cost' => $cost,
                 'delivery_date' => $carrier->delivery_time_type === Carrier::TIME_USER_SELECT
                     ? (string) ($this->deliveryPicks[(int) $group['shop']->id] ?? '')
                     : null,
@@ -639,14 +668,14 @@ class CheckoutPage extends Component
         }
 
         $order = Order::createFromCart($customer, [
-            'receiver_name'    => trim($this->receiver_name),
-            'delivery_phone'   => (string) $normalized,
+            'receiver_name' => trim($this->receiver_name),
+            'delivery_phone' => (string) $normalized,
             'delivery_address' => trim($this->delivery_address),
-            'postal_code'      => $this->postal_code !== '' ? $this->postal_code : null,
+            'postal_code' => $this->postal_code !== '' ? $this->postal_code : null,
         ], $this->gateway, [
-            'shipments'       => $shipments,
-            'shipping_cost'   => $shippingCost,
-            'discount'        => $discount,
+            'shipments' => $shipments,
+            'shipping_cost' => $shippingCost,
+            'discount' => $discount,
             'discount_amount' => $discountAmount,
         ]);
 
@@ -706,15 +735,15 @@ class CheckoutPage extends Component
      * نمی‌کنه» — batch 74); each kept carrier carries a zone_ok flag for
      * the current delivery province.
      *
-     * @return Collection<int, array{shop, items: Collection, subtotal: int, weight: int, carriers: Collection, allCarriers: Collection, needsCarrier: bool}>
+     * @return Collection<int, array{Shop, items: Collection, subtotal: int, weight: int, carriers: Collection, allCarriers: Collection, needsCarrier: bool}>
      */
     public function getShopGroupsProperty(): Collection
     {
         return $this->validItems
             ->groupBy(fn ($item) => (int) ($item->product->shop_id ?? 0))
             ->map(function (Collection $lines) {
-                $shop     = $lines->first()->product->shop;
-                $physical = $lines->contains(fn ($item) => $item->product->type !== \App\Models\Product::TYPE_DOWNLOADABLE);
+                $shop = $lines->first()->product->shop;
+                $physical = $lines->contains(fn ($item) => $item->product->type !== Product::TYPE_DOWNLOADABLE);
 
                 $allCarriers = $physical && $shop
                     ? Carrier::query()->where('shop_id', $shop->id)->active()->with('tariffs')->orderBy('sort')->orderBy('id')->get()
@@ -725,12 +754,12 @@ class CheckoutPage extends Component
                 )->values();
 
                 return [
-                    'shop'         => $shop,
-                    'items'        => $lines->values(),
-                    'subtotal'     => (int) $lines->sum(fn ($item) => $item->lineTotal()),
-                    'weight'       => (int) $lines->sum(fn ($item) => (int) ($item->product->weight_grams ?? 0) * (int) $item->quantity),
-                    'carriers'     => $carriers,
-                    'allCarriers'  => $allCarriers,
+                    'shop' => $shop,
+                    'items' => $lines->values(),
+                    'subtotal' => (int) $lines->sum(fn ($item) => $item->lineTotal()),
+                    'weight' => (int) $lines->sum(fn ($item) => (int) ($item->product->weight_grams ?? 0) * (int) $item->quantity),
+                    'carriers' => $carriers,
+                    'allCarriers' => $allCarriers,
                     'needsCarrier' => $physical,
                 ];
             })
@@ -757,7 +786,7 @@ class CheckoutPage extends Component
                 continue;
             }
 
-            $pick    = (int) ($this->carrierPicks[(int) $group['shop']->id] ?? 0);
+            $pick = (int) ($this->carrierPicks[(int) $group['shop']->id] ?? 0);
             $carrier = $group['carriers']->firstWhere('id', $pick);
 
             if ($carrier && ! $carrier->isPayOnDelivery()) {
@@ -776,7 +805,7 @@ class CheckoutPage extends Component
                 continue;
             }
 
-            $pick    = (int) ($this->carrierPicks[(int) $group['shop']->id] ?? 0);
+            $pick = (int) ($this->carrierPicks[(int) $group['shop']->id] ?? 0);
             $carrier = $group['carriers']->firstWhere('id', $pick);
 
             if ($carrier && $carrier->isPayOnDelivery()) {
@@ -847,20 +876,20 @@ class CheckoutPage extends Component
     public function render()
     {
         return view('livewire.customer.checkout-page', [
-            'items'        => $this->items,
-            'validItems'   => $this->validItems,
-            'shopGroups'   => $this->shopGroups,
-            'total'        => $this->total,
-            'units'        => $this->units,
+            'items' => $this->items,
+            'validItems' => $this->validItems,
+            'shopGroups' => $this->shopGroups,
+            'total' => $this->total,
+            'units' => $this->units,
             'shippingCost' => $this->shippingCost,
             'hasPayOnDelivery' => $this->hasPayOnDelivery,
-            'payable'      => $this->payable,
+            'payable' => $this->payable,
             'liveDiscount' => $this->liveDiscount,
-            'gateways'     => $this->gateways,
-            'addresses'    => $this->addresses,
+            'gateways' => $this->gateways,
+            'addresses' => $this->addresses,
             'selectedAddress' => $this->selectedAddress,
             'newProvinces' => $this->newProvinces,
-            'newCities'    => $this->newCities,
+            'newCities' => $this->newCities,
         ])->title('تکمیل خرید');
     }
 

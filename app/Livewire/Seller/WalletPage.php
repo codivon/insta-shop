@@ -2,20 +2,21 @@
 
 namespace App\Livewire\Seller;
 
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\BankCard;
 use App\Models\Shop;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
+use App\Support\Banking;
 use App\Support\Fmt;
 use App\Support\Wallet\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Seller — کیف پول (wallet tab):
@@ -56,8 +57,6 @@ class WalletPage extends Component
 
     public string $withdrawAmount = '';
 
-    public string $withdrawSheba = '';
-
     /* ── transaction details modal ── */
     public ?int $detailId = null;
 
@@ -66,7 +65,7 @@ class WalletPage extends Component
         $today = CarbonImmutable::today();
 
         // default chart window: last 7 days
-        $this->chartTo   = $today->toDateString();
+        $this->chartTo = $today->toDateString();
         $this->chartFrom = $today->subDays(6)->toDateString();
     }
 
@@ -85,14 +84,14 @@ class WalletPage extends Component
 
         [$from, $to] = $this->defaultWindow($this->chartMode);
         $this->chartFrom = $from;
-        $this->chartTo   = $to;
+        $this->chartTo = $to;
     }
 
     /** Clear the «گردش حساب» date filter. */
     public function clearTxFilter(): void
     {
         $this->txFrom = '';
-        $this->txTo   = '';
+        $this->txTo = '';
         $this->perPage = 10;
         $this->hasMore = true;
     }
@@ -106,32 +105,40 @@ class WalletPage extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage    += 10;
+        $this->perPage += 10;
     }
 
     /* ───────────────────────── withdraw modal ───────────────────────── */
+
+    /** The seller's shop (defensively bootstrapped, same as render). */
+    protected function shop(): ?Shop
+    {
+        $seller = auth('seller')->user();
+
+        return $seller ? Shop::ensureForSeller($seller) : null;
+    }
+
+    /** The withdrawal destination — the seller's DEFAULT bank card (null when none). */
+    protected function defaultCard(): ?BankCard
+    {
+        return BankCard::query()
+            ->where('seller_id', auth('seller')->id())
+            ->orderByDesc('is_default')
+            ->orderBy('id')
+            ->first();
+    }
 
     public function openWithdraw(): void
     {
         $this->resetErrorBag();
         $this->withdrawAmount = '';
-
-        // pre-fill the destination sheba from the seller's default bank card
-        $defaultCard = BankCard::query()
-            ->where('seller_id', auth('seller')->id())
-            ->orderByDesc('is_default')
-            ->orderBy('id')
-            ->first();
-
-        $this->withdrawSheba = $defaultCard?->sheba ?? '';
-        $this->withdrawOpen  = true;
+        $this->withdrawOpen = true;
     }
 
     public function closeWithdraw(): void
     {
-        $this->withdrawOpen   = false;
+        $this->withdrawOpen = false;
         $this->withdrawAmount = '';
-        $this->withdrawSheba  = '';
         $this->resetErrorBag();
     }
 
@@ -140,37 +147,32 @@ class WalletPage extends Component
         $this->withdrawAmount = Fmt::toLatin((string) $value);
     }
 
-    public function updatedWithdrawSheba(mixed $value): void
-    {
-        // Persian/Arabic digits → Latin, KEEP the IR letters, drop spaces
-        $v = strtr((string) $value, [
-            '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',
-            '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
-            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
-            '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
-        ]);
-
-        $this->withdrawSheba = strtoupper(preg_replace('/\s+/u', '', $v) ?? '');
-    }
-
     public function submitWithdraw(): void
     {
         $wallet = $this->wallet();
 
+        // the destination is ALWAYS the seller's default bank card — a
+        // seller without any card cannot request a withdrawal (the submit
+        // button is disabled client-side; this is the server-side net)
+        $card = $this->defaultCard();
+
+        if (! $card || (string) $card->card_number === '') {
+            $this->addError('withdrawCard', 'هنوز کارت بانکی ثبت نکرده‌اید؛ اول از صفحهٔ «کارت‌های بانکی» کارت خود را وارد کنید، بعد درخواست بدهید.');
+
+            return;
+        }
+
         $this->validateWithToast(fn () => $this->validate([
             'withdrawAmount' => ['required', 'numeric', 'min:50000', 'max:'.$wallet->balance],
-            'withdrawSheba'  => ['required', 'string', 'regex:/^IR\d{24}$/'],
         ], [
             'withdrawAmount.required' => 'مبلغ برداشت را وارد کنید.',
-            'withdrawAmount.min'      => 'حداقل مبلغ برداشت ۵۰٬۰۰۰ تومان است.',
-            'withdrawAmount.max'      => 'مبلغ درخواستی بیشتر از موجودی قابل برداشت است.',
-            'withdrawSheba.required'  => 'شماره شبا را وارد کنید.',
-            'withdrawSheba.regex'     => 'شماره شبا باید با IR شروع شود و ۲۴ رقم بعد از آن باشد (مثال: IR062980000000123456789001).',
+            'withdrawAmount.min' => 'حداقل مبلغ برداشت ۵۰٬۰۰۰ تومان است.',
+            'withdrawAmount.max' => 'مبلغ درخواستی بیشتر از موجودی قابل برداشت است.',
         ]));
 
         $amount = (int) $this->withdrawAmount;
 
-        $tx = WalletService::requestWithdrawal($wallet, $amount, $this->withdrawSheba);
+        $tx = WalletService::requestWithdrawal($wallet, $amount, (string) $card->sheba, (string) $card->card_number);
 
         if ($tx === null) {
             $this->addError('withdrawAmount', 'موجودی کافی نیست.');
@@ -178,27 +180,26 @@ class WalletPage extends Component
             return;
         }
 
-        \App\Support\ActivityLogger::log(
+        ActivityLogger::log(
             'wallet.withdraw',
-            'درخواست برداشت '.Fmt::money($amount).' از کیف پول فروشگاه '.($this->shop()?->name ?: '—').' ثبت شد',
+            'درخواست برداشت '.Fmt::money($amount).' از کیف پول فروشگاه '.($this->shop()?->name ?: '—').' ثبت شد — مقصد: '.Banking::maskCard($card->card_number),
             subject: $tx,
-            after: ['amount' => $amount, 'sheba' => '••••'.mb_substr($this->withdrawSheba, -4)],
+            after: ['amount' => $amount, 'card' => '••••'.mb_substr((string) $card->card_number, -4)],
         );
 
         AdminNotifier::notify(
             'wallet.withdraw',
             'درخواست برداشت 💰 '.Fmt::money($amount),
-            'فروشگاه '.($this->shop()?->name ?: '—').' درخواست برداشت ثبت کرد — نیاز به تایید شما.',
-            route('admin.income'),
+            'فروشگاه '.($this->shop()?->name ?: '—').' درخواست برداشت به کارت '.Banking::maskCard($card->card_number).' ثبت کرد — نیاز به تایید شما.',
+            route('admin.withdrawals'),
             'wallet',
             $tx,
         );
 
-        $this->withdrawOpen   = false;
+        $this->withdrawOpen = false;
         $this->withdrawAmount = '';
-        $this->withdrawSheba  = '';
 
-        session()->flash('wallet-flash', 'درخواست برداشت ثبت شد؛ پس از تأیید مدیر، مبلغ به شبا واریز می‌شود.');
+        session()->flash('wallet-flash', 'درخواست برداشت ثبت شد؛ پس از تأیید مدیر، مبلغ به کارت بانکی شما واریز می‌شود.');
     }
 
     /* ───────────────── transaction details modal ───────────────── */
@@ -300,10 +301,10 @@ class WalletPage extends Component
         $today = CarbonImmutable::today();
 
         return match ($mode) {
-            'weekly'  => [$today->subWeeks(11)->startOfWeek(Carbon::SATURDAY)->toDateString(), $today->toDateString()],
+            'weekly' => [$today->subWeeks(11)->startOfWeek(Carbon::SATURDAY)->toDateString(), $today->toDateString()],
             'monthly' => [$today->subMonths(11)->startOfMonth()->toDateString(), $today->toDateString()],
-            'yearly'  => [$today->subYears(4)->startOfYear()->toDateString(), $today->toDateString()],
-            default   => [$today->subDays(6)->toDateString(), $today->toDateString()],
+            'yearly' => [$today->subYears(4)->startOfYear()->toDateString(), $today->toDateString()],
+            default => [$today->subDays(6)->toDateString(), $today->toDateString()],
         };
     }
 
@@ -327,10 +328,10 @@ class WalletPage extends Component
         $today = CarbonImmutable::today();
 
         $f = match ($mode) {
-            'daily'   => $f->max($today->subDays(91)->startOfDay()),
-            'weekly'  => $f->max($today->subDays(364)->startOfDay()),
+            'daily' => $f->max($today->subDays(91)->startOfDay()),
+            'weekly' => $f->max($today->subDays(364)->startOfDay()),
             'monthly' => $f->max($today->subYears(3)->startOfDay()),
-            default   => $f->max($today->subYears(9)->startOfDay()),
+            default => $f->max($today->subYears(9)->startOfDay()),
         };
 
         return [$f, $t->min($today->endOfDay())];
@@ -340,10 +341,10 @@ class WalletPage extends Component
     private function bucketKey(string $mode, CarbonImmutable $date): string
     {
         return match ($mode) {
-            'weekly'  => $date->startOfWeek(Carbon::SATURDAY)->toDateString(),
+            'weekly' => $date->startOfWeek(Carbon::SATURDAY)->toDateString(),
             'monthly' => $date->format('Y-m'),
-            'yearly'  => $date->format('Y'),
-            default   => $date->toDateString(),
+            'yearly' => $date->format('Y'),
+            default => $date->toDateString(),
         };
     }
 
@@ -351,70 +352,70 @@ class WalletPage extends Component
     private function periodBuckets(string $mode, CarbonImmutable $from, CarbonImmutable $to): array
     {
         $buckets = [];
-        $today   = CarbonImmutable::today()->toDateString();
+        $today = CarbonImmutable::today()->toDateString();
 
         if ($mode === 'daily') {
             $cursor = $from->startOfDay();
-            $steps  = min((int) $from->diffInDays($to->endOfDay()) + 1, 92);
+            $steps = min((int) $from->diffInDays($to->endOfDay()) + 1, 92);
 
             for ($i = 0; $i < $steps; $i++) {
                 $key = $cursor->toDateString();
 
                 $buckets[$key] = [
-                    'label'      => $cursor->locale('fa')->minDayName.' '.Fmt::fa($cursor->day),
-                    'sort'       => $key,
-                    'deposit'    => 0,
+                    'label' => $cursor->locale('fa')->minDayName.' '.Fmt::fa($cursor->day),
+                    'sort' => $key,
+                    'deposit' => 0,
                     'withdrawal' => 0,
-                    'today'      => $key === $today,
+                    'today' => $key === $today,
                 ];
                 $cursor = $cursor->addDay();
             }
         } elseif ($mode === 'weekly') {
             $cursor = $from->startOfWeek(Carbon::SATURDAY)->startOfDay();
-            $steps  = min((int) $cursor->diffInWeeks($to->endOfDay()) + 1, 52);
+            $steps = min((int) $cursor->diffInWeeks($to->endOfDay()) + 1, 52);
 
             for ($i = 0; $i < $steps; $i++) {
                 $key = $cursor->toDateString();
 
                 $buckets[$key] = [
-                    'label'      => Fmt::fa($cursor->day).' '.$cursor->locale('fa')->monthName,
-                    'sort'       => $key,
-                    'deposit'    => 0,
+                    'label' => Fmt::fa($cursor->day).' '.$cursor->locale('fa')->monthName,
+                    'sort' => $key,
+                    'deposit' => 0,
                     'withdrawal' => 0,
-                    'today'      => $key === $this->bucketKey('weekly', CarbonImmutable::today()),
+                    'today' => $key === $this->bucketKey('weekly', CarbonImmutable::today()),
                 ];
                 $cursor = $cursor->addWeeks(1);
             }
         } elseif ($mode === 'monthly') {
-            $cursor  = $from->startOfMonth();
-            $steps   = min((int) $cursor->diffInMonths($to->endOfDay()) + 1, 36);
+            $cursor = $from->startOfMonth();
+            $steps = min((int) $cursor->diffInMonths($to->endOfDay()) + 1, 36);
             $spanYrs = $cursor->diffInYears($to->endOfDay()) >= 1;
 
             for ($i = 0; $i < $steps; $i++) {
                 $key = $cursor->format('Y-m');
 
                 $buckets[$key] = [
-                    'label'      => $cursor->locale('fa')->monthName.($spanYrs ? ' '.Fmt::fa($cursor->year) : ''),
-                    'sort'       => $key,
-                    'deposit'    => 0,
+                    'label' => $cursor->locale('fa')->monthName.($spanYrs ? ' '.Fmt::fa($cursor->year) : ''),
+                    'sort' => $key,
+                    'deposit' => 0,
                     'withdrawal' => 0,
-                    'today'      => $key === CarbonImmutable::today()->format('Y-m'),
+                    'today' => $key === CarbonImmutable::today()->format('Y-m'),
                 ];
                 $cursor = $cursor->addMonths(1)->startOfMonth();
             }
         } else {
             $cursor = $from->startOfYear();
-            $steps  = min((int) $cursor->diffInYears($to->endOfDay()) + 1, 10);
+            $steps = min((int) $cursor->diffInYears($to->endOfDay()) + 1, 10);
 
             for ($i = 0; $i < $steps; $i++) {
                 $key = $cursor->format('Y');
 
                 $buckets[$key] = [
-                    'label'      => Fmt::fa($cursor->year),
-                    'sort'       => $key,
-                    'deposit'    => 0,
+                    'label' => Fmt::fa($cursor->year),
+                    'sort' => $key,
+                    'deposit' => 0,
                     'withdrawal' => 0,
-                    'today'      => $key === CarbonImmutable::today()->format('Y'),
+                    'today' => $key === CarbonImmutable::today()->format('Y'),
                 ];
                 $cursor = $cursor->addYears(1)->startOfYear();
             }
@@ -454,20 +455,20 @@ class WalletPage extends Component
                 $series = collect($buckets)
                     ->sortBy('sort')
                     ->map(fn ($b) => [
-                        'label'      => $b['label'],
-                        'deposit'    => (int) $b['deposit'],
+                        'label' => $b['label'],
+                        'deposit' => (int) $b['deposit'],
                         'withdrawal' => (int) $b['withdrawal'],
-                        'today'      => $b['today'],
+                        'today' => $b['today'],
                     ])
                     ->values();
 
                 // plain array — the cache unserializes with allowed_classes=false,
                 // so Collections/objects do NOT survive a cache round-trip
                 return [
-                    'series'          => $series->all(),
-                    'depositTotal'    => (int) $series->sum('deposit'),
+                    'series' => $series->all(),
+                    'depositTotal' => (int) $series->sum('deposit'),
                     'withdrawalTotal' => (int) $series->sum('withdrawal'),
-                    'max'             => max($series->max(fn ($b) => max($b['deposit'], $b['withdrawal'])) ?? 1, 1),
+                    'max' => max($series->max(fn ($b) => max($b['deposit'], $b['withdrawal'])) ?? 1, 1),
                 ];
             },
         );
@@ -477,14 +478,14 @@ class WalletPage extends Component
     {
         Shop::ensureForSeller(auth('seller')->user()); // defensive shop bootstrap
 
-        $wallet  = $this->wallet();
+        $wallet = $this->wallet();
         $txQuery = WalletTransaction::query()->where('wallet_id', $wallet->id);
 
         // all-time stats stay stable regardless of the ledger date filter
         $stats = [
-            'income'    => (int) (clone $txQuery)->where('type', WalletTransaction::TYPE_DEPOSIT)->sum('amount'),
+            'income' => (int) (clone $txQuery)->where('type', WalletTransaction::TYPE_DEPOSIT)->sum('amount'),
             'withdrawn' => (int) (clone $txQuery)->where('type', WalletTransaction::TYPE_WITHDRAWAL)->where('status', WalletTransaction::STATUS_DONE)->sum('amount'),
-            'pending'   => $this->pendingWithdrawals(),
+            'pending' => $this->pendingWithdrawals(),
         ];
 
         // «گردش حساب» date filter (optional from/to)
@@ -497,7 +498,7 @@ class WalletPage extends Component
         // newest first — the latest transaction must surface immediately
         $txQuery->orderByDesc('id');
 
-        $txTotal      = (clone $txQuery)->count();
+        $txTotal = (clone $txQuery)->count();
         $transactions = (clone $txQuery)
             ->with('order')
             ->limit($this->perPage)
@@ -508,14 +509,14 @@ class WalletPage extends Component
         [$chartFrom, $chartTo] = $this->resolveChartRange($this->chartFrom, $this->chartTo, $this->chartMode);
 
         return view('livewire.seller.wallet-page', [
-            'wallet'       => $wallet,
-            'stats'        => $stats,
+            'wallet' => $wallet,
+            'stats' => $stats,
             'transactions' => $transactions,
-            'txHasMore'    => $txHasMore,
-            'txTotal'      => $txTotal,
-            'txChart'      => $this->txChart($wallet->id, $this->chartMode, $chartFrom, $chartTo),
-            'txDetail'     => $this->txDetail,
-            'cards'        => BankCard::query()
+            'txHasMore' => $txHasMore,
+            'txTotal' => $txTotal,
+            'txChart' => $this->txChart($wallet->id, $this->chartMode, $chartFrom, $chartTo),
+            'txDetail' => $this->txDetail,
+            'cards' => BankCard::query()
                 ->where('seller_id', auth('seller')->id())
                 ->orderByDesc('is_default')
                 ->orderBy('id')

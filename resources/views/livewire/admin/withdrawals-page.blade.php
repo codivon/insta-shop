@@ -70,9 +70,10 @@
                     <tr class="border-b border-slate-100 bg-slate-50/60 text-[10.5px] text-slate-400 dark:border-slate-800 dark:bg-slate-800/40">
                         <th class="px-5 py-3 font-semibold">فروشنده</th>
                         <th class="px-3 py-3 font-semibold">مبلغ</th>
-                        <th class="px-3 py-3 font-semibold">شبا</th>
+                        <th class="px-3 py-3 font-semibold">کارت مقصد</th>
                         <th class="px-3 py-3 font-semibold">تاریخ درخواست</th>
                         <th class="px-3 py-3 font-semibold">وضعیت</th>
+                        <th class="px-3 py-3 font-semibold">توضیحات</th>
                         <th class="px-5 py-3 font-semibold">اقدام</th>
                     </tr>
                 </thead>
@@ -88,9 +89,24 @@
                                 </div>
                             </td>
                             <td class="px-3 py-3.5 font-extrabold">{{ \App\Support\Fmt::money($tx->amount) }}</td>
-                            <td class="px-3 py-3.5 text-[10.5px] text-slate-500" dir="ltr">{{ $tx->sheba ?: '—' }}</td>
+                            <td class="px-3 py-3.5 text-[10.5px]" dir="ltr">
+                                @if ($tx->card_number)
+                                    <span class="font-bold text-slate-600 dark:text-slate-300">{{ \App\Support\Banking::maskCard($tx->card_number) }}</span>
+                                @elseif ($tx->sheba)
+                                    <span class="text-slate-500">IR…{{ \App\Support\Banking::shebaTail($tx->sheba) }}</span>
+                                @else
+                                    —
+                                @endif
+                            </td>
                             <td class="px-3 py-3.5 text-[10.5px] text-slate-500">{{ $tx->created_at ? \App\Support\JDate::dateTime($tx->created_at) : '—' }}</td>
                             <td class="px-3 py-3.5"><span class="rounded-full px-2.5 py-1 text-[10px] font-bold {{ $tx->statusClasses() }}">{{ $tx->statusLabel() }}</span></td>
+                            <td class="max-w-56 px-3 py-3.5 text-[10px] leading-5 text-slate-500 dark:text-slate-400">
+                                @if ($tx->admin_note)
+                                    <span class="line-clamp-2" title="{{ $tx->admin_note }}">{{ $tx->admin_note }}</span>
+                                @else
+                                    <span class="text-slate-300 dark:text-slate-600">—</span>
+                                @endif
+                            </td>
                             <td class="px-5 py-3.5">
                                 @if ($tx->status === 'pending')
                                     <div class="flex items-center gap-1.5">
@@ -112,7 +128,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-5 py-12 text-center">
+                            <td colspan="7" class="px-5 py-12 text-center">
                                 <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-slate-100 text-slate-300 dark:bg-slate-800 dark:text-slate-600">
                                     <x-icon name="wallet" class="size-6" />
                                 </span>
@@ -133,20 +149,41 @@
         @endif
     </div>
 
-    {{-- ═══════════ confirm modal ═══════════ --}}
+    {{-- ═══════════ confirm modal (پرداخت شده / پرداخت نشده + توضیحات) ═══════════ --}}
     <x-modal-panel open="$wire.confirmId !== null" max-width="sm" close-js="__ipOpen = false; $wire.cancelConfirm()" z-class="z-[75]">
-        <div class="p-6 text-center">
-            <span class="mx-auto grid size-14 place-items-center rounded-2xl {{ $confirmAction === 'approve' ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-950/40' : 'bg-rose-50 text-rose-500 dark:bg-rose-950/40' }}">
-                <x-icon name="{{ $confirmAction === 'approve' ? 'check' : 'circle-slash' }}" class="size-6" />
-            </span>
-            <h3 class="mt-4 text-sm font-extrabold">{{ $confirmAction === 'approve' ? 'تأیید برداشت' : 'رد درخواست برداشت' }}</h3>
-            <p class="mt-2 text-[11px] leading-6 text-slate-400">
-                @if ($confirmAction === 'approve')
-                    مبلغ برداشت به حساب اعلام‌شدهٔ فروشنده واریز می‌شود و وضعیت به «تسویه شد» تغییر می‌کند.
-                @else
-                    مبلغ رزروشده به کیف پول فروشنده بازگردانده می‌شود و فروشنده از رد درخواست باخبر خواهد شد.
-                @endif
-            </p>
+        <div class="p-6">
+            <div class="text-center">
+                <span class="mx-auto grid size-14 place-items-center rounded-2xl {{ $confirmAction === 'approve' ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-950/40' : 'bg-rose-50 text-rose-500 dark:bg-rose-950/40' }}">
+                    <x-icon name="{{ $confirmAction === 'approve' ? 'check' : 'circle-slash' }}" class="size-6" />
+                </span>
+                <h3 class="mt-4 text-sm font-extrabold">{{ $confirmAction === 'approve' ? 'تأیید و علامت‌گذاری «پرداخت شده»' : 'علامت‌گذاری «پرداخت نشده» و بازگشت مبلغ' }}</h3>
+                <p class="mt-2 text-[11px] leading-6 text-slate-400">
+                    @if ($confirmAction === 'approve')
+                        مبلغ برداشت به کارت اعلام‌شدهٔ فروشنده واریز می‌شود و وضعیت به «تسویه شد» تغییر می‌کند.
+                    @else
+                        مبلغ رزروشده به کیف پول فروشنده بازگردانده می‌شود و فروشنده از رد درخواست باخبر خواهد شد.
+                    @endif
+                </p>
+            </div>
+
+            {{-- توضیحات + نمونه‌های آماده (کلیک روی هر نمونه، باکس را پر می‌کند) --}}
+            <div class="mt-4">
+                <label class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">توضیحات (برای فروشنده نمایش داده می‌شود)</label>
+                <textarea wire:model="confirmNote" rows="3" maxlength="500"
+                          placeholder="مثلاً: {{ $confirmAction === 'approve' ? 'مبلغ به کارت بانکی شما واریز شد.' : 'شماره کارت و شبا صحیح نمی‌باشد؛ لطفاً کارت را اصلاح و دوباره درخواست بدهید.' }}"
+                          class="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] leading-5 outline-none transition focus:border-primary-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800"></textarea>
+                <p class="mt-1.5 mb-1 text-[9.5px] font-bold text-slate-400">نمونه‌های آماده — کلیک کنید تا در باکس قرار بگیرد:</p>
+                <div class="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto scroll-slim">
+                    @foreach ((\App\Livewire\Admin\WithdrawalsPage::NOTE_PRESETS[$confirmAction] ?? []) as $i => $preset)
+                        <button type="button" wire:click="useNotePreset({{ $i }})"
+                                class="rounded-full border border-slate-200 px-2.5 py-1 text-right text-[9.5px] font-bold leading-4 text-slate-500 transition hover:border-primary-300 hover:bg-primary-50/60 hover:text-primary-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-primary-700 dark:hover:bg-primary-950/40"
+                                wire:key="preset-{{ $confirmAction }}-{{ $i }}">
+                            {{ $preset }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+
             <div class="mt-5 flex gap-2">
                 <button type="button" wire:click="execute" wire:loading.attr="disabled" wire:target="execute"
                         class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-md transition disabled:opacity-50 {{ $confirmAction === 'approve' ? 'bg-emerald-600 shadow-emerald-600/25 hover:bg-emerald-700' : 'bg-rose-600 shadow-rose-600/25 hover:bg-rose-700' }}">

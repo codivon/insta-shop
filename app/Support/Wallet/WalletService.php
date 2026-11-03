@@ -8,7 +8,9 @@ use App\Models\Seller;
 use App\Models\Shop;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Support\Banking;
 use App\Support\Fmt;
+use App\Support\SellerNotifier;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -60,17 +62,17 @@ final class WalletService
             $seller = Seller::query()->find($sellerId);
 
             [$commissionType, $commissionValue] = $seller?->resolvedCommission() ?? ['percent', 0];
-            $commission   = $itemsTotal > 0 && $seller ? $seller->commissionFor($itemsTotal) : 0;
-            $payout       = max(0, $itemsTotal - $commission);
+            $commission = $itemsTotal > 0 && $seller ? $seller->commissionFor($itemsTotal) : 0;
+            $payout = max(0, $itemsTotal - $commission);
 
             $snapshot[] = [
-                'shop_id'           => $shopId,
-                'shop_name'         => (string) ($shop->name ?? ''),
-                'items_total'       => $itemsTotal,
-                'commission_type'   => $commissionType,
-                'commission_value'  => (int) $commissionValue,
+                'shop_id' => $shopId,
+                'shop_name' => (string) ($shop->name ?? ''),
+                'items_total' => $itemsTotal,
+                'commission_type' => $commissionType,
+                'commission_value' => (int) $commissionValue,
                 'commission_amount' => $commission,
-                'payout'            => $payout,
+                'payout' => $payout,
             ];
 
             if ($payout <= 0) {
@@ -91,17 +93,17 @@ final class WalletService
             $wallet->increment('balance', $payout);
 
             WalletTransaction::query()->create([
-                'wallet_id'   => $wallet->id,
-                'type'        => WalletTransaction::TYPE_DEPOSIT,
-                'amount'      => $payout,
-                'commission'  => $commission,
-                'status'      => WalletTransaction::STATUS_DONE,
-                'order_id'    => $order->id,
+                'wallet_id' => $wallet->id,
+                'type' => WalletTransaction::TYPE_DEPOSIT,
+                'amount' => $payout,
+                'commission' => $commission,
+                'status' => WalletTransaction::STATUS_DONE,
+                'order_id' => $order->id,
                 'description' => self::depositDescription($order, $itemsTotal, $commission, $commissionType, $commissionValue),
             ]);
 
             // seller notification: «واریز به کیف پول»
-            \App\Support\SellerNotifier::notify(
+            SellerNotifier::notify(
                 $sellerId,
                 'wallet.deposit',
                 'واریز به کیف پول 💰 '.Fmt::money($payout),
@@ -134,10 +136,16 @@ final class WalletService
         return $base.' — کمیسیون ('.$label.'): '.Fmt::money($commission).' کسر شد';
     }
 
-    /** Reserve balance and log a pending withdrawal request (null = insufficient). */
-    public static function requestWithdrawal(Wallet $wallet, int $amount, string $sheba): ?WalletTransaction
+    /**
+     * Reserve balance and log a pending withdrawal request (null = insufficient).
+     *
+     * The destination is the seller's DEFAULT bank CARD (the request box no
+     * longer asks for a sheba) — both the masked card number and the card's
+     * sheba are snapshotted so the admin can actually pay it out later.
+     */
+    public static function requestWithdrawal(Wallet $wallet, int $amount, string $sheba, ?string $cardNumber = null): ?WalletTransaction
     {
-        return DB::transaction(function () use ($wallet, $amount, $sheba) {
+        return DB::transaction(function () use ($wallet, $amount, $sheba, $cardNumber) {
             $fresh = Wallet::query()->whereKey($wallet->id)->lockForUpdate()->first();
 
             if (! $fresh || $fresh->balance < $amount) {
@@ -147,33 +155,44 @@ final class WalletService
             $fresh->decrement('balance', $amount);
 
             return WalletTransaction::query()->create([
-                'wallet_id'   => $fresh->id,
-                'type'        => WalletTransaction::TYPE_WITHDRAWAL,
-                'amount'      => $amount,
-                'status'      => WalletTransaction::STATUS_PENDING,
-                'description' => 'درخواست برداشت به شبا '.$sheba,
-                'sheba'       => $sheba,
+                'wallet_id' => $fresh->id,
+                'type' => WalletTransaction::TYPE_WITHDRAWAL,
+                'amount' => $amount,
+                'status' => WalletTransaction::STATUS_PENDING,
+                'description' => $cardNumber
+                    ? 'درخواست برداشت به کارت '.Banking::maskCard($cardNumber)
+                    : 'درخواست برداشت به شبا '.$sheba,
+                'sheba' => $sheba,
+                'card_number' => $cardNumber,
             ]);
         });
     }
 
-    /** Admin approves a pending withdrawal (money was reserved at request time). */
-    public static function approveWithdrawal(WalletTransaction $tx): bool
+    /**
+     * Admin approves a pending withdrawal (money was reserved at request time).
+     * The optional note (توضیحات) is shown to the seller verbatim.
+     */
+    public static function approveWithdrawal(WalletTransaction $tx, ?string $adminNote = null): bool
     {
         if (! $tx->isWithdrawal() || $tx->status !== WalletTransaction::STATUS_PENDING) {
             return false;
         }
 
+        $destination = $tx->card_number
+            ? 'کارت '.Banking::maskCard($tx->card_number)
+            : (string) $tx->sheba;
+
         $tx->update([
-            'status'      => WalletTransaction::STATUS_DONE,
-            'description' => 'برداشت تأییدشده — '.$tx->sheba,
+            'status' => WalletTransaction::STATUS_DONE,
+            'admin_note' => $adminNote !== '' && $adminNote !== null ? trim($adminNote) : null,
+            'description' => 'برداشت تأییدشده — '.$destination,
         ]);
 
-        \App\Support\SellerNotifier::notify(
+        SellerNotifier::notify(
             $tx->wallet?->seller_id,
             'wallet.withdraw',
             'درخواست برداشت تأیید شد ✅ '.Fmt::money($tx->amount),
-            'مبلغ برداشت به حساب شما ('.$tx->sheba.') ارسال شد.',
+            'مبلغ برداشت به '.$destination.' ارسال شد.'.($tx->admin_note ? ' توضیح مدیر: '.$tx->admin_note : ''),
             route('seller.wallet'),
             'wallet',
             $tx,
@@ -182,26 +201,30 @@ final class WalletService
         return true;
     }
 
-    /** Admin rejects a pending withdrawal → refund the reserved balance. */
-    public static function rejectWithdrawal(WalletTransaction $tx): bool
+    /**
+     * Admin rejects a pending withdrawal → refund the reserved balance.
+     * The note (توضیحات) tells the seller WHY — e.g. wrong card digits.
+     */
+    public static function rejectWithdrawal(WalletTransaction $tx, ?string $adminNote = null): bool
     {
         if (! $tx->isWithdrawal() || $tx->status !== WalletTransaction::STATUS_PENDING) {
             return false;
         }
 
-        DB::transaction(function () use ($tx) {
+        DB::transaction(function () use ($tx, $adminNote) {
             $tx->wallet->increment('balance', $tx->amount);
             $tx->update([
-                'status'      => WalletTransaction::STATUS_REJECTED,
+                'status' => WalletTransaction::STATUS_REJECTED,
+                'admin_note' => $adminNote !== '' && $adminNote !== null ? trim($adminNote) : null,
                 'description' => 'درخواست رد شد — مبلغ به کیف پول بازگشت',
             ]);
         });
 
-        \App\Support\SellerNotifier::notify(
+        SellerNotifier::notify(
             $tx->wallet?->seller_id,
             'wallet.withdraw',
             'درخواست برداشت رد شد ⛔ '.Fmt::money($tx->amount),
-            'مبلغ به کیف پول فروشگاه شما بازگشت.',
+            'مبلغ به کیف پول فروشگاه شما بازگشت.'.($tx->admin_note ? ' توضیح مدیر: '.$tx->admin_note : ''),
             route('seller.wallet'),
             'wallet',
             $tx,

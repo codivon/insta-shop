@@ -35,7 +35,40 @@
                 </div>
             @enderror
 
-            <form wire:submit="placeOrder">
+            {{--
+                انتخاب‌ها (حامل/روز/درگاه) تماماً سمت مرورگرند: هایلایت با
+                peer-checked (CSS خالص) انجام می‌شود و هیچ roundtrip ای روی
+                این تعامل‌ها سوار نیست — پس هیچ morph ای هم نمی‌تواند صفحه را
+                به هم بریزد. فقط جمع‌ها (هزینهٔ ارسال و مبلغ قابل پرداخت) با
+                Alpine و از روی data-cost خود radioها بلافاصله به‌روز می‌شوند.
+                اعتبارسنجی نهایی همچنان سمت سرور، هنگام placeOrder است.
+            --}}
+            <form wire:submit="placeOrder"
+                  x-data="{
+                      total: {{ $total }},
+                      ship: {{ $shippingCost }},
+                      post: {{ $hasPayOnDelivery ? 'true' : 'false' }},
+                      discount: {{ $liveDiscount[0] }},
+                      get payable() { return Math.max(0, this.total + this.ship - this.discount) },
+                      fa(n) {
+                          return String(Math.max(0, Math.round(Number(n) || 0)))
+                              .replace(/\B(?=(\d{3})+(?!\d))/g, '٬')
+                              .replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d])
+                      },
+                      recalc() {
+                          let s = 0, p = false
+                          this.$el.querySelectorAll('input[name^=carrier-]:checked').forEach((r) => {
+                              if (r.dataset.postpaid === '1') { p = true; return }
+                              s += Number(r.dataset.cost || 0)
+                          })
+                          this.ship = s
+                          this.post = p
+                          this.discount = Number(this.$el.dataset.discount || 0)
+                      },
+                  }"
+                  x-on:change="recalc()"
+                  x-on:discount-updated.window="discount = Number($event.detail?.amount ?? $el.dataset.discount ?? 0); recalc()"
+                  data-discount="{{ $liveDiscount[0] }}">
                 {{-- ── delivery: آدرس منتخب از دفترچه (73) ── --}}
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div class="flex items-center gap-2">
@@ -157,7 +190,33 @@
 
                                 {{-- ── حامل این فروشگاه (اجباری برای کالای فیزیکی) ── --}}
                                 @if ($group['needsCarrier'])
-                                    <div class="border-t border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/30">
+                                    @php
+                                        $pickedCarrier      = $group['carriers']->firstWhere('id', (int) ($carrierPicks[$shopId] ?? 0));
+                                        $pickedIsUserSelect = $pickedCarrier && $pickedCarrier->delivery_time_type === \App\Models\Carrier::TIME_USER_SELECT;
+                                    @endphp
+                                    {{-- مقطع «حامل + روز تحویل» هر فروشگاه: وضعیتِ انتخاب
+                                          سمت مرورگر نگه داشته می‌شود — با تغییر حامل، بخش روز
+                                          بلافاصله می‌آید/می‌رود و روزِ سفارشِ قبلی پاک می‌شود.
+                                          (address-picked = بعد از تغییر آدرس، سرور ممکن است
+                                          حامل دیگری را خودکار بردارد؛ دوباره همگام شود.
+                                          مقدار اولیهٔ us از سرور می‌آید — Livewire مقدار
+                                          checked را بعد از hydration می‌گذارد، نه در HTML.) --}}
+                                    <div class="border-t border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/30"
+                                         x-data="{
+                                             us: {{ $pickedIsUserSelect ? 'true' : 'false' }},
+                                             sync() {
+                                                 const r = this.$root.querySelector('input[name^=carrier-]:checked')
+                                                 this.us = !! r && r.dataset.us === '1'
+                                             },
+                                             onCarrier() {
+                                                 this.sync()
+                                                 if (! this.us) {
+                                                     const d = this.$root.querySelector('input[name^=delivery-day-]:checked')
+                                                     if (d) { d.checked = false; d.dispatchEvent(new Event('change', { bubbles: true })) }
+                                                 }
+                                             }
+                                         }"
+                                         x-on:address-picked.window="sync()">
                                         <p class="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold">
                                             <x-icon name="truck" class="size-3.5 text-primary-500" />
                                             روش ارسال این فروشگاه
@@ -176,18 +235,20 @@
                                             <div class="space-y-2" role="radiogroup" aria-label="روش ارسال {{ $group['shop']?->name }}">
                                                 @foreach ($group['carriers'] as $carrier)
                                                     @php
-                                                        $picked   = (int) ($carrierPicks[$shopId] ?? 0) === (int) $carrier->id;
                                                         $cost     = $carrier->costFor((int) $group['subtotal'], (int) $group['weight'], $this->isInProvince($carrier));
                                                         $postpaid = $carrier->isPayOnDelivery();
                                                         $inProv   = $this->isInProvince($carrier);
                                                     @endphp
-                                                    <label class="flex cursor-pointer items-center gap-2.5 rounded-xl border p-2.5 transition {{ $picked
-                                                        ? 'border-primary-500 bg-primary-50/70 ring-1 ring-primary-500/30 dark:border-primary-600 dark:bg-primary-950/30'
-                                                        : 'border-slate-200 bg-white hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900' }}"
-                                                        wire:key="carrier-{{ $carrier->id }}">
+                                                    {{-- هایلایت انتخاب = peer-checked خالص (بدون roundtrip)؛
+                                                         wire:model بدون live فقط هنگام اولین درخواست بعدی
+                                                         مقدار را همگام می‌کند و سرور همان انتها اعتبارسنجی می‌کند. --}}
+                                                    <label class="block cursor-pointer" wire:key="carrier-{{ $carrier->id }}">
                                                         <input type="radio" name="carrier-{{ $shopId }}" value="{{ $carrier->id }}"
-                                                               wire:model.live="carrierPicks.{{ $shopId }}"
-                                                               class="size-4 shrink-0 border-slate-300 text-primary-600 focus:ring-primary-500/30 dark:border-slate-600">
+                                                               wire:model="carrierPicks.{{ $shopId }}" class="peer sr-only"
+                                                               data-us="{{ $carrier->delivery_time_type === \App\Models\Carrier::TIME_USER_SELECT ? 1 : 0 }}"
+                                                               data-cost="{{ $cost }}" data-postpaid="{{ $postpaid ? 1 : 0 }}"
+                                                               x-on:change="onCarrier()">
+                                                        <span class="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5 transition hover:border-primary-300 peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500/30 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:border-primary-600 dark:peer-checked:bg-primary-950/40">
                                                         <span class="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800">
                                                             @if ($carrier->image_path)
                                                                 <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($carrier->image_path) }}" alt="{{ $carrier->title }}" class="size-full object-cover">
@@ -214,24 +275,25 @@
                                                                 <span class="block text-[8.5px] font-bold text-slate-400">تومان</span>
                                                             @endif
                                                         </span>
+                                                        </span>
                                                     </label>
                                                 @endforeach
                                             </div>
                                             @error('carrierPicks.'.$shopId) <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
 
-                                            @php
-                                                $userSelectCarrier = $this->userSelectCarrierFor($shopId);
-                                                $deliveryDays = $userSelectCarrier ? $this->deliveryDaysFor($shopId) : [];
-                                            @endphp
-                                            @if ($userSelectCarrier && count($deliveryDays) > 0)
-                                                {{-- ── انتخاب روز تحویل (نوع بازه: انتخاب توسط کاربر) ── --}}
-                                                <div class="mt-3 rounded-xl border border-primary-200 bg-primary-50/60 p-2.5 dark:border-primary-900 dark:bg-primary-950/25"
+                                            @php $deliveryDays = $pickedIsUserSelect ? $this->deliveryDaysFor($shopId) : []; @endphp
+                                            @if ($pickedIsUserSelect && count($deliveryDays) > 0)
+                                                {{-- ── انتخاب روز تحویل (نوع بازه: انتخاب توسط کاربر) —
+                                                     نمایش/مخفی‌شدن بخش روز هم سمت مرورگر مدیریت می‌شود:
+                                                     با تغییر حامل بلافاصله می‌آید یا می‌رود (x-show) --}}
+                                                <div x-show="us"
+                                                     class="mt-3 rounded-xl border border-primary-200 bg-primary-50/60 p-2.5 dark:border-primary-900 dark:bg-primary-950/25"
                                                      wire:key="dwrap-{{ $shopId }}">
                                                     <p class="mb-2 flex flex-wrap items-center gap-1.5 text-[10.5px] font-extrabold">
                                                         <x-icon name="calendar" class="size-3.5 text-primary-500" />
                                                         روز تحویل را انتخاب کنید
                                                         <span class="text-rose-500">*</span>
-                                                        <span class="ms-auto text-[9px] font-bold text-slate-400">از {{ \App\Support\Fmt::toFa($userSelectCarrier->start_days_after_order) }} روز بعد — {{ \App\Support\Fmt::toFa(count($deliveryDays)) }} روز</span>
+                                                        <span class="ms-auto text-[9px] font-bold text-slate-400">از {{ \App\Support\Fmt::toFa($pickedCarrier->start_days_after_order) }} روز بعد — {{ \App\Support\Fmt::toFa(count($deliveryDays)) }} روز</span>
                                                     </p>
 
                                                     {{-- انتخاب روز = تماماً سمت مرورگر: چیپ با peer-checked هایلایت
@@ -324,21 +386,20 @@
                             <div class="grid grid-cols-2 gap-2 {{ count($gateways) > 3 ? 'sm:grid-cols-3' : '' }}" role="radiogroup" aria-label="انتخاب درگاه پرداخت">
                                 @foreach ($gateways as $key => $label)
                                     @php $gwPicked = $gateway === $key; @endphp
-                                    <label class="flex cursor-pointer items-center gap-2.5 rounded-2xl border p-3 transition {{ $gwPicked
-                                        ? 'border-primary-500 bg-primary-50/70 ring-1 ring-primary-500/30 dark:border-primary-600 dark:bg-primary-950/30'
-                                        : 'border-slate-200 bg-white hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900' }}"
-                                        wire:key="gw-{{ $key }}">
-                                        <input type="radio" name="gateway" value="{{ $key }}" wire:model.live="gateway" class="peer sr-only">
-                                        <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
-                                            @include('partials.gateway-logo', ['gateway' => $key])
-                                        </span>
-                                        <span class="min-w-0 flex-1">
-                                            <span class="block truncate text-[11px] font-extrabold">{{ $label }}</span>
-                                            <span class="mt-0.5 block text-[8.5px] font-bold text-slate-400">پرداخت امن آنلاین</span>
-                                        </span>
-                                        <span class="grid size-4 shrink-0 place-items-center rounded-full border-2 transition {{ $gwPicked ? 'border-primary-600' : 'border-slate-300 dark:border-slate-600' }}"
-                                              aria-hidden="true">
-                                            <span class="size-2 rounded-full bg-primary-600 transition {{ $gwPicked ? 'opacity-100' : 'opacity-0' }}"></span>
+                                    <label class="block cursor-pointer" wire:key="gw-{{ $key }}">
+                                        <input type="radio" name="gateway" value="{{ $key }}" wire:model="gateway" class="peer sr-only">
+                                        <span class="flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-3 transition hover:border-primary-300 peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500/30 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:border-primary-600 dark:peer-checked:bg-primary-950/40">
+                                            <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
+                                                @include('partials.gateway-logo', ['gateway' => $key])
+                                            </span>
+                                            <span class="min-w-0 flex-1">
+                                                <span class="block truncate text-[11px] font-extrabold">{{ $label }}</span>
+                                                <span class="mt-0.5 block text-[8.5px] font-bold text-slate-400">پرداخت امن آنلاین</span>
+                                            </span>
+                                            <span class="grid size-4 shrink-0 place-items-center rounded-full border-2 border-slate-300 transition peer-checked:border-primary-600 dark:border-slate-600"
+                                                  aria-hidden="true">
+                                                <span class="size-2 rounded-full bg-primary-600 opacity-0 transition peer-checked:opacity-100"></span>
+                                            </span>
                                         </span>
                                     </label>
                                 @endforeach
@@ -354,18 +415,13 @@
                         </div>
                         <div class="flex items-center justify-between text-[10.5px] text-slate-400">
                             <span>هزینه ارسال</span>
-                            @if ($shippingCost > 0)
-                                <span class="font-bold text-slate-600 dark:text-slate-300">{{ \App\Support\Fmt::money($shippingCost) }}</span>
-                            @else
-                                <span class="font-bold text-emerald-600 dark:text-emerald-400">رایگان</span>
-                            @endif
+                            <span class="font-bold" :class="ship > 0 ? 'text-slate-600 dark:text-slate-300' : 'text-emerald-600 dark:text-emerald-400'"
+                                  x-text="ship > 0 ? fa(ship) + ' تومان' : 'رایگان'">{{ $shippingCost > 0 ? \App\Support\Fmt::money($shippingCost) : 'رایگان' }}</span>
                         </div>
-                        @if ($hasPayOnDelivery)
-                            <div class="flex items-center justify-between text-[10px] text-amber-600 dark:text-amber-400">
-                                <span>یکی از حامل‌ها پس‌کرایه است</span>
-                                <span>پرداخت هنگام تحویل</span>
-                            </div>
-                        @endif
+                        <div class="flex items-center justify-between text-[10px] text-amber-600 dark:text-amber-400" x-show="post" @if (! $hasPayOnDelivery) style="display:none" @endif>
+                            <span>یکی از حامل‌ها پس‌کرایه است</span>
+                            <span>پرداخت هنگام تحویل</span>
+                        </div>
                         @if ($discountApplied && $liveDiscount[0] > 0)
                             <div class="flex items-center justify-between text-[10.5px] text-emerald-600 dark:text-emerald-400">
                                 <span class="flex min-w-0 items-center gap-1">
@@ -375,9 +431,9 @@
                                 <span class="shrink-0 font-extrabold">− {{ \App\Support\Fmt::money($liveDiscount[0]) }}</span>
                             </div>
                         @endif
-                        <div class="flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
+                        <div class="flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800" aria-live="polite">
                             <span class="font-bold text-slate-500 dark:text-slate-400">مبلغ قابل پرداخت</span>
-                            <span class="text-sm font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($payable) }}</span>
+                            <span class="text-sm font-extrabold text-primary-600 dark:text-primary-400" x-text="fa(payable) + ' تومان'">{{ \App\Support\Fmt::money($payable) }}</span>
                         </div>
                     </div>
 
@@ -386,7 +442,7 @@
                             class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 py-3.5 text-xs font-extrabold text-white shadow-lg shadow-primary-600/30 transition hover:bg-primary-700 active:scale-[0.98] disabled:opacity-60">
                         <span wire:loading.remove wire:target="placeOrder" class="flex items-center gap-2">
                             <x-icon name="credit-card" class="size-4" />
-                            پرداخت {{ \App\Support\Fmt::money($payable) }}
+                            پرداخت <span x-text="fa(payable) + ' تومان'">{{ \App\Support\Fmt::money($payable) }}</span>
                         </span>
                         <span wire:loading wire:target="placeOrder" class="flex items-center gap-2">
                             <x-icon name="rotate" class="size-4 animate-spin" />
