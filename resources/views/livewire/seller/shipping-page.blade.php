@@ -87,6 +87,12 @@
                                         <x-icon name="calendar" class="size-2.5" />
                                         {{ $carrier->deliveryRangeLabel() }}
                                     </span>
+                                    @if ($carrier->delivery_time_type === \App\Models\Carrier::TIME_USER_SELECT)
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300">
+                                            <x-icon name="clock" class="size-2.5" />
+                                            {{ $carrier->userSelectLabel() }}
+                                        </span>
+                                    @endif
                                     @if ($carrier->carriage_forward)
                                         <span class="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">پس کرایه</span>
                                     @elseif ($carrier->tariffs->isNotEmpty())
@@ -97,7 +103,7 @@
                                     @elseif ($carrier->base_price > 0)
                                         <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                                             <x-icon name="coins" class="size-2.5" />
-                                            قیمت پایه {{ \App\Support\Fmt::moneyShort($carrier->base_price) }} (بدون تعرفه)
+                                            قیمت پایه {{ \App\Support\Fmt::money($carrier->base_price) }} (بدون تعرفه)
                                         </span>
                                     @endif
                                     @if (! $carrier->carriage_forward && $carrier->tariffs->isEmpty())
@@ -431,6 +437,7 @@
                                 <option value="{{ $d }}">از {{ \App\Support\Fmt::toFa($d) }} روز بعد</option>
                             @endfor
                         </select>
+                        <p class="mt-1 text-[10px] leading-4 text-slate-400 dark:text-slate-500">روزهای قابل انتخاب از همین روز بعد از ثبت سفارش چاپ می‌شوند</p>
                     </div>
                     @if ($createDeliveryTimeType === 'default')
                         <div class="sm:col-span-2">
@@ -439,6 +446,38 @@
                                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-semibold outline-none transition focus:border-primary-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800">
                             <p class="mt-1 text-[10px] leading-4 text-slate-400 dark:text-slate-500">متنی که به کاربر نمایش داده می‌شود</p>
                             @error('createDefaultDeliveryRange') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                        </div>
+                    @else
+                        {{-- ── انتخاب توسط کاربر: طول بازه + حذف جمعه‌ها/تعطیلات ── --}}
+                        <div class="sm:col-span-2">
+                            <label class="mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-300">انتخاب بازه زمانی ارسال</label>
+                            <p class="mb-2 text-[10px] leading-4 text-slate-400 dark:text-slate-500">
+                                در تکمیل خرید، از «{{ \App\Support\Fmt::toFa($createStartDaysAfterOrder) }} روز بعد» به بعد {{ \App\Support\Fmt::toFa($createUserSelectRanges) }} روز قابل انتخاب به مشتری نمایش داده می‌شود.
+                            </p>
+                            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                @foreach ([7 => '۷ روزه', 10 => '۱۰ روزه', 15 => '۱۵ روزه', 20 => '۲۰ روزه'] as $value => $label)
+                                    <label class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors"
+                                           :class="$wire.createUserSelectRanges == {{ $value }} ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400'">
+                                        <input type="radio" value="{{ $value }}" wire:model.live="createUserSelectRanges" class="size-3.5 accent-primary-600">
+                                        {{ $label }}
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('createUserSelectRanges') <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+
+                            <div class="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+                                <label class="flex cursor-pointer items-center gap-2 text-[13px] font-semibold text-slate-600 dark:text-slate-300">
+                                    <input type="checkbox" wire:model="createDisableFridays" class="size-4 accent-primary-600">
+                                    غیرفعال کردن جمعه‌ها
+                                </label>
+                                <label class="flex cursor-pointer items-center gap-2 text-[13px] font-semibold text-slate-600 dark:text-slate-300">
+                                    <input type="checkbox" wire:model="createDisableHolidays" class="size-4 accent-primary-600">
+                                    غیرفعال کردن تعطیلات رسمی
+                                </label>
+                            </div>
+                            <p class="mt-2 text-[10px] leading-4 text-slate-400 dark:text-slate-500">
+                                روزهای غیرفعال‌شده از تقویم انتخاب مشتری حذف می‌شوند (تعطیلات رسمی ثابت تقویم شمسی).
+                            </p>
                         </div>
                     @endif
                 </div>

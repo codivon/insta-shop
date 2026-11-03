@@ -242,7 +242,7 @@
                         <input type="text" inputmode="numeric" dir="ltr" wire:model="cardNumber" x-on:input="fmtCard($event)"
                                placeholder="6104 3378 1234 5678" maxlength="19" autocomplete="off"
                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left font-mono text-xs font-extrabold tracking-[0.14em] outline-none transition placeholder:tracking-normal placeholder:text-slate-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 rounded-md bg-slate-200/80 px-1.5 py-0.5 font-mono text-[9px] font-black text-slate-500 dark:bg-slate-700 dark:text-slate-300"
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-slate-200/80 px-1.5 py-0.5 font-mono text-[9px] font-black text-slate-500 dark:bg-slate-700 dark:text-slate-300"
                               x-show="cardRaw.length > 0" x-cloak x-text="fa(cardRaw.length) + '/۱۶'"></span>
                     </div>
                     <p class="mt-1.5 flex items-center gap-1 text-[10px] font-bold" x-show="cardRaw.length === 16" x-cloak

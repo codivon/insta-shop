@@ -56,7 +56,7 @@
 
                             <div class="mt-2 flex items-center justify-between">
                                 <div class="text-xs font-extrabold text-primary-600 dark:text-primary-400">
-                                    {{ \App\Support\Fmt::moneyShort($product->price) }}
+                                    {{ \App\Support\Fmt::moneyShort($product->price) }} <span class="text-[9px] font-bold text-slate-400">تومان</span>
                                     @if ($product->stock < 1)
                                         <span class="mr-1 rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-500 dark:bg-rose-950/40">ناموجود</span>
                                     @endif

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Fmt;
+use App\Support\IranCalendar;
 use App\Support\JDate;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -288,9 +289,11 @@ class Order extends Model
                 continue;
             }
 
-            // per-shop carrier cost from the shipments JSON snapshot
-            // (pay-on-delivery carriers are NOT charged online → 0)
-            $shipping = 0;
+            // per-shop carrier cost + customer-picked delivery day from the
+            // shipments JSON snapshot (pay-on-delivery carriers are NOT
+            // charged online → 0)
+            $shipping     = 0;
+            $deliveryDate = null;
 
             foreach ((array) ($this->shipments ?? []) as $entry) {
                 if ((int) ($entry['shop_id'] ?? 0) === $shopId) {
@@ -298,6 +301,11 @@ class Order extends Model
                     $shipping = ($carrier && $carrier->isPayOnDelivery())
                         ? 0
                         : max(0, (int) ($entry['cost'] ?? 0));
+
+                    $deliveryDate = IranCalendar::isAllowedPick(
+                        $carrier?->selectableDeliveryDays() ?? [],
+                        isset($entry['delivery_date']) ? (string) $entry['delivery_date'] : null,
+                    ) ? (string) $entry['delivery_date'] : null;
 
                     break;
                 }
@@ -314,6 +322,7 @@ class Order extends Model
                 'shipping_cost'   => $shipping,
                 'discount_amount' => $discount,
                 'total'           => max(0, $itemsTotal + $shipping - $discount),
+                'delivery_date'   => $deliveryDate,
             ]);
         }
     }

@@ -125,10 +125,10 @@
                                     @if ($this->discountShop && (int) $this->discountShop->id === $shopId && $liveDiscount[0] > 0)
                                         <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[8.5px] font-extrabold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" title="کد تخفیف فقط روی محصولات همین فروشگاه اعمال می‌شود">
                                             <x-icon name="tag" class="size-2.5" />
-                                            کد تخفیف روی این فروشگاه − {{ \App\Support\Fmt::moneyShort($liveDiscount[0]) }}
+                                            کد تخفیف روی این فروشگاه − {{ \App\Support\Fmt::money($liveDiscount[0]) }}
                                         </span>
                                     @endif
-                                    <span class="mr-auto shrink-0 text-[9.5px] font-bold text-slate-400">جمع {{ \App\Support\Fmt::moneyShort($group['subtotal']) }} تومان</span>
+                                    <span class="mr-auto shrink-0 text-[9.5px] font-bold text-slate-400">جمع {{ \App\Support\Fmt::money($group['subtotal']) }}</span>
                                 </div>
 
                                 {{-- items with thumbnails --}}
@@ -148,9 +148,9 @@
                                                 @if ($item->variant_id > 0)
                                                     <div class="mt-0.5 truncate text-[9px] font-bold text-slate-500 dark:text-slate-400">{{ $item->variant?->label() ?? 'تنوع نامعتبر' }}</div>
                                                 @endif
-                                                <div class="text-[9px] text-slate-400">{{ \App\Support\Fmt::moneyShort($item->unitPrice()) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
+                                                <div class="text-[9px] text-slate-400">{{ \App\Support\Fmt::money($item->unitPrice()) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
                                             </div>
-                                            <div class="shrink-0 text-[11px] font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($item->lineTotal()) }}</div>
+                                            <div class="shrink-0 text-[11px] font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($item->lineTotal()) }}</div>
                                         </div>
                                     @endforeach
                                 </div>
@@ -218,6 +218,41 @@
                                                 @endforeach
                                             </div>
                                             @error('carrierPicks.'.$shopId) <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+
+                                            @php
+                                                $userSelectCarrier = $this->userSelectCarrierFor($shopId);
+                                                $deliveryDays = $userSelectCarrier ? $this->deliveryDaysFor($shopId) : [];
+                                            @endphp
+                                            @if ($userSelectCarrier && count($deliveryDays) > 0)
+                                                {{-- ── انتخاب روز تحویل (نوع بازه: انتخاب توسط کاربر) ── --}}
+                                                <div class="mt-3 rounded-xl border border-primary-200 bg-primary-50/60 p-2.5 dark:border-primary-900 dark:bg-primary-950/25"
+                                                     wire:key="dwrap-{{ $shopId }}">
+                                                    <p class="mb-2 flex flex-wrap items-center gap-1.5 text-[10.5px] font-extrabold">
+                                                        <x-icon name="calendar" class="size-3.5 text-primary-500" />
+                                                        روز تحویل را انتخاب کنید
+                                                        <span class="text-rose-500">*</span>
+                                                        <span class="ms-auto text-[9px] font-bold text-slate-400">از {{ \App\Support\Fmt::toFa($userSelectCarrier->start_days_after_order) }} روز بعد — {{ \App\Support\Fmt::toFa(count($deliveryDays)) }} روز</span>
+                                                    </p>
+
+                                                    <div class="scroll-slim flex gap-1.5 overflow-x-auto pb-1" role="radiogroup" aria-label="روز تحویل سفارش {{ $group['shop']?->name }}">
+                                                        @foreach ($deliveryDays as $day)
+                                                            @php $dayPicked = (string) ($deliveryPicks[$shopId] ?? '') === $day['date']; @endphp
+                                                            <label class="flex shrink-0 cursor-pointer flex-col items-center gap-0.5 rounded-xl border px-3 py-2 text-center transition {{ $dayPicked
+                                                                ? 'border-primary-500 bg-white ring-1 ring-primary-500/30 dark:border-primary-600 dark:bg-slate-900'
+                                                                : 'border-slate-200 bg-white hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900' }}"
+                                                                title="{{ $day['long'] }}" wire:key="dday-{{ $shopId }}-{{ $day['date'] }}">
+                                                                <input type="radio" name="delivery-day-{{ $shopId }}" value="{{ $day['date'] }}"
+                                                                       wire:model.live="deliveryPicks.{{ $shopId }}" class="sr-only"
+                                                                       aria-label="{{ $day['long'] }}">
+                                                                <span class="text-[10px] font-extrabold {{ $dayPicked ? 'text-primary-700 dark:text-primary-300' : 'text-slate-600 dark:text-slate-300' }}">{{ $day['weekday'] }}</span>
+                                                                <span class="text-[9px] font-bold {{ $dayPicked ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}">{{ $day['jdate'] }}</span>
+                                                            </label>
+                                                        @endforeach
+                                                    </div>
+
+                                                    @error('deliveryPicks.'.$shopId) <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                                                </div>
+                                            @endif
                                         @endif
                                     </div>
                                 @endif

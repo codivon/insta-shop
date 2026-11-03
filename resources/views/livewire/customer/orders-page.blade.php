@@ -65,7 +65,7 @@
                                 </div>
                             </div>
                             <div class="shrink-0 text-left">
-                                <div class="text-xs font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($order->total_amount) }}</div>
+                                <div class="text-xs font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($order->total_amount) }}</div>
                                 <div class="mt-0.5 flex items-center justify-end text-[9px] text-slate-400">
                                     جزئیات
                                     <x-icon name="chevron-left" class="size-3" />

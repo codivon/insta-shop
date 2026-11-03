@@ -83,7 +83,7 @@
                         <div class="truncate text-[10px] text-slate-400">از {{ $product->shop?->name }}</div>
                         <div class="flex items-end justify-between pt-1">
                             <div class="text-xs font-extrabold text-primary-600 dark:text-primary-400">
-                                {{ \App\Support\Fmt::moneyShort($product->price) }}
+                                {{ \App\Support\Fmt::moneyShort($product->price) }} <span class="text-[9px] font-bold text-slate-400">تومان</span>
                             </div>
                             <button type="button" wire:click="toggleFavorite({{ $product->id }})"
                                     class="grid size-7 place-items-center rounded-lg border border-slate-200 transition active:scale-90 dark:border-slate-700 {{ $isFav ? 'text-rose-500' : 'text-slate-400 hover:text-rose-400' }}"

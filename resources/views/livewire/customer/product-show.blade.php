@@ -308,7 +308,7 @@
                                 aria-pressed="{{ $selectedVariant && $selectedVariant->id === $variant->id ? 'true' : 'false' }}" aria-label="انتخاب {{ $variant->label() }}">
                             <div class="line-clamp-1 text-[11px] font-bold">{{ $variant->label() }}</div>
                             <div class="mt-1.5 flex items-center justify-between gap-1">
-                                <span class="text-[10px] font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($variant->finalPrice()) }}</span>
+                                <span class="text-[10px] font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($variant->finalPrice()) }}</span>
                                 @if ($variant->isDiscountActive())
                                     <span class="rounded-full bg-rose-500 px-1.5 py-0.5 text-[8px] font-black text-white">٪{{ \App\Support\Fmt::toFa($variant->discount_percent) }}</span>
                                 @endif

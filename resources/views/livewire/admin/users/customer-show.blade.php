@@ -50,7 +50,7 @@
             @foreach ([
                 ['label' => 'کل سفارش‌ها', 'value' => \App\Support\Fmt::fa($stats['orders']), 'icon' => 'bag', 'tone' => 'from-sky-500 to-cyan-600'],
                 ['label' => 'پرداخت‌شده', 'value' => \App\Support\Fmt::fa($stats['paid_orders']), 'icon' => 'circle-check', 'tone' => 'from-emerald-500 to-teal-600'],
-                ['label' => 'مجموع خرید', 'value' => \App\Support\Fmt::moneyShort($stats['spent']), 'icon' => 'wallet', 'tone' => 'from-amber-500 to-orange-600'],
+                ['label' => 'مجموع خرید', 'value' => \App\Support\Fmt::money($stats['spent']), 'icon' => 'wallet', 'tone' => 'from-amber-500 to-orange-600'],
                 ['label' => 'علاقه‌مندی / آدرس', 'value' => \App\Support\Fmt::fa($stats['favorites']).' / '.\App\Support\Fmt::fa($stats['addresses']), 'icon' => 'heart', 'tone' => 'from-rose-500 to-pink-600'],
             ] as $card)
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -118,7 +118,7 @@
                             <tr wire:key="o-{{ $order->id }}" class="transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                 <td class="px-3 py-3 text-xs font-extrabold">#{{ \App\Support\Fmt::toFa(str_pad((string) $order->id, 5, '0', STR_PAD_LEFT)) }}</td>
                                 <td class="px-3 py-3 text-[11px]">{{ \App\Support\Fmt::fa($order->items_count) }} کالا</td>
-                                <td class="px-3 py-3 text-xs font-bold">{{ \App\Support\Fmt::moneyShort($order->total_amount) }}</td>
+                                <td class="px-3 py-3 text-xs font-bold">{{ \App\Support\Fmt::money($order->total_amount) }}</td>
                                 <td class="px-3 py-3 text-[10px] text-slate-400">{{ \App\Support\JDate::date($order->created_at) }}</td>
                                 <td class="px-3 py-3">
                                     @php
@@ -155,7 +155,7 @@
                     </span>
                     <p class="mt-2 truncate text-[11px] font-bold">{{ $product->name }}</p>
                     <p class="text-[9.5px] text-slate-400">{{ $product->shop?->name ?? '—' }}</p>
-                    <p class="mt-1 text-[11px] font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($product->price) }}</p>
+                    <p class="mt-1 text-[11px] font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($product->price) }}</p>
                 </div>
             @empty
                 <div class="col-span-2 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-xs text-slate-400 sm:col-span-3 lg:col-span-4 dark:border-slate-700">

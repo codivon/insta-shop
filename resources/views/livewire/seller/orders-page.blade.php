@@ -88,36 +88,38 @@
                         </div>
 
                         {{-- this shop's items --}}
-                        <div class="mt-3 space-y-1.5">
-                            @foreach ($items as $item)
-                                <div class="flex items-center gap-2.5">
-                                    <span class="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-                                        @if ($item->product?->mainImage)
-                                            <img src="{{ $item->product->mainImage->url() }}" alt="{{ $item->product_name }}" loading="lazy" class="size-full object-cover">
-                                        @else
-                                            <x-icon name="package" class="size-3.5 text-slate-300 dark:text-slate-600" />
-                                        @endif
-                                    </span>
-                                    <div class="min-w-0 flex-1 truncate text-[11px] font-bold">{{ $item->product_name }}</div>
-                                    <div class="shrink-0 text-[9px] text-slate-400">× {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
-                                    <div class="shrink-0 text-[11px] font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($item->lineTotal()) }}</div>
-                                </div>
-                            @endforeach
+                        <div class="mt-3">
+                            <p class="mb-1.5 text-[9.5px] font-bold text-slate-400">سهم فروشگاه شما ({{ \App\Support\Fmt::toFa($items->count()) }} قلم)</p>
+                            <div class="space-y-1.5">
+                                @foreach ($items as $item)
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+                                            @if ($item->product?->mainImage)
+                                                <img src="{{ $item->product->mainImage->url() }}" alt="{{ $item->product_name }}" loading="lazy" class="size-full object-cover">
+                                            @else
+                                                <x-icon name="package" class="size-3.5 text-slate-300 dark:text-slate-600" />
+                                            @endif
+                                        </span>
+                                        <div class="min-w-0 flex-1 truncate text-[11px] font-bold">{{ $item->product_name }}</div>
+                                        <div class="shrink-0 text-[9px] text-slate-400">× {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
+                                        <div class="shrink-0 text-[11px] font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($item->lineTotal()) }}</div>
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
 
-                        {{-- footer: shop slice total + actions --}}
+                        {{-- footer: amount + actions ONLY (سهم فروشگاه moved above the items) --}}
                         <div class="mt-3 flex items-center justify-between gap-2 border-t border-dashed border-slate-200 pt-2.5 dark:border-slate-700">
-                            <span class="text-[10px] text-slate-400">سهم فروشگاه شما ({{ \App\Support\Fmt::toFa($items->count()) }} قلم)</span>
+                            <span class="text-xs font-extrabold">{{ \App\Support\Fmt::money($slice?->total ?? $this->shopTotal($order)) }}</span>
                             <div class="flex items-center gap-1.5">
-                                <span class="text-xs font-extrabold">{{ \App\Support\Fmt::money($slice?->total ?? $this->shopTotal($order)) }}</span>
                                 <button type="button" wire:click="openDetail({{ $order->id }})"
-                                        class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold text-slate-500 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:text-slate-400">
+                                        class="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-slate-200 px-2.5 text-[10px] font-bold text-slate-500 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:text-slate-400">
                                     <x-icon name="eye" class="size-3.5" />
                                     جزئیات
                                 </button>
                                 @if ($order->status === 'paid' && $slice && ! $isCanceledSlice)
                                     <button type="button" wire:click="openShipment({{ $order->id }})"
-                                            class="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-2.5 py-1.5 text-[10px] font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700">
+                                            class="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-primary-600 px-2.5 text-[10px] font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700">
                                         <x-icon name="truck" class="size-3.5" />
                                         وضعیت ارسال
                                     </button>
@@ -219,6 +221,12 @@
                             <div class="flex justify-between gap-3"><dt class="text-slate-400">کد پستی</dt><dd class="font-bold" dir="ltr">{{ \App\Support\Fmt::toFa($detail->postal_code) }}</dd></div>
                         @endif
                         <div class="flex justify-between gap-3"><dt class="shrink-0 text-slate-400">آدرس</dt><dd class="text-left font-bold leading-5">{{ $detail->delivery_address }}</dd></div>
+                        @if ($dSlice && $dSlice->delivery_date)
+                            <div class="flex items-center justify-between gap-3 rounded-lg bg-primary-50 px-2.5 py-1.5 dark:bg-primary-950/30">
+                                <dt class="flex items-center gap-1 text-primary-600 dark:text-primary-400"><x-icon name="calendar" class="size-3" /> روز تحویل انتخابی</dt>
+                                <dd class="font-extrabold text-primary-700 dark:text-primary-300">{{ $dSlice->deliveryDateLabel() }}</dd>
+                            </div>
+                        @endif
                     </dl>
                 </div>
 

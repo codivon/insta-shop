@@ -55,8 +55,8 @@
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             @foreach ([
                 ['label' => 'محصولات', 'value' => \App\Support\Fmt::fa($stats['products']), 'sub' => \App\Support\Fmt::fa($stats['published']).' منتشرشده', 'icon' => 'package', 'tone' => 'from-sky-500 to-cyan-600'],
-                ['label' => 'سفارش پرداخت‌شده', 'value' => \App\Support\Fmt::fa($stats['orders']), 'sub' => \App\Support\Fmt::moneyShort($stats['goods_total']).' فروش کالا', 'icon' => 'bag', 'tone' => 'from-emerald-500 to-teal-600'],
-                ['label' => 'موجودی کیف پول', 'value' => \App\Support\Fmt::moneyShort($stats['wallet_balance']), 'sub' => 'تومان', 'icon' => 'wallet', 'tone' => 'from-amber-500 to-orange-600'],
+                ['label' => 'سفارش پرداخت‌شده', 'value' => \App\Support\Fmt::fa($stats['orders']), 'sub' => \App\Support\Fmt::money($stats['goods_total']).' فروش کالا', 'icon' => 'bag', 'tone' => 'from-emerald-500 to-teal-600'],
+                ['label' => 'موجودی کیف پول', 'value' => \App\Support\Fmt::money($stats['wallet_balance']), 'sub' => 'قابل برداشت', 'icon' => 'wallet', 'tone' => 'from-amber-500 to-orange-600'],
                 ['label' => 'کدهای تخفیف', 'value' => \App\Support\Fmt::fa($stats['discounts']), 'sub' => \App\Support\Fmt::fa($stats['views']).' بازدید محصولات', 'icon' => 'tag', 'tone' => 'from-rose-500 to-pink-600'],
             ] as $card)
                 <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -156,7 +156,7 @@
                                 <span>{{ \App\Support\Fmt::fa($product->views) }} بازدید</span>
                             </div>
                         </div>
-                        <div class="shrink-0 text-xs font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($product->price) }}</div>
+                        <div class="shrink-0 text-xs font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($product->price) }}</div>
                         <span class="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold {{ $product->status === 'published'
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
                             : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' }}">
@@ -208,7 +208,7 @@
                             <tr wire:key="o-{{ $order->id }}" class="transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                 <td class="px-3 py-3 text-xs font-extrabold">#{{ \App\Support\Fmt::toFa(str_pad((string) $order->id, 5, '0', STR_PAD_LEFT)) }}</td>
                                 <td class="px-3 py-3 text-[11px]">{{ $order->customer?->full_name ?: \App\Support\Fmt::toFa($order->customer?->phone ?? '—') }}</td>
-                                <td class="px-3 py-3 text-xs font-bold">{{ \App\Support\Fmt::moneyShort($order->total_amount) }}</td>
+                                <td class="px-3 py-3 text-xs font-bold">{{ \App\Support\Fmt::money($order->total_amount) }}</td>
                                 <td class="px-3 py-3 text-[10px] text-slate-400">{{ \App\Support\JDate::date($order->created_at) }}</td>
                                 <td class="px-3 py-3">
                                     @php
@@ -246,7 +246,7 @@
                     </div>
                     <p class="mt-2 truncate text-xs font-bold">{{ $discount->title }}</p>
                     <div class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-400">
-                        <span>{{ $discount->type === 'percent' ? \App\Support\Fmt::toFa($discount->percent).'٪' : \App\Support\Fmt::moneyShort($discount->price) }}</span>
+                        <span>{{ $discount->type === 'percent' ? \App\Support\Fmt::toFa($discount->percent).'٪' : \App\Support\Fmt::money($discount->price) }}</span>
                         <span>مصرف {{ \App\Support\Fmt::fa($discount->used_count) }}</span>
                         @if ($discount->ends_at)
                             <span>تا {{ \App\Support\JDate::date($discount->ends_at) }}</span>
@@ -283,7 +283,7 @@
                                 <div class="truncate text-[11px] font-bold">{{ $tx->description ?: $tx->typeLabel() }}</div>
                                 <div class="text-[9.5px] text-slate-400">{{ \App\Support\JDate::date($tx->created_at) }} · {{ $tx->statusLabel() }}
                                     @if ($tx->commission > 0)
-                                        · کمیسیون {{ \App\Support\Fmt::moneyShort($tx->commission) }}
+                                        · کمیسیون {{ \App\Support\Fmt::money($tx->commission) }}
                                     @endif
                                 </div>
                             </div>
@@ -346,7 +346,7 @@
                             <div class="mt-1 flex flex-wrap gap-1">
                                 @foreach ($carrier->tariffs as $tariff)
                                     <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                        {{ $tariff->zoneLabel() }} · {{ $tariff->weightLabel() }} · {{ \App\Support\Fmt::moneyShort($tariff->cost) }}
+                                        {{ $tariff->zoneLabel() }} · {{ $tariff->weightLabel() }} · {{ \App\Support\Fmt::money($tariff->cost) }}
                                     </span>
                                 @endforeach
                             </div>

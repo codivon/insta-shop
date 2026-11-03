@@ -112,7 +112,7 @@
                                     @if ($seller->hasCommissionOverride())
                                         <span class="rounded-full bg-amber-50 px-2 py-1 font-bold text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
                                             {{ $seller->commission_type === 'fixed'
-                                                ? 'ثابت '.\App\Support\Fmt::moneyShort($seller->commission_value)
+                                                ? 'ثابت '.\App\Support\Fmt::money($seller->commission_value)
                                                 : \App\Support\Fmt::toFa($seller->commission_value).'٪' }}
                                         </span>
                                     @else

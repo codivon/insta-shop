@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Fmt;
+use App\Support\IranCalendar;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -30,6 +31,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'delivery_time_type',
     'start_days_after_order',
     'default_delivery_range',
+    'user_select_ranges',
+    'disable_fridays',
+    'disable_holidays',
     'sort',
 ])]
 class Carrier extends Model
@@ -54,6 +58,9 @@ class Carrier extends Model
             'free_shipping_price'   => 'integer',
             'extra_cost'            => 'integer',
             'start_days_after_order' => 'integer',
+            'user_select_ranges'    => 'integer',
+            'disable_fridays'       => 'boolean',
+            'disable_holidays'      => 'boolean',
             'sort'                  => 'integer',
         ];
     }
@@ -127,10 +134,41 @@ class Carrier extends Model
     public function deliveryRangeLabel(): string
     {
         if ($this->delivery_time_type === self::TIME_USER_SELECT) {
-            return 'انتخاب توسط خریدار';
+            $count = (int) ($this->user_select_ranges ?? 0);
+
+            return 'انتخاب روز تحویل توسط خریدار'
+                .($count > 0 ? ' — '.Fmt::toFa($count).' روزه' : '');
         }
 
         return $this->default_delivery_range ?: 'زمان‌بندی ارسال ثبت نشده';
+    }
+
+    /** Days the customer may pick from (empty when not user_select). */
+    public function selectableDeliveryDays(): array
+    {
+        if ($this->delivery_time_type !== self::TIME_USER_SELECT) {
+            return [];
+        }
+
+        return IranCalendar::deliveryDays(
+            (int) $this->start_days_after_order,
+            (int) ($this->user_select_ranges ?? 0),
+            (bool) $this->disable_fridays,
+            (bool) $this->disable_holidays,
+        );
+    }
+
+    /** Short seller-facing chip: «بازه ۷ روزه از ۵ روز بعد». */
+    public function userSelectLabel(): string
+    {
+        $count = (int) ($this->user_select_ranges ?? 0);
+
+        if ($count < 1) {
+            return 'انتخاب روز تحویل توسط خریدار';
+        }
+
+        return 'بازه '.Fmt::toFa($count).' روزه از '
+            .Fmt::toFa(max(1, (int) $this->start_days_after_order)).' روز بعد';
     }
 
     /**

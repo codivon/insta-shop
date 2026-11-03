@@ -15,6 +15,7 @@ use App\Support\Checkout\DiscountEvaluator;
 use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
 use App\Support\Fmt;
+use App\Support\IranCalendar;
 use App\Support\Payments\PaymentService;
 use App\Support\Phone;
 use Illuminate\Support\Collection;
@@ -70,6 +71,9 @@ class CheckoutPage extends Component
 
     /** shop_id → carrier_id — حامل هر فروشگاه، برای فروشگاه‌های فیزیکی اجباری است. */
     public array $carrierPicks = [];
+
+    /** shop_id → Y-m-d — روز تحویل انتخابی مشتری (حامل‌های «انتخاب توسط کاربر»). */
+    public array $deliveryPicks = [];
 
     public string $discountCode = '';
 
@@ -431,6 +435,41 @@ class CheckoutPage extends Component
         }
     }
 
+    /* ───────────── انتخاب روز تحویل (حامل‌های user_select) ───────────── */
+
+    /**
+     * The selectable delivery days of a shop's PICKED carrier — only
+     * carriers of type «انتخاب توسط کاربر» return a non-empty list.
+     */
+    public function deliveryDaysFor(int $shopId): array
+    {
+        $group = $this->shopGroups->first(fn ($g) => (int) $g['shop']->id === $shopId);
+
+        $carrier = $group
+            ? $group['carriers']->firstWhere('id', (int) ($this->carrierPicks[$shopId] ?? 0))
+            : null;
+
+        return $carrier?->selectableDeliveryDays() ?? [];
+    }
+
+    /** The picked user_select carrier of a shop (null when not applicable). */
+    public function userSelectCarrierFor(int $shopId): ?Carrier
+    {
+        $group = $this->shopGroups->first(fn ($g) => (int) $g['shop']->id === $shopId);
+
+        $carrier = $group
+            ? $group['carriers']->firstWhere('id', (int) ($this->carrierPicks[$shopId] ?? 0))
+            : null;
+
+        return ($carrier && $carrier->delivery_time_type === Carrier::TIME_USER_SELECT) ? $carrier : null;
+    }
+
+    /** Switching the carrier invalidates the previously picked delivery day. */
+    public function updatedCarrierPicks($value, string $shopId): void
+    {
+        unset($this->deliveryPicks[$shopId]);
+    }
+
     /* ───────────────────── interactions ───────────────────── */
 
     /** «اعمال» click — validates the code against the CURRENT cart groups. */
@@ -533,6 +572,29 @@ class CheckoutPage extends Component
             }
         }
 
+        /* ── روز تحویل حامل‌های «انتخاب توسط کاربر» اجباری است ── */
+        foreach ($this->shopGroups as $group) {
+            if (! $group['needsCarrier']) {
+                continue;
+            }
+
+            $shopId  = (int) $group['shop']->id;
+            $carrier = $group['carriers']->firstWhere('id', (int) ($this->carrierPicks[$shopId] ?? 0));
+
+            if (! $carrier || $carrier->delivery_time_type !== Carrier::TIME_USER_SELECT) {
+                continue;
+            }
+
+            $picked = (string) ($this->deliveryPicks[$shopId] ?? '');
+
+            if (! IranCalendar::isAllowedPick($carrier->selectableDeliveryDays(), $picked)) {
+                $this->addError('deliveryPicks.'.$shopId, 'روز تحویل سفارش از فروشگاه «'.$group['shop']->name.'» را انتخاب کنید.');
+                $this->dispatch('panel-toast', message: 'روز تحویل سفارش از فروشگاه «'.$group['shop']->name.'» را انتخاب کنید.');
+
+                return;
+            }
+        }
+
         /* ── gateway ── */
         $available = PaymentService::availableGateways();
 
@@ -570,6 +632,9 @@ class CheckoutPage extends Component
                 'carrier_id'    => $carrier->id,
                 'carrier_title' => $carrier->title,
                 'cost'          => $cost,
+                'delivery_date' => $carrier->delivery_time_type === Carrier::TIME_USER_SELECT
+                    ? (string) ($this->deliveryPicks[(int) $group['shop']->id] ?? '')
+                    : null,
             ];
         }
 

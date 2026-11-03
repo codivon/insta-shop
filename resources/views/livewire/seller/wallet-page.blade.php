@@ -237,7 +237,7 @@
                             {{ $tx->amountLabel() }}
                         </div>
                         @if ($tx->isDeposit() && $tx->commission > 0)
-                            <div class="text-[8.5px] font-bold text-amber-500/90">کمیسیون: {{ \App\Support\Fmt::fa($tx->commission) }}</div>
+                            <div class="text-[8.5px] font-bold text-amber-500/90">کمیسیون: {{ \App\Support\Fmt::money($tx->commission) }}</div>
                         @endif
                     </div>
 

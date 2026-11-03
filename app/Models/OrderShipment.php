@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'shipment_status', 'tracking_code', 'shipment_status_at',
     'canceled_at', 'cancel_reason', 'canceled_by', 'refund_amount',
     'items_total', 'shipping_cost', 'discount_amount', 'total',
+    'delivery_date',
 ])]
 class OrderShipment extends Model
 {
@@ -26,6 +27,7 @@ class OrderShipment extends Model
             'refund_amount'      => 'integer',
             'shipment_status_at' => 'datetime',
             'canceled_at'        => 'datetime',
+            'delivery_date'      => 'date',
         ];
     }
 
@@ -79,5 +81,21 @@ class OrderShipment extends Model
             'delivered'  => 3,
             default      => 0,
         };
+    }
+
+    /* ────────────────── customer-picked delivery day ────────────────── */
+
+    /** The Y-m-d the customer picked at checkout (null = not picked). */
+    public function deliveryDateRaw(): ?string
+    {
+        return $this->delivery_date ? $this->delivery_date->toDateString() : null;
+    }
+
+    /** «پنجشنبه ۹ آبان ۱۴۰۵» — the chosen delivery day, human label. */
+    public function deliveryDateLabel(): string
+    {
+        return $this->delivery_date
+            ? \App\Support\IranCalendar::longLabel($this->delivery_date)
+            : '';
     }
 }

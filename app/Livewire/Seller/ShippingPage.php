@@ -84,6 +84,15 @@ class ShippingPage extends Component
 
     public string $createDefaultDeliveryRange = '';
 
+    /** «انتخاب توسط کاربر» — how many days the customer picks from (۷/۱۰/۱۵/۲۰ روزه). */
+    public int $createUserSelectRanges = 7;
+
+    /** «انتخاب توسط کاربر» — remove جمعه‌ها from the selectable days. */
+    public bool $createDisableFridays = false;
+
+    /** «انتخاب توسط کاربر» — remove تعطیلات رسمی from the selectable days. */
+    public bool $createDisableHolidays = false;
+
     /** Weight tiers (تعرفه‌های وزنی) — batch 74: [{zone_type, max_weight, cost}]. */
     public array $createTariffs = [];
 
@@ -139,6 +148,9 @@ class ShippingPage extends Component
         $this->createDeliveryTimeType   = $carrier->delivery_time_type;
         $this->createStartDaysAfterOrder = (int) $carrier->start_days_after_order;
         $this->createDefaultDeliveryRange = (string) ($carrier->default_delivery_range ?? '');
+        $this->createUserSelectRanges   = (int) ($carrier->user_select_ranges ?? 7);
+        $this->createDisableFridays     = (bool) $carrier->disable_fridays;
+        $this->createDisableHolidays    = (bool) $carrier->disable_holidays;
 
         /* ── تعرفه‌های وزنی ── */
         $this->createTariffs = $carrier->tariffs
@@ -185,6 +197,9 @@ class ShippingPage extends Component
         $this->createDeliveryTimeType    = Carrier::TIME_DEFAULT;
         $this->createStartDaysAfterOrder = 1;
         $this->createDefaultDeliveryRange = '';
+        $this->createUserSelectRanges    = 7;
+        $this->createDisableFridays      = false;
+        $this->createDisableHolidays     = false;
         $this->createTariffs             = [];
     }
 
@@ -319,6 +334,9 @@ class ShippingPage extends Component
             'delivery_time_type'     => $this->createDeliveryTimeType,
             'start_days_after_order' => (int) $this->createStartDaysAfterOrder,
             'default_delivery_range' => trim($this->createDefaultDeliveryRange) !== '' ? trim($this->createDefaultDeliveryRange) : null,
+            'user_select_ranges'     => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT ? (int) $this->createUserSelectRanges : null,
+            'disable_fridays'        => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT ? $this->createDisableFridays : false,
+            'disable_holidays'       => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT ? $this->createDisableHolidays : false,
         ]);
 
         if (! $carrier->exists) {
@@ -411,7 +429,10 @@ class ShippingPage extends Component
     {
         if (str_starts_with($key, 'createDeliveryTimeType')
             || str_starts_with($key, 'createStartDaysAfterOrder')
-            || str_starts_with($key, 'createDefaultDeliveryRange')) {
+            || str_starts_with($key, 'createDefaultDeliveryRange')
+            || str_starts_with($key, 'createUserSelectRanges')
+            || str_starts_with($key, 'createDisableFridays')
+            || str_starts_with($key, 'createDisableHolidays')) {
             return 'ranges';
         }
 
@@ -455,6 +476,9 @@ class ShippingPage extends Component
             'createDeliveryTimeType'   => ['required', 'in:'.Carrier::TIME_DEFAULT.','.Carrier::TIME_USER_SELECT],
             'createStartDaysAfterOrder'=> ['required', 'integer', 'min:1', 'max:11'],
             'createDefaultDeliveryRange'=> ['exclude_unless:createDeliveryTimeType,'.Carrier::TIME_DEFAULT, 'required', 'string', 'min:3', 'max:150'],
+            'createUserSelectRanges'   => ['exclude_unless:createDeliveryTimeType,'.Carrier::TIME_USER_SELECT, 'required', 'integer', 'in:7,10,15,20'],
+            'createDisableFridays'     => ['boolean'],
+            'createDisableHolidays'    => ['boolean'],
 
             /* ── تعرفه‌های وزنی (74) ── */
             'createTariffs'            => ['nullable', 'array', 'max:12'],
@@ -474,6 +498,8 @@ class ShippingPage extends Component
             'createProvinceId.required' => 'استان فروشگاه (مبدأ ارسال) را انتخاب کنید.',
             'createCoveredCityIds.required' => 'حداقل یک شهر تحت پوشش انتخاب کنید.',
             'createDefaultDeliveryRange.required' => 'متن بازه زمانی ارسال پیش‌فرض را وارد کنید.',
+            'createUserSelectRanges.required' => 'طول بازه انتخابی مشتری (۷/۱۰/۱۵/۲۰ روزه) را انتخاب کنید.',
+            'createUserSelectRanges.in'       => 'طول بازه انتخابی مشتری باید ۷، ۱۰، ۱۵ یا ۲۰ روزه باشد.',
             'createTariffs.*.zone_type.required'  => 'نوع منطقه ارسالی هر پله تعرفه را انتخاب کنید.',
             'createTariffs.*.max_weight.required' => 'حداکثر وزن هر پله تعرفه را وارد کنید.',
             'createTariffs.*.max_weight.min'      => 'حداکثر وزن باید بیشتر از صفر باشد.',

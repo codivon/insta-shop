@@ -133,7 +133,7 @@
                                     <div class="text-[9px] text-slate-400 line-through">{{ \App\Support\Fmt::fa($product->compare_at_price) }}</div>
                                 @endif
                                 <div class="text-xs font-extrabold text-primary-600 dark:text-primary-400">
-                                    {{ \App\Support\Fmt::moneyShort($product->price) }}
+                                    {{ \App\Support\Fmt::moneyShort($product->price) }} <span class="text-[9px] font-bold text-slate-400">تومان</span>
                                 </div>
                             </div>
                             <div class="flex items-center gap-1.5">

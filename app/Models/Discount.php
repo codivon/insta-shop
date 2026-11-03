@@ -95,7 +95,7 @@ class Discount extends Model
     {
         return $this->type === self::TYPE_PERCENT
             ? Fmt::toFa($this->percent).'٪'
-            : Fmt::moneyShort($this->price).' تومان';
+            : Fmt::money($this->price);
     }
 
     /** The JDate window text shown in the list (e.g. «از ۱۴۰۴/۰۱/۰۱»). */

@@ -138,9 +138,9 @@
                                                 </div>
                                                 <div class="text-left">
                                                     @if ($item->quantity > 1)
-                                                        <div class="text-[9px] text-slate-400">{{ \App\Support\Fmt::moneyShort($item->unitPrice()) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
+                                                        <div class="text-[9px] text-slate-400">{{ \App\Support\Fmt::money($item->unitPrice()) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}</div>
                                                     @endif
-                                                    <div class="text-xs font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($item->lineTotal()) }}</div>
+                                                    <div class="text-xs font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($item->lineTotal()) }}</div>
                                                 </div>
                                             </div>
                                         @else

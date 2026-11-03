@@ -97,7 +97,7 @@
                                     </span>
                                 </td>
                                 <td class="px-3 py-3.5 text-xs font-extrabold text-primary-600 dark:text-primary-400">
-                                    {{ $discount->type === 'percent' ? \App\Support\Fmt::toFa($discount->percent).'٪' : \App\Support\Fmt::moneyShort($discount->price) }}
+                                    {{ $discount->type === 'percent' ? \App\Support\Fmt::toFa($discount->percent).'٪' : \App\Support\Fmt::money($discount->price) }}
                                 </td>
                                 <td class="px-3 py-3.5 text-xs">{{ \App\Support\Fmt::fa($discount->used_count) }}@if ($discount->quantity > 0)<span class="text-slate-400"> / {{ \App\Support\Fmt::fa($discount->quantity) }}</span>@endif</td>
                                 <td class="px-3 py-3.5 text-[10.5px] text-slate-400">

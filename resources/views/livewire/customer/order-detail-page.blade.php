@@ -56,6 +56,12 @@
                                     {{ $group['carrierTitle'] }}
                                 </div>
                             @endif
+                            @if ($gSlice && $gSlice->delivery_date)
+                                <div class="mt-0.5 inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-[9px] font-extrabold text-primary-700 dark:bg-primary-950/40 dark:text-primary-300">
+                                    <x-icon name="calendar" class="size-2.5 shrink-0" />
+                                    تحویل: {{ $gSlice->deliveryDateLabel() }}
+                                </div>
+                            @endif
                         </div>
                     </div>
                     @if ($order->status === 'paid' && $gSlice)
@@ -87,10 +93,10 @@
                                     </div>
                                 @endif
                                 <div class="mt-0.5 text-[10px] text-slate-400">
-                                    {{ \App\Support\Fmt::moneyShort($item->unit_price) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}
+                                    {{ \App\Support\Fmt::money($item->unit_price) }} × {{ \App\Support\Fmt::toFa($item->quantity) }}
                                 </div>
                             </div>
-                            <div class="shrink-0 text-xs font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::moneyShort($item->lineTotal()) }}</div>
+                            <div class="shrink-0 text-xs font-extrabold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($item->lineTotal()) }}</div>
                         </div>
                     @endforeach
                 </div>
