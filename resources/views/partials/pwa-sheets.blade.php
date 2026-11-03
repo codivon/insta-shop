@@ -5,9 +5,16 @@
      beforeinstallprompt (Chrome/Android) or on iOS (manual
      «Add to Home Screen» guide). Includes the «turn your VPN
      ON to install» notice (the domain is filtered in Iran).
-  ② VPN-active bottom-sheet — heuristic latency probe against
-     /ping; when the round-trip looks like a proxy hop, the user
-     is asked to turn the VPN off for speed/stability.
+  ② VPN-active bottom-sheet — DEFINITIVE reachability probe: inside
+     Iran the big foreign platforms (Google/YouTube/gstatic) are FILTERED,
+     so a plain connection can never complete a request to them. Tiny
+     no-cors probes are raced against those domains; if ANY answers, the
+     traffic must be leaving the country through a tunnel and the user
+     is asked to turn the VPN off for speed/stability. If they all fail
+     while the site itself is obviously reachable (this page loaded!),
+     the connection is a direct Iranian one — VPN off, no message.
+     (The old avg-latency heuristic fired on ordinary slow mobile
+     networks and wrongly announced an active VPN.)
 
   Both sheets: «دیگه نمایش نده» → localStorage (per role).
   Debug/E2E API: window.__ipwa
@@ -226,6 +233,7 @@
     var installShownThisLoad = false;
     var installOpen = false;
     var vpnProbeDone = false;
+    var vpnState = 'unknown'; // unknown | probing | on | off
 
     // ── eligibility helpers ─────────────────────────────────
     function dismissedForever() { return ls('ip.pwa.dismissed.' + ROLE) === '1'; }
@@ -247,29 +255,55 @@
         if (vpnProbeDone) return;
         vpnProbeDone = true;
 
-        probeVpn().then(function (bad) {
-            if (bad && ls('ip.vpn.dismissed') !== '1') {
+        probeVpn().then(function (on) {
+            if (on && ls('ip.vpn.dismissed') !== '1') {
                 fire('ip-pwa-vpn', true);
             }
         });
     }
 
+    // ── DEFINITIVE VPN detection ─────────────────────────────────
+    // Domains that are filtered inside Iran WITHOUT a VPN. A request that
+    // COMPLETES against any of them proves the traffic is tunnelled
+    // (فیلترشکن روشن است). All failing while this very page obviously
+    // loaded ⇒ direct Iranian connection ⇒ VPN off ⇒ stay silent.
+    // No latency guessing: slow mobile networks used to trip the old
+    // RTT threshold and falsely report an active VPN.
+    var VPN_PROBES = [
+        'https://www.google.com/generate_204',
+        'https://www.youtube.com/generate_204',
+        'https://www.gstatic.com/generate_204',
+    ];
+
     function probeVpn() {
-        var samples = [];
-        function once() {
-            var t0 = performance.now();
-            return fetch('/ping?_=' + Date.now(), { cache: 'no-store' })
-                .then(function () { return performance.now() - t0; });
+        if (vpnState === 'on' || vpnState === 'off') {
+            return Promise.resolve(vpnState === 'on');
         }
-        return once()
-            .then(function (ms) { samples.push(ms); return once(); })
-            .then(function (ms) { samples.push(ms); return once(); })
-            .then(function (ms) {
-                samples.push(ms);
-                var avg = samples.reduce(function (a, b) { return a + b; }, 0) / samples.length;
-                return avg > 550; // a proxy hop usually doubles+ the round-trip
-            })
-            .catch(function () { return false; });
+        vpnState = 'probing';
+
+        return new Promise(function (resolve) {
+            var settled = false;
+            var finished = 0;
+
+            function finish(on) {
+                if (settled) return;
+                settled = true;
+                vpnState = on ? 'on' : 'off';
+                resolve(on);
+            }
+
+            VPN_PROBES.forEach(function (url) {
+                var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+                var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 7000);
+
+                fetch(url, { mode: 'no-cors', cache: 'no-store', credentials: 'omit', signal: ctrl ? ctrl.signal : undefined })
+                    .then(function () { clearTimeout(timer); finish(true); })  // any response = domain reachable = tunnel
+                    .catch(function () { clearTimeout(timer); })               // blocked / RST / timeout = this probe failed
+                    .then(function () {
+                        if (++finished === VPN_PROBES.length) finish(false);   // every probe failed → VPN off
+                    });
+            });
+        });
     }
 
     // ── public API (also the E2E/debug surface) ─────────────────
@@ -311,6 +345,7 @@
                 dismissed: dismissedForever(),
                 snoozed: snoozed(),
                 vpnDismissed: ls('ip.vpn.dismissed') === '1',
+                vpn: vpnState,
             };
         },
     };
@@ -354,8 +389,18 @@
         }, 5000);
     }
 
-    // ── VPN latency probe: a few seconds after load ─────────────
-    setTimeout(maybeQueueVpn, 4500);
+    // ── VPN reachability probe: a few seconds after load (only while the
+    //    tab is visible — background tabs throttle timers and would make
+    //    the probes look blocked when they are not) ──────────────────
+    setTimeout(function () {
+        if (document.visibilityState === 'visible') { maybeQueueVpn(); return; }
+        var onVisible = function () {
+            if (document.visibilityState !== 'visible') return;
+            document.removeEventListener('visibilitychange', onVisible);
+            maybeQueueVpn();
+        };
+        document.addEventListener('visibilitychange', onVisible);
+    }, 4500);
 
     // ── service worker (needed for the install prompt) ──────────
     if ('serviceWorker' in navigator) {
