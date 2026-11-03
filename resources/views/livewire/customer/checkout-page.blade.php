@@ -194,40 +194,26 @@
                                         $pickedCarrier      = $group['carriers']->firstWhere('id', (int) ($carrierPicks[$shopId] ?? 0));
                                         $pickedIsUserSelect = $pickedCarrier && $pickedCarrier->delivery_time_type === \App\Models\Carrier::TIME_USER_SELECT;
 
-                                        // The day-picker chips are rendered for EVERY usable
-                                        // «انتخاب توسط کاربر» carrier — NOT just the carrier that
-                                        // happened to be picked at render time. With the zero-
-                                        // roundtrip checkout the browser can switch carriers without
-                                        // any server render, so the section must already exist in
-                                        // the DOM and only toggle via x-show (pick === id).
-                                        $userSelectCarriers = $group['carriers']->filter(
-                                            fn (\App\Models\Carrier $c) => $c->delivery_time_type === \App\Models\Carrier::TIME_USER_SELECT && count($c->selectableDeliveryDays()) > 0,
-                                        );
+                                        // v0.13.10: the carrier radio is LIVE (wire:model.live), so the
+                                        // server ALWAYS knows the pick — the day-picker is rendered for
+                                        // the picked carrier only, server-side. No pre-rendered hidden
+                                        // sections, no client/server divergence for the morph to trip on.
+                                        $pickedUcDays = ($pickedIsUserSelect && $pickedCarrier)
+                                            ? $pickedCarrier->selectableDeliveryDays()
+                                            : [];
                                     @endphp
-                                    {{-- مقطع «حامل + روز تحویل» هر فروشگاه: وضعیتِ انتخاب
-                                          سمت مرورگر نگه داشته می‌شود — با تغییر حامل، بخش روز
-                                          بلافاصله می‌آید/می‌رود و روزِ سفارشِ قبلی پاک می‌شود.
-                                          (address-picked = بعد از تغییر آدرس، سرور ممکن است
-                                          حامل دیگری را خودکار بردارد؛ دوباره همگام شود.
-                                          مقدار اولیهٔ us از سرور می‌آید — Livewire مقدار
-                                          checked را بعد از hydration می‌گذارد، نه در HTML.) --}}
-                                    <div class="border-t border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/30"
-                                         x-data="{
-                                             pick: {{ (int) ($carrierPicks[$shopId] ?? 0) }},
-                                             us: {{ $pickedIsUserSelect ? 'true' : 'false' }},
-                                             sync() {
-                                                 const r = this.$root.querySelector('input[name^=carrier-]:checked')
-                                                 const id = r ? Number(r.value) : 0
-                                                 if (id !== this.pick) {
-                                                     this.pick = id
-                                                     const d = this.$root.querySelector('input[name^=delivery-day-]:checked')
-                                                     if (d) { d.checked = false; d.dispatchEvent(new Event('change', { bubbles: true })) }
-                                                 }
-                                                 this.us = !! r && r.dataset.us === '1'
-                                             },
-                                             onCarrier() { this.sync() }
-                                         }"
-                                         x-on:address-picked.window="sync()">
+                                    {{-- مقطع «حامل + روز تحویل» هر فروشگاه — نسخهٔ ضدشکنجه (v0.13.10):
+                                          سه بار روی گوشیِ واقعی گزارش شد که با انتخاب حامل، محتوای
+                                          پایین صفحه (تخفیف/درگاه/جمع/دکمهٔ پرداخت) محو می‌شود؛ منشأ آن
+                                          ترکیبِ تجربیِ zero-roundtrip بود: dwrap های از پیش رندرشده +
+                                          x-show + style="display:none" سرسری + dispatch تغییرِ مصنوعی.
+                                          این‌ها divergence بین DOM سمت مرورگر و HTML سرور می‌سازند و
+                                          morph را وادار به جابه‌جا کردن نودها می‌کنند (در v0.13.9 هم
+                                          ثابت شد نودها جابه‌جا می‌شوند). پس حامل حالا LIVE است: سرور
+                                          همیشه انتخاب را می‌داند و بخش روز فقط برای همان حامل، سمت
+                                          سرور رندر می‌شود. هیچ state موازی، هیچ x-show رقص، هیچ
+                                          رویداد مصنوعی — مسیرِ خسته‌کننده و بادوام. --}}
+                                    <div class="border-t border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/30">
                                         <p class="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold">
                                             <x-icon name="truck" class="size-3.5 text-primary-500" />
                                             روش ارسال این فروشگاه
@@ -257,15 +243,17 @@
                                                         $postpaid = $carrier->isPayOnDelivery();
                                                         $inProv   = $this->isInProvince($carrier);
                                                     @endphp
-                                                    {{-- هایلایت انتخاب = peer-checked خالص (بدون roundtrip)؛
-                                                         wire:model بدون live فقط هنگام اولین درخواست بعدی
-                                                         مقدار را همگام می‌کند و سرور همان انتها اعتبارسنجی می‌کند. --}}
-                                                    <label class="block cursor-pointer" wire:key="carrier-{{ $carrier->id }}">
+                                                    {{-- هایلایت انتخاب = peer-checked خالص (فوری)؛
+                                                         wire:model.live حامل را همان لحظه به سرور می‌رساند
+                                                         تا بخش روزِ همان حامل سمت سرور رندر شود. --}}
+                                                    {{-- relative روی label = لنگرِ absolute برای input سر-only؛
+                                                         بدون آن، input به shell لنگر می‌شود و جعبهٔ مطلقش در
+                                                         انتهای محتوای main می‌افتد — فکوس روی آن (تپِ واقعی
+                                                         گوشی!) کل shell را اسکرول می‌کند و کل اپ بالا می‌پرد. --}}
+                                                    <label class="relative block cursor-pointer" wire:key="carrier-{{ $carrier->id }}">
                                                         <input type="radio" name="carrier-{{ $shopId }}" value="{{ $carrier->id }}"
-                                                               wire:model="carrierPicks.{{ $shopId }}" class="peer sr-only"
-                                                               data-us="{{ $carrier->delivery_time_type === \App\Models\Carrier::TIME_USER_SELECT ? 1 : 0 }}"
-                                                               data-cost="{{ $cost }}" data-postpaid="{{ $postpaid ? 1 : 0 }}"
-                                                               x-on:change="onCarrier()">
+                                                               wire:model.live="carrierPicks.{{ $shopId }}" class="peer sr-only"
+                                                               data-cost="{{ $cost }}" data-postpaid="{{ $postpaid ? 1 : 0 }}">
                                                         <span class="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5 transition hover:border-primary-300 peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500/30 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:border-primary-600 dark:peer-checked:bg-primary-950/40">
                                                         <span class="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800">
                                                             @if ($carrier->image_path)
@@ -299,54 +287,62 @@
                                             </div>
                                             @error('carrierPicks.'.$shopId) <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
 
-                                            @if ($userSelectCarriers->isNotEmpty())
+                                            @if (count($pickedUcDays) > 0)
                                                 {{-- ── انتخاب روز تحویل (نوع بازه: انتخاب توسط کاربر) ──
-                                                     بخش روز برای «همهٔ» حامل‌های انتخاب-توسط-کاربر از قبل در
-                                                     DOM هست و فقط با x-show جابه‌جا می‌شود — با انتخاب حامل،
-                                                     بلافاصله و بدون هیچ roundtrip ای ظاهر می‌شود. --}}
-                                                <div x-show="us"
-                                                     class="mt-3 rounded-xl border border-primary-200 bg-primary-50/60 p-2.5 dark:border-primary-900 dark:bg-primary-950/25"
-                                                     wire:key="dwrap-{{ $shopId }}">
-                                                    @foreach ($userSelectCarriers as $uc)
-                                                        @php
-                                                            $ucDays = $uc->selectableDeliveryDays();
-                                                            $ucPicked = (int) ($carrierPicks[$shopId] ?? 0) === (int) $uc->id;
-                                                        @endphp
-                                                        <div x-show="pick === {{ (int) $uc->id }}"
-                                                             @if (! $ucPicked) style="display:none" @endif
-                                                             wire:key="dwrap-{{ $shopId }}-{{ $uc->id }}">
-                                                            <p class="mb-2 flex flex-wrap items-center gap-1.5 text-[10.5px] font-extrabold">
-                                                                <x-icon name="calendar" class="size-3.5 text-primary-500" />
-                                                                روز تحویل را انتخاب کنید
-                                                                <span class="text-rose-500">*</span>
-                                                                <span class="ms-auto text-[9px] font-bold text-slate-400">از {{ \App\Support\Fmt::toFa($uc->start_days_after_order) }} روز بعد — {{ \App\Support\Fmt::toFa(count($ucDays)) }} روز</span>
-                                                            </p>
+                                                     v0.13.10: فقط برای «همان حاملی که سرور انتخابش را
+                                                     می‌داند» رندر می‌شود — چون حامل LIVE است، بعد از
+                                                     هر تغییر حامل یک re-render کوچک همین بخش را عوض
+                                                     می‌کند. بدون x-show موازی، بدون style دستی، بدون
+                                                     dispatch مصنوعی؛ هر چیزی که DOM و سرور ببینند
+                                                     یکی است و morph چیزی برای اشتباه کردن ندارد. --}}
+                                                <div class="mt-3 rounded-xl border border-primary-200 bg-primary-50/60 p-2.5 dark:border-primary-900 dark:bg-primary-950/25"
+                                                     wire:key="dwrap-{{ $shopId }}-{{ (int) $pickedCarrier->id }}">
+                                                    <p class="mb-2 flex flex-wrap items-center gap-1.5 text-[10.5px] font-extrabold">
+                                                        <x-icon name="calendar" class="size-3.5 text-primary-500" />
+                                                        روز تحویل را انتخاب کنید
+                                                        <span class="text-rose-500">*</span>
+                                                        <span class="ms-auto text-[9px] font-bold text-slate-400">از {{ \App\Support\Fmt::toFa($pickedCarrier->start_days_after_order) }} روز بعد — {{ \App\Support\Fmt::toFa(count($pickedUcDays)) }} روز</span>
+                                                    </p>
 
-                                                            {{-- انتخاب روز = تماماً سمت مرورگر: چیپ با peer-checked هایلایت
-                                                                 می‌شود و wire:model (بدون live) فقط هنگام اولین
-                                                                 درخواست بعدی مقدار را همگام می‌کند — هیچ roundtrip
-                                                                 و هیچ re-renderی روی این تعامل سوار نیست.
-                                                                 اعتبارسنجی نهایی همچنان سمت سرور است. --}}
-                                                            <div class="scroll-slim flex gap-1.5 overflow-x-auto pb-1" role="radiogroup" aria-label="روز تحویل سفارش {{ $group['shop']?->name }}">
-                                                                @foreach ($ucDays as $day)
-                                                                    <label class="block shrink-0 cursor-pointer"
-                                                                           title="{{ $day['long'] }}{{ !empty($day['holiday']) ? ' — '.$day['holiday'] : '' }}" wire:key="dday-{{ $shopId }}-{{ $day['date'] }}">
-                                                                        <input type="radio" name="delivery-day-{{ $shopId }}" value="{{ $day['date'] }}"
-                                                                               wire:model="deliveryPicks.{{ $shopId }}" class="peer sr-only"
-                                                                               aria-label="{{ $day['long'] }}">
-                                                                        <span class="flex flex-col items-center gap-0.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center transition hover:border-primary-300 peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500/30 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:border-primary-600 dark:peer-checked:bg-primary-950/40">
-                                                                            <span class="text-[10px] font-extrabold text-slate-600 dark:text-slate-300">{{ $day['weekday'] }}</span>
-                                                                            <span class="text-[9px] font-bold text-slate-400">{{ $day['jdate'] }}</span>
-                                                                        </span>
-                                                                    </label>
-                                                                @endforeach
-                                                            </div>
+                                                    {{-- انتخاب روز = deferral بی‌خطر: چیپ با peer-checked فوراً
+                                                         هایلایت می‌شود و مقدار با اولین درخواست بعدی (درگاه،
+                                                         تغییر حامل، ثبت سفارش) همگام می‌شود — این تعامل هیچ
+                                                         تغییر ساختاری در DOM نمی‌سازد، پس هیچ ریسکی برای
+                                                         morph ندارد. اعتبارسنجی نهایی سمت سرور است. --}}
+                                                    <div class="scroll-slim flex gap-1.5 overflow-x-auto pb-1" role="radiogroup" aria-label="روز تحویل سفارش {{ $group['shop']?->name }}">
+                                                        @foreach ($pickedUcDays as $day)
+                                                            <label class="relative block shrink-0 cursor-pointer"
+                                                                   title="{{ $day['long'] }}{{ !empty($day['holiday']) ? ' — '.$day['holiday'] : '' }}" wire:key="dday-{{ $shopId }}-{{ $day['date'] }}">
+                                                                <input type="radio" name="delivery-day-{{ $shopId }}" value="{{ $day['date'] }}"
+                                                                       wire:model="deliveryPicks.{{ $shopId }}" class="peer sr-only"
+                                                                       aria-label="{{ $day['long'] }}">
+                                                                <span class="flex flex-col items-center gap-0.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center transition hover:border-primary-300 peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500/30 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:border-primary-600 dark:peer-checked:bg-primary-950/40">
+                                                                    <span class="text-[10px] font-extrabold text-slate-600 dark:text-slate-300">{{ $day['weekday'] }}</span>
+                                                                    <span class="text-[9px] font-bold text-slate-400">{{ $day['jdate'] }}</span>
+                                                                </span>
+                                                            </label>
+                                                        @endforeach
+                                                    </div>
 
-                                                            @error('deliveryPicks.'.$shopId) <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-                                                        </div>
-                                                    @endforeach
+                                                    @error('deliveryPicks.'.$shopId) <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                                                 </div>
+                                            @elseif ($pickedCarrier && ! $pickedIsUserSelect)
+                                                {{-- حامل بدون «انتخاب روز» — بازهٔ زمانی خودش را همان کارت حامل نشان می‌دهد؛
+                                                     فقط یک نشانگر کوتاه تا کاربر بداند ورودی روزی لازم نیست. --}}
+                                                <p class="mt-2.5 flex items-center gap-1.5 rounded-xl bg-slate-100/80 px-2.5 py-2 text-[9.5px] font-bold text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                                                    <x-icon name="calendar" class="size-3.5 text-slate-400" />
+                                                    انتقال روز تحویل طبق بازهٔ اعلام‌شدهٔ این روش ارسال انجام می‌شود.
+                                                </p>
                                             @endif
+
+                                            {{-- بارگذاری نرم هنگام تغییر حامل (درخواست live): چیپِ حامل فوراً
+                                                 با peer-checked هایلایت می‌شود و این ردیف، roundtrip کوتاه
+                                                 را پوشش می‌دهد تا صفحه «خالی» به نظر نرسد. --}}
+                                            <div wire:loading wire:target="carrierPicks.{{ $shopId }}"
+                                                 class="mt-3 flex items-center gap-2 rounded-xl border border-primary-200/70 bg-primary-50/40 px-3 py-2.5 text-[10px] font-bold text-primary-600 dark:border-primary-900 dark:bg-primary-950/20 dark:text-primary-300">
+                                                <span class="size-3.5 animate-spin rounded-full border-2 border-primary-300 border-t-primary-600" aria-hidden="true"></span>
+                                                در حال به‌روزرسانی روزهای تحویل…
+                                            </div>
                                         @endif
                                     </div>
                                 @endif
@@ -354,8 +350,8 @@
                         @endforeach
                     </div>
 
-                    {{-- ── کد تخفیف ── --}}
-                    <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
+                    {{-- ── کد تخفیف ── (wire:key پایدار = لنگر morph؛ اگر morphی در بدترین حالت به‌هم بریزد، این بلوک‌ها با کلید پیدا می‌شوند نه با موقعیت) --}}
+                    <div wire:key="ck-discount" class="mt-4 rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
                         <p class="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold">
                             <x-icon name="tag" class="size-3.5 text-primary-500" />
                             کد تخفیف
@@ -403,7 +399,7 @@
 
                     {{-- ── درگاه پرداخت ── --}}
                     @if (count($gateways) > 0)
-                        <div class="mt-4">
+                        <div wire:key="ck-gateways" class="mt-4">
                             <p class="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold">
                                 <x-icon name="credit-card" class="size-3.5 text-primary-500" />
                                 درگاه پرداخت
@@ -413,7 +409,7 @@
                             <div class="grid grid-cols-2 gap-2 {{ count($gateways) > 3 ? 'sm:grid-cols-3' : '' }}" role="radiogroup" aria-label="انتخاب درگاه پرداخت">
                                 @foreach ($gateways as $key => $label)
                                     @php $gwPicked = $gateway === $key; @endphp
-                                    <label class="block cursor-pointer" wire:key="gw-{{ $key }}">
+                                    <label class="relative block cursor-pointer" wire:key="gw-{{ $key }}">
                                         <input type="radio" name="gateway" value="{{ $key }}" wire:model="gateway" class="peer sr-only">
                                         <span class="flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-3 transition hover:border-primary-300 peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500/30 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:border-primary-600 dark:peer-checked:bg-primary-950/40">
                                             <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
@@ -435,7 +431,7 @@
                     @endif
 
                     {{-- ── totals ── --}}
-                    <div class="mt-4 space-y-1.5 border-t border-dashed border-slate-200 pt-3 text-xs dark:border-slate-700">
+                    <div wire:key="ck-totals" class="mt-4 space-y-1.5 border-t border-dashed border-slate-200 pt-3 text-xs dark:border-slate-700">
                         <div class="flex items-center justify-between text-[10.5px] text-slate-400">
                             <span>جمع کالاها ({{ \App\Support\Fmt::toFa($units) }})</span>
                             <span class="font-bold">{{ \App\Support\Fmt::money($total) }}</span>
@@ -465,7 +461,7 @@
                     </div>
 
                     {{-- ── pay button ── --}}
-                    <button type="submit" wire:loading.attr="disabled" wire:target="placeOrder"
+                    <button type="submit" wire:key="ck-paybtn" wire:loading.attr="disabled" wire:target="placeOrder"
                             class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 py-3.5 text-xs font-extrabold text-white shadow-lg shadow-primary-600/30 transition hover:bg-primary-700 active:scale-[0.98] disabled:opacity-60">
                         <span wire:loading.remove wire:target="placeOrder" class="flex items-center gap-2">
                             <x-icon name="credit-card" class="size-4" />

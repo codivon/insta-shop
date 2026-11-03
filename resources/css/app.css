@@ -115,6 +115,21 @@ body {
 .ip-app-shell {
     height: 100vh;
     height: 100dvh;
+    /* v0.13.10 — the shell must NEVER scroll, not even programmatically.
+        overflow:hidden still owns a scrollable-overflow region: a focused
+        sr-only radio (absolute box anchored to this shell, parked at the
+        END of main's scroll range) made the shell itself scrollable and
+        every real-phone tap that focused it dragged the whole app up,
+        leaving the fixed tab bar over an empty background. overflow:clip
+        has NO scrollable-overflow region — focus-scroll / scrollIntoView
+        / anchoring cannot move the shell at all. Browsers without clip
+        keep plain hidden. */
+    overflow: clip;
+}
+@supports not (overflow: clip) {
+    .ip-app-shell {
+        overflow: hidden;
+    }
 }
 @media (min-width: 1024px) {
     .ip-app-shell {
