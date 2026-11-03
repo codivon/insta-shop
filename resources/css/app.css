@@ -108,10 +108,18 @@ body {
 /* ── Customer app shell height ────────────────────────────────────────
    100vh with a 100dvh override (same property, later declaration wins on
    dvh-capable browsers, drops cleanly on the rest) — the shell can never
-   collapse to content height on a phone without the dvh unit. ── */
+   collapse to content height on a phone without the dvh unit. The ≥lg
+   inset height is repeated here because this rule must stay AFTER the
+   Tailwind import to win the cascade on phones, which would otherwise
+   also beat the lg:h-[calc(100vh-3rem)] utility. ── */
 .ip-app-shell {
     height: 100vh;
     height: 100dvh;
+}
+@media (min-width: 1024px) {
+    .ip-app-shell {
+        height: calc(100vh - 3rem);
+    }
 }
 
 /* ── Admin sidebar states (data-active driven) ────────────────────────
