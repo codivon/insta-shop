@@ -470,13 +470,19 @@
                                     <input type="checkbox" wire:model="createDisableFridays" class="size-4 accent-primary-600">
                                     غیرفعال کردن جمعه‌ها
                                 </label>
-                                <label class="flex cursor-pointer items-center gap-2 text-[13px] font-semibold text-slate-600 dark:text-slate-300">
-                                    <input type="checkbox" wire:model="createDisableHolidays" class="size-4 accent-primary-600">
+                                <label class="{{ $this->holidaysUnavailable ? 'cursor-not-allowed' : 'cursor-pointer' }} flex items-center gap-2 text-[13px] font-semibold {{ $this->holidaysUnavailable ? 'text-slate-400 dark:text-slate-600' : 'text-slate-600 dark:text-slate-300' }}">
+                                    <input type="checkbox" wire:model="createDisableHolidays" class="size-4 accent-primary-600" @if ($this->holidaysUnavailable) disabled @endif>
                                     غیرفعال کردن تعطیلات رسمی
                                 </label>
                             </div>
+                            @if ($this->holidaysUnavailable)
+                                <div class="mt-2 flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10.5px] font-bold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-400">
+                                    <x-icon name="alert" class="size-3.5 shrink-0" />
+                                    فایل تعطیلات سال {{ \App\Support\Fmt::toFa($this->holidaysFileMissingYear) }} موجود نیست — حذف تعطیلات رسمی فعلاً غیرفعال است.
+                                </div>
+                            @endif
                             <p class="mt-2 text-[10px] leading-4 text-slate-400 dark:text-slate-500">
-                                روزهای غیرفعال‌شده از تقویم انتخاب مشتری حذف می‌شوند (تعطیلات رسمی ثابت تقویم شمسی).
+                                روزهای غیرفعال‌شده از تقویم انتخاب مشتری حذف می‌شوند (تعطیلات رسمی از فایل تعطیلات ایران).
                             </p>
                         </div>
                     @endif

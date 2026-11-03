@@ -7,6 +7,8 @@ use App\Models\CarrierTariff;
 use App\Models\City;
 use App\Models\Province;
 use App\Support\Fmt;
+use App\Support\IranHolidays;
+use App\Support\JDate;
 use App\Livewire\Concerns\NotifiesOnValidation;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -93,6 +95,38 @@ class ShippingPage extends Component
     /** «انتخاب توسط کاربر» — remove تعطیلات رسمی from the selectable days. */
     public bool $createDisableHolidays = false;
 
+    /* ══════════ holidays file availability ══════════ */
+
+    /**
+     * First Jalali year of the pickable window whose holiday file is NOT
+     * bundled — null when every needed year exists. The «غیرفعال کردن
+     * تعطیلات رسمی» toggle is disabled while this is set (فایل نیست).
+     */
+    public function getHolidaysFileMissingYearProperty(): ?int
+    {
+        // The window the seller can currently produce: from «start days
+        // after order» up to the longest range + a generous guard.
+        $from = \Illuminate\Support\Carbon::today()->addDays(max(1, (int) $this->createStartDaysAfterOrder));
+        $to   = $from->copy()->addDays(31 + 14);
+
+        $fromJy = JDate::toJalali((int) $from->format('Y'), (int) $from->format('n'), (int) $from->format('j'))[0];
+        $toJy   = JDate::toJalali((int) $to->format('Y'), (int) $to->format('n'), (int) $to->format('j'))[0];
+
+        for ($jy = $fromJy; $jy <= $toJy; $jy++) {
+            if (! IranHolidays::exists($jy)) {
+                return $jy;
+            }
+        }
+
+        return null;
+    }
+
+    /** Whether the holiday toggle must be forced off (file missing). */
+    public function getHolidaysUnavailableProperty(): bool
+    {
+        return $this->holidaysFileMissingYear !== null;
+    }
+
     /** Weight tiers (تعرفه‌های وزنی) — batch 74: [{zone_type, max_weight, cost}]. */
     public array $createTariffs = [];
 
@@ -150,7 +184,10 @@ class ShippingPage extends Component
         $this->createDefaultDeliveryRange = (string) ($carrier->default_delivery_range ?? '');
         $this->createUserSelectRanges   = (int) ($carrier->user_select_ranges ?? 7);
         $this->createDisableFridays     = (bool) $carrier->disable_fridays;
-        $this->createDisableHolidays    = (bool) $carrier->disable_holidays;
+
+        // Holiday file gone for the needed years → the toggle is disabled
+        // and shows a «فایل نیست» note; don't present a checked-but-dead box.
+        $this->createDisableHolidays    = (bool) $carrier->disable_holidays && ! $this->holidaysUnavailable;
 
         /* ── تعرفه‌های وزنی ── */
         $this->createTariffs = $carrier->tariffs
@@ -336,7 +373,10 @@ class ShippingPage extends Component
             'default_delivery_range' => trim($this->createDefaultDeliveryRange) !== '' ? trim($this->createDefaultDeliveryRange) : null,
             'user_select_ranges'     => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT ? (int) $this->createUserSelectRanges : null,
             'disable_fridays'        => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT ? $this->createDisableFridays : false,
-            'disable_holidays'       => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT ? $this->createDisableHolidays : false,
+            // never persist the holiday filter without its data file
+            'disable_holidays'       => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT
+                ? ($this->createDisableHolidays && ! $this->holidaysUnavailable)
+                : false,
         ]);
 
         if (! $carrier->exists) {

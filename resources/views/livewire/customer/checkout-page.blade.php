@@ -240,7 +240,7 @@
                                                             <label class="flex shrink-0 cursor-pointer flex-col items-center gap-0.5 rounded-xl border px-3 py-2 text-center transition {{ $dayPicked
                                                                 ? 'border-primary-500 bg-white ring-1 ring-primary-500/30 dark:border-primary-600 dark:bg-slate-900'
                                                                 : 'border-slate-200 bg-white hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900' }}"
-                                                                title="{{ $day['long'] }}" wire:key="dday-{{ $shopId }}-{{ $day['date'] }}">
+                                                                title="{{ $day['long'] }}{{ !empty($day['holiday']) ? ' — '.$day['holiday'] : '' }}" wire:key="dday-{{ $shopId }}-{{ $day['date'] }}">
                                                                 <input type="radio" name="delivery-day-{{ $shopId }}" value="{{ $day['date'] }}"
                                                                        wire:model.live="deliveryPicks.{{ $shopId }}" class="sr-only"
                                                                        aria-label="{{ $day['long'] }}">

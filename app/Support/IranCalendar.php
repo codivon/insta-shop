@@ -26,35 +26,18 @@ class IranCalendar
         6 => 'شنبه',
     ];
 
-    /**
-     * Fixed official holidays of the SOLAR Hijri calendar (تعطیلات رسمی
-     * ثابت تقویم شمسی). Lunar holidays move every year and cannot be
-     * derived without a Hijri table — the fixed national ones are
-     * covered here.
-     *
-     * @return array<int, array{0: int, 1: int}> [month, day] pairs
-     */
-    private const OFFICIAL_HOLIDAYS = [
-        [1, 1],   // نوروز
-        [1, 2],   // عیدنوروز
-        [1, 3],   // عیدنوروز
-        [1, 4],   // عیدنوروز
-        [1, 12],  // روز جمهوری اسلامی
-        [1, 13],  // سیزده‌بدر — روز طبیعت
-        [3, 14],  // رحلت امام خمینی
-        [3, 15],  // قیام ۱۵ خرداد
-        [11, 22], // پیروزی انقلاب اسلامی
-        [12, 29], // ملی شدن صنعت نفت
-    ];
-
     /** Whether the date falls on a Friday (جمعه). */
     public static function isFriday(CarbonInterface $date): bool
     {
         return (int) $date->dayOfWeek === Carbon::FRIDAY;
     }
 
-    /** Whether the date is one of the fixed official holidays. */
-    public static function isOfficialHoliday(CarbonInterface $date): bool
+    /**
+     * Whether the date is an official holiday per the bundled holiday
+     * file of ITS OWN Jalali year (Solar + Lunar holidays move together
+     * with the year). null = no file for that year → unknown.
+     */
+    public static function isOfficialHoliday(CarbonInterface $date): ?bool
     {
         [$jy, $jm, $jd] = JDate::toJalali(
             (int) $date->format('Y'),
@@ -62,13 +45,19 @@ class IranCalendar
             (int) $date->format('j'),
         );
 
-        foreach (self::OFFICIAL_HOLIDAYS as [$month, $day]) {
-            if ($jm === $month && $jd === $day) {
-                return true;
-            }
-        }
+        return IranHolidays::isHoliday($jy, $jm, $jd);
+    }
 
-        return false;
+    /** The holiday's description («جشن نوروز» …) — null when not one. */
+    public static function holidayDescription(CarbonInterface $date): ?string
+    {
+        [$jy, $jm, $jd] = JDate::toJalali(
+            (int) $date->format('Y'),
+            (int) $date->format('n'),
+            (int) $date->format('j'),
+        );
+
+        return IranHolidays::description($jy, $jm, $jd);
     }
 
     /** «شنبه» / «یکشنبه» / … for a date. */
@@ -107,7 +96,11 @@ class IranCalendar
      * `$count` selectable days are collected (bounded so a pathological
      * configuration can never loop forever).
      *
-     * @return array<int, array{date: string, weekday: string, jdate: string, short: string, long: string}>
+     * Holidays come from the bundled per-year files — a day whose year
+     * file is missing is treated as UNKNOWN (never skipped), so a window
+     * crossing Nowruz degrades gracefully instead of failing.
+     *
+     * @return array<int, array{date: string, weekday: string, jdate: string, short: string, long: string, holiday: ?string}>
      */
     public static function deliveryDays(int $startDaysAfterOrder, int $count, bool $skipFridays = false, bool $skipHolidays = false): array
     {
@@ -124,7 +117,7 @@ class IranCalendar
                 continue;
             }
 
-            if ($skipHolidays && self::isOfficialHoliday($cursor)) {
+            if ($skipHolidays && self::isOfficialHoliday($cursor) === true) {
                 $cursor->addDay();
 
                 continue;
@@ -136,6 +129,7 @@ class IranCalendar
                 'jdate'   => self::shortLabel($cursor),
                 'short'   => self::weekdayName($cursor).' '.JDate::long($cursor),
                 'long'    => self::longLabel($cursor),
+                'holiday' => $skipHolidays ? null : self::holidayDescription($cursor),
             ];
 
             $cursor->addDay();
