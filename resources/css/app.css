@@ -56,6 +56,27 @@ body {
     @apply font-sans antialiased;
 }
 
+/* ── Fit-to-viewport pages (login/register/low-content/error screens) ──
+   100vh on phones INCLUDES the area under the collapsing URL bar, so a
+   `min-h-screen` document is always ~1 toolbar taller than what the user
+   sees → short pages wobble/scroll for no reason («اسکرول نباید بخوره»).
+   100dvh is the VISIBLE height, so the page fits exactly and never scrolls.
+   Same vh→dvh fallback pattern as .ip-app-shell above. Lives in @layer base
+   so real utilities (e.g. lg:min-h-[calc(100vh-3rem)]) still win on desktop. */
+@layer base {
+    .ip-fit-dvh {
+        min-height: 100dvh;
+    }
+
+    /* Old phones without the dvh unit → degrade to 100vh.
+       (@supports keeps lightningcss from merging away the fallback.) */
+    @supports not (height: 100dvh) {
+        .ip-fit-dvh {
+            min-height: 100vh;
+        }
+    }
+}
+
 /* ── Slim scrollbars for panel lists ── */
 .scroll-slim {
     scrollbar-width: thin;

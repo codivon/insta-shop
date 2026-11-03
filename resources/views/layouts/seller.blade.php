@@ -15,7 +15,7 @@
     @include('partials.pwa-head', ['role' => 'seller'])
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
+<body class="ip-fit-dvh flex flex-col bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
 
     {{-- App shell: exactly viewport height on every device → the header and
          tab bar stay pinned and ONLY <main> scrolls (also on real phones). --}}

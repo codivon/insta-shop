@@ -20,7 +20,7 @@
     @include('partials.pwa-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
+<body class="ip-fit-dvh flex flex-col bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
 
     {{-- ───────── animated gradient backdrop ───────── --}}
     <div class="fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
@@ -29,7 +29,7 @@
         <div class="absolute left-1/2 top-1/3 size-[16rem] -translate-x-1/2 rounded-full bg-primary-300/25 blur-3xl dark:bg-primary-700/15"></div>
     </div>
 
-    <div class="relative mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-slate-50 shadow-2xl dark:bg-slate-950 lg:my-6 lg:min-h-[calc(100vh-3rem)] lg:rounded-[2.5rem] lg:overflow-hidden lg:border lg:border-slate-300 dark:lg:border-slate-800">
+    <div class="relative mx-auto flex ip-fit-dvh w-full max-w-[430px] flex-col bg-slate-50 shadow-2xl dark:bg-slate-950 lg:my-6 lg:min-h-[calc(100vh-3rem)] lg:rounded-[2.5rem] lg:overflow-hidden lg:border lg:border-slate-300 dark:lg:border-slate-800">
 
         {{-- ───────── Top bar ───────── --}}
         <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/90">

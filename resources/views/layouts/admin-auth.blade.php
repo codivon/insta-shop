@@ -13,9 +13,9 @@
     @include('partials.theme-vars')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
+<body class="ip-fit-dvh bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
 
-    <main class="flex min-h-screen items-center justify-center px-4 py-10">
+    <main class="flex ip-fit-dvh items-center justify-center px-4 py-10">
         <div class="w-full max-w-md">
             <div class="mb-6 text-center">
                 <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-800 text-white shadow-xl shadow-primary-600/30">

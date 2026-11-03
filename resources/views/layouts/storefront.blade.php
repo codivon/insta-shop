@@ -18,7 +18,7 @@
     @include('partials.theme-vars')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="flex min-h-screen flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
+<body class="flex ip-fit-dvh flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
 
     {{-- ═══════════════ PAGE ═══════════════ --}}
     <main class="flex-1">
