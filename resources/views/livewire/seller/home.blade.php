@@ -238,7 +238,10 @@
 
             {{-- bars --}}
             <div class="scroll-slim mt-4 overflow-x-auto pb-1">
-                <div class="flex h-28 min-w-full gap-1.5" dir="ltr">
+                {{-- w-max: see reports-page — without it the 12 monthly buckets
+                     overflow the row with no scrollable region and the newest
+                     bars stay clipped off-screen. --}}
+                <div class="flex h-28 w-max min-w-full gap-1.5" dir="ltr">
                     @forelse ($chart as $bar)
                         <div class="flex min-w-7 flex-1 flex-col items-center gap-1">
                             <div class="flex w-full flex-1 items-end">

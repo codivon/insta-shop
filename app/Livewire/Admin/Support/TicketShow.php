@@ -33,7 +33,13 @@ class TicketShow extends Component
 
     public function mount(SupportTicket $ticket): void
     {
-        $this->ticket = $ticket->load(['messages.author', 'ticketable.shop']);
+        // ticketable may be a Seller OR a Customer — only sellers have a
+        // shop relation, so eager-load it per class (a plain
+        // ticketable.shop would throw on customer tickets).
+        $this->ticket = $ticket->load('messages.author');
+        $this->ticket->loadMorph('ticketable', [
+            Seller::class => ['shop'],
+        ]);
     }
 
     public function submitReply(): void
@@ -42,19 +48,19 @@ class TicketShow extends Component
             'replyBody' => ['required', 'string', 'min:2', 'max:3000'],
         ], [
             'replyBody.required' => 'متن پاسخ را بنویسید.',
-            'replyBody.min'      => 'متن پاسخ حداقل ۲ کاراکتر است.',
-            'replyBody.max'      => 'متن پاسخ حداکثر ۳۰۰۰ کاراکتر است.',
+            'replyBody.min' => 'متن پاسخ حداقل ۲ کاراکتر است.',
+            'replyBody.max' => 'متن پاسخ حداکثر ۳۰۰۰ کاراکتر است.',
         ]), 'ارسال پاسخ ناموفق بود');
 
         SupportTicketMessage::query()->create([
-            'ticket_id'   => $this->ticket->id,
+            'ticket_id' => $this->ticket->id,
             'author_type' => Admin::class,
-            'author_id'   => auth('admin')->id(),
-            'body'        => trim($this->replyBody),
+            'author_id' => auth('admin')->id(),
+            'body' => trim($this->replyBody),
         ]);
 
         $this->ticket->update([
-            'status'        => SupportTicket::STATUS_ANSWERED,
+            'status' => SupportTicket::STATUS_ANSWERED,
             'last_reply_at' => now(),
         ]);
 
@@ -74,7 +80,10 @@ class TicketShow extends Component
         }
 
         $this->replyBody = '';
-        $this->ticket->refresh()->load(['messages.author', 'ticketable.shop']);
+        $this->ticket->refresh()->load('messages.author');
+        $this->ticket->loadMorph('ticketable', [
+            Seller::class => ['shop'],
+        ]);
 
         session()->flash('admin-ticket-flash', 'پاسخ ارسال شد.');
     }

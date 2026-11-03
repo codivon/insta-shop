@@ -13,8 +13,12 @@ use Livewire\Component;
 /**
  * Seller — thread of ONE support ticket: read the support answers,
  * reply (re-opens the ticket for the admin) and close it when settled.
+ *
+ * hideTabbar → chat-like focused page (no bottom tabs); focus → the
+ * layout switches <main> to a flex column so the page owns an inner
+ * scroller and the reply composer stays glued to the bottom.
  */
-#[Layout('layouts.seller-slot')]
+#[Layout('layouts.seller-slot', ['hideTabbar' => true, 'focus' => true])]
 class TicketShowPage extends Component
 {
     use NotifiesOnValidation;
@@ -39,20 +43,20 @@ class TicketShowPage extends Component
             'replyBody' => ['required', 'string', 'min:2', 'max:3000'],
         ], [
             'replyBody.required' => 'متن پاسخ را بنویسید.',
-            'replyBody.min'      => 'متن پاسخ حداقل ۲ کاراکتر است.',
-            'replyBody.max'      => 'متن پاسخ حداکثر ۳۰۰۰ کاراکتر است.',
+            'replyBody.min' => 'متن پاسخ حداقل ۲ کاراکتر است.',
+            'replyBody.max' => 'متن پاسخ حداکثر ۳۰۰۰ کاراکتر است.',
         ]));
 
         SupportTicketMessage::query()->create([
-            'ticket_id'   => $this->ticket->id,
+            'ticket_id' => $this->ticket->id,
             'author_type' => Seller::class,
-            'author_id'   => auth('seller')->id(),
-            'body'        => trim($this->replyBody),
+            'author_id' => auth('seller')->id(),
+            'body' => trim($this->replyBody),
         ]);
 
         // a seller reply always puts the ball back into the admin's court
         $this->ticket->update([
-            'status'        => SupportTicket::STATUS_OPEN,
+            'status' => SupportTicket::STATUS_OPEN,
             'last_reply_at' => now(),
         ]);
 

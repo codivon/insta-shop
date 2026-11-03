@@ -26,8 +26,12 @@
             @yield('header')
         </header>
 
-        {{-- ───────── Scrollable content (the only scroll container) ───────── --}}
-        <main class="scroll-slim min-h-0 flex-1 overscroll-contain overflow-y-auto {{ ($hideTabbar ?? false) ? 'pb-4' : '' }}">
+        {{-- ───────── Scrollable content (the only scroll container) ─────────
+              Focused pages (focus=true, e.g. the ticket chat) own an INNER
+              scroller instead — <main> becomes a flex column and the page
+              pins its own bottom composer. ───────── --}}
+        @php $focus = $focus ?? false; @endphp
+        <main class="min-h-0 flex-1 overscroll-contain {{ $focus ? 'flex flex-col overflow-hidden' : 'scroll-slim overflow-y-auto' }} {{ (($hideTabbar ?? false) && ! $focus) ? 'pb-4' : '' }}">
             @yield('content')
         </main>
 

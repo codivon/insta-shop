@@ -33,20 +33,21 @@
         </header>
 
         {{-- ───────── Scrollable content ─────────
-              On the single product page <main> does NOT scroll — the page
-              component owns an inner scroller and pins its own buy bar
-              (so mobile overscroll can never drag the bar up). ───────── --}}
+              On FOCUSED pages (single product, ticket chat) <main> does
+              NOT scroll — the page component owns an inner scroller and
+              pins its own bottom bar (buy bar / reply composer), so
+              mobile overscroll can never drag the bar up. ───────── --}}
         @php
-            $productShell = request()->routeIs(['shop.product.show', 'shop.storefront.product']);
-            $showTabBar   = ! $productShell;
+            $focusedShell = request()->routeIs(['shop.product.show', 'shop.storefront.product', 'shop.support.show']);
+            $showTabBar   = ! $focusedShell;
         @endphp
-        <main class="min-h-0 flex-1 overscroll-contain {{ $productShell ? 'flex flex-col overflow-hidden' : 'scroll-slim overflow-y-auto' }} {{ $showTabBar ? 'max-lg:pb-[calc(80px_+_env(safe-area-inset-bottom))]' : '' }}">
+        <main class="min-h-0 flex-1 overscroll-contain {{ $focusedShell ? 'flex flex-col overflow-hidden' : 'scroll-slim overflow-y-auto' }} {{ $showTabBar ? 'max-lg:pb-[calc(80px_+_env(safe-area-inset-bottom))]' : '' }}">
             @yield('content')
         </main>
 
         {{-- ───────── Bottom tab bar ─────────
-              Hidden on the single product page: there the fixed
-              add-to-cart bar (inside the page component) takes over.
+              Hidden on focused pages (single product / ticket chat):
+              there the pinned buy bar or reply composer takes over.
 
               DOUBLE ANCHORING (the tab bar can never float mid-page):
               • sticky bottom-0 → while the shell is healthy the bar is the
