@@ -46,10 +46,9 @@
                         <span class="text-primary-300">؟</span>
                     </span>
                 @endif
-                {{-- inputmode="text" ON PURPOSE: the image captcha answer mixes
-                     lowercase letters and digits — a numeric keyboard (the old
-                     math-captcha leftover) locked phone users out entirely. --}}
-                <input id="captcha" type="text" inputmode="text" dir="ltr"
+                {{-- the captcha is digits-only by design → the numeric
+                     keyboard opens on phones (type="tel" + inputmode="numeric") --}}
+                <input id="captcha" type="tel" inputmode="numeric" pattern="[0-9]*" dir="ltr"
                        placeholder="کد را وارد کنید"
                        maxlength="6" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
                        class="h-[52px] w-full rounded-2xl border border-slate-300 bg-white px-4 text-center text-sm font-bold shadow-sm outline-none transition placeholder:text-slate-300 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/15 dark:border-slate-700 dark:bg-slate-950 dark:placeholder:text-slate-600"

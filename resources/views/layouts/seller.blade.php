@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="/fonts/vazirmatn.css">
     @include('partials.brand-favicon')
     @include('partials.theme-vars')
+    @include('partials.pwa-head', ['role' => 'seller'])
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
@@ -194,6 +195,8 @@
             })();
         </script>
     @endonce
+
+    @include('partials.pwa-sheets', ['role' => 'seller'])
 
     @include('partials.build-check')
 

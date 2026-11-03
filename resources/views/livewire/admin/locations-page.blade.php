@@ -151,11 +151,16 @@
         @endif
     </div>
 
-    {{-- ═══════════ create/edit modal ═══════════ --}}
+    {{-- ═══════════ create/edit modal — bottom sheet on phones ═══════════ --}}
     <div x-show="$wire.modalOpen" x-cloak
-         class="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"
-         role="dialog" aria-modal="true">
-        <div class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+         class="fixed inset-0 z-50 flex items-end justify-center overflow-hidden bg-slate-950/60 backdrop-blur-sm sm:items-center sm:overflow-y-auto sm:p-4"
+         role="dialog" aria-modal="true"
+         x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+        <div class="flex h-full max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-b-0 border-slate-200 bg-white shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-1.5rem)] sm:rounded-2xl sm:border-b dark:border-slate-800 dark:bg-slate-900"
+             x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+             x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+            <div class="mx-auto mt-2 h-1.5 w-11 shrink-0 rounded-full bg-slate-300 sm:hidden dark:bg-slate-700" aria-hidden="true"></div>
             <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                 <h3 class="text-sm font-extrabold">
                     {{ $editingId ? 'ویرایش '.($kind === 'city' ? 'شهر' : 'استان') : ($kind === 'city' ? 'شهر جدید' : 'استان جدید') }}
@@ -165,7 +170,7 @@
                 </button>
             </div>
 
-            <form wire:submit="save" class="space-y-3.5 px-5 py-4">
+            <form wire:submit="save" class="scroll-slim min-h-0 flex-1 space-y-3.5 overflow-y-auto px-5 py-4">
                 @if ($kind === 'city')
                     <div>
                         <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">استان <span class="text-rose-500">*</span></label>
@@ -199,7 +204,7 @@
                     </label>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 border-t border-slate-100 pt-3.5 dark:border-slate-800">
+                <div class="flex items-center justify-end gap-2 border-t border-slate-100 pb-[env(safe-area-inset-bottom)] pt-3.5 dark:border-slate-800">
                     <button type="button" wire:click="closeModal"
                             class="rounded-xl border border-slate-200 px-4 py-2.5 text-[11px] font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
                         انصراف

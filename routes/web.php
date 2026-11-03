@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\BackupDownload;
 use App\Http\Controllers\Admin\BackupUpload;
 use App\Http\Controllers\Admin\PushSubscriptionController;
 use App\Http\Controllers\Auth\PanelLogout;
+use App\Http\Controllers\PwaController;
 use App\Http\Controllers\Seller\ProductFileDownload;
 use App\Http\Controllers\Shop\PaymentCallback;
 use App\Http\Controllers\Shop\PaymentRedirect;
@@ -82,6 +83,18 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 Route::view('/', 'landing')->name('landing');
+
+/*
+|--------------------------------------------------------------------------
+| PWA manifests + latency probe
+|--------------------------------------------------------------------------
+| Two SEPARATE installable apps (seller / customer) — each with its own
+| name, icon and start_url. /ping is a tiny no-store endpoint used by the
+| panel to measure connection latency (VPN detection heuristic).
+*/
+Route::get('/pwa/manifest/seller', [PwaController::class, 'seller'])->name('pwa.manifest.seller');
+Route::get('/pwa/manifest/customer', [PwaController::class, 'customer'])->name('pwa.manifest.customer');
+Route::get('/ping', fn () => response('pong')->header('Cache-Control', 'no-store'))->name('ping');
 
 /*
 |--------------------------------------------------------------------------

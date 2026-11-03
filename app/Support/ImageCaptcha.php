@@ -25,8 +25,9 @@ class ImageCaptcha
 
     public const SESSION_SEED = 'admin_captcha_seed';
 
-    /** 5 characters, lowercase-safe. Ambiguous glyphs (i, l, o, 0, 1) excluded. */
-    private const ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
+    /** 5 characters — DIGITS ONLY. Ambiguous glyphs (0, 1) excluded, so the
+     *  code is always typeable from a phone's NUMERIC keyboard. */
+    private const ALPHABET = '23456789';
 
     public static function fontPath(): string
     {

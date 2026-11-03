@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="/fonts/vazirmatn.css">
     @include('partials.brand-favicon')
     @include('partials.theme-vars')
+    @include('partials.pwa-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
@@ -58,6 +59,8 @@
             است
         </footer>
     </div>
+
+    @include('partials.pwa-sheets')
 
     @include('partials.build-check')
 
