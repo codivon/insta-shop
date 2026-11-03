@@ -518,6 +518,8 @@
 
     @include('partials.panel-toast')
 
+    @include('partials.build-check')
+
     @stack('scripts')
 </body>
 </html>

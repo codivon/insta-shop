@@ -20,8 +20,11 @@
          tab bar stay pinned and ONLY <main> scrolls (also on real phones).
          .ip-app-shell (app.css) sets 100vh WITH a 100dvh override — on the
          rare phone without the dvh unit the vh fallback keeps the shell full
-         height instead of letting it collapse to content height. --}}
-    <div class="ip-app-shell relative mx-auto flex w-full max-w-[430px] flex-col overflow-hidden bg-slate-50 shadow-2xl dark:bg-slate-950 lg:my-6 lg:h-[calc(100vh-3rem)] lg:min-h-0 lg:rounded-[2.5rem] lg:overflow-hidden lg:border lg:border-slate-300 dark:lg:border-slate-800">
+         height instead of letting it collapse to content height.
+         max-lg:min-h-dvh is the LAST line of defense: even if a broken
+         morph / stale-tab repair rebuilds this subtree without app.css,
+         the shell can never shrink under the viewport on phones. --}}
+    <div class="ip-app-shell max-lg:min-h-dvh relative mx-auto flex w-full max-w-[430px] flex-col overflow-hidden bg-slate-50 shadow-2xl dark:bg-slate-950 lg:my-6 lg:h-[calc(100vh-3rem)] lg:min-h-0 lg:rounded-[2.5rem] lg:overflow-hidden lg:border lg:border-slate-300 dark:lg:border-slate-800">
 
         {{-- ───────── App header (pinned top) ───────── --}}
         <header class="relative z-30 shrink-0 border-b border-slate-200/80 bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/90">
@@ -34,19 +37,25 @@
               (so mobile overscroll can never drag the bar up). ───────── --}}
         @php
             $productShell = request()->routeIs(['shop.product.show', 'shop.storefront.product']);
+            $showTabBar   = ! $productShell;
         @endphp
-        <main class="min-h-0 flex-1 overscroll-contain {{ $productShell ? 'flex flex-col overflow-hidden' : 'scroll-slim overflow-y-auto' }}">
+        <main class="min-h-0 flex-1 overscroll-contain {{ $productShell ? 'flex flex-col overflow-hidden' : 'scroll-slim overflow-y-auto' }} {{ $showTabBar ? 'max-lg:pb-[calc(80px_+_env(safe-area-inset-bottom))]' : '' }}">
             @yield('content')
         </main>
 
         {{-- ───────── Bottom tab bar ─────────
               Hidden on the single product page: there the fixed
               add-to-cart bar (inside the page component) takes over.
-              sticky bottom-0: EVEN IF the flex shell misbehaves on some
-              device (dvh/flex quirks on real phones) the tab bar can never
-              float mid-page — it is glued to the viewport bottom while its
-              natural position is below the fold, and rests exactly there
-              (shell bottom = viewport bottom) when the shell is healthy. ───────── --}}
+
+              DOUBLE ANCHORING (the tab bar can never float mid-page):
+              • sticky bottom-0 → while the shell is healthy the bar is the
+                last flex child, glued to the shell bottom = viewport bottom.
+              • max-lg:fixed bottom-0 on phones → the bar is VIEWPORT-anchored
+                (centered like the shell): even if a broken morph, a stale-tab
+                repair or any DOM rearrangement moves the node elsewhere in
+                the document, CSS still paints it at the bottom of the screen.
+                <main> carries a matching safe-area padding so nothing hides
+                behind the bar. ───────── --}}
         @php
             $customerTabs = [
                 ['route' => 'shop.home',      'icon' => 'home',   'label' => 'خانه'],
@@ -62,11 +71,9 @@
             if ($cartBadgeCart) {
                 $cartBadgeCount = $cartBadgeCart->countDistinct();
             }
-
-            $showTabBar = ! request()->routeIs(['shop.product.show', 'shop.storefront.product']);
         @endphp
         @if ($showTabBar)
-            <nav class="sticky bottom-0 z-30 shrink-0 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95"
+            <nav class="sticky bottom-0 z-30 shrink-0 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-40 max-lg:mx-auto max-lg:w-full max-lg:max-w-[430px] max-lg:rounded-t-none"
                  aria-label="تب‌های اصلی فروشگاه">
             <div class="grid grid-cols-5">
                 @foreach ($customerTabs as $tab)
@@ -95,6 +102,7 @@
     </div>
 
     @include('partials.panel-toast')
+    @include('partials.build-check')
 
     @stack('scripts')
 </body>

@@ -286,7 +286,13 @@ Route::prefix('shop')->name('shop.')->group(function () {
 
         abort_if(! $product, 404);
 
-        return redirect()->to($product->publicUrl(), 301);
+        // A shop without any instagram handle has no storefront URL —
+        // publicUrl() falls back to THIS route → a redirect to itself
+        // would loop forever; 404 instead.
+        $target = $product->publicUrl();
+        abort_if($target === route('shop.product.show', ['productId' => $productId]), 404);
+
+        return redirect()->to($target, 301);
     })->name('product.show');
 
     Route::middleware('panel.auth')->group(function () {

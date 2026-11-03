@@ -39,6 +39,8 @@
         </div>
     </footer>
 
+    @include('partials.build-check')
+
     @stack('scripts')
 </body>
 </html>

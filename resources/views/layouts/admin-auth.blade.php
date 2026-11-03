@@ -29,6 +29,8 @@
         </div>
     </main>
 
+    @include('partials.build-check')
+
     @stack('scripts')
 </body>
 </html>
