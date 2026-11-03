@@ -323,9 +323,14 @@
                 </label>
 
                 {{-- مقصد برداشت = کارت بانکی پیش‌فرض فروشنده (بدون ورودی شبا).
-                     اگر کارتی ثبت نکرده باشد: هشدار + دکمهٔ غیرفعال. --}}
-                <div class="rounded-2xl border p-3.5 {{ $cards->isEmpty() ? 'border-amber-200 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/30' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60' }}">
-                    @if ($cards->isEmpty())
+                     کارت بدون شماره کارت = کارت ثبت‌نشده: هشدار + دکمهٔ غیرفعال
+                     (هم‌راستا با چک سمت سرور در submitWithdraw). --}}
+                @php
+                    $destCard = $cards->firstWhere('is_default') ?? $cards->first();
+                    $cardMissing = ! $destCard || trim((string) $destCard->card_number) === '';
+                @endphp
+                <div class="rounded-2xl border p-3.5 {{ $cardMissing ? 'border-amber-200 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/30' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60' }}">
+                    @if ($cardMissing)
                         <p class="flex items-start gap-2 text-[11px] font-bold leading-5 text-amber-700 dark:text-amber-300">
                             <x-icon name="triangle-alert" class="mt-0.5 size-4 shrink-0" />
                             <span>هنوز کارت بانکی ثبت نکرده‌اید؛ اول از صفحهٔ «کارت‌های بانکی» کارت خود را وارد کنید، بعد درخواست برداشت بدهید.</span>
@@ -336,7 +341,6 @@
                             ثبت کارت بانکی
                         </a>
                     @else
-                        @php $destCard = $cards->firstWhere('is_default') ?? $cards->first(); @endphp
                         <div class="flex items-center gap-2.5">
                             <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-slate-500 shadow-sm dark:bg-slate-900">
                                 <x-icon name="credit-card" class="size-4.5" />
@@ -358,7 +362,7 @@
                     <p class="rounded-xl bg-rose-50 px-3 py-2 text-[10.5px] font-bold leading-5 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">{{ $message }}</p>
                 @enderror
 
-                <button type="submit" wire:loading.attr="disabled" @if ($cards->isEmpty()) disabled @endif
+                <button type="submit" wire:loading.attr="disabled" @if ($cardMissing) disabled @endif
                         class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-xs font-bold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">
                     <span wire:loading wire:target="submitWithdraw" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                     ثبت درخواست برداشت

@@ -193,6 +193,16 @@
                                     @php
                                         $pickedCarrier      = $group['carriers']->firstWhere('id', (int) ($carrierPicks[$shopId] ?? 0));
                                         $pickedIsUserSelect = $pickedCarrier && $pickedCarrier->delivery_time_type === \App\Models\Carrier::TIME_USER_SELECT;
+
+                                        // The day-picker chips are rendered for EVERY usable
+                                        // «انتخاب توسط کاربر» carrier — NOT just the carrier that
+                                        // happened to be picked at render time. With the zero-
+                                        // roundtrip checkout the browser can switch carriers without
+                                        // any server render, so the section must already exist in
+                                        // the DOM and only toggle via x-show (pick === id).
+                                        $userSelectCarriers = $group['carriers']->filter(
+                                            fn (\App\Models\Carrier $c) => $c->delivery_time_type === \App\Models\Carrier::TIME_USER_SELECT && count($c->selectableDeliveryDays()) > 0,
+                                        );
                                     @endphp
                                     {{-- مقطع «حامل + روز تحویل» هر فروشگاه: وضعیتِ انتخاب
                                           سمت مرورگر نگه داشته می‌شود — با تغییر حامل، بخش روز
@@ -203,18 +213,19 @@
                                           checked را بعد از hydration می‌گذارد، نه در HTML.) --}}
                                     <div class="border-t border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/30"
                                          x-data="{
+                                             pick: {{ (int) ($carrierPicks[$shopId] ?? 0) }},
                                              us: {{ $pickedIsUserSelect ? 'true' : 'false' }},
                                              sync() {
                                                  const r = this.$root.querySelector('input[name^=carrier-]:checked')
-                                                 this.us = !! r && r.dataset.us === '1'
-                                             },
-                                             onCarrier() {
-                                                 this.sync()
-                                                 if (! this.us) {
+                                                 const id = r ? Number(r.value) : 0
+                                                 if (id !== this.pick) {
+                                                     this.pick = id
                                                      const d = this.$root.querySelector('input[name^=delivery-day-]:checked')
                                                      if (d) { d.checked = false; d.dispatchEvent(new Event('change', { bubbles: true })) }
                                                  }
-                                             }
+                                                 this.us = !! r && r.dataset.us === '1'
+                                             },
+                                             onCarrier() { this.sync() }
                                          }"
                                          x-on:address-picked.window="sync()">
                                         <p class="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold">
@@ -224,8 +235,15 @@
                                         </p>
 
                                         @if ($group['carriers']->isEmpty())
+                                            @php
+                                                $zoneBlocked = $group['allCarriers']->contains(
+                                                    fn (\App\Models\Carrier $c) => ! $c->isPayOnDelivery() && $c->hasTariffs(),
+                                                );
+                                            @endphp
                                             <div class="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-[10px] font-bold leading-5 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-                                                @if ($group['allCarriers']->isNotEmpty())
+                                                @if ($zoneBlocked)
+                                                    روش‌های ارسال این فروشگاه برای آدرس شما فعال نیست؛ از فروشنده بخواهید تعرفهٔ منطقهٔ شما (درون/بیرون استانی) را ثبت کند.
+                                                @elseif ($group['allCarriers']->isNotEmpty())
                                                     روش‌های ارسال این فروشگاه هنوز تعرفه وزنی ثبت نکرده‌اند؛ تا اطلاع فروشنده امکان خرید ارسالی نیست.
                                                 @else
                                                     این فروشگاه هنوز روش ارسالی ثبت نکرده است؛ تا اطلاع فروشنده امکان خرید حضوری‌نیست.
@@ -281,43 +299,52 @@
                                             </div>
                                             @error('carrierPicks.'.$shopId) <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
 
-                                            @php $deliveryDays = $pickedIsUserSelect ? $this->deliveryDaysFor($shopId) : []; @endphp
-                                            @if ($pickedIsUserSelect && count($deliveryDays) > 0)
-                                                {{-- ── انتخاب روز تحویل (نوع بازه: انتخاب توسط کاربر) —
-                                                     نمایش/مخفی‌شدن بخش روز هم سمت مرورگر مدیریت می‌شود:
-                                                     با تغییر حامل بلافاصله می‌آید یا می‌رود (x-show) --}}
+                                            @if ($userSelectCarriers->isNotEmpty())
+                                                {{-- ── انتخاب روز تحویل (نوع بازه: انتخاب توسط کاربر) ──
+                                                     بخش روز برای «همهٔ» حامل‌های انتخاب-توسط-کاربر از قبل در
+                                                     DOM هست و فقط با x-show جابه‌جا می‌شود — با انتخاب حامل،
+                                                     بلافاصله و بدون هیچ roundtrip ای ظاهر می‌شود. --}}
                                                 <div x-show="us"
                                                      class="mt-3 rounded-xl border border-primary-200 bg-primary-50/60 p-2.5 dark:border-primary-900 dark:bg-primary-950/25"
                                                      wire:key="dwrap-{{ $shopId }}">
-                                                    <p class="mb-2 flex flex-wrap items-center gap-1.5 text-[10.5px] font-extrabold">
-                                                        <x-icon name="calendar" class="size-3.5 text-primary-500" />
-                                                        روز تحویل را انتخاب کنید
-                                                        <span class="text-rose-500">*</span>
-                                                        <span class="ms-auto text-[9px] font-bold text-slate-400">از {{ \App\Support\Fmt::toFa($pickedCarrier->start_days_after_order) }} روز بعد — {{ \App\Support\Fmt::toFa(count($deliveryDays)) }} روز</span>
-                                                    </p>
+                                                    @foreach ($userSelectCarriers as $uc)
+                                                        @php
+                                                            $ucDays = $uc->selectableDeliveryDays();
+                                                            $ucPicked = (int) ($carrierPicks[$shopId] ?? 0) === (int) $uc->id;
+                                                        @endphp
+                                                        <div x-show="pick === {{ (int) $uc->id }}"
+                                                             @if (! $ucPicked) style="display:none" @endif
+                                                             wire:key="dwrap-{{ $shopId }}-{{ $uc->id }}">
+                                                            <p class="mb-2 flex flex-wrap items-center gap-1.5 text-[10.5px] font-extrabold">
+                                                                <x-icon name="calendar" class="size-3.5 text-primary-500" />
+                                                                روز تحویل را انتخاب کنید
+                                                                <span class="text-rose-500">*</span>
+                                                                <span class="ms-auto text-[9px] font-bold text-slate-400">از {{ \App\Support\Fmt::toFa($uc->start_days_after_order) }} روز بعد — {{ \App\Support\Fmt::toFa(count($ucDays)) }} روز</span>
+                                                            </p>
 
-                                                    {{-- انتخاب روز = تماماً سمت مرورگر: چیپ با peer-checked هایلایت
-                                                         می‌شود و wire:model (بدون live) فقط هنگام اولین
-                                                         درخواست بعدی مقدار را همگام می‌کند — هیچ roundtrip
-                                                         و هیچ re-renderی روی این تعامل سوار نیست، پس
-                                                         هیچ چیزی نمی‌تواند صفحه را به هم بریزد.
-                                                         اعتبارسنجی نهایی همچنان سمت سرور است. --}}
-                                                    <div class="scroll-slim flex gap-1.5 overflow-x-auto pb-1" role="radiogroup" aria-label="روز تحویل سفارش {{ $group['shop']?->name }}">
-                                                        @foreach ($deliveryDays as $day)
-                                                            <label class="block shrink-0 cursor-pointer"
-                                                                   title="{{ $day['long'] }}{{ !empty($day['holiday']) ? ' — '.$day['holiday'] : '' }}" wire:key="dday-{{ $shopId }}-{{ $day['date'] }}">
-                                                                <input type="radio" name="delivery-day-{{ $shopId }}" value="{{ $day['date'] }}"
-                                                                       wire:model="deliveryPicks.{{ $shopId }}" class="peer sr-only"
-                                                                       aria-label="{{ $day['long'] }}">
-                                                                <span class="flex flex-col items-center gap-0.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center transition hover:border-primary-300 peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500/30 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:border-primary-600 dark:peer-checked:bg-primary-950/40">
-                                                                    <span class="text-[10px] font-extrabold text-slate-600 dark:text-slate-300">{{ $day['weekday'] }}</span>
-                                                                    <span class="text-[9px] font-bold text-slate-400">{{ $day['jdate'] }}</span>
-                                                                </span>
-                                                            </label>
-                                                        @endforeach
-                                                    </div>
+                                                            {{-- انتخاب روز = تماماً سمت مرورگر: چیپ با peer-checked هایلایت
+                                                                 می‌شود و wire:model (بدون live) فقط هنگام اولین
+                                                                 درخواست بعدی مقدار را همگام می‌کند — هیچ roundtrip
+                                                                 و هیچ re-renderی روی این تعامل سوار نیست.
+                                                                 اعتبارسنجی نهایی همچنان سمت سرور است. --}}
+                                                            <div class="scroll-slim flex gap-1.5 overflow-x-auto pb-1" role="radiogroup" aria-label="روز تحویل سفارش {{ $group['shop']?->name }}">
+                                                                @foreach ($ucDays as $day)
+                                                                    <label class="block shrink-0 cursor-pointer"
+                                                                           title="{{ $day['long'] }}{{ !empty($day['holiday']) ? ' — '.$day['holiday'] : '' }}" wire:key="dday-{{ $shopId }}-{{ $day['date'] }}">
+                                                                        <input type="radio" name="delivery-day-{{ $shopId }}" value="{{ $day['date'] }}"
+                                                                               wire:model="deliveryPicks.{{ $shopId }}" class="peer sr-only"
+                                                                               aria-label="{{ $day['long'] }}">
+                                                                        <span class="flex flex-col items-center gap-0.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center transition hover:border-primary-300 peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500/30 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:border-primary-600 dark:peer-checked:bg-primary-950/40">
+                                                                            <span class="text-[10px] font-extrabold text-slate-600 dark:text-slate-300">{{ $day['weekday'] }}</span>
+                                                                            <span class="text-[9px] font-bold text-slate-400">{{ $day['jdate'] }}</span>
+                                                                        </span>
+                                                                    </label>
+                                                                @endforeach
+                                                            </div>
 
-                                                    @error('deliveryPicks.'.$shopId) <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                                                            @error('deliveryPicks.'.$shopId) <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                                                        </div>
+                                                    @endforeach
                                                 </div>
                                             @endif
                                         @endif

@@ -49,19 +49,19 @@ class Carrier extends Model
     protected function casts(): array
     {
         return [
-            'is_active'             => 'boolean',
-            'carriage_forward'      => 'boolean',
-            'max_package_weight'    => 'integer',
-            'min_package_weight'    => 'integer',
-            'base_price'            => 'integer',
-            'free_shipping_weight'  => 'integer',
-            'free_shipping_price'   => 'integer',
-            'extra_cost'            => 'integer',
+            'is_active' => 'boolean',
+            'carriage_forward' => 'boolean',
+            'max_package_weight' => 'integer',
+            'min_package_weight' => 'integer',
+            'base_price' => 'integer',
+            'free_shipping_weight' => 'integer',
+            'free_shipping_price' => 'integer',
+            'extra_cost' => 'integer',
             'start_days_after_order' => 'integer',
-            'user_select_ranges'    => 'integer',
-            'disable_fridays'       => 'boolean',
-            'disable_holidays'      => 'boolean',
-            'sort'                  => 'integer',
+            'user_select_ranges' => 'integer',
+            'disable_fridays' => 'boolean',
+            'disable_holidays' => 'boolean',
+            'sort' => 'integer',
         ];
     }
 
@@ -179,8 +179,12 @@ class Carrier extends Model
      *  سقف مبلغ رایگان    → free when the group subtotal reached the threshold
      *  سقف وزن رایگان     → free when the group weight reached the threshold
      *  otherwise          → legacy base price + extra cost per extra kg
+     *
+     *  null → the seller defined weight tiers but NONE covers the customer's
+     *  zone (e.g. only «درون استانی» tiers while the address is out of the
+     *  province): the carrier must NOT be offered — never silently free.
      */
-    public function costFor(int $subtotal, int $weightGrams = 0, ?bool $inProvince = null): int
+    public function costFor(int $subtotal, int $weightGrams = 0, ?bool $inProvince = null): ?int
     {
         if ($this->carriage_forward) {
             return 0; // paid on delivery
@@ -191,7 +195,7 @@ class Carrier extends Model
             $tierCost = $this->tariffCost($weightGrams, $inProvince);
 
             if ($tierCost === null) {
-                return 0; // destination zone has no tier → treat as free rather than blocking
+                return null; // destination zone has no tier → carrier not offered
             }
 
             // Free-shipping thresholds still apply on top of tariffs.
@@ -255,7 +259,7 @@ class Carrier extends Model
             return 'بدون تعرفه';
         }
 
-        $in  = $this->tariffs->where('zone_type', CarrierTariff::ZONE_IN)->count();
+        $in = $this->tariffs->where('zone_type', CarrierTariff::ZONE_IN)->count();
         $out = $this->tariffs->where('zone_type', CarrierTariff::ZONE_OUT)->count();
 
         $parts = [];

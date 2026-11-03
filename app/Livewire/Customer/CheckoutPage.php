@@ -444,21 +444,6 @@ class CheckoutPage extends Component
     /* ───────────── انتخاب روز تحویل (حامل‌های user_select) ───────────── */
 
     /**
-     * The selectable delivery days of a shop's PICKED carrier — only
-     * carriers of type «انتخاب توسط کاربر» return a non-empty list.
-     */
-    public function deliveryDaysFor(int $shopId): array
-    {
-        $group = $this->shopGroups->first(fn ($g) => (int) $g['shop']->id === $shopId);
-
-        $carrier = $group
-            ? $group['carriers']->firstWhere('id', (int) ($this->carrierPicks[$shopId] ?? 0))
-            : null;
-
-        return $carrier?->selectableDeliveryDays() ?? [];
-    }
-
-    /**
      * Switching the carrier invalidates a no-longer-valid delivery day.
      *
      * The browser already drops an obsolete pick the moment the carrier
@@ -650,7 +635,7 @@ class CheckoutPage extends Component
                 continue;
             }
 
-            $cost = $carrier->costFor((int) $group['subtotal'], (int) $group['weight'], $this->isInProvince($carrier));
+            $cost = (int) ($carrier->costFor((int) $group['subtotal'], (int) $group['weight'], $this->isInProvince($carrier)) ?? 0);
 
             if (! $carrier->isPayOnDelivery()) {
                 $shippingCost += $cost;
@@ -749,15 +734,31 @@ class CheckoutPage extends Component
                     ? Carrier::query()->where('shop_id', $shop->id)->active()->with('tariffs')->orderBy('sort')->orderBy('id')->get()
                     : collect();
 
+                $subtotal = (int) $lines->sum(fn ($item) => $item->lineTotal());
+                $weight = (int) $lines->sum(fn ($item) => (int) ($item->product->weight_grams ?? 0) * (int) $item->quantity);
+
+                // A carrier is only offered when it can actually price THIS
+                // delivery zone: پس‌کرایه works everywhere; tariffed carriers
+                // must own a tier for the customer's zone (in/out province) —
+                // a missing tier used to silently show «رایگان» and ship for
+                // free. Carriers priced by the legacy flat rate always pass.
                 $carriers = $allCarriers->filter(
-                    fn (Carrier $carrier) => $carrier->isPayOnDelivery() || $carrier->hasTariffs(),
+                    function (Carrier $carrier) use ($subtotal, $weight) {
+                        if ($carrier->isPayOnDelivery()) {
+                            return true;
+                        }
+
+                        $cost = $carrier->costFor($subtotal, $weight, $this->isInProvince($carrier));
+
+                        return $cost !== null;
+                    },
                 )->values();
 
                 return [
                     'shop' => $shop,
                     'items' => $lines->values(),
-                    'subtotal' => (int) $lines->sum(fn ($item) => $item->lineTotal()),
-                    'weight' => (int) $lines->sum(fn ($item) => (int) ($item->product->weight_grams ?? 0) * (int) $item->quantity),
+                    'subtotal' => $subtotal,
+                    'weight' => $weight,
                     'carriers' => $carriers,
                     'allCarriers' => $allCarriers,
                     'needsCarrier' => $physical,
@@ -790,7 +791,7 @@ class CheckoutPage extends Component
             $carrier = $group['carriers']->firstWhere('id', $pick);
 
             if ($carrier && ! $carrier->isPayOnDelivery()) {
-                $sum += $carrier->costFor((int) $group['subtotal'], (int) $group['weight'], $this->isInProvince($carrier));
+                $sum += (int) ($carrier->costFor((int) $group['subtotal'], (int) $group['weight'], $this->isInProvince($carrier)) ?? 0);
             }
         }
 

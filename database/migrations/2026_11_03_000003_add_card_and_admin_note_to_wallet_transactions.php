@@ -14,9 +14,26 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // The wallet_transactions table itself is created by a later-dated
+        // migration (2026_11_06_000001) — on a fresh install there is nothing
+        // to alter here, and on databases that already ran the newer create
+        // the columns may exist as well, so guard both cases.
+        if (! Schema::hasTable('wallet_transactions')) {
+            return;
+        }
+
+        if (Schema::hasColumn('wallet_transactions', 'card_number')
+            && Schema::hasColumn('wallet_transactions', 'admin_note')) {
+            return;
+        }
+
         Schema::table('wallet_transactions', function (Blueprint $table) {
-            $table->string('card_number', 20)->nullable()->after('sheba');
-            $table->text('admin_note')->nullable()->after('description');
+            if (! Schema::hasColumn('wallet_transactions', 'card_number')) {
+                $table->string('card_number', 20)->nullable();
+            }
+            if (! Schema::hasColumn('wallet_transactions', 'admin_note')) {
+                $table->text('admin_note')->nullable();
+            }
         });
     }
 

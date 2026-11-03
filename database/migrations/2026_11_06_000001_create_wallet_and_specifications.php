@@ -39,7 +39,9 @@ return new class extends Migration
             $table->string('status', 20)->default('done'); // done | pending | rejected
             $table->unsignedBigInteger('order_id')->nullable();
             $table->string('description')->nullable();
-            $table->string('sheba', 30)->nullable();     // withdrawal destination
+            $table->string('sheba', 30)->nullable();     // withdrawal destination (legacy)
+            $table->string('card_number', 20)->nullable(); // withdrawal destination (card era)
+            $table->text('admin_note')->nullable();      // admin's pay/refuse note to the seller
             $table->timestamps();
 
             $table->index(['wallet_id', 'created_at']);
