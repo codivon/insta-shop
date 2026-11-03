@@ -3,11 +3,11 @@
 namespace App\Livewire\Seller\Auth;
 
 use App\Models\Seller;
+use App\Models\Setting;
 use App\Models\Shop;
 use App\Services\OtpService;
 use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
-use App\Support\Fmt;
 use App\Support\Phone;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -121,6 +121,23 @@ class PhoneAuth extends Component
 
                 return;
             }
+        } else {
+            // Login — the seller must already exist. Decide BEFORE the code
+            // goes out: the user must never see «کد ارسال شد» for a number
+            // that can never log in (the old flow only failed at verify()).
+            $seller = Seller::where('phone', $normalized)->first();
+
+            if (! $seller) {
+                $this->addError('phone', 'فروشنده‌ای با این شماره ثبت نشده است. ابتدا ثبت‌نام کنید.');
+
+                return;
+            }
+
+            if ($seller->status === 'suspended') {
+                $this->addError('phone', 'حساب فروشندگی شما تعلیق شده است. با پشتیبانی تماس بگیرید.');
+
+                return;
+            }
         }
 
         $result = app(OtpService::class)->send($normalized, 'seller', $purpose);
@@ -175,7 +192,7 @@ class PhoneAuth extends Component
         if ($this->mode === 'register') {
             // «تایید خودکار فروشنده» (batch 79): when the admin enables it,
             // new sellers skip the pending queue entirely.
-            $autoApproved = (bool) \App\Models\Setting::get('shops.auto_approve_seller', false);
+            $autoApproved = (bool) Setting::get('shops.auto_approve_seller', false);
 
             $seller = Seller::create([
                 'phone' => $this->phone,

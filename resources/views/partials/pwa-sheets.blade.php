@@ -5,19 +5,22 @@
      beforeinstallprompt (Chrome/Android) or on iOS (manual
      «Add to Home Screen» guide). Includes the «turn your VPN
      ON to install» notice (the domain is filtered in Iran).
-  ② VPN-active bottom-sheet — DEFINITIVE reachability probe: inside
-     Iran the big foreign platforms (Google/YouTube/gstatic) are FILTERED,
-     so a plain connection can never complete a request to them. Tiny
-     no-cors probes are raced against those domains; if ANY answers, the
-     traffic must be leaving the country through a tunnel and the user
-     is asked to turn the VPN off for speed/stability. If they all fail
-     while the site itself is obviously reachable (this page loaded!),
-     the connection is a direct Iranian one — VPN off, no message.
-     (The old avg-latency heuristic fired on ordinary slow mobile
-     networks and wrongly announced an active VPN.)
-
-  Both sheets: «دیگه نمایش نده» → localStorage (per role).
-  Debug/E2E API: window.__ipwa
+  ② VPN-active bottom-sheet — shown at most ONCE per app open.
+     DEFINITIVE reachability probe: inside Iran (no VPN) the big
+     foreign platforms (Meta / X / Telegram / Google-media) are
+     IP+SNI FILTERED, so an image from them can never decode. We
+     probe with <img> loads — an HTML block page CANNOT decode, so
+     it can never fake a success — spread across DIFFERENT platform
+     families. A real tunnel answers for ≥2 families, while an
+     ordinary Iranian connection may leak at most one family
+     (Google's HTTP/3 QUIC/UDP traffic often slips past SNI filters —
+     that leak is exactly what made the old fetch-based probe falsely
+     announce «فیلترشکن فعال است» on every google.com/gstatic target;
+     one ambiguous family is therefore treated as VPN OFF, silently).
+     Fires once per session (sessionStorage): each time the app opens
+     the user is told once, never nagged again until the next open.
+     «دیگه نمایش نده» → localStorage (per role).
+     Debug/E2E API: window.__ipwa
 ═══════════════════════════════════════════════════════════ --}}
 @php
     $pwaRole = $role ?? (\App\Support\PanelContext::current()->key() === 'seller' ? 'seller' : 'customer');
@@ -256,24 +259,53 @@
         vpnProbeDone = true;
 
         probeVpn().then(function (on) {
-            if (on && ls('ip.vpn.dismissed') !== '1') {
+            // at most ONE notice per app open (sessionStorage) — every
+            // fresh open of the app may show it a single time again,
+            // «دیگه نمایش نده» still silences it forever
+            if (on && !vpnShownThisSession() && ls('ip.vpn.dismissed') !== '1') {
+                markVpnShown();
                 fire('ip-pwa-vpn', true);
             }
         });
     }
 
-    // ── DEFINITIVE VPN detection ─────────────────────────────────
-    // Domains that are filtered inside Iran WITHOUT a VPN. A request that
-    // COMPLETES against any of them proves the traffic is tunnelled
-    // (فیلترشکن روشن است). All failing while this very page obviously
-    // loaded ⇒ direct Iranian connection ⇒ VPN off ⇒ stay silent.
-    // No latency guessing: slow mobile networks used to trip the old
-    // RTT threshold and falsely report an active VPN.
-    var VPN_PROBES = [
-        'https://www.google.com/generate_204',
-        'https://www.youtube.com/generate_204',
-        'https://www.gstatic.com/generate_204',
-    ];
+    function vpnShownThisSession() {
+        try { return sessionStorage.getItem('ip.vpn.shown.' + ROLE) === '1'; } catch (e) { return false; }
+    }
+
+    function markVpnShown() {
+        try { sessionStorage.setItem('ip.vpn.shown.' + ROLE, '1'); } catch (e) {}
+    }
+
+    // ── DEFINITIVE VPN detection (cross-family image probes) ─────────
+    // Inside Iran WITHOUT a VPN these platforms are IP+SNI blocked — a
+    // real image can never arrive, and an ISP block page is HTML, which
+    // an <img> simply cannot decode (the old no-cors fetch() treated any
+    // HTTP response — including Google's QUIC leak and block pages — as
+    // success and falsely reported «فیلترشکن فعال است»). Probes are
+    // grouped by platform FAMILY; a genuine tunnel answers for several
+    // families at once, while an ordinary Iranian connection may leak at
+    // most one (Google HTTP/3 over UDP often bypasses SNI filtering).
+    //   ≥2 families answered  ⇒ definitely tunnelled ⇒ VPN on
+    //   0–1 family answered   ⇒ ambiguous / direct ⇒ VPN off (silent)
+    var VPN_FAMILIES = {
+        google:   [
+            'https://www.gstatic.com/images/branding/product/1x/googleg_48dp.png',
+            'https://www.youtube.com/favicon.ico',
+        ],
+        meta:     [
+            'https://www.facebook.com/favicon.ico',
+            'https://www.instagram.com/favicon.ico',
+        ],
+        twitter:  [
+            'https://abs.twimg.com/favicons/twitter.3.ico',
+            'https://x.com/favicon.ico',
+        ],
+        telegram: [
+            'https://telegram.org/favicon.ico',
+            'https://t.me/favicon.ico',
+        ],
+    };
 
     function probeVpn() {
         if (vpnState === 'on' || vpnState === 'off') {
@@ -283,7 +315,6 @@
 
         return new Promise(function (resolve) {
             var settled = false;
-            var finished = 0;
 
             function finish(on) {
                 if (settled) return;
@@ -292,16 +323,47 @@
                 resolve(on);
             }
 
-            VPN_PROBES.forEach(function (url) {
-                var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-                var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 7000);
+            if (navigator.onLine === false) { finish(false); return; }
 
-                fetch(url, { mode: 'no-cors', cache: 'no-store', credentials: 'omit', signal: ctrl ? ctrl.signal : undefined })
-                    .then(function () { clearTimeout(timer); finish(true); })  // any response = domain reachable = tunnel
-                    .catch(function () { clearTimeout(timer); })               // blocked / RST / timeout = this probe failed
-                    .then(function () {
-                        if (++finished === VPN_PROBES.length) finish(false);   // every probe failed → VPN off
-                    });
+            var total = 0;
+            var done = 0;
+            var familiesOk = 0;
+            var okCount = 0;
+
+            Object.keys(VPN_FAMILIES).forEach(function (family) {
+                total += VPN_FAMILIES[family].length;
+            });
+
+            Object.keys(VPN_FAMILIES).forEach(function (family) {
+                var familyPassed = false;
+
+                VPN_FAMILIES[family].forEach(function (url) {
+                    var imgDone = false;
+                    var img = new Image();
+
+                    function settled() {
+                        if (imgDone) return;
+                        imgDone = true;
+                        if (++done === total) {
+                            finish(familiesOk >= 2 && okCount >= 3);
+                        }
+                    }
+
+                    var timer = setTimeout(settled, 6500);
+
+                    img.onload = function () {
+                        clearTimeout(timer);
+                        if (!familyPassed) { familyPassed = true; familiesOk++; }
+                        okCount++;
+                        settled();
+                    };
+                    img.onerror = function () {
+                        clearTimeout(timer);
+                        settled();
+                    };
+                    img.referrerPolicy = 'no-referrer';
+                    img.src = url + (url.indexOf('?') === -1 ? '?' : '&') + 'ipwa=' + Date.now();
+                });
             });
         });
     }
@@ -336,6 +398,7 @@
         dismissForever: function () { ls('ip.pwa.dismissed.' + ROLE, '1'); },
         dismissVpn: function () { ls('ip.vpn.dismissed', '1'); },
         probeVpn: probeVpn,
+        families: VPN_FAMILIES,
         state: function () {
             return {
                 role: ROLE,
@@ -345,6 +408,7 @@
                 dismissed: dismissedForever(),
                 snoozed: snoozed(),
                 vpnDismissed: ls('ip.vpn.dismissed') === '1',
+                vpnShownThisSession: vpnShownThisSession(),
                 vpn: vpnState,
             };
         },
@@ -389,9 +453,10 @@
         }, 5000);
     }
 
-    // ── VPN reachability probe: a few seconds after load (only while the
-    //    tab is visible — background tabs throttle timers and would make
-    //    the probes look blocked when they are not) ──────────────────
+    // ── VPN reachability probe: right after the app opens (only while
+    //    the tab is visible — background tabs throttle timers and would
+    //    make the probes look blocked when they are not). Fires the
+    //    notice ONCE per app open, shortly after the first paint. ─────
     setTimeout(function () {
         if (document.visibilityState === 'visible') { maybeQueueVpn(); return; }
         var onVisible = function () {
@@ -400,7 +465,7 @@
             maybeQueueVpn();
         };
         document.addEventListener('visibilitychange', onVisible);
-    }, 4500);
+    }, 2000);
 
     // ── service worker (needed for the install prompt) ──────────
     if ('serviceWorker' in navigator) {
