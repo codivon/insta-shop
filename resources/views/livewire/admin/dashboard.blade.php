@@ -114,7 +114,7 @@
                 </span>
             </div>
 
-            <div class="mt-5 flex h-32 items-end justify-between gap-2" dir="ltr">
+            <div class="mt-5 flex h-32 justify-between gap-2" dir="ltr">
                 @php $maxOrders = max($chart->max('orders'), 1); @endphp
                 @foreach ($chart as $bar)
                     <div class="flex flex-1 flex-col items-center gap-1.5">

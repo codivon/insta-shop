@@ -86,7 +86,7 @@
                      class="absolute inset-0 z-10 grid place-items-center rounded-xl bg-white/60 backdrop-blur-[1px] dark:bg-slate-900/60">
                     <span class="size-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></span>
                 </div>
-                <div class="flex h-28 min-w-full items-end gap-1.5" dir="ltr">
+                <div class="flex h-28 min-w-full gap-1.5" dir="ltr">
                     @forelse ($sales['series'] as $bar)
                         <div class="flex min-w-7 flex-1 flex-col items-center gap-1" wire:key="sales-{{ $loop->index }}">
                             <div class="flex w-full flex-1 items-end">
@@ -164,7 +164,7 @@
                      class="absolute inset-0 z-10 grid place-items-center rounded-xl bg-white/60 backdrop-blur-[1px] dark:bg-slate-900/60">
                     <span class="size-5 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></span>
                 </div>
-                <div class="flex h-24 min-w-full items-end gap-1.5" dir="ltr">
+                <div class="flex h-24 min-w-full gap-1.5" dir="ltr">
                     @forelse ($views['series'] as $bar)
                         <div class="flex min-w-7 flex-1 flex-col items-center gap-1" wire:key="views-{{ $loop->index }}">
                             <div class="flex w-full flex-1 items-end">

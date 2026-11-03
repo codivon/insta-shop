@@ -238,7 +238,7 @@
 
             {{-- bars --}}
             <div class="scroll-slim mt-4 overflow-x-auto pb-1">
-                <div class="flex h-28 min-w-full items-end gap-1.5" dir="ltr">
+                <div class="flex h-28 min-w-full gap-1.5" dir="ltr">
                     @forelse ($chart as $bar)
                         <div class="flex min-w-7 flex-1 flex-col items-center gap-1">
                             <div class="flex w-full flex-1 items-end">
