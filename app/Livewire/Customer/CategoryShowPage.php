@@ -13,13 +13,18 @@ use Livewire\Component;
 
 /**
  * Customer — ONE category page, Basalam-style: breadcrumb, the child
- * categories as image cards, then the best-sellers of the whole branch
- * (paid-order quantity, newest first as the tiebreak / when nobody has
- * sold anything yet). Infinite scroll keeps feeding the grid.
+ * categories as image cards, then the product showcases — «پرفروش‌ترین‌ها»
+ * (paid-order quantity, newest as tiebreak) and «جدیدترین‌ها» — and finally
+ * the whole branch feed «همهٔ محصولات» with infinite scroll. The showcases
+ * only appear when the branch holds more than one page (8) of products,
+ * otherwise they would just repeat the feed below them.
  */
 #[Layout('layouts.customer-slot')]
 class CategoryShowPage extends Component
 {
+    /** Showcases are pointless until they beat one full page of the feed. */
+    private const SHOWCASE_SIZE = 8;
+
     public Category $category;
 
     /** Lazy load (infinite scroll) */
@@ -98,25 +103,40 @@ class CategoryShowPage extends Component
         return $trail;
     }
 
-    /** Published products of the whole branch, best-seller first. */
+    /** Every published product of the branch — size of the whole catalog. */
+    public function getTotalProperty(): int
+    {
+        return (clone $this->productQuery())->count();
+    }
+
+    /** Top sellers of the branch: paid-order quantity, newest tiebreak. */
+    public function getBestSellersProperty(): Collection
+    {
+        return $this->feedQuery()
+            ->orderByDesc('paid_sales')
+            ->orderByDesc('id')
+            ->limit(self::SHOWCASE_SIZE)
+            ->get();
+    }
+
+    /** Freshest products of the branch. */
+    public function getNewestProperty(): Collection
+    {
+        return $this->feedQuery()
+            ->orderByDesc('id')
+            ->limit(self::SHOWCASE_SIZE)
+            ->get();
+    }
+
+    /** The whole branch feed (newest first) — grows with infinite scroll. */
     public function getProductsProperty(): Collection
     {
-        $base = $this->productQuery();
-
-        $total = (clone $base)->count();
-
-        $rows = $base
-            ->with(['mainImage', 'category', 'shop.seller:id,instagram_username'])
-            // Alias must be exactly `paid_sales`: MySQL resolves ORDER BY/backtick
-            // identifiers strictly against it (sqlite would silently treat a
-            // mismatched "paid_sales" as a constant string and skip the sort).
-            ->withSum(['orderItems as paid_sales' => fn ($q) => $q->whereHas('order', fn ($w) => $w->where('status', 'paid'))], 'quantity')
-            ->orderByDesc('paid_sales')
+        $rows = $this->feedQuery()
             ->orderByDesc('id')
             ->limit($this->perPage)
             ->get();
 
-        $this->hasMore = $total > $this->perPage;
+        $this->hasMore = $this->total > $this->perPage;
 
         return $rows;
     }
@@ -133,6 +153,9 @@ class CategoryShowPage extends Component
         return view('livewire.customer.category-show-page', [
             'children' => $this->children,
             'trail' => $this->trail,
+            'total' => $this->total,
+            'bestSellers' => $this->bestSellers,
+            'newest' => $this->newest,
             'products' => $this->products,
             'favoriteIds' => $this->favoriteIds,
         ])->title($this->category->name);
@@ -147,5 +170,19 @@ class CategoryShowPage extends Component
             ->where('status', 'published')
             ->whereHas('shop', fn ($q) => $q->publiclyVisible())
             ->whereIn('category_id', Category::subtreeIds($this->category->id));
+    }
+
+    /**
+     * productQuery + the eager loads and the paid-sales sum every product
+     * card needs. Alias must be exactly `paid_sales`: MySQL resolves
+     * ORDER BY/backtick identifiers strictly against it (sqlite would
+     * silently treat a mismatched "paid_sales" as a constant string and
+     * skip the sort).
+     */
+    private function feedQuery(): Builder
+    {
+        return $this->productQuery()
+            ->with(['mainImage', 'category', 'shop.seller:id,instagram_username'])
+            ->withSum(['orderItems as paid_sales' => fn ($q) => $q->whereHas('order', fn ($w) => $w->where('status', 'paid'))], 'quantity');
     }
 }
