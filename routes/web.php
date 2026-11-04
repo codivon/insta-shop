@@ -42,6 +42,7 @@ use App\Livewire\Customer\AddressesPage;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\CartPage;
 use App\Livewire\Customer\CategoriesPage;
+use App\Livewire\Customer\CategoryShowPage;
 use App\Livewire\Customer\CheckoutPage;
 use App\Livewire\Customer\FavoritesPage;
 use App\Livewire\Customer\Home as CustomerHome;
@@ -283,6 +284,7 @@ Route::prefix('shop')->name('shop.')->group(function () {
      */
     Route::get('/', CustomerHome::class)->name('home');
     Route::get('/categories', CategoriesPage::class)->name('categories');
+    Route::get('/categories/{category}', CategoryShowPage::class)->whereNumber('category')->name('categories.show');
     Route::get('/cart', CartPage::class)->name('cart');
 
     /*

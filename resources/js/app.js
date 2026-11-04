@@ -332,6 +332,51 @@ document.addEventListener('alpine:init', () => {
             return rows;
         },
     }));
+
+    /* ═════════════════════════════════════════════════════════════
+       ipChatThread — ticket chat (admin / seller / customer)
+
+       The page NEVER scrolls: the header and the reply composer are
+       pinned and ONLY the message list scrolls. The list always rests
+       on the newest message — on first paint (incl. after wire:navigate)
+       and after every Livewire commit of the ticket component (reply
+       sent, ticket closed/reopened…). The textarea only commits on real
+       actions (wire:model is deferred), so typing never yanks the user
+       back to the bottom.
+       Usage: <div x-data="ipChatThread"> … <div x-ref="msgs" …>
+       ═════════════════════════════════════════════════════════════ */
+    Alpine.data('ipChatThread', () => ({
+        init() {
+            this.toBottom();
+            // settle again once webfonts finished swapping (heights shift)
+            if (document.fonts?.ready) {
+                document.fonts.ready.then(() => this.toBottom());
+            }
+
+            // re-run after the DOM morph of every commit of THIS component
+            this.$wire.$hook('commit', ({ succeed }) => {
+                succeed(() => this.toBottom());
+            });
+        },
+
+        toBottom() {
+            this.$nextTick(() => {
+                const el = this.$refs.msgs;
+
+                if (el) {
+                    el.scrollTop = el.scrollHeight;
+                }
+            });
+        },
+
+        /* auto-grow composer textarea (1 → 5 rows max) */
+        grow() {
+            const el = this.$el;
+
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        },
+    }));
 });
 
 /* ═══════════════════════════════════════════════════════════════

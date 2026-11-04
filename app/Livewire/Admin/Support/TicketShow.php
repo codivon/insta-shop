@@ -17,8 +17,11 @@ use Livewire\Component;
 /**
  * Admin — threaded view of ONE support ticket: reply to the
  * seller/customer, close or reopen the ticket.
+ *
+ * Layout «chat» mode: no page scroll — the message list is the only
+ * scroller and the composer is pinned to the bottom (chat-like).
  */
-#[Layout('layouts.admin-slot')]
+#[Layout('layouts.admin-slot', ['chat' => true])]
 #[Title('جزئیات تیکت')]
 class TicketShow extends Component
 {

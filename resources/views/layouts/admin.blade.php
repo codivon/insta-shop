@@ -241,8 +241,13 @@
          class="fixed inset-0 z-40 bg-slate-950/40 opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-sm lg:hidden"
          aria-hidden="true"></div>
 
-    {{-- ───────── Main area ───────── --}}
-    <div class="flex min-h-screen flex-col lg:mr-[260px]">
+    {{-- ───────── Main area ─────────
+         CHAT mode (ticket thread): the page NEVER scrolls — topbar is
+         pinned, <main> fills the rest of the viewport and the ticket
+         page owns an inner scroller (messages only) + a pinned composer.
+         The footer is dropped in this mode so nothing can overflow. ───────── --}}
+    @php $chat = $chat ?? false; @endphp
+    <div class="flex flex-col lg:mr-[260px] {{ $chat ? 'h-dvh overflow-hidden' : 'min-h-screen' }}">
         {{-- topbar --}}
         <header class="sticky top-0 z-30 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             {{-- NOTE: NO backdrop-blur here on purpose — backdrop-filter makes
@@ -259,11 +264,13 @@
                     </button>
                     <div>
                         <h1 class="text-base font-extrabold leading-5">@yield('title', 'پنل مدیریت')</h1>
-                        <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
-                            <a href="/" class="transition hover:text-primary-600">{{ \App\Support\Theme::resolve()['app_name'] }}</a>
-                            <x-icon name="chevron-left" class="size-3" />
-                            <span>@yield('breadcrumb', 'مدیریت کل — تنظیمات')</span>
-                        </div>
+                        @unless ($chat)
+                            <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                                <a href="/" class="transition hover:text-primary-600">{{ \App\Support\Theme::resolve()['app_name'] }}</a>
+                                <x-icon name="chevron-left" class="size-3" />
+                                <span>@yield('breadcrumb', 'مدیریت کل — تنظیمات')</span>
+                            </div>
+                        @endunless
                     </div>
                 </div>
 
@@ -281,14 +288,17 @@
             </div>
         </header>
 
-        {{-- page content --}}
-        <main class="flex-1 p-4 sm:p-6">
+        {{-- page content — chat mode: <main> is a fixed-height flex column
+             (NO scroll here); the ticket page owns the inner scroller. --}}
+        <main class="{{ $chat ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0 sm:p-0' : 'flex-1 p-4 sm:p-6' }}">
             @yield('content')
         </main>
 
-        <footer class="mt-auto border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-400 dark:border-slate-800">
-            © ۱۴۰۵ کافیت آنلاین — پنل مدیریت کل · <span dir="ltr">Laravel 13.39.0</span>
-        </footer>
+        @unless ($chat)
+            <footer class="mt-auto border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-400 dark:border-slate-800">
+                © ۱۴۰۵ کافیت آنلاین — پنل مدیریت کل · <span dir="ltr">Laravel 13.39.0</span>
+            </footer>
+        @endunless
     </div>
 
     @once

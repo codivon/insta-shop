@@ -143,6 +143,12 @@ class Product extends Model
         return $this->belongsTo(Shop::class);
     }
 
+    /** Purchase-line snapshots that point at this product (survive deletion). */
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id');
