@@ -2,17 +2,18 @@
 
 namespace App\Livewire\Seller;
 
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Shop;
 use App\Models\ShopAttribute;
 use App\Models\ShopAttributeValue;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 
 #[Layout('layouts.seller-slot')]
 class AttributeManager extends Component
 {
     use NotifiesOnValidation;
+
     /** new-attribute form */
     public string $name = '';
 
@@ -48,19 +49,19 @@ class AttributeManager extends Component
             'type' => ['required', 'in:'.implode(',', array_keys(ShopAttribute::TYPES))],
         ], [
             'name.required' => 'نام ویژگی را وارد کنید (مثال: جنس، مدل، ...).',
-            'name.max'      => 'نام ویژگی حداکثر ۸۰ کاراکتر است.',
+            'name.max' => 'نام ویژگی حداکثر ۸۰ کاراکتر است.',
         ]));
 
         $shop = $this->shop();
 
         $shop->attributes()->create([
-            'name'  => trim($this->name),
-            'type'  => $this->type,
-            'sort'  => ((int) $shop->attributes()->max('sort')) + 1,
+            'name' => trim($this->name),
+            'type' => $this->type,
+            'sort' => ((int) $shop->attributes()->max('sort')) + 1,
         ]);
 
-        $this->name  = '';
-        $this->type  = 'select';
+        $this->name = '';
+        $this->type = 'select';
 
         session()->flash('attr-flash', 'ویژگی جدید اضافه شد.');
     }
@@ -90,7 +91,7 @@ class AttributeManager extends Component
             "newValue.$attributeId" => ['required', 'string', 'max:80'],
         ], [
             "newValue.$attributeId.required" => 'مقدار را وارد کنید.',
-            "newValue.$attributeId.max"      => 'مقدار حداکثر ۸۰ کاراکتر است.',
+            "newValue.$attributeId.max" => 'مقدار حداکثر ۸۰ کاراکتر است.',
         ]));
 
         $hex = null;
@@ -104,13 +105,13 @@ class AttributeManager extends Component
         }
 
         $attribute->values()->create([
-            'value'     => $value,
+            'value' => $value,
             'color_hex' => $hex,
-            'sort'      => ((int) $attribute->values()->max('sort')) + 1,
+            'sort' => ((int) $attribute->values()->max('sort')) + 1,
         ]);
 
         $this->newValue[$attributeId] = '';
-        $this->newHex[$attributeId]   = '#D62976';
+        $this->newHex[$attributeId] = '#D62976';
     }
 
     public function deleteValue(int $valueId): void
@@ -128,7 +129,7 @@ class AttributeManager extends Component
     public function render()
     {
         return view('livewire.seller.attribute-manager', [
-            'shop'         => $this->shop(),
+            'shop' => $this->shop(),
             'attributeList' => $this->shop()->attributes()->with('values')->get(),
         ])->title('ویژگی‌های فروشگاه');
     }

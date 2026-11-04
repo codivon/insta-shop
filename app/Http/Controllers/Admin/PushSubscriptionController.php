@@ -22,9 +22,9 @@ class PushSubscriptionController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'endpoint'     => ['required', 'url', 'max:1000'],
-            'keys.p256dh'  => ['required', 'string', 'max:400'],
-            'keys.auth'    => ['required', 'string', 'max:400'],
+            'endpoint' => ['required', 'url', 'max:1000'],
+            'keys.p256dh' => ['required', 'string', 'max:400'],
+            'keys.auth' => ['required', 'string', 'max:400'],
             'device_label' => ['nullable', 'string', 'max:110'],
         ]);
 
@@ -38,13 +38,13 @@ class PushSubscriptionController extends Controller
                 ['endpoint_hash' => hash('sha1', $data['endpoint'])],
             );
 
-            $subscription->endpoint     = $data['endpoint'];
-            $subscription->p256dh       = $data['keys']['p256dh'];
-            $subscription->auth         = $data['keys']['auth'];
-            $subscription->user_agent   = mb_substr((string) $request->userAgent(), 0, 490);
+            $subscription->endpoint = $data['endpoint'];
+            $subscription->p256dh = $data['keys']['p256dh'];
+            $subscription->auth = $data['keys']['auth'];
+            $subscription->user_agent = mb_substr((string) $request->userAgent(), 0, 490);
             $subscription->device_label = $data['device_label'] ?? '';
-            $subscription->audience     = $audience;
-            $subscription->seller_id    = $sellerId;
+            $subscription->audience = $audience;
+            $subscription->seller_id = $sellerId;
 
             if (! $subscription->exists) {
                 $subscription->created_at = now();

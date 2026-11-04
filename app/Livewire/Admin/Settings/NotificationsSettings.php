@@ -6,8 +6,10 @@ use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\PushSubscription;
 use App\Models\Setting;
-use App\Support\AdminNotifier;
 use App\Support\ActivityLogger;
+use App\Support\AdminNotifier;
+use App\Support\Fmt;
+use App\Support\SellerNotifier;
 use App\Support\WebPusher;
 use Livewire\Component;
 
@@ -23,8 +25,8 @@ use Livewire\Component;
  */
 class NotificationsSettings extends Component
 {
-    use NotifiesOnValidation;
     use GuardsPermissions;
+    use NotifiesOnValidation;
 
     protected static string $permission = 'admin.settings.notifications';
 
@@ -57,7 +59,7 @@ class NotificationsSettings extends Component
         }
 
         // seller-panel events (seller notifications + their pushes)
-        foreach (\App\Support\SellerNotifier::EVENTS as $key => $meta) {
+        foreach (SellerNotifier::EVENTS as $key => $meta) {
             $this->sellerEvents[str_replace('.', '__', $key)] = (bool) Setting::get('notifications.seller_events.'.$key, true);
         }
 
@@ -84,7 +86,7 @@ class NotificationsSettings extends Component
             $after['notifications.events.'.$key] = (bool) ! empty($this->events[$uiKey]);
         }
 
-        foreach (\App\Support\SellerNotifier::EVENTS as $key => $meta) {
+        foreach (SellerNotifier::EVENTS as $key => $meta) {
             $before['notifications.seller_events.'.$key] = (bool) Setting::get('notifications.seller_events.'.$key, true);
 
             $uiKey = str_replace('.', '__', $key);
@@ -116,7 +118,7 @@ class NotificationsSettings extends Component
 
         ActivityLogger::log('notifications.test', 'نوتیفیکیشن تستی ارسال شد (پوش به '.$pushed.' دستگاه)');
 
-        $this->testBody = 'اعلان تستی ارسال شد — پوش به '.\App\Support\Fmt::fa($pushed).' دستگاه.';
+        $this->testBody = 'اعلان تستی ارسال شد — پوش به '.Fmt::fa($pushed).' دستگاه.';
         $this->dispatch('panel-toast', message: 'نوتیفیکیشن تستی ارسال شد (پوش: '.$pushed.' دستگاه).', type: 'success');
     }
 

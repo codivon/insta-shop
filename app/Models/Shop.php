@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['seller_id', 'name', 'slug', 'instagram_username', 'about', 'logo_path', 'banner_path', 'phone', 'address', 'status'])]
+#[Fillable(['seller_id', 'name', 'slug', 'instagram_username', 'about', 'logo_path', 'banner_path', 'phone', 'address', 'status', 'show_stock'])]
 class Shop extends Model
 {
     protected static function booted(): void
@@ -38,7 +38,7 @@ class Shop extends Model
         $shop = static::query()->firstOrCreate(
             ['seller_id' => $seller->id],
             [
-                'name'               => 'فروشگاه '.($seller->instagram_username ? '@'.$seller->instagram_username : ($seller->full_name ?: 'من')),
+                'name' => 'فروشگاه '.($seller->instagram_username ? '@'.$seller->instagram_username : ($seller->full_name ?: 'من')),
                 'instagram_username' => $seller->instagram_username,
             ],
         );
@@ -55,9 +55,22 @@ class Shop extends Model
         return $this->belongsTo(Seller::class);
     }
 
-    public function categories(): HasMany
+    /**
+     * Global categories actually used by this shop's published products,
+     * each with `shop_products_count` (products of THIS shop inside it).
+     * Replaces the old per-shop category management — categories are
+     * platform-wide now.
+     */
+    public function usedCategories(): Builder
     {
-        return $this->hasMany(ShopCategory::class)->orderBy('sort')->orderBy('id');
+        return Category::query()
+            ->join('products', 'products.category_id', '=', 'categories.id')
+            ->where('products.shop_id', $this->id)
+            ->where('products.status', Product::STATUS_PUBLISHED)
+            ->groupBy('categories.id')
+            ->selectRaw('categories.*, count(products.id) as shop_products_count')
+            ->orderBy('categories.sort')
+            ->orderBy('categories.id');
     }
 
     /** Variation fields defined by this shop (رنگ، گارانتی، سایز، ...). */

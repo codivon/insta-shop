@@ -3,12 +3,13 @@
 namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
-
+use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Seller;
 use App\Models\Shop;
+use App\Support\SchemaReady;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -25,6 +26,7 @@ class Dashboard extends Component
     use GuardsPermissions;
 
     protected static string $permission = 'admin.dashboard';
+
     // ── Computed stats ───────────────────────────────────────────────
     // Every aggregate below goes through Cache::remember with a 60s TTL —
     // the dashboard re-runs these GROUP BY queries on every render and on
@@ -218,11 +220,11 @@ class Dashboard extends Component
     protected function recentActivities()
     {
         try {
-            if (! \App\Support\SchemaReady::check('activity_logs')) {
+            if (! SchemaReady::check('activity_logs')) {
                 return collect();
             }
 
-            return \App\Models\ActivityLog::query()->latest()->limit(7)->get();
+            return ActivityLog::query()->latest()->limit(7)->get();
         } catch (\Throwable) {
             return collect();
         }

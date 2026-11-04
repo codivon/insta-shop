@@ -19,9 +19,9 @@ class SmsTemplate extends Model
     protected function casts(): array
     {
         return [
-            'variables'   => 'array',
+            'variables' => 'array',
             'sample_data' => 'array',
-            'enabled'     => 'boolean',
+            'enabled' => 'boolean',
         ];
     }
 

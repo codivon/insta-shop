@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\Users;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Models\Customer;
+use App\Models\CustomerAddress;
 use App\Models\Order;
 use App\Models\Product;
 use App\Support\Fmt;
@@ -69,7 +70,7 @@ class CustomerShow extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 12;
+        $this->perPage += 12;
     }
 
     public function getCustomerProperty(): ?Customer
@@ -94,9 +95,9 @@ class CustomerShow extends Component
             $key = $day->format('Y-m-d');
 
             return [
-                'label'  => Fmt::toFa($day->format('m/d')),
+                'label' => $day->locale('fa')->minDayName.' '.Fmt::toFa($day->day),
                 'orders' => (int) ($rows[$key] ?? collect())->count(),
-                'total'  => (int) ($rows[$key] ?? collect())->sum('total_amount'),
+                'total' => (int) ($rows[$key] ?? collect())->sum('total_amount'),
             ];
         });
     }
@@ -108,11 +109,11 @@ class CustomerShow extends Component
             ->where('status', 'paid');
 
         return [
-            'orders'      => Order::query()->where('customer_id', $this->customerId)->count(),
+            'orders' => Order::query()->where('customer_id', $this->customerId)->count(),
             'paid_orders' => (clone $paid)->count(),
-            'spent'       => (int) (clone $paid)->sum('total_amount'),
-            'favorites'   => $this->customer?->favorites()->count() ?? 0,
-            'addresses'   => \App\Models\CustomerAddress::query()->where('customer_id', $this->customerId)->count(),
+            'spent' => (int) (clone $paid)->sum('total_amount'),
+            'favorites' => $this->customer?->favorites()->count() ?? 0,
+            'addresses' => CustomerAddress::query()->where('customer_id', $this->customerId)->count(),
         ];
     }
 
@@ -149,12 +150,12 @@ class CustomerShow extends Component
         abort_if(! $customer, 404);
 
         return view('livewire.admin.users.customer-show', [
-            'customer'  => $customer,
-            'stats'     => $this->stats,
-            'chart'     => $this->chart,
-            'orders'    => $this->orders,
+            'customer' => $customer,
+            'stats' => $this->stats,
+            'chart' => $this->chart,
+            'orders' => $this->orders,
             'favorites' => $this->favorites,
-            'hasMore'   => $this->hasMore,
+            'hasMore' => $this->hasMore,
         ])->title('مشتری: '.($customer->full_name ?: Fmt::toFa($customer->phone)))
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — مشتریان']);
     }

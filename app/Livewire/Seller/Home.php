@@ -8,9 +8,9 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\PushSubscription;
 use App\Models\Shop;
-use App\Models\ShopCategory;
+use App\Support\Fmt;
+use App\Support\JDate;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -27,7 +27,7 @@ class Home extends Component
     public function mount(): void
     {
         // default window: last 7 days (paid sales chart)
-        $this->chartTo   = CarbonImmutable::today()->toDateString();
+        $this->chartTo = CarbonImmutable::today()->toDateString();
         $this->chartFrom = CarbonImmutable::today()->subDays(6)->toDateString();
     }
 
@@ -40,9 +40,9 @@ class Home extends Component
         $this->chartTo = $today->toDateString();
 
         $this->chartFrom = match ($this->chartMode) {
-            'daily'   => $today->subDays(6)->toDateString(),
+            'daily' => $today->subDays(6)->toDateString(),
             'monthly' => $today->subMonths(5)->startOfMonth()->toDateString(),
-            default   => $today->subYears(3)->startOfYear()->toDateString(),
+            default => $today->subYears(3)->startOfYear()->toDateString(),
         };
     }
 
@@ -55,7 +55,7 @@ class Home extends Component
             return null; // pending shops 404 publicly → hide the button
         }
 
-        $shop   = Shop::ensureForSeller($seller);
+        $shop = Shop::ensureForSeller($seller);
         $handle = $shop->instagram_username ?: $seller->instagram_username;
 
         return $handle ? route('shop.storefront', ['instagram' => $handle]) : null;
@@ -64,29 +64,28 @@ class Home extends Component
     public function render()
     {
         $seller = auth('seller')->user();
-        $shop   = Shop::ensureForSeller($seller);
+        $shop = Shop::ensureForSeller($seller);
 
         $base = Product::query()->where('shop_id', $shop->id);
 
         $stats = [
-            'total'      => (clone $base)->count(),
-            'published'  => (clone $base)->where('status', 'published')->count(),
+            'total' => (clone $base)->count(),
+            'published' => (clone $base)->where('status', 'published')->count(),
             'outOfStock' => (clone $base)->where('stock', 0)->count(),
-            'categories' => ShopCategory::query()->where('shop_id', $shop->id)->count(),
         ];
 
         $chart = $this->salesChart($shop);
 
         return view('livewire.seller.home', [
-            'shop'           => $shop,
-            'stats'          => $stats,
-            'storefrontUrl'  => $this->storefrontUrl,
-            'chart'          => $chart['series'],
-            'chartTotal'     => $chart['total'],
-            'chartOrders'    => $chart['orders'],
-            'chartMax'       => $chart['max'],
+            'shop' => $shop,
+            'stats' => $stats,
+            'storefrontUrl' => $this->storefrontUrl,
+            'chart' => $chart['series'],
+            'chartTotal' => $chart['total'],
+            'chartOrders' => $chart['orders'],
+            'chartMax' => $chart['max'],
             'recentProducts' => (clone $base)->with('mainImage')->latest()->take(4)->get(),
-            'onboarding'     => $this->onboarding($shop),
+            'onboarding' => $this->onboarding($shop),
         ])->title('خانه فروشنده');
     }
 
@@ -103,44 +102,36 @@ class Home extends Component
 
         $steps = [
             [
-                'key'   => 'category',
-                'title' => 'افزودن دسته‌بندی',
-                'desc'  => 'دسته‌بندی بسازید تا مشتری محصولات را راحت‌تر پیدا کند.',
-                'href'  => route('seller.categories'),
-                'icon'  => 'tag',
-                'done'  => ShopCategory::query()->where('shop_id', $shopId)->exists(),
-            ],
-            [
-                'key'   => 'product',
+                'key' => 'product',
                 'title' => 'افزودن محصول',
-                'desc'  => 'اولین محصول خود را با عکس و قیمت ثبت کنید.',
-                'href'  => route('seller.products.create'),
-                'icon'  => 'package',
-                'done'  => Product::query()->where('shop_id', $shopId)->exists(),
+                'desc' => 'اولین محصول خود را با عکس و قیمت ثبت کنید.',
+                'href' => route('seller.products.create'),
+                'icon' => 'package',
+                'done' => Product::query()->where('shop_id', $shopId)->exists(),
             ],
             [
-                'key'   => 'shipping',
+                'key' => 'shipping',
                 'title' => 'افزودن روش ارسال',
-                'desc'  => 'روش‌های حمل‌ونقل و هزینه ارسال را تعیین کنید.',
-                'href'  => route('seller.shipping'),
-                'icon'  => 'truck',
-                'done'  => Carrier::query()->where('shop_id', $shopId)->exists(),
+                'desc' => 'روش‌های حمل‌ونقل و هزینه ارسال را تعیین کنید.',
+                'href' => route('seller.shipping'),
+                'icon' => 'truck',
+                'done' => Carrier::query()->where('shop_id', $shopId)->exists(),
             ],
             [
-                'key'   => 'card',
+                'key' => 'card',
                 'title' => 'افزودن کارت بانکی',
-                'desc'  => 'کارت بانکی خود را برای تسویه فروش‌ها ثبت کنید.',
-                'href'  => route('seller.cards'),
-                'icon'  => 'credit-card',
-                'done'  => BankCard::query()->where('seller_id', $seller?->id)->exists(),
+                'desc' => 'کارت بانکی خود را برای تسویه فروش‌ها ثبت کنید.',
+                'href' => route('seller.cards'),
+                'icon' => 'credit-card',
+                'done' => BankCard::query()->where('seller_id', $seller?->id)->exists(),
             ],
             [
-                'key'   => 'push',
+                'key' => 'push',
                 'title' => 'فعال‌سازی نوتیفیکیشن',
-                'desc'  => 'برای اطلاع فوری از سفارش‌های جدید، نوتیفیکیشن دستگاه را روشن کنید.',
-                'href'  => route('seller.notifications'),
-                'icon'  => 'bell',
-                'done'  => $seller ? PushSubscription::query()
+                'desc' => 'برای اطلاع فوری از سفارش‌های جدید، نوتیفیکیشن دستگاه را روشن کنید.',
+                'href' => route('seller.notifications'),
+                'icon' => 'bell',
+                'done' => $seller ? PushSubscription::query()
                     ->where('audience', PushSubscription::AUDIENCE_SELLER)
                     ->where('seller_id', $seller->id)
                     ->exists() : false,
@@ -154,11 +145,11 @@ class Home extends Component
             ->values();
 
         return [
-            'steps'      => $steps,
-            'remaining'  => $remaining,
-            'doneCount'  => $doneCount,
-            'total'      => count($steps),
-            'allDone'    => $doneCount === count($steps),
+            'steps' => $steps,
+            'remaining' => $remaining,
+            'doneCount' => $doneCount,
+            'total' => count($steps),
+            'allDone' => $doneCount === count($steps),
         ];
     }
 
@@ -170,10 +161,10 @@ class Home extends Component
     {
         try {
             $from = CarbonImmutable::parse($this->chartFrom)->startOfDay();
-            $to   = CarbonImmutable::parse($this->chartTo)->endOfDay();
+            $to = CarbonImmutable::parse($this->chartTo)->endOfDay();
         } catch (\Throwable) {
             $from = CarbonImmutable::today()->subDays(6)->startOfDay();
-            $to   = CarbonImmutable::today()->endOfDay();
+            $to = CarbonImmutable::today()->endOfDay();
         }
 
         if ($from->gt($to)) {
@@ -182,9 +173,9 @@ class Home extends Component
 
         // hard caps keep the query + loop light on shared hosting
         $from = match ($this->chartMode) {
-            'daily'   => $from->max(CarbonImmutable::today()->subDays(91)->startOfDay()),
+            'daily' => $from->max(CarbonImmutable::today()->subDays(91)->startOfDay()),
             'monthly' => $from->max(CarbonImmutable::today()->subYears(3)->startOfDay()),
-            default   => $from->max(CarbonImmutable::today()->subYears(9)->startOfDay()),
+            default => $from->max(CarbonImmutable::today()->subYears(9)->startOfDay()),
         };
 
         /* paid order_items of this shop inside the window */
@@ -197,47 +188,27 @@ class Home extends Component
             ->get();
 
         $ordersCount = $rows->pluck('order_id')->unique()->count();
-        $total       = (int) $rows->sum(fn ($r) => (int) $r->unit_price * (int) $r->quantity);
+        $total = (int) $rows->sum(fn ($r) => (int) $r->unit_price * (int) $r->quantity);
 
         /* bucketize */
         $buckets = [];
 
         if ($this->chartMode === 'daily') {
             $cursor = $from->startOfDay();
-            $steps  = $from->diffInDays($to->endOfDay()) + 1;
+            $steps = $from->diffInDays($to->endOfDay()) + 1;
             for ($i = 0; $i < min((int) $steps, 92); $i++) {
-                $key             = $cursor->toDateString();
-                $buckets[$key]   = [
-                    'label' => $cursor->locale('fa')->dayName.' '.\App\Support\Fmt::fa($cursor->day),
-                    'sort'  => $key,
+                $key = $cursor->toDateString();
+                $buckets[$key] = [
+                    'label' => $cursor->locale('fa')->dayName.' '.Fmt::fa($cursor->day),
+                    'sort' => $key,
                     'today' => $key === CarbonImmutable::today()->toDateString(),
                 ];
                 $cursor = $cursor->addDay();
             }
         } elseif ($this->chartMode === 'monthly') {
-            $cursor = $from->startOfDay();
-            $steps  = $from->diffInMonths($to->endOfDay()) + 1;
-            for ($i = 0; $i < min((int) $steps, 36); $i++) {
-                $key           = $cursor->format('Y-m');
-                $buckets[$key] = [
-                    'label' => $cursor->locale('fa')->monthName,
-                    'sort'  => $key,
-                    'today' => $key === CarbonImmutable::today()->format('Y-m'),
-                ];
-                $cursor = $cursor->addMonth()->startOfMonth();
-            }
+            $buckets = JDate::monthBuckets($from, $to, withYear: false);
         } else {
-            $cursor = $from->startOfDay();
-            $steps  = $from->diffInYears($to->endOfDay()) + 1;
-            for ($i = 0; $i < min((int) $steps, 10); $i++) {
-                $key           = $cursor->format('Y');
-                $buckets[$key] = [
-                    'label' => \App\Support\Fmt::fa($cursor->year),
-                    'sort'  => $key,
-                    'today' => $key === CarbonImmutable::today()->format('Y'),
-                ];
-                $cursor = $cursor->addYear()->startOfYear();
-            }
+            $buckets = JDate::yearBuckets($from, $to);
         }
 
         foreach ($rows as $row) {
@@ -248,9 +219,9 @@ class Home extends Component
             $paid = CarbonImmutable::parse($row->paid_at);
 
             $key = match ($this->chartMode) {
-                'daily'   => $paid->toDateString(),
-                'monthly' => $paid->format('Y-m'),
-                default   => $paid->format('Y'),
+                'daily' => $paid->toDateString(),
+                'monthly' => JDate::monthKey($paid),
+                default => JDate::yearKey($paid),
             };
 
             if (isset($buckets[$key])) {
@@ -269,9 +240,9 @@ class Home extends Component
 
         return [
             'series' => $series,
-            'total'  => $total,
+            'total' => $total,
             'orders' => $ordersCount,
-            'max'    => max($series->max('value'), 1),
+            'max' => max($series->max('value'), 1),
         ];
     }
 }

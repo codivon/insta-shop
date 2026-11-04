@@ -2,13 +2,13 @@
 
 namespace App\Livewire\Seller;
 
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\BankCard;
 use App\Support\Banking;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Seller — کارت‌های بانکی (bank cards):
@@ -21,6 +21,7 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 class BankCardsPage extends Component
 {
     use NotifiesOnValidation;
+
     public const MAX_CARDS = 5;
 
     /* ── add-card modal ── */
@@ -47,17 +48,17 @@ class BankCardsPage extends Component
         }
 
         $this->resetErrorBag();
-        $this->cardName     = '';
-        $this->cardNumber   = '';
-        $this->shebaDigits  = '';
-        $this->addOpen      = true;
+        $this->cardName = '';
+        $this->cardNumber = '';
+        $this->shebaDigits = '';
+        $this->addOpen = true;
     }
 
     public function closeAdd(): void
     {
-        $this->addOpen     = false;
-        $this->cardName    = '';
-        $this->cardNumber  = '';
+        $this->addOpen = false;
+        $this->cardName = '';
+        $this->cardNumber = '';
         $this->shebaDigits = '';
         $this->resetErrorBag();
     }
@@ -90,24 +91,24 @@ class BankCardsPage extends Component
 
         // belt & suspenders: updated* hooks normalize live input, but
         // normalize again server-side before validating.
-        $this->cardName    = trim($this->cardName);
-        $this->cardNumber  = Banking::digitsOnly($this->cardNumber); // ← DB stores it un-spaced
+        $this->cardName = trim($this->cardName);
+        $this->cardNumber = Banking::digitsOnly($this->cardNumber); // ← DB stores it un-spaced
         $this->shebaDigits = Banking::digitsOnly($this->shebaDigits);
 
         $fullSheba = 'IR'.$this->shebaDigits;
 
         $this->validateWithToast(fn () => $this->validate([
-            'cardName'    => ['required', 'string', 'min:3', 'max:60'],
-            'cardNumber'  => ['required', 'digits:16', Rule::unique('bank_cards', 'card_number')->where('seller_id', $seller->id)],
+            'cardName' => ['required', 'string', 'min:3', 'max:60'],
+            'cardNumber' => ['required', 'digits:16', Rule::unique('bank_cards', 'card_number')->where('seller_id', $seller->id)],
             'shebaDigits' => ['required', 'digits:24'],
         ], [
-            'cardName.required'      => 'نام و نام خانوادگی صاحب کارت را وارد کنید.',
-            'cardName.min'           => 'نام باید حداقل ۳ حرف باشد.',
-            'cardNumber.required'    => 'شماره کارت را وارد کنید.',
-            'cardNumber.digits'      => 'شماره کارت باید ۱۶ رقم باشد.',
-            'cardNumber.unique'      => 'این شماره کارت قبلاً ثبت شده است.',
-            'shebaDigits.required'   => 'رقم‌های شبا را وارد کنید.',
-            'shebaDigits.digits'     => 'بعد از IR باید دقیقاً ۲۴ رقم وارد شود.',
+            'cardName.required' => 'نام و نام خانوادگی صاحب کارت را وارد کنید.',
+            'cardName.min' => 'نام باید حداقل ۳ حرف باشد.',
+            'cardNumber.required' => 'شماره کارت را وارد کنید.',
+            'cardNumber.digits' => 'شماره کارت باید ۱۶ رقم باشد.',
+            'cardNumber.unique' => 'این شماره کارت قبلاً ثبت شده است.',
+            'shebaDigits.required' => 'رقم‌های شبا را وارد کنید.',
+            'shebaDigits.digits' => 'بعد از IR باید دقیقاً ۲۴ رقم وارد شود.',
         ]));
 
         if (! Banking::validCard($this->cardNumber)) {
@@ -137,11 +138,11 @@ class BankCardsPage extends Component
         $isFirst = $this->cardsCount() === 0;
 
         BankCard::query()->create([
-            'seller_id'   => $seller->id,
-            'full_name'   => trim($this->cardName),
+            'seller_id' => $seller->id,
+            'full_name' => trim($this->cardName),
             'card_number' => $this->cardNumber, // raw 16 digits, no spaces
-            'sheba'       => $fullSheba,        // stored as IR + 24 digits
-            'is_default'  => $isFirst,
+            'sheba' => $fullSheba,        // stored as IR + 24 digits
+            'is_default' => $isFirst,
         ]);
 
         unset($this->cards); // bust the per-request computed cache

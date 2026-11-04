@@ -39,20 +39,20 @@ class TicketShowPage extends Component
             'replyBody' => ['required', 'string', 'min:2', 'max:3000'],
         ], [
             'replyBody.required' => 'متن پاسخ را بنویسید.',
-            'replyBody.min'      => 'متن پاسخ حداقل ۲ کاراکتر است.',
-            'replyBody.max'      => 'متن پاسخ حداکثر ۳۰۰۰ کاراکتر است.',
+            'replyBody.min' => 'متن پاسخ حداقل ۲ کاراکتر است.',
+            'replyBody.max' => 'متن پاسخ حداکثر ۳۰۰۰ کاراکتر است.',
         ]));
 
         SupportTicketMessage::query()->create([
-            'ticket_id'   => $this->ticket->id,
+            'ticket_id' => $this->ticket->id,
             'author_type' => Customer::class,
-            'author_id'   => auth('customer')->id(),
-            'body'        => trim($this->replyBody),
+            'author_id' => auth('customer')->id(),
+            'body' => trim($this->replyBody),
         ]);
 
         // a customer reply always puts the ball back into the admin's court
         $this->ticket->update([
-            'status'        => SupportTicket::STATUS_OPEN,
+            'status' => SupportTicket::STATUS_OPEN,
             'last_reply_at' => now(),
         ]);
 

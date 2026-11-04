@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Favorite;
 use App\Models\Product;
 use App\Models\Shop;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -47,7 +48,7 @@ class Home extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 6;
+        $this->perPage += 6;
     }
 
     /** Toggle the heart on a product card. */
@@ -72,7 +73,7 @@ class Home extends Component
 
         Favorite::query()->firstOrCreate([
             'customer_id' => $customer->id,
-            'product_id'  => $productId,
+            'product_id' => $productId,
         ]);
     }
 
@@ -149,8 +150,8 @@ class Home extends Component
     public function render()
     {
         return view('livewire.customer.home', [
-            'shops'       => $this->shops,
-            'products'    => $this->products,
+            'shops' => $this->shops,
+            'products' => $this->products,
             'favoriteIds' => $this->favoriteIds,
         ])->title('فروشگاه InstaShop');
     }
@@ -163,7 +164,7 @@ class Home extends Component
     }
 
     /** Products that belong to a publicly visible shop. */
-    private function publicProductQuery(): \Illuminate\Database\Eloquent\Builder
+    private function publicProductQuery(): Builder
     {
         return Product::query()
             ->where('status', 'published')
@@ -172,7 +173,7 @@ class Home extends Component
     }
 
     /** Feed query with search + sort applied. */
-    private function productQuery(): \Illuminate\Database\Eloquent\Builder
+    private function productQuery(): Builder
     {
         $query = $this->publicProductQuery();
 
@@ -181,10 +182,10 @@ class Home extends Component
         }
 
         match ($this->sort) {
-            'popular'   => $query->orderByDesc('views'),
-            'cheap'     => $query->orderBy('price'),
+            'popular' => $query->orderByDesc('views'),
+            'cheap' => $query->orderBy('price'),
             'expensive' => $query->orderByDesc('price'),
-            default     => $query->latest(),
+            default => $query->latest(),
         };
 
         return $query;

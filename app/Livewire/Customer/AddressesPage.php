@@ -113,17 +113,17 @@ class AddressesPage extends Component
         $this->resetForm();
         $this->resetErrorBag();
 
-        $this->editId         = $address->id;
-        $this->title          = (string) ($address->title ?? '');
+        $this->editId = $address->id;
+        $this->title = (string) ($address->title ?? '');
         $this->recipient_name = (string) ($address->recipient_name ?? '');
-        $this->phone          = Phone::toLocal($address->phone);
-        $this->provinceId     = (int) ($address->province_id ?? 0);
-        $this->cityId         = (int) ($address->city_id ?? 0);
-        $this->address        = (string) $address->address;
-        $this->postal_code    = (string) ($address->postal_code ?? '');
-        $this->plaque         = (string) ($address->plaque ?? '');
-        $this->unit           = (string) ($address->unit ?? '');
-        $this->is_default     = (bool) $address->is_default;
+        $this->phone = Phone::toLocal($address->phone);
+        $this->provinceId = (int) ($address->province_id ?? 0);
+        $this->cityId = (int) ($address->city_id ?? 0);
+        $this->address = (string) $address->address;
+        $this->postal_code = (string) ($address->postal_code ?? '');
+        $this->plaque = (string) ($address->plaque ?? '');
+        $this->unit = (string) ($address->unit ?? '');
+        $this->is_default = (bool) $address->is_default;
 
         $this->showModal = true;
     }
@@ -136,17 +136,17 @@ class AddressesPage extends Component
 
     private function resetForm(): void
     {
-        $this->editId         = null;
-        $this->title          = '';
+        $this->editId = null;
+        $this->title = '';
         $this->recipient_name = '';
-        $this->phone          = '';
-        $this->provinceId     = 0;
-        $this->cityId         = 0;
-        $this->address        = '';
-        $this->postal_code    = '';
-        $this->plaque         = '';
-        $this->unit           = '';
-        $this->is_default     = $this->addresses->isEmpty(); // first address becomes default automatically
+        $this->phone = '';
+        $this->provinceId = 0;
+        $this->cityId = 0;
+        $this->address = '';
+        $this->postal_code = '';
+        $this->plaque = '';
+        $this->unit = '';
+        $this->is_default = $this->addresses->isEmpty(); // first address becomes default automatically
     }
 
     /* ══════════ persistence ══════════ */
@@ -162,7 +162,7 @@ class AddressesPage extends Component
         }
 
         $province = $this->provinceId > 0 ? Province::find($this->provinceId) : null;
-        $city     = $this->cityId > 0 ? City::find($this->cityId) : null;
+        $city = $this->cityId > 0 ? City::find($this->cityId) : null;
 
         $address = $this->editId
             ? $this->findAddress($this->editId)
@@ -173,18 +173,18 @@ class AddressesPage extends Component
         }
 
         $address->fill([
-            'title'          => trim($this->title) !== '' ? trim($this->title) : null,
+            'title' => trim($this->title) !== '' ? trim($this->title) : null,
             'recipient_name' => trim($this->recipient_name) !== '' ? trim($this->recipient_name) : null,
-            'phone'          => $this->phone !== '' ? Phone::normalize($this->phone) : null,
-            'province_id'    => $province?->id,
-            'city_id'        => $city?->id,
-            'province_name'  => $province?->name,
-            'city_name'      => $city?->name,
-            'address'        => trim($this->address),
-            'postal_code'    => $this->postal_code !== '' ? $this->postal_code : null,
-            'plaque'         => trim($this->plaque) !== '' ? trim($this->plaque) : null,
-            'unit'           => trim($this->unit) !== '' ? trim($this->unit) : null,
-            'is_default'     => $this->is_default,
+            'phone' => $this->phone !== '' ? Phone::normalize($this->phone) : null,
+            'province_id' => $province?->id,
+            'city_id' => $city?->id,
+            'province_name' => $province?->name,
+            'city_name' => $city?->name,
+            'address' => trim($this->address),
+            'postal_code' => $this->postal_code !== '' ? $this->postal_code : null,
+            'plaque' => trim($this->plaque) !== '' ? trim($this->plaque) : null,
+            'unit' => trim($this->unit) !== '' ? trim($this->unit) : null,
+            'is_default' => $this->is_default,
         ]);
 
         $address->save();
@@ -230,7 +230,7 @@ class AddressesPage extends Component
     public function makeDefault(int $id): void
     {
         $customer = auth('customer')->user();
-        $address  = $this->findAddress($id);
+        $address = $this->findAddress($id);
 
         if (! $customer || ! $address) {
             return;
@@ -284,16 +284,16 @@ class AddressesPage extends Component
     protected function rules(): array
     {
         return [
-            'title'          => ['nullable', 'string', 'max:60'],
+            'title' => ['nullable', 'string', 'max:60'],
             'recipient_name' => ['required', 'string', 'min:3', 'max:80'],
-            'phone'          => ['required', 'string', 'min:10', 'max:14'],
-            'provinceId'     => ['required', 'integer', 'min:1', 'exists:provinces,id'],
-            'cityId'         => ['required', 'integer', 'min:1', Rule::exists('cities', 'id')->where('province_id', $this->provinceId)],
-            'address'        => ['required', 'string', 'min:10', 'max:500'],
-            'postal_code'    => ['nullable', 'string', 'regex:/^\d{10}$/'],
-            'plaque'         => ['nullable', 'string', 'max:20'],
-            'unit'           => ['nullable', 'string', 'max:20'],
-            'is_default'     => ['boolean'],
+            'phone' => ['required', 'string', 'min:10', 'max:14'],
+            'provinceId' => ['required', 'integer', 'min:1', 'exists:provinces,id'],
+            'cityId' => ['required', 'integer', 'min:1', Rule::exists('cities', 'id')->where('province_id', $this->provinceId)],
+            'address' => ['required', 'string', 'min:10', 'max:500'],
+            'postal_code' => ['nullable', 'string', 'regex:/^\d{10}$/'],
+            'plaque' => ['nullable', 'string', 'max:20'],
+            'unit' => ['nullable', 'string', 'max:20'],
+            'is_default' => ['boolean'],
         ];
     }
 
@@ -301,17 +301,17 @@ class AddressesPage extends Component
     {
         return [
             'recipient_name.required' => 'نام گیرنده را وارد کنید.',
-            'recipient_name.min'      => 'نام گیرنده باید حداقل ۳ حرف باشد.',
-            'phone.required'          => 'شماره همراه را وارد کنید.',
-            'phone.min'               => 'شماره همراه معتبر نیست (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).',
-            'provinceId.required'     => 'استان را انتخاب کنید.',
-            'provinceId.min'          => 'استان را انتخاب کنید.',
-            'cityId.required'         => 'شهر را انتخاب کنید.',
-            'cityId.min'              => 'شهر را انتخاب کنید.',
-            'cityId.exists'           => 'شهر انتخابی با استان هم‌خوانی ندارد.',
-            'address.required'        => 'نشانی کامل را وارد کنید.',
-            'address.min'             => 'نشانی باید حداقل ۱۰ حرف باشد.',
-            'postal_code.regex'       => 'کد پستی باید ۱۰ رقم باشد.',
+            'recipient_name.min' => 'نام گیرنده باید حداقل ۳ حرف باشد.',
+            'phone.required' => 'شماره همراه را وارد کنید.',
+            'phone.min' => 'شماره همراه معتبر نیست (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).',
+            'provinceId.required' => 'استان را انتخاب کنید.',
+            'provinceId.min' => 'استان را انتخاب کنید.',
+            'cityId.required' => 'شهر را انتخاب کنید.',
+            'cityId.min' => 'شهر را انتخاب کنید.',
+            'cityId.exists' => 'شهر انتخابی با استان هم‌خوانی ندارد.',
+            'address.required' => 'نشانی کامل را وارد کنید.',
+            'address.min' => 'نشانی باید حداقل ۱۰ حرف باشد.',
+            'postal_code.regex' => 'کد پستی باید ۱۰ رقم باشد.',
         ];
     }
 
@@ -343,7 +343,7 @@ class AddressesPage extends Component
         return view('livewire.customer.addresses-page', [
             'addresses' => $this->addresses,
             'provinces' => $this->provinces,
-            'cities'    => $this->cities,
+            'cities' => $this->cities,
         ])->title('آدرس‌های من');
     }
 }

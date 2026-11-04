@@ -13,7 +13,7 @@ class CartItem extends Model
     {
         return [
             'variant_id' => 'integer',
-            'quantity'   => 'integer',
+            'quantity' => 'integer',
         ];
     }
 

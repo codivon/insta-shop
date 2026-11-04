@@ -69,7 +69,7 @@ class PaymentService
 
             foreach (self::CREDENTIAL_FIELDS[$key] ?? [] as $field => $_) {
                 $fromSettings = trim((string) Setting::get("payment.{$key}.{$field}", ''));
-                $fromConfig   = trim((string) data_get(config('payment.drivers.'.$key, []), $field, ''));
+                $fromConfig = trim((string) data_get(config('payment.drivers.'.$key, []), $field, ''));
 
                 if ($fromSettings !== '' || $fromConfig !== '') {
                     $available[$key] = $label;

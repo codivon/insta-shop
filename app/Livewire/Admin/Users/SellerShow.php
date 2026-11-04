@@ -3,14 +3,16 @@
 namespace App\Livewire\Admin\Users;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
+use App\Models\BankCard;
 use App\Models\Carrier;
+use App\Models\Category;
 use App\Models\Discount;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Seller;
+use App\Models\Shop;
 use App\Models\ShopFilter;
 use App\Models\Wallet;
-use App\Models\WalletTransaction;
 use App\Support\Fmt;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -90,7 +92,7 @@ class SellerShow extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 12;
+        $this->perPage += 12;
     }
 
     // ── Core ─────────────────────────────────────────────────────────
@@ -124,9 +126,9 @@ class SellerShow extends Component
             $key = $day->format('Y-m-d');
 
             return [
-                'label'  => Fmt::toFa($day->format('m/d')),
+                'label' => $day->locale('fa')->minDayName.' '.Fmt::toFa($day->day),
                 'orders' => (int) ($rows[$key] ?? collect())->count(),
-                'total'  => (int) ($rows[$key] ?? collect())->sum('total_amount'),
+                'total' => (int) ($rows[$key] ?? collect())->sum('total_amount'),
             ];
         });
     }
@@ -161,16 +163,16 @@ class SellerShow extends Component
         $wallet = $this->seller ? Wallet::query()->where('seller_id', $this->seller->id)->first() : null;
 
         return [
-            'products'      => Product::query()->where('shop_id', $shopId)->count(),
-            'published'     => Product::query()->where('shop_id', $shopId)->where('status', 'published')->count(),
-            'orders'        => $itemsTotal,
-            'goods_total'   => $goodsTotal,
-            'discounts'     => Discount::query()->where('shop_id', $shopId)->count(),
-            'wallet_balance'=> (int) ($wallet?->balance ?? 0),
-            'categories'    => $shopId > 0 ? \App\Models\ShopCategory::query()->where('shop_id', $shopId)->count() : 0,
-            'carriers'      => Carrier::query()->where('shop_id', $shopId)->count(),
-            'filters'       => ShopFilter::query()->where('shop_id', $shopId)->count(),
-            'views'         => Product::query()->where('shop_id', $shopId)->sum('views'),
+            'products' => Product::query()->where('shop_id', $shopId)->count(),
+            'published' => Product::query()->where('shop_id', $shopId)->where('status', 'published')->count(),
+            'orders' => $itemsTotal,
+            'goods_total' => $goodsTotal,
+            'discounts' => Discount::query()->where('shop_id', $shopId)->count(),
+            'wallet_balance' => (int) ($wallet?->balance ?? 0),
+            'categories' => $shopId > 0 ? Category::query()->whereIn('id', Product::query()->where('shop_id', $shopId)->where('status', 'published')->select('category_id'))->count() : 0,
+            'carriers' => Carrier::query()->where('shop_id', $shopId)->count(),
+            'filters' => ShopFilter::query()->where('shop_id', $shopId)->count(),
+            'views' => Product::query()->where('shop_id', $shopId)->sum('views'),
         ];
     }
 
@@ -188,7 +190,7 @@ class SellerShow extends Component
             ->latest('id');
 
         $total = (clone $query)->count();
-        $rows  = $query->limit($this->perPage)->get();
+        $rows = $query->limit($this->perPage)->get();
 
         $this->hasMore = $total > $this->perPage;
 
@@ -232,14 +234,16 @@ class SellerShow extends Component
     public function getBankCardsProperty(): Collection
     {
         return $this->sellerId > 0
-            ? \App\Models\BankCard::query()->where('seller_id', $this->sellerId)->orderByDesc('id')->limit(10)->get()
+            ? BankCard::query()->where('seller_id', $this->sellerId)->orderByDesc('id')->limit(10)->get()
             : collect();
     }
 
     public function getCategoriesProperty(): Collection
     {
-        return $this->shopId() > 0
-            ? \App\Models\ShopCategory::query()->where('shop_id', $this->shopId())->orderBy('sort')->limit(30)->get()
+        $shop = $this->shopId() > 0 ? Shop::query()->find($this->shopId()) : null;
+
+        return $shop
+            ? $shop->usedCategories()->limit(30)->get()
             : collect();
     }
 
@@ -264,20 +268,20 @@ class SellerShow extends Component
         abort_if(! $seller, 404);
 
         return view('livewire.admin.users.seller-show', [
-            'seller'       => $seller,
-            'shop'         => $seller->shop,
-            'stats'        => $this->stats,
-            'chart'        => $this->chart,
-            'products'     => $this->products,
-            'orders'       => $this->orders,
-            'discounts'    => $this->discounts,
-            'wallet'       => $this->wallet,
+            'seller' => $seller,
+            'shop' => $seller->shop,
+            'stats' => $this->stats,
+            'chart' => $this->chart,
+            'products' => $this->products,
+            'orders' => $this->orders,
+            'discounts' => $this->discounts,
+            'wallet' => $this->wallet,
             'transactions' => $this->transactions,
-            'bankCards'    => $this->bankCards,
-            'categories'   => $this->categories,
-            'carriers'     => $this->carriers,
-            'filters'      => $this->filters,
-            'hasMore'      => $this->hasMore,
+            'bankCards' => $this->bankCards,
+            'categories' => $this->categories,
+            'carriers' => $this->carriers,
+            'filters' => $this->filters,
+            'hasMore' => $this->hasMore,
         ])->title('فروشنده: '.($seller->full_name ?: '@'.$seller->instagram_username))
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — فروشندگان']);
     }

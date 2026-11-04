@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\AdminNotification;
 use App\Models\PushSubscription;
 use App\Models\Setting;
+use Illuminate\Database\Eloquent\Model;
 use Throwable;
 
 /**
@@ -28,25 +29,25 @@ final class AdminNotifier
 {
     /** Registry shown in the settings tab: key => [label fa, icon]. */
     public const EVENTS = [
-        'order.new'       => ['سفارش جدید ثبت شد', 'bag'],
-        'order.paid'      => ['پرداخت سفارش موفق شد', 'circle-check'],
-        'order.failed'    => ['پرداخت سفارش ناموفق بود', 'alert'],
-        'order.status'    => ['تغییر وضعیت سفارش', 'truck'],
-        'order.shipment'  => ['به‌روزرسانی وضعیت ارسال', 'truck'],
-        'seller.new'      => ['ثبت‌نام فروشنده جدید', 'store'],
+        'order.new' => ['سفارش جدید ثبت شد', 'bag'],
+        'order.paid' => ['پرداخت سفارش موفق شد', 'circle-check'],
+        'order.failed' => ['پرداخت سفارش ناموفق بود', 'alert'],
+        'order.status' => ['تغییر وضعیت سفارش', 'truck'],
+        'order.shipment' => ['به‌روزرسانی وضعیت ارسال', 'truck'],
+        'seller.new' => ['ثبت‌نام فروشنده جدید', 'store'],
         'seller.approved' => ['تایید فروشنده', 'check'],
-        'seller.suspended'=> ['تعلیق فروشنده', 'circle-slash'],
-        'customer.new'    => ['ثبت‌نام مشتری جدید', 'user'],
-        'product.new'     => ['محصول جدید', 'package'],
+        'seller.suspended' => ['تعلیق فروشنده', 'circle-slash'],
+        'customer.new' => ['ثبت‌نام مشتری جدید', 'user'],
+        'product.new' => ['محصول جدید', 'package'],
         'wallet.withdraw' => ['درخواست برداشت کیف پول', 'wallet'],
-        'ticket.new'      => ['تیکت پشتیبانی جدید', 'headset'],
-        'ticket.reply'    => ['پاسخ کاربر در تیکت پشتیبانی', 'headset'],
-        'security.lockout'=> ['قفل ورود به پنل (امنیت)', 'shield'],
-        'backup.completed'=> ['پشتیبان‌گیری کامل شد', 'database'],
-        'backup.failed'   => ['پشتیبان‌گیری/بازگردانی ناموفق بود', 'alert'],
+        'ticket.new' => ['تیکت پشتیبانی جدید', 'headset'],
+        'ticket.reply' => ['پاسخ کاربر در تیکت پشتیبانی', 'headset'],
+        'security.lockout' => ['قفل ورود به پنل (امنیت)', 'shield'],
+        'backup.completed' => ['پشتیبان‌گیری کامل شد', 'database'],
+        'backup.failed' => ['پشتیبان‌گیری/بازگردانی ناموفق بود', 'alert'],
         'backup.restored' => ['بازگردانی پشتیبان کامل شد', 'upload'],
         'system.maintenance' => ['حالت بروزرسانی سایت', 'alert'],
-        'system.migration'   => ['اجرای مایگریشن دیتابیس', 'database'],
+        'system.migration' => ['اجرای مایگریشن دیتابیس', 'database'],
     ];
 
     /**
@@ -72,14 +73,14 @@ final class AdminNotifier
             }
 
             $notification = AdminNotification::create([
-                'type'         => self::normalize($type),
-                'title'        => mb_substr($title, 0, 290),
-                'body'         => mb_substr($body, 0, 990),
-                'icon'         => $icon,
-                'link'         => $link,
-                'subject_type' => $subject instanceof \Illuminate\Database\Eloquent\Model ? $subject->getMorphClass() : null,
-                'subject_id'   => $subject instanceof \Illuminate\Database\Eloquent\Model ? $subject->getKey() : null,
-                'created_at'   => now(),
+                'type' => self::normalize($type),
+                'title' => mb_substr($title, 0, 290),
+                'body' => mb_substr($body, 0, 990),
+                'icon' => $icon,
+                'link' => $link,
+                'subject_type' => $subject instanceof Model ? $subject->getMorphClass() : null,
+                'subject_id' => $subject instanceof Model ? $subject->getKey() : null,
+                'created_at' => now(),
             ]);
 
             // Web Push — best effort, never blocks the request flow.

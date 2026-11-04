@@ -33,10 +33,10 @@ class SupportTicketMessage extends Model
     public function authorLabel(): string
     {
         return match ($this->author_type) {
-            Admin::class    => 'پشتیبانی',
-            Seller::class   => 'فروشنده',
+            Admin::class => 'پشتیبانی',
+            Seller::class => 'فروشنده',
             Customer::class => 'مشتری',
-            default         => 'کاربر',
+            default => 'کاربر',
         };
     }
 }

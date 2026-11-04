@@ -3,12 +3,12 @@
 namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\City;
 use App\Models\Province;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — locations management (استان‌ها / شهرها).
@@ -20,8 +20,8 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 #[Layout('layouts.admin-slot')]
 class LocationsPage extends Component
 {
-    use NotifiesOnValidation;
     use GuardsPermissions;
+    use NotifiesOnValidation;
 
     protected static string $permission = 'admin.locations';
 
@@ -111,13 +111,13 @@ class LocationsPage extends Component
     public function openCreate(string $kind): void
     {
         $this->resetErrorBag();
-        $this->modalOpen  = true;
-        $this->editingId  = null;
-        $this->kind       = $kind === 'city' ? 'city' : 'province';
-        $this->name       = '';
+        $this->modalOpen = true;
+        $this->editingId = null;
+        $this->kind = $kind === 'city' ? 'city' : 'province';
+        $this->name = '';
         $this->parentProvinceId = $this->citiesProvinceId ?? ($this->tab === 'cities' && $this->provinceFilter > 0 ? $this->provinceFilter : 0);
-        $this->ordering   = $this->nextOrdering();
-        $this->isActive   = true;
+        $this->ordering = $this->nextOrdering();
+        $this->isActive = true;
     }
 
     public function openEdit(string $kind, int $id): void
@@ -204,9 +204,9 @@ class LocationsPage extends Component
             $city = $this->editingId ? City::query()->find($this->editingId) : new City;
             $city->fill([
                 'province_id' => $this->parentProvinceId,
-                'name'        => trim($this->name),
-                'ordering'    => $this->ordering,
-                'is_active'   => $this->isActive,
+                'name' => trim($this->name),
+                'ordering' => $this->ordering,
+                'is_active' => $this->isActive,
             ])->save();
         } else {
             $unique = Province::query()
@@ -222,8 +222,8 @@ class LocationsPage extends Component
 
             $province = $this->editingId ? Province::query()->find($this->editingId) : new Province;
             $province->fill([
-                'name'      => trim($this->name),
-                'ordering'  => $this->ordering,
+                'name' => trim($this->name),
+                'ordering' => $this->ordering,
                 'is_active' => $this->isActive,
             ])->save();
         }
@@ -281,19 +281,19 @@ class LocationsPage extends Component
     {
         return [
             'provinces' => Province::query()->count(),
-            'cities'    => City::query()->count(),
+            'cities' => City::query()->count(),
         ];
     }
 
     public function render()
     {
         return view('livewire.admin.locations-page', [
-            'provinces'           => $this->provinces,
-            'cities'              => $this->cities,
-            'provinceOptions'     => $this->provinceOptions,
-            'stats'               => $this->stats,
-            'provinceCities'      => $this->provinceCities,
-            'citiesProvinceName'  => $this->citiesProvinceName,
+            'provinces' => $this->provinces,
+            'cities' => $this->cities,
+            'provinceOptions' => $this->provinceOptions,
+            'stats' => $this->stats,
+            'provinceCities' => $this->provinceCities,
+            'citiesProvinceName' => $this->citiesProvinceName,
         ])->title('استان‌ها و شهرها');
     }
 }

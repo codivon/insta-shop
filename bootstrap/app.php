@@ -1,12 +1,12 @@
 <?php
 
-use App\Http\Middleware\AuthenticatePanel;
 use App\Http\Middleware\ApplySecuritySettings;
+use App\Http\Middleware\AuthenticatePanel;
 use App\Http\Middleware\CheckMaintenanceMode;
+use App\Http\Middleware\EnsureAdminPermission;
 use App\Http\Middleware\MergeGuestCart;
 use App\Http\Middleware\RedirectIfPanelAuthenticated;
 use App\Http\Middleware\ResolvePanel;
-use App\Http\Middleware\EnsureAdminPermission;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;

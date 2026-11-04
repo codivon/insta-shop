@@ -68,50 +68,50 @@ class SettingsHub extends Component
     public function sections(): array
     {
         $admin = auth('admin')->user();
-        $can   = fn (string $perm) => $admin === null ? false : $admin->hasPermission($perm);
+        $can = fn (string $perm) => $admin === null ? false : $admin->hasPermission($perm);
 
         $map = [
             'general' => [
-                'icon'        => 'sliders',
-                'label'       => 'تنظیمات عمومی',
+                'icon' => 'sliders',
+                'label' => 'تنظیمات عمومی',
                 'description' => 'عنوان، لوگو و فاوآیکون سایت',
-                'perm'        => 'admin.settings.general',
+                'perm' => 'admin.settings.general',
             ],
             'appearance' => [
-                'icon'        => 'palette',
-                'label'       => 'ظاهر و رنگ‌بندی',
+                'icon' => 'palette',
+                'label' => 'ظاهر و رنگ‌بندی',
                 'description' => 'پالت‌ها، رنگ اصلی و حالت پیش‌فرض',
-                'perm'        => 'admin.settings.appearance',
+                'perm' => 'admin.settings.appearance',
             ],
             'sms' => [
-                'icon'        => 'message',
-                'label'       => 'پیامک و پرووایدر',
+                'icon' => 'message',
+                'label' => 'پیامک و پرووایدر',
                 'description' => 'پروایدر ارسال و اعتبارنامه‌ها',
-                'perm'        => 'admin.settings.sms',
+                'perm' => 'admin.settings.sms',
             ],
             'payment' => [
-                'icon'        => 'credit-card',
-                'label'       => 'درگاه پرداخت',
+                'icon' => 'credit-card',
+                'label' => 'درگاه پرداخت',
                 'description' => 'زرین‌پال و اعتبارنامه درگاه',
-                'perm'        => 'admin.settings.payment',
+                'perm' => 'admin.settings.payment',
             ],
             'shops' => [
-                'icon'        => 'store',
-                'label'       => 'تنظیمات فروشگاه‌ها',
+                'icon' => 'store',
+                'label' => 'تنظیمات فروشگاه‌ها',
                 'description' => 'تایید خودکار فروشنده و کمیسیون',
-                'perm'        => 'admin.settings.shops',
+                'perm' => 'admin.settings.shops',
             ],
             'notifications' => [
-                'icon'        => 'bell',
-                'label'       => 'نوتیفیکیشن‌ها',
+                'icon' => 'bell',
+                'label' => 'نوتیفیکیشن‌ها',
                 'description' => 'اعلان رویدادها + پوش گوشی و سیستم',
-                'perm'        => 'admin.settings.notifications',
+                'perm' => 'admin.settings.notifications',
             ],
             'backups' => [
-                'icon'        => 'database',
-                'label'       => 'پشتیبان‌گیری خودکار',
+                'icon' => 'database',
+                'label' => 'پشتیبان‌گیری خودکار',
                 'description' => 'زمان‌بندی خودکار، نگهداری و ایمیل پشتیبان (SMTP)',
-                'perm'        => 'admin.settings.backups',
+                'perm' => 'admin.settings.backups',
             ],
         ];
 

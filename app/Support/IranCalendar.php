@@ -106,9 +106,9 @@ class IranCalendar
     {
         $count = max(1, min(31, $count));
 
-        $days   = [];
+        $days = [];
         $cursor = Carbon::today()->addDays(max(1, $startDaysAfterOrder));
-        $guard  = 0;
+        $guard = 0;
 
         while (count($days) < $count && $guard++ < 200) {
             if ($skipFridays && self::isFriday($cursor)) {
@@ -124,11 +124,11 @@ class IranCalendar
             }
 
             $days[] = [
-                'date'    => $cursor->toDateString(),
+                'date' => $cursor->toDateString(),
                 'weekday' => self::weekdayName($cursor),
-                'jdate'   => self::shortLabel($cursor),
-                'short'   => self::weekdayName($cursor).' '.JDate::long($cursor),
-                'long'    => self::longLabel($cursor),
+                'jdate' => self::shortLabel($cursor),
+                'short' => self::weekdayName($cursor).' '.JDate::long($cursor),
+                'long' => self::longLabel($cursor),
                 'holiday' => $skipHolidays ? null : self::holidayDescription($cursor),
             ];
 

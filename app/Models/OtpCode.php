@@ -14,7 +14,7 @@ class OtpCode extends Model
     protected function casts(): array
     {
         return [
-            'expires_at'  => 'datetime',
+            'expires_at' => 'datetime',
             'consumed_at' => 'datetime',
         ];
     }

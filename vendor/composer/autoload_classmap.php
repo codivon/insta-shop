@@ -14,6 +14,7 @@ return array(
     'App\\Http\\Controllers\\Admin\\PushSubscriptionController' => $baseDir . '/app/Http/Controllers/Admin/PushSubscriptionController.php',
     'App\\Http\\Controllers\\Auth\\PanelLogout' => $baseDir . '/app/Http/Controllers/Auth/PanelLogout.php',
     'App\\Http\\Controllers\\Controller' => $baseDir . '/app/Http/Controllers/Controller.php',
+    'App\\Http\\Controllers\\PwaController' => $baseDir . '/app/Http/Controllers/PwaController.php',
     'App\\Http\\Controllers\\Seller\\ProductFileDownload' => $baseDir . '/app/Http/Controllers/Seller/ProductFileDownload.php',
     'App\\Http\\Controllers\\Shop\\PaymentCallback' => $baseDir . '/app/Http/Controllers/Shop/PaymentCallback.php',
     'App\\Http\\Controllers\\Shop\\PaymentRedirect' => $baseDir . '/app/Http/Controllers/Shop/PaymentRedirect.php',

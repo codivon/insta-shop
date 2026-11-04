@@ -72,6 +72,7 @@
                     ['route' => 'admin.orders',              'icon' => 'bag',         'label' => 'سفارش‌ها',   'match' => 'admin.orders.*',      'badge' => $pendingOrders],
                     ['route' => 'admin.tickets',             'icon' => 'headset',     'label' => 'تیکت پشتیبانی', 'match' => 'admin.tickets.*',  'badge' => $openTickets],
                     ['route' => 'admin.shops',               'icon' => 'store',       'label' => 'فروشگاه‌ها', 'match' => 'admin.shops',         'badge' => null],
+                    ['route' => 'admin.categories',          'icon' => 'layers',      'label' => 'دسته‌بندی‌ها', 'match' => 'admin.categories',   'badge' => null],
                     ['route' => 'admin.products',            'icon' => 'package',     'label' => 'محصولات',    'match' => 'admin.products',      'badge' => null],
                     ['route' => 'admin.discounts',           'icon' => 'tag',         'label' => 'کدهای تخفیف','match' => 'admin.discounts',     'badge' => null],
                     ['route' => 'admin.income',              'icon' => 'coins',       'label' => 'درآمد',      'match' => 'admin.income',        'badge' => null],

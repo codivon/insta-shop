@@ -207,8 +207,13 @@
             <span class="rounded-full px-2.5 py-1 font-bold {{ $isDownloadable || $displayStock > 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400' }}">
                 @if ($isDownloadable)
                     دانلودی — دسترسی فوری
+                @elseif ($displayStock < 1)
+                    ناموجود
+                @elseif ($product->shop?->show_stock)
+                    {{-- exact quantity only with the seller's approval --}}
+                    {{ $displayStock <= 3 ? 'تنها '.\App\Support\Fmt::toFa($displayStock).' عدد باقی مانده' : \App\Support\Fmt::toFa($displayStock).' عدد موجود' }}
                 @else
-                    {{ $displayStock > 0 ? \App\Support\Fmt::toFa($displayStock).' عدد موجود' : 'ناموجود' }}
+                    موجود
                 @endif
             </span>
         </div>

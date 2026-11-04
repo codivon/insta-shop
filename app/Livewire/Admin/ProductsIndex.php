@@ -4,9 +4,11 @@ namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Livewire\Concerns\NotifiesOnValidation;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Support\Fmt;
+use App\Support\SellerNotifier;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -26,6 +28,7 @@ class ProductsIndex extends Component
     use NotifiesOnValidation;
 
     protected static string $permission = 'admin.products';
+
     public string $search = '';
 
     #[Url]
@@ -97,7 +100,7 @@ class ProductsIndex extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 12;
+        $this->perPage += 12;
     }
 
     /* ══════════ modal lifecycle ══════════ */
@@ -120,7 +123,7 @@ class ProductsIndex extends Component
 
     public function createForShop(int $shopId): void
     {
-        if (! \App\Models\Shop::query()->whereKey($shopId)->exists()) {
+        if (! Shop::query()->whereKey($shopId)->exists()) {
             return;
         }
 
@@ -147,19 +150,19 @@ class ProductsIndex extends Component
 
     private function resetForm(): void
     {
-        $this->editId             = null;
-        $this->formShopId         = 0;
-        $this->formCategoryId     = 0;
-        $this->formName           = '';
-        $this->formSlug           = '';
-        $this->formType           = Product::TYPE_PHYSICAL;
-        $this->formPrice          = '';
+        $this->editId = null;
+        $this->formShopId = 0;
+        $this->formCategoryId = 0;
+        $this->formName = '';
+        $this->formSlug = '';
+        $this->formType = Product::TYPE_PHYSICAL;
+        $this->formPrice = '';
         $this->formCompareAtPrice = '';
-        $this->formStock          = '0';
-        $this->formWeight         = '';
-        $this->formUnit           = '';
-        $this->formStatus         = Product::STATUS_DRAFT;
-        $this->formDescription    = '';
+        $this->formStock = '0';
+        $this->formWeight = '';
+        $this->formUnit = '';
+        $this->formStatus = Product::STATUS_DRAFT;
+        $this->formDescription = '';
     }
 
     public function updatedFormShopId(): void
@@ -195,7 +198,7 @@ class ProductsIndex extends Component
 
         $product = $this->editId
             ? Product::query()->find($this->editId)
-            : new Product();
+            : new Product;
 
         if (! $product) {
             return;
@@ -204,18 +207,18 @@ class ProductsIndex extends Component
         $wasEditing = $this->editId !== null;
 
         $product->fill([
-            'shop_id'           => $this->formShopId,
-            'shop_category_id'  => $this->formCategoryId > 0 ? $this->formCategoryId : null,
-            'name'              => trim($this->formName),
-            'slug'              => trim($this->formSlug) !== '' ? trim($this->formSlug) : null,
-            'type'              => $this->formType,
-            'price'             => (int) $this->formPrice,
-            'compare_at_price'  => $this->formCompareAtPrice !== '' ? (int) $this->formCompareAtPrice : 0,
-            'stock'             => (int) $this->formStock,
-            'weight_grams'      => $this->formWeight !== '' ? (int) $this->formWeight : 0,
-            'unit'              => trim($this->formUnit) !== '' ? trim($this->formUnit) : null,
-            'status'            => $this->formStatus,
-            'description'       => trim($this->formDescription) !== '' ? trim($this->formDescription) : null,
+            'shop_id' => $this->formShopId,
+            'category_id' => $this->formCategoryId > 0 ? $this->formCategoryId : null,
+            'name' => trim($this->formName),
+            'slug' => trim($this->formSlug) !== '' ? trim($this->formSlug) : null,
+            'type' => $this->formType,
+            'price' => (int) $this->formPrice,
+            'compare_at_price' => $this->formCompareAtPrice !== '' ? (int) $this->formCompareAtPrice : 0,
+            'stock' => (int) $this->formStock,
+            'weight_grams' => $this->formWeight !== '' ? (int) $this->formWeight : 0,
+            'unit' => trim($this->formUnit) !== '' ? trim($this->formUnit) : null,
+            'status' => $this->formStatus,
+            'description' => trim($this->formDescription) !== '' ? trim($this->formDescription) : null,
         ]);
 
         $product->save();
@@ -243,7 +246,7 @@ class ProductsIndex extends Component
         $product->update(['status' => $product->status === 'published' ? 'draft' : 'published']);
 
         // seller notification: «تغییر وضعیت محصول»
-        \App\Support\SellerNotifier::notify(
+        SellerNotifier::notify(
             $product->shop?->seller_id,
             'product.status',
             $product->status === 'published' ? 'محصول شما منتشر شد ✅' : 'محصول شما از انتشار خارج شد',
@@ -280,19 +283,19 @@ class ProductsIndex extends Component
     protected function rules(): array
     {
         return [
-            'formShopId'        => ['required', 'integer', 'min:1', 'exists:shops,id'],
+            'formShopId' => ['required', 'integer', 'min:1', 'exists:shops,id'],
             // دسته‌بندی الزامی است (هماهنگ با فرم کامل محصول)
-            'formCategoryId'    => ['required', 'integer', 'min:1', Rule::exists('shop_categories', 'id')->where('shop_id', $this->formShopId)],
-            'formName'          => ['required', 'string', 'min:2', 'max:120'],
-            'formSlug'          => ['nullable', 'string', 'max:190'],
-            'formType'          => ['required', 'in:'.Product::TYPE_PHYSICAL.','.Product::TYPE_DOWNLOADABLE],
-            'formPrice'         => ['required', 'integer', 'min:0', 'max:999999999999'],
-            'formCompareAtPrice'=> ['nullable', 'integer', 'min:0', 'max:999999999999'],
-            'formStock'         => ['required', 'integer', 'min:0', 'max:1000000'],
-            'formWeight'        => ['nullable', 'integer', 'min:0', 'max:10000000'],
-            'formUnit'          => ['nullable', 'string', 'max:30'],
-            'formStatus'        => ['required', 'in:'.Product::STATUS_PUBLISHED.','.Product::STATUS_DRAFT],
-            'formDescription'   => ['nullable', 'string', 'max:5000'],
+            'formCategoryId' => ['required', 'integer', 'min:1', Rule::exists('categories', 'id')],
+            'formName' => ['required', 'string', 'min:2', 'max:120'],
+            'formSlug' => ['nullable', 'string', 'max:190'],
+            'formType' => ['required', 'in:'.Product::TYPE_PHYSICAL.','.Product::TYPE_DOWNLOADABLE],
+            'formPrice' => ['required', 'integer', 'min:0', 'max:999999999999'],
+            'formCompareAtPrice' => ['nullable', 'integer', 'min:0', 'max:999999999999'],
+            'formStock' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'formWeight' => ['nullable', 'integer', 'min:0', 'max:10000000'],
+            'formUnit' => ['nullable', 'string', 'max:30'],
+            'formStatus' => ['required', 'in:'.Product::STATUS_PUBLISHED.','.Product::STATUS_DRAFT],
+            'formDescription' => ['nullable', 'string', 'max:5000'],
         ];
     }
 
@@ -300,14 +303,14 @@ class ProductsIndex extends Component
     {
         return [
             'formShopId.required' => 'فروشگاهِ مالک محصول را انتخاب کنید.',
-            'formShopId.min'      => 'فروشگاهِ مالک محصول را انتخاب کنید.',
-            'formName.required'   => 'نام محصول را وارد کنید.',
-            'formName.min'        => 'نام محصول حداقل ۲ کاراکتر است.',
-            'formPrice.required'  => 'قیمت محصول را وارد کنید.',
-            'formPrice.integer'   => 'قیمت باید عدد باشد.',
+            'formShopId.min' => 'فروشگاهِ مالک محصول را انتخاب کنید.',
+            'formName.required' => 'نام محصول را وارد کنید.',
+            'formName.min' => 'نام محصول حداقل ۲ کاراکتر است.',
+            'formPrice.required' => 'قیمت محصول را وارد کنید.',
+            'formPrice.integer' => 'قیمت باید عدد باشد.',
             'formCategoryId.required' => 'دسته‌بندی محصول را انتخاب کنید.',
-            'formCategoryId.min'      => 'دسته‌بندی محصول را انتخاب کنید.',
-            'formCategoryId.exists' => 'دستهٔ انتخابی به این فروشگاه تعلق ندارد.',
+            'formCategoryId.min' => 'دسته‌بندی محصول را انتخاب کنید.',
+            'formCategoryId.exists' => 'دستهٔ انتخابی معتبر نیست.',
         ];
     }
 
@@ -330,12 +333,10 @@ class ProductsIndex extends Component
         return Shop::query()->orderBy('name')->get(['id', 'name']);
     }
 
-    /** Categories of the selected shop (inside the modal). */
+    /** Global categories (inside the modal — legacy quick form). */
     public function getFormCategoriesProperty(): Collection
     {
-        return $this->formShopId > 0
-            ? \App\Models\ShopCategory::query()->where('shop_id', $this->formShopId)->orderBy('sort')->orderBy('id')->get(['id', 'name'])
-            : collect();
+        return Category::query()->whereNull('parent_id')->orderBy('sort')->orderBy('id')->get(['id', 'name']);
     }
 
     public function getProductsProperty(): Collection

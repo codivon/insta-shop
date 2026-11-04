@@ -62,6 +62,15 @@
             <span class="truncate text-[9px] font-bold {{ $variant === 'special' ? 'text-rose-400' : 'text-slate-400' }}">{{ $product->category->name }}</span>
         @endif
 
+        {{-- seller-approved stock display (فروشنده تیک «نمایش موجودی» را زده باشد) --}}
+        @if ($product->shop?->show_stock && $product->type === \App\Models\Product::TYPE_PHYSICAL && $product->stock > 0)
+            <span class="truncate text-[9px] font-bold {{ $product->stock <= 3 ? 'text-amber-500' : 'text-emerald-500' }}">
+                {{ $product->stock <= 3
+                    ? 'تنها '.\App\Support\Fmt::toFa($product->stock).' عدد باقی مانده'
+                    : 'موجودی: '.\App\Support\Fmt::toFa($product->stock) }}
+            </span>
+        @endif
+
         <a href="{{ $product->publicUrl() }}" wire:navigate
            class="line-clamp-2 min-h-[2rem] text-[11px] font-bold leading-5 transition hover:text-primary-600 sm:text-xs dark:hover:text-primary-400">
             {{ $product->name }}

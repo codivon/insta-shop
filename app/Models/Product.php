@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
-#[Fillable(['shop_id', 'shop_category_id', 'name', 'slug', 'description', 'specifications', 'spec_type', 'type', 'price', 'compare_at_price', 'stock', 'weight_grams', 'unit', 'status', 'is_special', 'special_ends_at'])]
+#[Fillable(['shop_id', 'category_id', 'name', 'slug', 'description', 'specifications', 'spec_type', 'type', 'price', 'compare_at_price', 'stock', 'weight_grams', 'unit', 'status', 'is_special', 'special_ends_at'])]
 class Product extends Model
 {
     public const TYPE_PHYSICAL = 'physical';
@@ -88,14 +88,14 @@ class Product extends Model
     protected function casts(): array
     {
         return [
-            'price'            => 'integer',
+            'price' => 'integer',
             'compare_at_price' => 'integer',
-            'stock'            => 'integer',
-            'views'            => 'integer',
-            'weight_grams'     => 'integer',
-            'specifications'   => 'array',
-            'is_special'       => 'boolean',
-            'special_ends_at'  => 'datetime',
+            'stock' => 'integer',
+            'views' => 'integer',
+            'weight_grams' => 'integer',
+            'specifications' => 'array',
+            'is_special' => 'boolean',
+            'special_ends_at' => 'datetime',
         ];
     }
 
@@ -145,7 +145,7 @@ class Product extends Model
 
     public function category(): BelongsTo
     {
-        return $this->belongsTo(ShopCategory::class, 'shop_category_id');
+        return $this->belongsTo(Category::class, 'category_id');
     }
 
     public function images(): HasMany
@@ -179,7 +179,7 @@ class Product extends Model
 
         return route('shop.storefront.product', [
             'instagram' => $handle,
-            'slug'      => $this->slug ?: ('p'.$this->id),
+            'slug' => $this->slug ?: ('p'.$this->id),
         ]);
     }
 

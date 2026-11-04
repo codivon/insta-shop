@@ -3,12 +3,12 @@
 namespace App\Livewire\Storefront;
 
 use App\Models\Cart;
+use App\Models\Category;
 use App\Models\Favorite;
 use App\Models\Product;
 use App\Models\ProductVariantValue;
 use App\Models\Shop;
 use App\Models\ShopAttribute;
-use App\Models\ShopCategory;
 use App\Models\ShopFilter;
 use App\Models\ShopFilterItem;
 use Illuminate\Database\Eloquent\Builder;
@@ -167,7 +167,7 @@ class StorefrontShow extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 12;
+        $this->perPage += 12;
     }
 
     /* ───────────────────── customer actions ───────────────────── */
@@ -187,7 +187,7 @@ class StorefrontShow extends Component
             return;
         }
 
-        if ($product->type !== \App\Models\Product::TYPE_DOWNLOADABLE && $product->stock < 1) {
+        if ($product->type !== Product::TYPE_DOWNLOADABLE && $product->stock < 1) {
             $this->dispatch('storefront-toast', message: 'این محصول موجود نیست.');
 
             return;
@@ -232,7 +232,7 @@ class StorefrontShow extends Component
 
         Favorite::query()->firstOrCreate([
             'customer_id' => $customer->id,
-            'product_id'  => $productId,
+            'product_id' => $productId,
         ]);
     }
 
@@ -248,24 +248,23 @@ class StorefrontShow extends Component
             ->withCount(['variants as variants_count' => fn (Builder $q) => $q->where('status', 'active')]);
     }
 
-    /** Categories ticked «نمایش در صفحه فروشگاه» that have published products. */
+    /** Global categories with published products in this shop (chips). */
     public function getCategoriesProperty(): Collection
     {
-        return ShopCategory::query()
-            ->where('shop_id', $this->shop->id)
-            ->showOnStorefront()
-            ->whereHas('products', fn (Builder $q) => $q->where('status', 'published'))
-            ->withCount(['products' => fn (Builder $q) => $q->where('status', 'published')])
-            ->orderBy('sort')
-            ->orderBy('id')
-            ->get();
+        return $this->shop->usedCategories()
+            ->get(['categories.id', 'categories.name'])
+            ->map(fn ($cat) => (object) [
+                'id' => (int) $cat->id,
+                'name' => $cat->name,
+                'products_count' => (int) $cat->shop_products_count,
+            ]);
     }
 
     public function getStatsProperty(): array
     {
         return [
-            'products'   => $this->baseQuery()->count(),
-            'views'      => (int) $this->baseQuery()->sum('views'),
+            'products' => $this->baseQuery()->count(),
+            'views' => (int) $this->baseQuery()->sum('views'),
             'categories' => $this->categories->count(),
         ];
     }
@@ -322,16 +321,16 @@ class StorefrontShow extends Component
     {
         $query = $this->baseQuery()
             ->with(['mainImage', 'category'])
-            ->when($this->catId > 0, fn (Builder $q) => $q->where('shop_category_id', $this->catId))
+            ->when($this->catId > 0, fn (Builder $q) => $q->whereIn('category_id', Category::subtreeIds($this->catId)))
             ->when($this->q !== '', fn (Builder $q) => $q->where('name', 'like', '%'.$this->q.'%'))
             ->when($this->specPicks !== [], fn (Builder $q) => $q->whereIn('id', $this->specMatchedIds()));
 
         $query = match ($this->sort) {
-            'cheap'     => $query->orderBy('price')->latest(),
+            'cheap' => $query->orderBy('price')->latest(),
             'expensive' => $query->orderByDesc('price')->latest(),
-            'popular'   => $query->orderByDesc('views')->latest(),
-            'discount'  => $query->whereColumn('compare_at_price', '>', 'price')->orderByRaw('(price - compare_at_price) asc')->latest(),
-            default     => $query->latest(), // newest
+            'popular' => $query->orderByDesc('views')->latest(),
+            'discount' => $query->whereColumn('compare_at_price', '>', 'price')->orderByRaw('(price - compare_at_price) asc')->latest(),
+            default => $query->latest(), // newest
         };
 
         $total = $query->count();
@@ -539,8 +538,8 @@ class StorefrontShow extends Component
                         }
 
                         return [
-                            'key'    => 'a:'.$item->shop_attribute_id,
-                            'label'  => $item->spec_name,
+                            'key' => 'a:'.$item->shop_attribute_id,
+                            'label' => $item->spec_name,
                             'values' => $data['values'],
                             'colors' => $data['colors'],
                         ];
@@ -553,8 +552,8 @@ class StorefrontShow extends Component
                     }
 
                     return [
-                        'key'    => 's:'.$item->spec_name,
-                        'label'  => $item->spec_name,
+                        'key' => 's:'.$item->spec_name,
+                        'label' => $item->spec_name,
                         'values' => $values,
                         'colors' => [],
                     ];
@@ -586,19 +585,19 @@ class StorefrontShow extends Component
     public function render()
     {
         return view('livewire.storefront.storefront-show', [
-            'stats'             => $this->stats,
-            'categories'        => $this->categories,
-            'newest'            => $this->newest,
-            'discounted'        => $this->discounted,
-            'popular'           => $this->popular,
-            'special'           => $this->special,
+            'stats' => $this->stats,
+            'categories' => $this->categories,
+            'newest' => $this->newest,
+            'discounted' => $this->discounted,
+            'popular' => $this->popular,
+            'special' => $this->special,
             'specialDeadlineMs' => $this->specialDeadlineMs,
-            'grid'              => $this->grid,
-            'favoriteIds'       => $this->favoriteIds,
-            'storefrontUrl'     => $this->storefrontUrl,
-            'cartCount'         => $this->cartCount,
-            'filterBlocks'      => $this->filterBlocks,
-            'specPicksCount'    => $this->specPicksCount,
+            'grid' => $this->grid,
+            'favoriteIds' => $this->favoriteIds,
+            'storefrontUrl' => $this->storefrontUrl,
+            'cartCount' => $this->cartCount,
+            'filterBlocks' => $this->filterBlocks,
+            'specPicksCount' => $this->specPicksCount,
         ])->title($this->shop->name);
     }
 }

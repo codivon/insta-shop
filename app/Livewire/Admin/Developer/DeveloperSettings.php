@@ -3,17 +3,19 @@
 namespace App\Livewire\Admin\Developer;
 
 use App\Livewire\Admin\Concerns\GuardsSuperAdmin;
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Setting;
 use App\Support\ActivityLogger;
 use App\Support\EnvEditor;
 use App\Support\MigrationInspector;
+use App\Support\SchemaReady;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — Developer settings («تنظیمات برنامه‌نویس»), tabbed:
@@ -38,8 +40,8 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 #[Title('تنظیمات برنامه‌نویس')]
 class DeveloperSettings extends Component
 {
-    use NotifiesOnValidation;
     use GuardsSuperAdmin;
+    use NotifiesOnValidation;
 
     /* ── Cron ── */
     public bool $sharedHostingCronEnabled = false;
@@ -91,10 +93,10 @@ class DeveloperSettings extends Component
     public function mount(): void
     {
         $this->sharedHostingCronEnabled = (bool) Setting::get('developer.queue_shared_hosting');
-        $this->maintenanceEnabled       = (bool) Setting::get('developer.maintenance.enabled');
-        $this->maintenanceSecret        = (string) Setting::get('developer.maintenance.secret', '');
-        $this->maintenanceTitle         = (string) Setting::get('developer.maintenance.title', 'در حال بروزرسانی هستیم!');
-        $this->maintenanceDescription   = (string) Setting::get('developer.maintenance.description', 'در حال بروزرسانی وبسایت هستیم لطفاً دقایقی بعد مراجعه کنید. از صبر و شکیبایی شما متشکریم.');
+        $this->maintenanceEnabled = (bool) Setting::get('developer.maintenance.enabled');
+        $this->maintenanceSecret = (string) Setting::get('developer.maintenance.secret', '');
+        $this->maintenanceTitle = (string) Setting::get('developer.maintenance.title', 'در حال بروزرسانی هستیم!');
+        $this->maintenanceDescription = (string) Setting::get('developer.maintenance.description', 'در حال بروزرسانی وبسایت هستیم لطفاً دقایقی بعد مراجعه کنید. از صبر و شکیبایی شما متشکریم.');
 
         if ($this->maintenanceSecret === '') {
             $this->maintenanceSecret = strtoupper(bin2hex(random_bytes(6)));
@@ -113,14 +115,14 @@ class DeveloperSettings extends Component
         }
 
         /* ── Security ── */
-        $this->forceHttps         = (bool) Setting::get('security.force_https');
-        $this->securityHeaders    = (bool) Setting::get('security.headers_enabled');
-        $this->botBlocking        = (bool) Setting::get('security.bot_blocking');
-        $this->botDenyList        = (string) Setting::get('security.bot_deny_list', '');
-        $this->adminIpWhitelist   = (string) Setting::get('security.admin_ip_whitelist', '');
-        $this->loginMaxAttempts   = max(3, (int) Setting::get('security.login_max_attempts', 5));
+        $this->forceHttps = (bool) Setting::get('security.force_https');
+        $this->securityHeaders = (bool) Setting::get('security.headers_enabled');
+        $this->botBlocking = (bool) Setting::get('security.bot_blocking');
+        $this->botDenyList = (string) Setting::get('security.bot_deny_list', '');
+        $this->adminIpWhitelist = (string) Setting::get('security.admin_ip_whitelist', '');
+        $this->loginMaxAttempts = max(3, (int) Setting::get('security.login_max_attempts', 5));
         $this->loginLockoutMinutes = max(1, (int) Setting::get('security.login_lockout_minutes', 10));
-        $this->sessionLifetime    = (int) Setting::get('security.session_lifetime', (int) config('session.lifetime', 120));
+        $this->sessionLifetime = (int) Setting::get('security.session_lifetime', (int) config('session.lifetime', 120));
     }
 
     /* ══════════════════════════ CRON ══════════════════════════ */
@@ -128,7 +130,7 @@ class DeveloperSettings extends Component
     /** Raw last heartbeat stamp or null. */
     public function cronLastRun(): ?string
     {
-        if (! \App\Support\SchemaReady::check('settings')) {
+        if (! SchemaReady::check('settings')) {
             return null;
         }
 
@@ -152,11 +154,11 @@ class DeveloperSettings extends Component
     /** Real paths detected on THIS server (host must adapt them if needed). */
     public function cronCommands(): array
     {
-        $php  = trim((string) \PHP_BINARY) ?: 'php';
+        $php = trim((string) \PHP_BINARY) ?: 'php';
         $base = base_path();
 
         $schedule = "* * * * * cd {$base} && {$php} artisan schedule:run >> /dev/null 2>&1";
-        $queue    = "* * * * * cd {$base} && {$php} artisan queue:work database --tries=3 --sleep=3 --stop-when-empty";
+        $queue = "* * * * * cd {$base} && {$php} artisan queue:work database --tries=3 --sleep=3 --stop-when-empty";
 
         return [$schedule, $queue];
     }
@@ -187,19 +189,19 @@ class DeveloperSettings extends Component
     public function enableMaintenance(): void
     {
         $this->validateWithToast(fn () => $this->validate([
-            'maintenanceSecret'        => ['required', 'alpha_num', 'min:6', 'max:32'],
-            'maintenanceTitle'         => ['required', 'min:3', 'max:120'],
-            'maintenanceDescription'   => ['nullable', 'max:1000'],
+            'maintenanceSecret' => ['required', 'alpha_num', 'min:6', 'max:32'],
+            'maintenanceTitle' => ['required', 'min:3', 'max:120'],
+            'maintenanceDescription' => ['nullable', 'max:1000'],
         ], [
-            'maintenanceSecret.required'      => 'کد مخفی را وارد کنید.',
-            'maintenanceTitle.required'       => 'عنوان صفحه بروزرسانی را وارد کنید.',
+            'maintenanceSecret.required' => 'کد مخفی را وارد کنید.',
+            'maintenanceTitle.required' => 'عنوان صفحه بروزرسانی را وارد کنید.',
         ]));
 
         Setting::setMany([
-            'developer.maintenance.secret'      => $this->maintenanceSecret,
-            'developer.maintenance.title'       => $this->maintenanceTitle,
+            'developer.maintenance.secret' => $this->maintenanceSecret,
+            'developer.maintenance.title' => $this->maintenanceTitle,
             'developer.maintenance.description' => $this->maintenanceDescription,
-            'developer.maintenance.enabled'     => ['value' => '1', 'type' => 'boolean'],
+            'developer.maintenance.enabled' => ['value' => '1', 'type' => 'boolean'],
         ]);
 
         $this->maintenanceEnabled = true;
@@ -257,7 +259,7 @@ class DeveloperSettings extends Component
      */
     protected function fetchLatestRelease(bool $force): array
     {
-        $repo     = (string) config('instashop.update_repo', 'codivon/insta-shop');
+        $repo = (string) config('instashop.update_repo', 'codivon/insta-shop');
         $cacheKey = 'instashop.latest-release';
 
         $data = $force
@@ -279,9 +281,9 @@ class DeveloperSettings extends Component
             }
 
             $data = [
-                'tag'   => (string) $response->json('tag_name', ''),
-                'name'  => (string) $response->json('name', ''),
-                'url'   => (string) $response->json('html_url', ''),
+                'tag' => (string) $response->json('tag_name', ''),
+                'name' => (string) $response->json('name', ''),
+                'url' => (string) $response->json('html_url', ''),
                 'notes' => mb_substr((string) $response->json('body', ''), 0, 1200),
             ];
 
@@ -348,7 +350,7 @@ class DeveloperSettings extends Component
             : 'production';
 
         [$ok, $error] = EnvEditor::setMany([
-            'APP_ENV'   => $env,
+            'APP_ENV' => $env,
             'APP_DEBUG' => $env === 'local' ? 'true' : 'false',
         ]);
 
@@ -393,18 +395,18 @@ class DeveloperSettings extends Component
         $which = in_array($which, ['app', 'config', 'view', 'route', 'all'], true) ? $which : 'all';
 
         $commands = match ($which) {
-            'app'    => ['cache:clear'],
+            'app' => ['cache:clear'],
             'config' => ['config:clear'],
-            'view'   => ['view:clear'],
-            'route'  => ['route:clear'],
-            default  => ['cache:clear', 'config:clear', 'view:clear', 'route:clear'],
+            'view' => ['view:clear'],
+            'route' => ['route:clear'],
+            default => ['cache:clear', 'config:clear', 'view:clear', 'route:clear'],
         };
 
         $labels = [
-            'cache:clear'  => 'کش برنامه',
+            'cache:clear' => 'کش برنامه',
             'config:clear' => 'کش پیکربندی',
-            'view:clear'   => 'کش نماها',
-            'route:clear'  => 'کش مسیرها',
+            'view:clear' => 'کش نماها',
+            'route:clear' => 'کش مسیرها',
         ];
 
         $done = [];
@@ -585,14 +587,14 @@ class DeveloperSettings extends Component
     public function saveSecurity(): void
     {
         $this->validateWithToast(fn () => $this->validate([
-            'adminIpWhitelist'    => ['nullable', 'string', 'max:2000', 'regex:/^[\d\.\*\r\n\s,;]+$/'],
-            'loginMaxAttempts'    => ['required', 'integer', 'min:3', 'max:10'],
+            'adminIpWhitelist' => ['nullable', 'string', 'max:2000', 'regex:/^[\d\.\*\r\n\s,;]+$/'],
+            'loginMaxAttempts' => ['required', 'integer', 'min:3', 'max:10'],
             'loginLockoutMinutes' => ['required', 'integer', 'min:1', 'max:120'],
-            'sessionLifetime'     => ['required', 'integer', 'in:30,60,120,240,480,720,1440'],
+            'sessionLifetime' => ['required', 'integer', 'in:30,60,120,240,480,720,1440'],
         ], [
-            'adminIpWhitelist.regex'    => 'هر خط فقط می‌تواند یک آی‌پی معتبر یا الگوی با ستاره باشد (مثال: 5.190.*.*).',
+            'adminIpWhitelist.regex' => 'هر خط فقط می‌تواند یک آی‌پی معتبر یا الگوی با ستاره باشد (مثال: 5.190.*.*).',
             'loginMaxAttempts.required' => 'حداکثر تلاش ورود را وارد کنید.',
-            'sessionLifetime.in'        => 'مدت اعتبار ورود نامعتبر است.',
+            'sessionLifetime.in' => 'مدت اعتبار ورود نامعتبر است.',
         ]));
 
         $list = trim((string) $this->adminIpWhitelist);
@@ -605,7 +607,7 @@ class DeveloperSettings extends Component
 
             $myIp = $this->currentIp();
 
-            if ($myIp !== '' && ! $allowed->contains(fn ($pattern) => $pattern === $myIp || \Illuminate\Support\Str::is($pattern, $myIp))) {
+            if ($myIp !== '' && ! $allowed->contains(fn ($pattern) => $pattern === $myIp || Str::is($pattern, $myIp))) {
                 session()->flash('admin-developer-error', 'ذخیره نشد! آی‌پی فعلی شما ('.$myIp.') در لیست مجاز نیست — ابتدا آن را با دکمه «افزودن IP من» اضافه کنید وگرنه خودتان از پنل قفل می‌شوید.');
 
                 return;
@@ -613,14 +615,14 @@ class DeveloperSettings extends Component
         }
 
         Setting::setMany([
-            'security.force_https'         => ['value' => $this->forceHttps ? '1' : '0', 'type' => 'boolean'],
-            'security.headers_enabled'     => ['value' => $this->securityHeaders ? '1' : '0', 'type' => 'boolean'],
-            'security.bot_blocking'        => ['value' => $this->botBlocking ? '1' : '0', 'type' => 'boolean'],
-            'security.bot_deny_list'       => ['value' => trim($this->botDenyList), 'type' => 'text'],
-            'security.admin_ip_whitelist'  => ['value' => $list, 'type' => 'text'],
-            'security.login_max_attempts'  => ['value' => (string) $this->loginMaxAttempts, 'type' => 'integer'],
+            'security.force_https' => ['value' => $this->forceHttps ? '1' : '0', 'type' => 'boolean'],
+            'security.headers_enabled' => ['value' => $this->securityHeaders ? '1' : '0', 'type' => 'boolean'],
+            'security.bot_blocking' => ['value' => $this->botBlocking ? '1' : '0', 'type' => 'boolean'],
+            'security.bot_deny_list' => ['value' => trim($this->botDenyList), 'type' => 'text'],
+            'security.admin_ip_whitelist' => ['value' => $list, 'type' => 'text'],
+            'security.login_max_attempts' => ['value' => (string) $this->loginMaxAttempts, 'type' => 'integer'],
             'security.login_lockout_minutes' => ['value' => (string) $this->loginLockoutMinutes, 'type' => 'integer'],
-            'security.session_lifetime'    => ['value' => (string) $this->sessionLifetime, 'type' => 'integer'],
+            'security.session_lifetime' => ['value' => (string) $this->sessionLifetime, 'type' => 'integer'],
         ]);
 
         // Apply immediately to the running request as well.
@@ -630,20 +632,20 @@ class DeveloperSettings extends Component
             'settings.updated',
             'تنظیمات امنیت ذخیره و اعمال شد',
             before: [
-                'security.force_https'          => (bool) Setting::get('security.force_https', false),
-                'security.headers_enabled'      => (bool) Setting::get('security.headers_enabled', false),
-                'security.bot_blocking'         => (bool) Setting::get('security.bot_blocking', false),
-                'security.login_max_attempts'   => (int) Setting::get('security.login_max_attempts', 5),
+                'security.force_https' => (bool) Setting::get('security.force_https', false),
+                'security.headers_enabled' => (bool) Setting::get('security.headers_enabled', false),
+                'security.bot_blocking' => (bool) Setting::get('security.bot_blocking', false),
+                'security.login_max_attempts' => (int) Setting::get('security.login_max_attempts', 5),
                 'security.login_lockout_minutes' => (int) Setting::get('security.login_lockout_minutes', 10),
-                'security.session_lifetime'     => (int) Setting::get('security.session_lifetime', 120),
+                'security.session_lifetime' => (int) Setting::get('security.session_lifetime', 120),
             ],
             after: [
-                'security.force_https'          => $this->forceHttps,
-                'security.headers_enabled'      => $this->securityHeaders,
-                'security.bot_blocking'         => $this->botBlocking,
-                'security.login_max_attempts'   => $this->loginMaxAttempts,
+                'security.force_https' => $this->forceHttps,
+                'security.headers_enabled' => $this->securityHeaders,
+                'security.bot_blocking' => $this->botBlocking,
+                'security.login_max_attempts' => $this->loginMaxAttempts,
                 'security.login_lockout_minutes' => $this->loginLockoutMinutes,
-                'security.session_lifetime'     => $this->sessionLifetime,
+                'security.session_lifetime' => $this->sessionLifetime,
             ],
         );
 
@@ -653,11 +655,11 @@ class DeveloperSettings extends Component
     public function render()
     {
         return view('livewire.admin.developer.developer-settings', [
-            'cronActive'     => $this->cronActive(),
-            'cronLastRun'    => $this->cronLastRun(),
-            'cronCommands'   => $this->cronCommands(),
-            'pendingMig'     => $this->pendingReport(),
-            'hasPendingMig'  => $this->hasPendingMigrations(),
+            'cronActive' => $this->cronActive(),
+            'cronLastRun' => $this->cronLastRun(),
+            'cronCommands' => $this->cronCommands(),
+            'pendingMig' => $this->pendingReport(),
+            'hasPendingMig' => $this->hasPendingMigrations(),
         ])->title('تنظیمات برنامه‌نویس')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — برنامه‌نویس — تنظیمات برنامه‌نویس']);
     }

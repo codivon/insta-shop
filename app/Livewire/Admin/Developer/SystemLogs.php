@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin\Developer;
 
 use App\Livewire\Admin\Concerns\GuardsSuperAdmin;
+use App\Support\Fmt;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -73,11 +74,11 @@ class SystemLogs extends Component
             $path = storage_path('logs/'.$name);
 
             $out[] = [
-                'name'  => $name,
+                'name' => $name,
                 'label' => str_starts_with($name, 'laravel-')
                     ? str_replace(['laravel-', '.log'], '', $name)
                     : 'امروز (تک‌فایلی)',
-                'size'  => filesize($path) ?: 0,
+                'size' => filesize($path) ?: 0,
                 'mtime' => filemtime($path) ?: time(),
                 'is_current' => $name === $this->file,
             ];
@@ -92,10 +93,10 @@ class SystemLogs extends Component
             return;
         }
 
-        $this->file   = $name;
-        $this->level  = 'all';
+        $this->file = $name;
+        $this->level = 'all';
         $this->search = '';
-        $this->shown  = self::PAGE_SIZE;
+        $this->shown = self::PAGE_SIZE;
     }
 
     public function selectLevel(string $level): void
@@ -107,9 +108,9 @@ class SystemLogs extends Component
     /** Parsed entries of the selected file (tail), newest LAST in file order. */
     protected function parse(string $content): array
     {
-        $entries   = [];
-        $current   = null;
-        $pattern   = '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (\S+)\.([A-Z]+): (.*)$/';
+        $entries = [];
+        $current = null;
+        $pattern = '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (\S+)\.([A-Z]+): (.*)$/';
 
         foreach (preg_split('/\r\n|\r|\n/', $content) ?: [] as $line) {
             if (preg_match($pattern, $line, $m)) {
@@ -118,10 +119,10 @@ class SystemLogs extends Component
                 }
 
                 $current = [
-                    'ts'    => $m[1],
-                    'env'   => $m[2],
+                    'ts' => $m[1],
+                    'env' => $m[2],
                     'level' => $m[3],
-                    'msg'   => $m[4],
+                    'msg' => $m[4],
                     'stack' => '',
                 ];
 
@@ -154,12 +155,12 @@ class SystemLogs extends Component
         $total = array_sum($counts);
 
         return [
-            'all'    => $total,
-            'error'  => $counts['ERROR'] ?? 0,
-            'warning'=> $counts['WARNING'] ?? 0,
-            'info'   => $counts['INFO'] ?? 0,
-            'debug'  => $counts['DEBUG'] ?? 0,
-            'other'  => $total - (($counts['ERROR'] ?? 0) + ($counts['WARNING'] ?? 0) + ($counts['INFO'] ?? 0) + ($counts['DEBUG'] ?? 0)),
+            'all' => $total,
+            'error' => $counts['ERROR'] ?? 0,
+            'warning' => $counts['WARNING'] ?? 0,
+            'info' => $counts['INFO'] ?? 0,
+            'debug' => $counts['DEBUG'] ?? 0,
+            'other' => $total - (($counts['ERROR'] ?? 0) + ($counts['WARNING'] ?? 0) + ($counts['INFO'] ?? 0) + ($counts['DEBUG'] ?? 0)),
         ];
     }
 
@@ -282,7 +283,7 @@ class SystemLogs extends Component
         $this->confirmAction = null;
 
         $dir = storage_path('logs');
-        $n   = 0;
+        $n = 0;
 
         foreach (glob($dir.'/*.log') ?: [] as $f) {
             if (basename($f) === $this->file) {
@@ -294,7 +295,7 @@ class SystemLogs extends Component
             }
         }
 
-        session()->flash('admin-devlog-flash', \App\Support\Fmt::fa($n).' فایل لاگ قدیمی حذف شد.');
+        session()->flash('admin-devlog-flash', Fmt::fa($n).' فایل لاگ قدیمی حذف شد.');
     }
 
     public function render()
@@ -302,10 +303,10 @@ class SystemLogs extends Component
         $parsed = $this->parsed();
 
         return view('livewire.admin.developer.system-logs', [
-            'files'   => $this->fileOptions(),
+            'files' => $this->fileOptions(),
             'entries' => array_slice($parsed, 0, $this->shown),
-            'stats'   => $this->levelStatsFrom($parsed),
-            'total'   => count($parsed),
+            'stats' => $this->levelStatsFrom($parsed),
+            'total' => count($parsed),
         ])->title('لاگ سیستم')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — برنامه‌نویس — لاگ سیستم']);
     }

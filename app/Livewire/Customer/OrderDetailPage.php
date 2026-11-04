@@ -42,10 +42,10 @@ class OrderDetailPage extends Component
                 $slice = $this->order->shopShipments->firstWhere('shop_id', (int) $shopId);
 
                 return [
-                    'shopId'       => (int) $shopId,
-                    'shop'         => $items->first?->product?->shop ?? $slice?->shop,
-                    'items'        => $items->values(),
-                    'slice'        => $slice,
+                    'shopId' => (int) $shopId,
+                    'shop' => $items->first?->product?->shop ?? $slice?->shop,
+                    'items' => $items->values(),
+                    'slice' => $slice,
                     'carrierTitle' => (string) ($carrierByShop->get((int) $shopId)['carrier_title'] ?? ''),
                 ];
             })
@@ -57,7 +57,7 @@ class OrderDetailPage extends Component
         $this->order->load(['items.product.mainImage', 'items.product.shop:id,name,slug', 'shopShipments.shop:id,name']);
 
         return view('livewire.customer.order-detail-page', [
-            'items'      => $this->order->items,
+            'items' => $this->order->items,
             'shopGroups' => $this->shopGroups,
         ])->title('سفارش #'.$this->order->id);
     }

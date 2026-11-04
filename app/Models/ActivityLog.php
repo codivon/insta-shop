@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * ActivityLog — one row per meaningful event on the site (audit trail).
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * a logging failure break the actual request.
  *
  * @property int $id
- * @property string $actor_type  admin|seller|customer|system
+ * @property string $actor_type admin|seller|customer|system
  * @property int|null $actor_id
  * @property string $actor_name
  * @property string $action
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property array|null $after
  * @property string|null $ip
  * @property string|null $user_agent
- * @property \Illuminate\Support\Carbon|null $created_at
+ * @property Carbon|null $created_at
  */
 class ActivityLog extends Model
 {
@@ -33,9 +34,9 @@ class ActivityLog extends Model
     ];
 
     protected $casts = [
-        'before'     => 'array',
-        'after'      => 'array',
-        'actor_id'   => 'integer',
+        'before' => 'array',
+        'after' => 'array',
+        'actor_id' => 'integer',
         'subject_id' => 'integer',
         'created_at' => 'datetime',
     ];
@@ -50,10 +51,10 @@ class ActivityLog extends Model
     public function actorLabel(): string
     {
         return match ($this->actor_type) {
-            'admin'    => 'مدیر',
-            'seller'   => 'فروشنده',
+            'admin' => 'مدیر',
+            'seller' => 'فروشنده',
             'customer' => 'مشتری',
-            default    => 'سیستم',
+            default => 'سیستم',
         };
     }
 }

@@ -72,9 +72,9 @@ class Color
 
         foreach (self::STEPS as $step) {
             $out[$step] = match (true) {
-                $step === 500   => $hex,
+                $step === 500 => $hex,
                 isset(self::WHITE_MIX[$step]) => self::mix($hex, self::WHITE_MIX[$step]),
-                default         => self::mix($hex, -self::BLACK_MIX[$step]),
+                default => self::mix($hex, -self::BLACK_MIX[$step]),
             };
         }
 
@@ -96,7 +96,9 @@ class Color
     public static function toHsl(string $hex): array
     {
         ['r' => $r, 'g' => $g, 'b' => $b] = self::toRgb($hex);
-        $r /= 255; $g /= 255; $b /= 255;
+        $r /= 255;
+        $g /= 255;
+        $b /= 255;
 
         $max = max($r, $g, $b);
         $min = min($r, $g, $b);
@@ -112,7 +114,7 @@ class Color
         $h = match (true) {
             $max === $r => (($g - $b) / $d) + ($g < $b ? 6 : 0),
             $max === $g => (($b - $r) / $d) + 2,
-            default     => (($r - $g) / $d) + 4,
+            default => (($r - $g) / $d) + 4,
         } * 60;
 
         return [$h, $s, $l];
@@ -128,12 +130,12 @@ class Color
         $m = $l - $c / 2;
 
         [$r, $g, $b] = match (true) {
-            $h < 60  => [$c, $x, 0.0],
+            $h < 60 => [$c, $x, 0.0],
             $h < 120 => [$x, $c, 0.0],
             $h < 180 => [0.0, $c, $x],
             $h < 240 => [0.0, $x, $c],
             $h < 300 => [$x, 0.0, $c],
-            default  => [$c, 0.0, $x],
+            default => [$c, 0.0, $x],
         };
 
         return self::toHex([

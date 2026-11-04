@@ -12,18 +12,18 @@ use App\Models\Setting;
 class Theme
 {
     public const PRESETS = [
-        'instagram'     => ['label' => 'گرادیان اینستاگرامی (پیش‌فرض)', 'hex' => '#D62976', 'hint' => 'فوشیا → صورتی → نارنجی', 'gradient' => 'from-fuchsia-600 via-pink-500 to-orange-500'],
-        'sapphire'      => ['label' => 'آبی سافایر', 'hex' => '#2563EB', 'hint' => 'رنگ کلاسیک سامانه — آبی سوهان‌مدن', 'gradient' => 'from-blue-500 to-blue-700'],
-        'royal-purple'  => ['label' => 'بنفش سلطنتی', 'hex' => '#7C3AED', 'hint' => 'نشیب مدرن و لاکچری', 'gradient' => 'from-purple-500 to-purple-800'],
-        'emerald'       => ['label' => 'زمرد', 'hex' => '#059669', 'hint' => 'سبز رشد و اعتماد', 'gradient' => 'from-emerald-500 to-emerald-700'],
-        'pacific'       => ['label' => 'اقیانوس آرام', 'hex' => '#0891B2', 'hint' => 'فیروزه‌ای عمیق و آرامش‌بخش', 'gradient' => 'from-cyan-500 to-teal-700'],
-        'night-indigo'  => ['label' => 'نیلی شب', 'hex' => '#4F46E5', 'hint' => 'نیلی عمیق و رسمی', 'gradient' => 'from-indigo-500 to-indigo-800'],
-        'fiery-sunset'  => ['label' => 'غروب آتشین', 'hex' => '#EA580C', 'hint' => 'نارنجی پویا و پرانرژی', 'gradient' => 'from-orange-500 to-red-600'],
-        'warm-amber'    => ['label' => 'کهربای گرم', 'hex' => '#D97706', 'hint' => 'طلوع گنگ کرم و صمیمی', 'gradient' => 'from-amber-500 to-amber-700'],
-        'crimson'       => ['label' => 'سرخ گنگون', 'hex' => '#DC2626', 'hint' => 'قرمز قدرتمند و برجسته', 'gradient' => 'from-red-500 to-rose-700'],
-        'coral'         => ['label' => 'مرجانی', 'hex' => '#F43F5E', 'hint' => 'سرخی ملایم و شاد', 'gradient' => 'from-rose-400 to-rose-600'],
-        'magenta'       => ['label' => 'ارغوانی تون', 'hex' => '#D946EF', 'hint' => 'سرخابی ماندگار و خلاق', 'gradient' => 'from-fuchsia-500 to-fuchsia-700'],
-        'jasper-teal'   => ['label' => 'فیروزه خیزر', 'hex' => '#0D9488', 'hint' => 'ترکیبی از سبز و آبی و شادی‌بخش', 'gradient' => 'from-teal-500 to-teal-700'],
+        'instagram' => ['label' => 'گرادیان اینستاگرامی (پیش‌فرض)', 'hex' => '#D62976', 'hint' => 'فوشیا → صورتی → نارنجی', 'gradient' => 'from-fuchsia-600 via-pink-500 to-orange-500'],
+        'sapphire' => ['label' => 'آبی سافایر', 'hex' => '#2563EB', 'hint' => 'رنگ کلاسیک سامانه — آبی سوهان‌مدن', 'gradient' => 'from-blue-500 to-blue-700'],
+        'royal-purple' => ['label' => 'بنفش سلطنتی', 'hex' => '#7C3AED', 'hint' => 'نشیب مدرن و لاکچری', 'gradient' => 'from-purple-500 to-purple-800'],
+        'emerald' => ['label' => 'زمرد', 'hex' => '#059669', 'hint' => 'سبز رشد و اعتماد', 'gradient' => 'from-emerald-500 to-emerald-700'],
+        'pacific' => ['label' => 'اقیانوس آرام', 'hex' => '#0891B2', 'hint' => 'فیروزه‌ای عمیق و آرامش‌بخش', 'gradient' => 'from-cyan-500 to-teal-700'],
+        'night-indigo' => ['label' => 'نیلی شب', 'hex' => '#4F46E5', 'hint' => 'نیلی عمیق و رسمی', 'gradient' => 'from-indigo-500 to-indigo-800'],
+        'fiery-sunset' => ['label' => 'غروب آتشین', 'hex' => '#EA580C', 'hint' => 'نارنجی پویا و پرانرژی', 'gradient' => 'from-orange-500 to-red-600'],
+        'warm-amber' => ['label' => 'کهربای گرم', 'hex' => '#D97706', 'hint' => 'طلوع گنگ کرم و صمیمی', 'gradient' => 'from-amber-500 to-amber-700'],
+        'crimson' => ['label' => 'سرخ گنگون', 'hex' => '#DC2626', 'hint' => 'قرمز قدرتمند و برجسته', 'gradient' => 'from-red-500 to-rose-700'],
+        'coral' => ['label' => 'مرجانی', 'hex' => '#F43F5E', 'hint' => 'سرخی ملایم و شاد', 'gradient' => 'from-rose-400 to-rose-600'],
+        'magenta' => ['label' => 'ارغوانی تون', 'hex' => '#D946EF', 'hint' => 'سرخابی ماندگار و خلاق', 'gradient' => 'from-fuchsia-500 to-fuchsia-700'],
+        'jasper-teal' => ['label' => 'فیروزه خیزر', 'hex' => '#0D9488', 'hint' => 'ترکیبی از سبز و آبی و شادی‌بخش', 'gradient' => 'from-teal-500 to-teal-700'],
     ];
 
     /**
@@ -37,18 +37,18 @@ class Theme
     ];
 
     public const DEFAULTS = [
-        'theme.preset'       => 'instagram',
-        'theme.primary'      => '#D62976',
+        'theme.preset' => 'instagram',
+        'theme.primary' => '#D62976',
         'theme.default_mode' => 'light',
-        'theme.app_name'     => 'InstaShop',
+        'theme.app_name' => 'InstaShop',
     ];
 
     /** Resolve effective theme values (DB overrides defaults). */
     public static function resolve(): array
     {
         $primary = Setting::get('theme.primary', self::DEFAULTS['theme.primary']);
-        $preset  = Setting::get('theme.preset', self::DEFAULTS['theme.preset']);
-        $warmth  = (int) Setting::get('theme.warmth', 0);
+        $preset = Setting::get('theme.preset', self::DEFAULTS['theme.preset']);
+        $warmth = (int) Setting::get('theme.warmth', 0);
 
         // warmth only applies to named presets
         if ($preset === 'custom') {
@@ -67,11 +67,11 @@ class Theme
         }
 
         return [
-            'primary'       => Color::normalize($primary ?: self::DEFAULTS['theme.primary']),
-            'preset'        => $preset,
-            'warmth'        => $warmth,
-            'default_mode'  => Setting::get('theme.default_mode', self::DEFAULTS['theme.default_mode']),
-            'app_name'      => Setting::get('theme.app_name', self::DEFAULTS['theme.app_name']),
+            'primary' => Color::normalize($primary ?: self::DEFAULTS['theme.primary']),
+            'preset' => $preset,
+            'warmth' => $warmth,
+            'default_mode' => Setting::get('theme.default_mode', self::DEFAULTS['theme.default_mode']),
+            'app_name' => Setting::get('theme.app_name', self::DEFAULTS['theme.app_name']),
         ];
     }
 
@@ -83,12 +83,12 @@ class Theme
     /** Multi-stop brand gradient for the resolved preset (CSS linear-gradient). */
     public static function gradient(): string
     {
-        $preset  = self::resolve()['preset'];
-        $stops   = self::GRADIENTS[$preset] ?? null;
+        $preset = self::resolve()['preset'];
+        $stops = self::GRADIENTS[$preset] ?? null;
 
         if (! $stops) {
             $shades = self::shades();
-            $stops  = [$shades[500], $shades[700]];
+            $stops = [$shades[500], $shades[700]];
         }
 
         return 'linear-gradient(135deg, '.implode(', ', $stops).')';

@@ -2,6 +2,7 @@
      x-data="{
         tab: 'info',
         catOpen: false,
+        rootOpen: false,
         catQuery: '',
      }"
      x-effect="if (tab === 'pricing' && $wire.productType === 'downloadable') tab = 'files'"
@@ -160,54 +161,7 @@
                 </div>
                 @error('productType') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
 
-                {{-- ── دسته‌بندی با جستجو (combobox) ── --}}
-                <div class="mt-3">
-                    <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">دسته‌بندی <span class="text-rose-500" title="الزامی">*</span></label>
-                    <div class="relative" @click.outside="catOpen = false">
-                        <button type="button" @click="catOpen = !catOpen" :aria-expanded="catOpen"
-                                class="flex w-full items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold outline-none transition hover:border-slate-300 focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                            <span class="truncate" :class="$wire.categoryId > 0 ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400'"
-                                  x-text="$wire.categoryId > 0 ? (({{ str_replace('"', "'", $shopCategories->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->toJson()) }}).find(c => c.id === $wire.categoryId)?.name ?? 'دستهٔ نامعتبر') : 'انتخاب دسته‌بندی…'">
-                                انتخاب دسته‌بندی
-                            </span>
-                            <span class="shrink-0 text-slate-400 transition-transform" :class="catOpen ? 'rotate-180' : ''">
-                                <x-icon name="chevron-down" class="size-4" />
-                            </span>
-                        </button>
-
-                        <div x-cloak x-show="catOpen"
-                             x-transition:enter="transition duration-150 ease-out" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
-                             x-transition:leave="transition duration-100 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                             class="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-                            <div class="border-b border-slate-100 p-2 dark:border-slate-800">
-                                <div class="relative">
-                                    <x-icon name="search" class="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-                                    <input type="search" x-model="catQuery" placeholder="جستجوی دسته‌بندی..." x-ref="catSearch"
-                                           class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pr-9 pl-3 text-[11px] font-semibold outline-none focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                                </div>
-                            </div>
-                            <div class="scroll-slim max-h-44 overflow-y-auto p-1.5">
-                                @foreach ($shopCategories as $cat)
-                                    <button type="button" x-show="catQuery.trim() === '' || '{{ e($cat->name) }}'.includes(catQuery.trim())" wire:key="cat-opt-{{ $cat->id }}"
-                                            @click="$wire.set('categoryId', {{ $cat->id }}); catOpen = false"
-                                            class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-bold transition"
-                                            :class="$wire.categoryId === {{ $cat->id }} ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300' : 'text-slate-500 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'">
-                                        <x-icon name="tag" class="size-3.5 opacity-50" />
-                                        {{ $cat->name }}
-                                        {{-- $wire.X === y inside @if compiles to PHP ($wire . categoryId → fatal
-                                            «Undefined constant») — keep the check in Alpine/JS instead. --}}
-                                        <span x-show="$wire.categoryId === {{ $cat->id }}" class="mr-auto grid place-items-center" wire:key="cat-check-{{ $cat->id }}">
-                                            <x-icon name="circle-check" class="size-3.5 text-primary-600" />
-                                        </span>
-                                    </button>
-                                @endforeach
-                                @if ($shopCategories->isEmpty())
-                                    <p class="px-3 py-4 text-center text-[10px] font-bold text-slate-400">دسته‌بندی الزامی است — ابتدا از «مدیریت دسته‌بندی‌ها» یک دسته بسازید.</p>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                    @error('categoryId') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                @include('livewire.partials.category-picker')
                 </div>
 
                 @if ($productType === 'physical')

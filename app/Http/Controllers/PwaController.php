@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Theme;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * PWA manifests — one installable app per panel.
@@ -17,12 +18,12 @@ use App\Support\Theme;
  */
 class PwaController extends Controller
 {
-    public function seller(): \Symfony\Component\HttpFoundation\Response
+    public function seller(): Response
     {
         return $this->manifest($this->sellerManifest());
     }
 
-    public function customer(): \Symfony\Component\HttpFoundation\Response
+    public function customer(): Response
     {
         return $this->manifest($this->customerManifest());
     }
@@ -34,19 +35,19 @@ class PwaController extends Controller
         return [
             // stable identity — changing the name/icon later keeps the
             // installed app instead of installing a second copy
-            'id'               => '/seller/',
-            'name'             => $app.' | اپ فروشنده',
-            'short_name'       => 'فروشنده',
-            'description'      => 'مدیریت فروشگاه، سفارش‌ها، محصولات و کیف پول — همیشه در جیب شما.',
-            'start_url'        => '/seller?source=pwa',
-            'scope'            => '/',
-            'display'          => 'standalone',
-            'orientation'      => 'portrait',
-            'dir'              => 'rtl',
-            'lang'             => 'fa',
+            'id' => '/seller/',
+            'name' => $app.' | اپ فروشنده',
+            'short_name' => 'فروشنده',
+            'description' => 'مدیریت فروشگاه، سفارش‌ها، محصولات و کیف پول — همیشه در جیب شما.',
+            'start_url' => '/seller?source=pwa',
+            'scope' => '/',
+            'display' => 'standalone',
+            'orientation' => 'portrait',
+            'dir' => 'rtl',
+            'lang' => 'fa',
             'background_color' => '#ffffff',
-            'theme_color'      => Theme::resolve()['primary'],
-            'icons'            => [
+            'theme_color' => Theme::resolve()['primary'],
+            'icons' => [
                 ['src' => '/pwa/icons/seller-192.png',          'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
                 ['src' => '/pwa/icons/seller-512.png',          'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
                 ['src' => '/pwa/icons/seller-maskable-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
@@ -59,19 +60,19 @@ class PwaController extends Controller
         $app = Theme::resolve()['app_name'];
 
         return [
-            'id'               => '/shop/',
-            'name'             => $app,
-            'short_name'       => mb_substr($app, 0, 12),
-            'description'      => 'خرید آسان از فروشگاه‌های اینستاگرامی — سبد خرید، پیگیری سفارش و پشتیبانی در یک اپ.',
-            'start_url'        => '/shop?source=pwa',
-            'scope'            => '/',
-            'display'          => 'standalone',
-            'orientation'      => 'portrait',
-            'dir'              => 'rtl',
-            'lang'             => 'fa',
+            'id' => '/shop/',
+            'name' => $app,
+            'short_name' => mb_substr($app, 0, 12),
+            'description' => 'خرید آسان از فروشگاه‌های اینستاگرامی — سبد خرید، پیگیری سفارش و پشتیبانی در یک اپ.',
+            'start_url' => '/shop?source=pwa',
+            'scope' => '/',
+            'display' => 'standalone',
+            'orientation' => 'portrait',
+            'dir' => 'rtl',
+            'lang' => 'fa',
             'background_color' => '#ffffff',
-            'theme_color'      => Theme::resolve()['primary'],
-            'icons'            => [
+            'theme_color' => Theme::resolve()['primary'],
+            'icons' => [
                 ['src' => '/pwa/icons/customer-192.png',          'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
                 ['src' => '/pwa/icons/customer-512.png',          'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
                 ['src' => '/pwa/icons/customer-maskable-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
@@ -79,7 +80,7 @@ class PwaController extends Controller
         ];
     }
 
-    private function manifest(array $payload): \Symfony\Component\HttpFoundation\Response
+    private function manifest(array $payload): Response
     {
         return response()
             ->json($payload, 200, [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)

@@ -91,7 +91,7 @@ class DiscountsIndex extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 12;
+        $this->perPage += 12;
     }
 
     /* ══════════ modal lifecycle ══════════ */
@@ -114,19 +114,19 @@ class DiscountsIndex extends Component
         $this->resetForm();
         $this->resetErrorBag();
 
-        $this->editId       = $discount->id;
-        $this->formShopId   = (int) $discount->shop_id;
-        $this->formTitle    = (string) $discount->title;
-        $this->formCode     = (string) $discount->code;
-        $this->formType     = (string) $discount->type;
-        $this->formPrice    = (string) $discount->price;
-        $this->formPercent  = (string) $discount->percent;
-        $this->formCeiling  = $discount->discount_ceiling ? (string) $discount->discount_ceiling : '';
+        $this->editId = $discount->id;
+        $this->formShopId = (int) $discount->shop_id;
+        $this->formTitle = (string) $discount->title;
+        $this->formCode = (string) $discount->code;
+        $this->formType = (string) $discount->type;
+        $this->formPrice = (string) $discount->price;
+        $this->formPercent = (string) $discount->percent;
+        $this->formCeiling = $discount->discount_ceiling ? (string) $discount->discount_ceiling : '';
         $this->formStartsAt = $discount->starts_at?->format('Y-m-d') ?? '';
-        $this->formEndsAt   = $discount->ends_at?->format('Y-m-d') ?? '';
+        $this->formEndsAt = $discount->ends_at?->format('Y-m-d') ?? '';
         $this->formLeastPrice = (string) $discount->least_price;
-        $this->formQuantity   = (string) $discount->quantity;
-        $this->formPublished  = (bool) $discount->published;
+        $this->formQuantity = (string) $discount->quantity;
+        $this->formPublished = (bool) $discount->published;
         $this->formDescription = (string) ($discount->description ?? '');
 
         $this->showModal = true;
@@ -140,25 +140,25 @@ class DiscountsIndex extends Component
 
     private function resetForm(): void
     {
-        $this->editId          = null;
-        $this->formShopId      = 0;
-        $this->formTitle       = '';
-        $this->formCode        = '';
-        $this->formType        = 'amount';
-        $this->formPrice       = '';
-        $this->formPercent     = '';
-        $this->formCeiling     = '';
-        $this->formStartsAt    = '';
-        $this->formEndsAt      = '';
-        $this->formLeastPrice  = '';
-        $this->formQuantity    = '0';
-        $this->formPublished   = true;
+        $this->editId = null;
+        $this->formShopId = 0;
+        $this->formTitle = '';
+        $this->formCode = '';
+        $this->formType = 'amount';
+        $this->formPrice = '';
+        $this->formPercent = '';
+        $this->formCeiling = '';
+        $this->formStartsAt = '';
+        $this->formEndsAt = '';
+        $this->formLeastPrice = '';
+        $this->formQuantity = '0';
+        $this->formPublished = true;
         $this->formDescription = '';
     }
 
     public function updatedFormType(): void
     {
-        $this->formPrice   = '';
+        $this->formPrice = '';
         $this->formPercent = '';
     }
 
@@ -190,7 +190,7 @@ class DiscountsIndex extends Component
 
         $discount = $this->editId
             ? Discount::query()->find($this->editId)
-            : new Discount();
+            : new Discount;
 
         if (! $discount) {
             return;
@@ -199,19 +199,19 @@ class DiscountsIndex extends Component
         $wasEditing = $this->editId !== null;
 
         $discount->fill([
-            'shop_id'           => $this->formShopId,
-            'title'             => trim($this->formTitle),
-            'code'              => mb_strtoupper(trim($this->formCode)),
-            'type'              => $this->formType,
-            'price'             => $this->formType === 'amount' ? (int) $this->formPrice : 0,
-            'percent'           => $this->formType === 'percent' ? (int) $this->formPercent : 0,
-            'discount_ceiling'  => $this->formCeiling !== '' ? (int) $this->formCeiling : null,
-            'starts_at'         => $this->formStartsAt !== '' ? $this->formStartsAt.' 00:00:00' : null,
-            'ends_at'           => $this->formEndsAt !== '' ? $this->formEndsAt.' 23:59:59' : null,
-            'least_price'       => $this->formLeastPrice !== '' ? (int) $this->formLeastPrice : 0,
-            'quantity'          => (int) $this->formQuantity,
-            'published'         => $this->formPublished,
-            'description'       => trim($this->formDescription) !== '' ? trim($this->formDescription) : null,
+            'shop_id' => $this->formShopId,
+            'title' => trim($this->formTitle),
+            'code' => mb_strtoupper(trim($this->formCode)),
+            'type' => $this->formType,
+            'price' => $this->formType === 'amount' ? (int) $this->formPrice : 0,
+            'percent' => $this->formType === 'percent' ? (int) $this->formPercent : 0,
+            'discount_ceiling' => $this->formCeiling !== '' ? (int) $this->formCeiling : null,
+            'starts_at' => $this->formStartsAt !== '' ? $this->formStartsAt.' 00:00:00' : null,
+            'ends_at' => $this->formEndsAt !== '' ? $this->formEndsAt.' 23:59:59' : null,
+            'least_price' => $this->formLeastPrice !== '' ? (int) $this->formLeastPrice : 0,
+            'quantity' => (int) $this->formQuantity,
+            'published' => $this->formPublished,
+            'description' => trim($this->formDescription) !== '' ? trim($this->formDescription) : null,
         ]);
 
         $discount->save();
@@ -249,20 +249,20 @@ class DiscountsIndex extends Component
     protected function rules(): array
     {
         return [
-            'formShopId'     => ['required', 'integer', 'min:1', 'exists:shops,id'],
-            'formTitle'      => ['required', 'string', 'min:2', 'max:120'],
-            'formCode'       => ['required', 'string', 'min:3', 'max:60',
+            'formShopId' => ['required', 'integer', 'min:1', 'exists:shops,id'],
+            'formTitle' => ['required', 'string', 'min:2', 'max:120'],
+            'formCode' => ['required', 'string', 'min:3', 'max:60',
                 Rule::unique('discounts', 'code')->ignore($this->editId)],
-            'formType'       => ['required', 'in:amount,percent'],
-            'formPrice'      => ['exclude_unless:formType,amount', 'required', 'integer', 'min:1000', 'max:999999999999'],
-            'formPercent'    => ['exclude_unless:formType,percent', 'required', 'integer', 'min:1', 'max:100'],
-            'formCeiling'    => ['nullable', 'integer', 'min:0', 'max:999999999999'],
-            'formStartsAt'   => ['nullable', 'date'],
-            'formEndsAt'     => ['nullable', 'date', 'after_or_equal:formStartsAt'],
+            'formType' => ['required', 'in:amount,percent'],
+            'formPrice' => ['exclude_unless:formType,amount', 'required', 'integer', 'min:1000', 'max:999999999999'],
+            'formPercent' => ['exclude_unless:formType,percent', 'required', 'integer', 'min:1', 'max:100'],
+            'formCeiling' => ['nullable', 'integer', 'min:0', 'max:999999999999'],
+            'formStartsAt' => ['nullable', 'date'],
+            'formEndsAt' => ['nullable', 'date', 'after_or_equal:formStartsAt'],
             'formLeastPrice' => ['nullable', 'integer', 'min:0', 'max:999999999999'],
-            'formQuantity'   => ['required', 'integer', 'min:0', 'max:1000000'],
-            'formPublished'  => ['boolean'],
-            'formDescription'=> ['nullable', 'string', 'max:2000'],
+            'formQuantity' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'formPublished' => ['boolean'],
+            'formDescription' => ['nullable', 'string', 'max:2000'],
         ];
     }
 
@@ -270,15 +270,15 @@ class DiscountsIndex extends Component
     {
         return [
             'formShopId.required' => 'فروشگاهِ مالک کد تخفیف را انتخاب کنید.',
-            'formShopId.min'      => 'فروشگاهِ مالک کد تخفیف را انتخاب کنید.',
-            'formTitle.required'  => 'عنوان کد تخفیف را وارد کنید.',
-            'formCode.required'   => 'کد تخفیف را وارد کنید.',
-            'formCode.min'        => 'کد تخفیف حداقل ۳ کاراکتر است.',
-            'formCode.unique'     => 'این کد تخفیف قبلاً ثبت شده است.',
-            'formPrice.required'  => 'مبلغ تخفیف را وارد کنید (حداقل ۱٬۰۰۰ تومان).',
-            'formPrice.min'       => 'مبلغ تخفیف حداقل ۱٬۰۰۰ تومان است.',
-            'formPercent.required'=> 'درصد تخفیف را وارد کنید.',
-            'formPercent.max'     => 'درصد تخفیف حداکثر ۱۰۰ است.',
+            'formShopId.min' => 'فروشگاهِ مالک کد تخفیف را انتخاب کنید.',
+            'formTitle.required' => 'عنوان کد تخفیف را وارد کنید.',
+            'formCode.required' => 'کد تخفیف را وارد کنید.',
+            'formCode.min' => 'کد تخفیف حداقل ۳ کاراکتر است.',
+            'formCode.unique' => 'این کد تخفیف قبلاً ثبت شده است.',
+            'formPrice.required' => 'مبلغ تخفیف را وارد کنید (حداقل ۱٬۰۰۰ تومان).',
+            'formPrice.min' => 'مبلغ تخفیف حداقل ۱٬۰۰۰ تومان است.',
+            'formPercent.required' => 'درصد تخفیف را وارد کنید.',
+            'formPercent.max' => 'درصد تخفیف حداکثر ۱۰۰ است.',
             'formEndsAt.after_or_equal' => 'تاریخ پایان باید بعد از تاریخ شروع باشد.',
         ];
     }
@@ -288,10 +288,10 @@ class DiscountsIndex extends Component
     public function getStatsProperty(): array
     {
         return [
-            'all'       => Discount::query()->count(),
+            'all' => Discount::query()->count(),
             'published' => Discount::query()->where('published', true)->count(),
-            'shops'     => Discount::query()->distinct('shop_id')->count('shop_id'),
-            'used'      => (int) Discount::query()->sum('used_count'),
+            'shops' => Discount::query()->distinct('shop_id')->count('shop_id'),
+            'used' => (int) Discount::query()->sum('used_count'),
         ];
     }
 
@@ -313,7 +313,7 @@ class DiscountsIndex extends Component
             ->latest('id');
 
         $total = (clone $query)->count();
-        $rows  = $query->limit($this->perPage)->get();
+        $rows = $query->limit($this->perPage)->get();
 
         $this->hasMore = $total > $this->perPage;
 
@@ -323,10 +323,10 @@ class DiscountsIndex extends Component
     public function render()
     {
         return view('livewire.admin.discounts-index', [
-            'discounts'   => $this->discounts,
-            'stats'       => $this->stats,
+            'discounts' => $this->discounts,
+            'stats' => $this->stats,
             'shopOptions' => $this->shopOptions,
-            'hasMore'     => $this->hasMore,
+            'hasMore' => $this->hasMore,
         ])->title('کدهای تخفیف')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — تخفیف‌ها']);
     }

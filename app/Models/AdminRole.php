@@ -16,7 +16,7 @@ class AdminRole extends Model
     {
         return [
             'permissions' => 'array',
-            'is_system'   => 'boolean',
+            'is_system' => 'boolean',
         ];
     }
 

@@ -30,7 +30,7 @@ return new class extends Migration
             return;
         }
 
-        $hasKind     = Schema::hasColumn('shop_filter_items', 'kind');
+        $hasKind = Schema::hasColumn('shop_filter_items', 'kind');
         $hasAttrName = Schema::hasColumn('shop_filter_items', 'shop_attribute_id');
 
         if (! $hasKind || ! $hasAttrName) {
@@ -62,7 +62,7 @@ return new class extends Migration
                     $table->dropUnique(['shop_filter_id', 'spec_name']);
                 });
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Index already gone or named differently — nothing left to do.
         }
     }
@@ -82,7 +82,7 @@ return new class extends Migration
             });
         }
 
-        $hasKind     = Schema::hasColumn('shop_filter_items', 'kind');
+        $hasKind = Schema::hasColumn('shop_filter_items', 'kind');
         $hasAttrName = Schema::hasColumn('shop_filter_items', 'shop_attribute_id');
 
         if ($hasAttrName && Schema::hasIndex('shop_filter_items', 'shop_filter_items_shop_attribute_id_index')) {

@@ -19,8 +19,8 @@ use Livewire\Component;
  */
 class ShopsSettings extends Component
 {
-    use NotifiesOnValidation;
     use GuardsPermissions;
+    use NotifiesOnValidation;
 
     protected static string $permission = 'admin.settings.shops';
 
@@ -32,9 +32,9 @@ class ShopsSettings extends Component
 
     public function mount(): void
     {
-        $this->autoApprove     = (bool) Setting::get('shops.auto_approve_seller', false);
-        $this->commissionType  = (string) Setting::get('shops.commission_type', 'percent');
-        $this->commissionType  = in_array($this->commissionType, ['percent', 'fixed'], true) ? $this->commissionType : 'percent';
+        $this->autoApprove = (bool) Setting::get('shops.auto_approve_seller', false);
+        $this->commissionType = (string) Setting::get('shops.commission_type', 'percent');
+        $this->commissionType = in_array($this->commissionType, ['percent', 'fixed'], true) ? $this->commissionType : 'percent';
         $this->commissionValue = (string) (int) Setting::get('shops.commission_value', 0);
     }
 
@@ -46,8 +46,8 @@ class ShopsSettings extends Component
     protected function rules(): array
     {
         return [
-            'autoApprove'     => ['boolean'],
-            'commissionType'  => ['required', 'in:percent,fixed'],
+            'autoApprove' => ['boolean'],
+            'commissionType' => ['required', 'in:percent,fixed'],
             'commissionValue' => [
                 'required',
                 'integer',
@@ -61,9 +61,9 @@ class ShopsSettings extends Component
     {
         return [
             'commissionValue.required' => 'مقدار کمیسیون را وارد کنید.',
-            'commissionValue.integer'  => 'مقدار کمیسیون باید عدد باشد.',
-            'commissionValue.min'      => 'کمیسیون نمی‌تواند منفی باشد.',
-            'commissionValue.max'      => 'درصد کمیسیون حداکثر ۱۰۰ است.',
+            'commissionValue.integer' => 'مقدار کمیسیون باید عدد باشد.',
+            'commissionValue.min' => 'کمیسیون نمی‌تواند منفی باشد.',
+            'commissionValue.max' => 'درصد کمیسیون حداکثر ۱۰۰ است.',
         ];
     }
 
@@ -73,8 +73,8 @@ class ShopsSettings extends Component
 
         $pairs = [
             'shops.auto_approve_seller' => $this->autoApprove ? '1' : '0',
-            'shops.commission_type'     => $this->commissionType,
-            'shops.commission_value'    => (int) $this->commissionValue,
+            'shops.commission_type' => $this->commissionType,
+            'shops.commission_value' => (int) $this->commissionValue,
         ];
 
         $snapshot = ActivityLogger::settingsSnapshot(array_keys($pairs));

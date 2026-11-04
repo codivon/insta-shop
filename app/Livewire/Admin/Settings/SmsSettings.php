@@ -3,7 +3,7 @@
 namespace App\Livewire\Admin\Settings;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
-
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Setting;
 use App\Models\SmsLog;
 use App\Support\ActivityLogger;
@@ -13,7 +13,6 @@ use App\Support\Sms\SmsMessage;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — SMS settings: choose provider, fill its credentials (stored in
@@ -22,10 +21,11 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 #[Layout('layouts.admin-slot')]
 class SmsSettings extends Component
 {
-    use NotifiesOnValidation;
     use GuardsPermissions;
+    use NotifiesOnValidation;
 
     protected static string $permission = 'admin.settings.sms';
+
     public string $driver = 'log';
 
     /** @var array<string, string> keyed "driver.field" */

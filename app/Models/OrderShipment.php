@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Support\IranCalendar;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
@@ -20,14 +21,14 @@ class OrderShipment extends Model
     protected function casts(): array
     {
         return [
-            'items_total'        => 'integer',
-            'shipping_cost'      => 'integer',
-            'discount_amount'    => 'integer',
-            'total'              => 'integer',
-            'refund_amount'      => 'integer',
+            'items_total' => 'integer',
+            'shipping_cost' => 'integer',
+            'discount_amount' => 'integer',
+            'total' => 'integer',
+            'refund_amount' => 'integer',
             'shipment_status_at' => 'datetime',
-            'canceled_at'        => 'datetime',
-            'delivery_date'      => 'date',
+            'canceled_at' => 'datetime',
+            'delivery_date' => 'date',
         ];
     }
 
@@ -55,9 +56,9 @@ class OrderShipment extends Model
     {
         return match ($this->shipment_status) {
             'processing' => 'در حال پردازش',
-            'shipped'    => 'در حال ارسال',
-            'delivered'  => 'تحویل شد',
-            default      => 'پردازش نشده',
+            'shipped' => 'در حال ارسال',
+            'delivered' => 'تحویل شد',
+            default => 'پردازش نشده',
         };
     }
 
@@ -66,9 +67,9 @@ class OrderShipment extends Model
     {
         return match ($this->shipment_status) {
             'processing' => 'bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400',
-            'shipped'    => 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400',
-            'delivered'  => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
-            default      => 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+            'shipped' => 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400',
+            'delivered' => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+            default => 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
         };
     }
 
@@ -77,9 +78,9 @@ class OrderShipment extends Model
     {
         return match ($this->shipment_status) {
             'processing' => 1,
-            'shipped'    => 2,
-            'delivered'  => 3,
-            default      => 0,
+            'shipped' => 2,
+            'delivered' => 3,
+            default => 0,
         };
     }
 
@@ -95,7 +96,7 @@ class OrderShipment extends Model
     public function deliveryDateLabel(): string
     {
         return $this->delivery_date
-            ? \App\Support\IranCalendar::longLabel($this->delivery_date)
+            ? IranCalendar::longLabel($this->delivery_date)
             : '';
     }
 }

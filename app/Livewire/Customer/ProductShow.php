@@ -8,6 +8,7 @@ use App\Models\Favorite;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductVariantValue;
+use App\Models\ProductView;
 use App\Models\Shop;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -74,7 +75,7 @@ class ProductShow extends Component
             ?? $this->variants->first();
 
         $this->legacyVariantId = $initial?->id;
-        $this->picks           = $this->picksFor($initial);
+        $this->picks = $this->picksFor($initial);
 
         // هر گروه تنوع همیشه یک گزینهٔ انتخاب‌شده دارد — اگر تنوع اولیه
         // ویژگی‌ای (مثل گارانتی) نداشت، بهترین ترکیبِ ممکن با همان انتخاب‌های
@@ -83,7 +84,7 @@ class ProductShow extends Component
 
         // Count a view once per component mount (= per page visit):
         // cumulative counter on the product + daily log for reports.
-        \App\Models\ProductView::recordView($product);
+        ProductView::recordView($product);
     }
 
     /* ─────────────────────── interactions ─────────────────────── */
@@ -154,7 +155,7 @@ class ProductShow extends Component
 
         Favorite::query()->firstOrCreate([
             'customer_id' => $customer->id,
-            'product_id'  => $this->product->id,
+            'product_id' => $this->product->id,
         ]);
     }
 
@@ -245,7 +246,7 @@ class ProductShow extends Component
     public function getGalleryProperty(): array
     {
         return $this->product->images->map(fn ($img) => [
-            'id'  => $img->id,
+            'id' => $img->id,
             'url' => $img->url(),
         ])->all();
     }
@@ -268,7 +269,7 @@ class ProductShow extends Component
     public function getBackUrlProperty(): string
     {
         $previous = url()->previous();
-        $base     = rtrim(url('/'), '/');
+        $base = rtrim(url('/'), '/');
 
         $valid = $previous
             && str_starts_with($previous, $base.'/')
@@ -321,8 +322,8 @@ class ProductShow extends Component
      */
     public function getVariantMatrixProperty(): Collection
     {
-        $rows   = [];
-        $order  = [];   // attribute id → sort position
+        $rows = [];
+        $order = [];   // attribute id → sort position
         $sortBy = [];   // attribute id → ShopAttribute sort column
 
         foreach ($this->variants as $variant) {
@@ -342,22 +343,22 @@ class ProductShow extends Component
                 $attrId = (int) $value->shop_attribute_id;
 
                 if (! isset($rows[$attrId])) {
-                    $order[$attrId]  = count($order);
+                    $order[$attrId] = count($order);
                     $sortBy[$attrId] = (int) $attribute->sort;
 
                     $rows[$attrId] = [
-                        'id'      => $attrId,
-                        'name'    => $attribute->name,
-                        'type'    => $attribute->type,
+                        'id' => $attrId,
+                        'name' => $attribute->name,
+                        'type' => $attribute->type,
                         'options' => [],
                     ];
                 }
 
                 if (! isset($rows[$attrId]['options'][$key])) {
                     $rows[$attrId]['options'][$key] = [
-                        'key'   => $key,
+                        'key' => $key,
                         'label' => (string) ($value->value?->value ?? $value->value_text ?? ''),
-                        'hex'   => $value->value?->color_hex,
+                        'hex' => $value->value?->color_hex,
                     ];
                 }
             }
@@ -374,8 +375,8 @@ class ProductShow extends Component
         // Annotate availability against the picks of HIGHER-priority rows
         // only, then drop the options that lead nowhere (hidden) and rows
         // left without any option.
-        $matrix     = [];
-        $upstream   = [];   // picks of rows already processed
+        $matrix = [];
+        $upstream = [];   // picks of rows already processed
 
         foreach ($ordered as $row) {
             $options = [];
@@ -388,7 +389,7 @@ class ProductShow extends Component
                 }
 
                 $option['available'] = true;
-                $option['inStock']   = $this->isDownloadable || $match->stock > 0;
+                $option['inStock'] = $this->isDownloadable || $match->stock > 0;
 
                 $options[] = $option;
             }
@@ -555,7 +556,7 @@ class ProductShow extends Component
             ->where('shop_id', $this->product->shop_id)
             ->where('status', 'published')
             ->whereKeyNot($this->product->id)
-            ->when($this->product->shop_category_id, fn ($q) => $q->where('shop_category_id', $this->product->shop_category_id))
+            ->when($this->product->category_id, fn ($q) => $q->where('category_id', $this->product->category_id))
             ->with(['mainImage'])
             ->latest()
             ->limit(12)
@@ -565,23 +566,23 @@ class ProductShow extends Component
     public function render()
     {
         return view('livewire.customer.product-show', [
-            'gallery'        => $this->gallery,
-            'storeUrl'       => $this->storeUrl,
-            'backUrl'        => $this->backUrl,
-            'isFavorite'     => $this->isFavorite,
-            'discount'       => $this->discountPercent,
-            'specialEndsMs'  => $this->specialEndsMs,
-            'variants'       => $this->variants,
-            'variantMatrix'  => $this->variantMatrix,
-            'textNotes'      => $this->textNotes,
-            'selectedVariant'=> $this->selectedVariant,
-            'displayPrice'   => $this->displayPrice,
-            'displayStock'   => $this->displayStock,
-            'cartQty'        => $this->cartQty,
-            'cartCount'      => $this->cartCount,
-            'purchaseCap'    => $this->purchaseCap,
+            'gallery' => $this->gallery,
+            'storeUrl' => $this->storeUrl,
+            'backUrl' => $this->backUrl,
+            'isFavorite' => $this->isFavorite,
+            'discount' => $this->discountPercent,
+            'specialEndsMs' => $this->specialEndsMs,
+            'variants' => $this->variants,
+            'variantMatrix' => $this->variantMatrix,
+            'textNotes' => $this->textNotes,
+            'selectedVariant' => $this->selectedVariant,
+            'displayPrice' => $this->displayPrice,
+            'displayStock' => $this->displayStock,
+            'cartQty' => $this->cartQty,
+            'cartCount' => $this->cartCount,
+            'purchaseCap' => $this->purchaseCap,
             'isDownloadable' => $this->isDownloadable,
-            'related'        => $this->related,
+            'related' => $this->related,
         ])->title($this->product->name);
     }
 
@@ -600,7 +601,7 @@ class ProductShow extends Component
             return null;
         }
 
-        $best      = null;
+        $best = null;
         $bestScore = -1;
 
         foreach ($this->variants as $variant) {
@@ -619,7 +620,7 @@ class ProductShow extends Component
             }
 
             if ($score > $bestScore) {
-                $best      = $variant;
+                $best = $variant;
                 $bestScore = $score;
             }
         }
@@ -672,7 +673,7 @@ class ProductShow extends Component
      */
     private function orderedAttributeIds(): array
     {
-        $ids    = [];
+        $ids = [];
         $sortBy = [];
 
         foreach ($this->variants as $variant) {
@@ -686,7 +687,7 @@ class ProductShow extends Component
                 $attrId = (int) $value->shop_attribute_id;
 
                 if (! isset($sortBy[$attrId])) {
-                    $ids[$attrId]    = $attrId;
+                    $ids[$attrId] = $attrId;
                     $sortBy[$attrId] = [(int) $attribute->sort, $attrId];
                 }
             }
@@ -744,7 +745,7 @@ class ProductShow extends Component
             }
 
             $this->picks[$id] = $best['key'];
-            $upstream[$id]    = $best['key'];
+            $upstream[$id] = $best['key'];
         }
     }
 
@@ -777,7 +778,7 @@ class ProductShow extends Component
         }
 
         foreach (array_slice($ordered, $pos + 1) as $id) {
-            $reachable  = [];   // key => resolving variant
+            $reachable = [];   // key => resolving variant
             $firstAvail = null;
 
             foreach ($this->optionKeysOfAttribute($id) as $key) {
@@ -812,7 +813,7 @@ class ProductShow extends Component
 
             if ($replacement !== null) {
                 $this->picks[$id] = $replacement;
-                $upstream[$id]    = $replacement;
+                $upstream[$id] = $replacement;
             } else {
                 unset($this->picks[$id]);
             }

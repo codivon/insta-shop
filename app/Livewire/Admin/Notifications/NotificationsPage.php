@@ -49,7 +49,7 @@ class NotificationsPage extends Component
             ->paginate(20);
 
         return view('livewire.admin.notifications.notifications-page', [
-            'items'       => $items,
+            'items' => $items,
             'unreadCount' => AdminNotification::query()->unread()->count(),
         ])->title('نوتیفیکیشن‌ها')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — نوتیفیکیشن‌ها']);

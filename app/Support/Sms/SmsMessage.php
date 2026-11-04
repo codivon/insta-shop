@@ -36,7 +36,7 @@ class SmsMessage
     public function template(string $template, array $data = []): static
     {
         $this->template = $template;
-        $this->data     = $data;
+        $this->data = $data;
 
         return $this;
     }

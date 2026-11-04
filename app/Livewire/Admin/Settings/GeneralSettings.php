@@ -3,13 +3,13 @@
 namespace App\Livewire\Admin\Settings;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Setting;
 use App\Support\ActivityLogger;
 use App\Support\Branding;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 use Livewire\WithFileUploads;
 
 /**
@@ -21,9 +21,9 @@ use Livewire\WithFileUploads;
 #[Title('تنظیمات عمومی')]
 class GeneralSettings extends Component
 {
+    use GuardsPermissions;
     use NotifiesOnValidation;
     use WithFileUploads;
-    use GuardsPermissions;
 
     protected static string $permission = 'admin.settings.general';
 
@@ -42,29 +42,29 @@ class GeneralSettings extends Component
 
     public function mount(): void
     {
-        $this->appName         = (string) Setting::get('theme.app_name', 'InstaShop');
+        $this->appName = (string) Setting::get('theme.app_name', 'InstaShop');
         $this->metaDescription = (string) Setting::get('seo.meta_description', '');
-        $this->storePhone      = (string) Setting::get('store.phone', '');
-        $this->storeInstagram  = (string) Setting::get('store.instagram', '');
+        $this->storePhone = (string) Setting::get('store.phone', '');
+        $this->storeInstagram = (string) Setting::get('store.instagram', '');
     }
 
     public function rules(): array
     {
         return [
-            'appName'         => ['required', 'min:2', 'max:60'],
+            'appName' => ['required', 'min:2', 'max:60'],
             'metaDescription' => ['nullable', 'max:300'],
-            'storePhone'      => ['nullable', 'max:20'],
-            'storeInstagram'  => ['nullable', 'max:60', 'regex:/^[A-Za-z0-9._]+$/'],
-            'logo'            => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
-            'favicon'         => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg,ico', 'max:1024'],
+            'storePhone' => ['nullable', 'max:20'],
+            'storeInstagram' => ['nullable', 'max:60', 'regex:/^[A-Za-z0-9._]+$/'],
+            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
+            'favicon' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg,ico', 'max:1024'],
         ];
     }
 
     protected $messages = [
         'appName.required' => 'عنوان سایت را وارد کنید.',
         'storeInstagram.regex' => 'آیدی اینستاگرام فقط می‌تواند شامل حروف انگلیسی، عدد، نقطه و آندرلاین باشد.',
-        'logo.image'  => 'لوگو باید یک تصویر باشد.',
-        'logo.max'    => 'حجم لوگو حداکثر ۲ مگابایت است.',
+        'logo.image' => 'لوگو باید یک تصویر باشد.',
+        'logo.max' => 'حجم لوگو حداکثر ۲ مگابایت است.',
         'favicon.image' => 'فاوآیکون باید یک تصویر باشد.',
         'favicon.max' => 'حجم فاوآیکون حداکثر ۱ مگابایت است.',
     ];

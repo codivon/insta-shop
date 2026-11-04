@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Shop;
 
 use App\Models\Order;
 use App\Models\PaymentLog;
+use App\Models\Product;
 use App\Support\Payments\PaymentService;
 use Illuminate\Http\Request;
 use Throwable;
@@ -38,7 +39,7 @@ class PaymentRedirect
 
             if ($item->variant_id > 0) {
                 $stock = ($item->variant && $item->variant->status === 'active') ? (int) $item->variant->stock : 0;
-            } elseif ($product && $product->type === \App\Models\Product::TYPE_DOWNLOADABLE) {
+            } elseif ($product && $product->type === Product::TYPE_DOWNLOADABLE) {
                 $stock = 99;
             } else {
                 $stock = (int) ($product->stock ?? 0);

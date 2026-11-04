@@ -2,16 +2,17 @@
 
 namespace App\Livewire\Customer;
 
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Customer;
-use Illuminate\Support\Facades\Date;
+use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 
 #[Layout('layouts.customer-slot')]
 class ProfilePage extends Component
 {
     use NotifiesOnValidation;
+
     public string $full_name = '';
 
     public function mount(): void
@@ -53,8 +54,8 @@ class ProfilePage extends Component
 
         return [
             'favorites' => $customer ? $customer->favorites()->count() : 0,
-            'cart'      => $customer && $customer->cart ? $customer->cart->items()->count() : 0,
-            'orders'    => $customer ? $customer->orders()->count() : 0,
+            'cart' => $customer && $customer->cart ? $customer->cart->items()->count() : 0,
+            'orders' => $customer ? $customer->orders()->count() : 0,
         ];
     }
 
@@ -66,14 +67,14 @@ class ProfilePage extends Component
             return '';
         }
 
-        return \App\Support\JDate::date($customer->created_at);
+        return JDate::date($customer->created_at);
     }
 
     public function render()
     {
         return view('livewire.customer.profile-page', [
             'customer' => $this->customer(),
-            'stats'    => $this->stats,
+            'stats' => $this->stats,
             'joinedAt' => $this->joinedAt,
         ])->title('پروفایل');
     }

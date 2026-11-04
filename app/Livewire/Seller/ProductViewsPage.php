@@ -6,7 +6,6 @@ use App\Models\Product;
 use App\Models\ProductView;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -37,8 +36,8 @@ class ProductViewsPage extends Component
 
     public function mount(): void
     {
-        $today      = CarbonImmutable::today();
-        $this->to   = $today->toDateString();
+        $today = CarbonImmutable::today();
+        $this->to = $today->toDateString();
         $this->from = $today->subDays(29)->toDateString();
     }
 
@@ -109,10 +108,10 @@ class ProductViewsPage extends Component
             ->sum('views');
 
         return view('livewire.seller.product-views-page', [
-            'products'         => $products,
-            'totalMatching'    => $totalMatching,
+            'products' => $products,
+            'totalMatching' => $totalMatching,
             'periodViewsTotal' => $periodViewsTotal,
-            'hasMore'          => $totalMatching > $products->count(),
+            'hasMore' => $totalMatching > $products->count(),
         ])->title('گزارش بازدید محصولات');
     }
 
@@ -123,8 +122,8 @@ class ProductViewsPage extends Component
 
         return match ($this->range) {
             'today' => [$today->toDateString(), $today->toDateString()],
-            'd7'    => [$today->subDays(6)->toDateString(), $today->toDateString()],
-            'd30'   => [$today->subDays(29)->toDateString(), $today->toDateString()],
+            'd7' => [$today->subDays(6)->toDateString(), $today->toDateString()],
+            'd30' => [$today->subDays(29)->toDateString(), $today->toDateString()],
             'custom' => $this->validCustomRange(),
             default => null,
         };

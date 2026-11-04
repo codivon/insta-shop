@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use App\Support\SchemaReady;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use App\Support\SchemaReady;
 
 #[Fillable(['name', 'email', 'password', 'is_super'])]
 #[Hidden(['password', 'remember_token'])]
@@ -15,9 +15,9 @@ class Admin extends Authenticatable
     protected function casts(): array
     {
         return [
-            'is_super'      => 'boolean',
+            'is_super' => 'boolean',
             'last_login_at' => 'datetime',
-            'password'      => 'hashed',
+            'password' => 'hashed',
         ];
     }
 

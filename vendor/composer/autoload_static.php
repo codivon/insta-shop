@@ -631,6 +631,7 @@ class ComposerStaticInit47ee14daf1b2a8b40824511e79f00689
         'App\\Http\\Controllers\\Admin\\PushSubscriptionController' => __DIR__ . '/../..' . '/app/Http/Controllers/Admin/PushSubscriptionController.php',
         'App\\Http\\Controllers\\Auth\\PanelLogout' => __DIR__ . '/../..' . '/app/Http/Controllers/Auth/PanelLogout.php',
         'App\\Http\\Controllers\\Controller' => __DIR__ . '/../..' . '/app/Http/Controllers/Controller.php',
+        'App\\Http\\Controllers\\PwaController' => __DIR__ . '/../..' . '/app/Http/Controllers/PwaController.php',
         'App\\Http\\Controllers\\Seller\\ProductFileDownload' => __DIR__ . '/../..' . '/app/Http/Controllers/Seller/ProductFileDownload.php',
         'App\\Http\\Controllers\\Shop\\PaymentCallback' => __DIR__ . '/../..' . '/app/Http/Controllers/Shop/PaymentCallback.php',
         'App\\Http\\Controllers\\Shop\\PaymentRedirect' => __DIR__ . '/../..' . '/app/Http/Controllers/Shop/PaymentRedirect.php',

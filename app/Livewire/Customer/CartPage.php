@@ -3,6 +3,7 @@
 namespace App\Livewire\Customer;
 
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Customer;
 use App\Models\Order;
 use Illuminate\Support\Collection;
@@ -126,9 +127,9 @@ class CartPage extends Component
             ->sortBy(fn ($item) => $item->product?->shop?->name)
             ->groupBy(fn ($item) => (int) ($item->product?->shop_id ?? 0))
             ->map(fn (Collection $groupItems) => [
-                'shop'       => $groupItems->first()->product?->shop,
-                'items'      => $groupItems->values(),
-                'total'      => (int) $groupItems->sum(fn ($item) => $item->product
+                'shop' => $groupItems->first()->product?->shop,
+                'items' => $groupItems->values(),
+                'total' => (int) $groupItems->sum(fn ($item) => $item->product
                                         && $item->product->status === 'published'
                                         && Order::lineStock($item) > 0 ? $item->lineTotal() : 0),
                 'validCount' => $groupItems->filter(fn ($item) => $item->product
@@ -141,12 +142,12 @@ class CartPage extends Component
     public function render()
     {
         return view('livewire.customer.cart-page', [
-            'items'      => $this->items,
+            'items' => $this->items,
             'validItems' => $this->validItems,
             'staleItems' => $this->staleItems,
-            'groups'     => $this->groups,
-            'total'      => $this->total,
-            'units'      => $this->units,
+            'groups' => $this->groups,
+            'total' => $this->total,
+            'units' => $this->units,
         ])->title('سبد خرید');
     }
 
@@ -158,7 +159,7 @@ class CartPage extends Component
     }
 
     /** Only items belonging to the visitor's cart (customer OR guest). */
-    private function ownedItem(int $itemId): ?\App\Models\CartItem
+    private function ownedItem(int $itemId): ?CartItem
     {
         $cart = $this->cart;
 
@@ -166,7 +167,7 @@ class CartPage extends Component
             return null;
         }
 
-        return \App\Models\CartItem::query()
+        return CartItem::query()
             ->where('cart_id', $cart->id)
             ->find($itemId);
     }

@@ -2,6 +2,7 @@
 
 namespace App\Support\Sms\Drivers;
 
+use App\Models\Setting;
 use App\Support\Phone;
 use App\Support\Sms\Contracts\SmsDriver;
 use App\Support\Sms\SmsMessage;
@@ -29,15 +30,15 @@ class RestfulSmsDriver implements SmsDriver
     public function settingsFields(): array
     {
         return [
-            'api_token'   => ['توکن API (x-sms-ir-api-token)', true],
+            'api_token' => ['توکن API (x-sms-ir-api-token)', true],
             'line_number' => ['خط ارسال (اختیاری)', false],
         ];
     }
 
     public function send(SmsMessage $message): SmsResult
     {
-        $token      = (string) \App\Models\Setting::get('sms.restfulsms.api_token', '');
-        $lineNumber = (string) \App\Models\Setting::get('sms.restfulsms.line_number', '');
+        $token = (string) Setting::get('sms.restfulsms.api_token', '');
+        $lineNumber = (string) Setting::get('sms.restfulsms.line_number', '');
 
         if ($token === '') {
             return SmsResult::failure('تنظیمات RestfulSms ناقص است (api_token).');
@@ -46,7 +47,7 @@ class RestfulSmsDriver implements SmsDriver
         try {
             $payload = [
                 'mobile' => [Phone::toLocal($message->to)],
-                'text'   => $message->body(),
+                'text' => $message->body(),
             ];
 
             if ($lineNumber !== '') {

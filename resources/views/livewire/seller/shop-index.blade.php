@@ -103,7 +103,7 @@
                         ['value' => \App\Support\Fmt::fa($stats['total']),      'label' => 'محصول'],
                         ['value' => \App\Support\Fmt::fa($stats['published']),  'label' => 'منتشرشده'],
                         ['value' => \App\Support\Fmt::fa($stats['special']),    'label' => 'ویژه'],
-                        ['value' => \App\Support\Fmt::fa($stats['categories']), 'label' => 'دسته'],
+                        ['value' => \App\Support\Fmt::fa($stats['outOfStock']), 'label' => 'ناموجود'],
                     ] as $st)
                         <div class="rounded-2xl bg-slate-50 p-2 text-center dark:bg-slate-800/60">
                             <div class="text-sm font-black">{{ $st['value'] }}</div>
@@ -114,18 +114,16 @@
             </div>
         </div>
 
-        {{-- ───────── Category management entry ───────── --}}
-        <a href="{{ route('seller.categories') }}" wire:navigate
-           class="mt-3 flex items-center justify-between rounded-2xl border border-dashed border-primary-300 bg-primary-50/50 px-4 py-2.5 text-xs font-bold text-primary-700 transition hover:border-primary-400 hover:bg-primary-50 active:scale-[.99] dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300">
+        {{-- ───────── دسته‌بندی‌های استفاده‌شده (سراسری، فقط نمایش) ───────── --}}
+        <div class="mt-3 flex items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-2.5 text-xs font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
             <span class="flex items-center gap-2">
                 <x-icon name="tag" class="size-4" />
-                مدیریت دسته‌بندی‌ها
+                دسته‌بندی‌های فروشگاه شما
             </span>
-            <span class="flex items-center gap-1 text-[11px] font-semibold text-primary-500 dark:text-primary-400">
+            <span class="text-[11px] font-semibold">
                 {{ \App\Support\Fmt::fa($categories->count()) }} دسته
-                <x-icon name="chevron-left" class="size-3.5" />
             </span>
-        </a>
+        </div>
 
         {{-- ───────── Variation attributes entry ───────── --}}
         <a href="{{ route('seller.shop.attributes') }}" wire:navigate

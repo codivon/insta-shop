@@ -3,7 +3,6 @@
 namespace App\Livewire\Customer;
 
 use App\Models\Customer;
-use App\Models\Order;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -28,7 +27,7 @@ class OrdersPage extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 6;
+        $this->perPage += 6;
     }
 
     // ── Computed data ────────────────────────────────────────────────
@@ -43,8 +42,8 @@ class OrdersPage extends Component
 
         $query = $customer->orders()->with(['items' => fn ($q) => $q->with('product.mainImage')]);
 
-        $total   = (clone $query)->count();
-        $rows    = $query->limit($this->perPage)->get();
+        $total = (clone $query)->count();
+        $rows = $query->limit($this->perPage)->get();
         $this->hasMore = $total > $this->perPage;
 
         return $rows;

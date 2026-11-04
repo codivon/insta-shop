@@ -157,6 +157,19 @@
                               class="scroll-slim w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold leading-6 outline-none transition placeholder:text-slate-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800"></textarea>
                     @error('address') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                 </div>
+
+                {{-- ── نمایش موجودی (با تأیید فروشنده) ── --}}
+                <label for="se-show-stock" class="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800">
+                    <span class="min-w-0">
+                        <span class="block text-[11px] font-bold text-slate-600 dark:text-slate-300">نمایش موجودی محصولات</span>
+                        <span class="mt-0.5 block text-[9.5px] leading-4 text-slate-400">با فعال‌سازی، تعداد موجودی روی صفحهٔ فروشگاه و صفحهٔ محصول نمایش داده می‌شود.</span>
+                    </span>
+                    <span class="relative shrink-0">
+                        <input id="se-show-stock" type="checkbox" wire:model="showStock" class="peer sr-only">
+                        <span class="block h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-primary-600 dark:bg-slate-600"></span>
+                        <span class="absolute right-0.5 top-0.5 size-5 rounded-full bg-white shadow transition peer-checked:-translate-x-5"></span>
+                    </span>
+                </label>
             </div>
 
         </div>

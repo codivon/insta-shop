@@ -57,7 +57,7 @@ class CheckMaintenanceMode
         }
 
         return response()->view('errors.maintenance503', [
-            'title'       => (string) Setting::get('developer.maintenance.title', 'در حال بروزرسانی هستیم!'),
+            'title' => (string) Setting::get('developer.maintenance.title', 'در حال بروزرسانی هستیم!'),
             'description' => (string) Setting::get('developer.maintenance.description', 'به‌زودی برمی‌گردیم. لطفاً چند دقیقه‌ی دیگر مراجعه کنید.'),
         ], 503)->header('Retry-After', 300);
     }

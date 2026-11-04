@@ -2,6 +2,7 @@
 
 namespace InstaShop\Installer\Http\Controllers;
 
+use App\Models\Admin;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -269,7 +270,7 @@ class InstallerController extends Controller
         $needsAdmin = false;
 
         try {
-            $needsAdmin = \App\Models\Admin::count() === 0;
+            $needsAdmin = Admin::count() === 0;
         } catch (Throwable) {
             // DB hiccup → default to the plain "enter app" CTA
         }

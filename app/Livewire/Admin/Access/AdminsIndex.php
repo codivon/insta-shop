@@ -3,12 +3,12 @@
 namespace App\Livewire\Admin\Access;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Admin;
 use App\Models\AdminRole;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — «لیست مدیران» (زیرمنوی مدیران).
@@ -22,8 +22,8 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 #[Title('لیست مدیران')]
 class AdminsIndex extends Component
 {
-    use NotifiesOnValidation;
     use GuardsPermissions;
+    use NotifiesOnValidation;
 
     protected static string $permission = 'admin.admins';
 
@@ -62,7 +62,7 @@ class AdminsIndex extends Component
     public function openEdit(int $id): void
     {
         $admin = Admin::query()->findOrFail($id);
-        $me    = auth('admin')->user();
+        $me = auth('admin')->user();
 
         if ($admin->isSuper() && ! $me?->isSuper()) {
             session()->flash('admin-admins-error', 'فقط مدیر اصلی می‌تواند حساب مدیر اصلی را ویرایش کند.');
@@ -71,9 +71,9 @@ class AdminsIndex extends Component
         }
 
         $this->resetForm();
-        $this->editingId    = $admin->id;
-        $this->adminName    = $admin->name;
-        $this->adminEmail   = $admin->email;
+        $this->editingId = $admin->id;
+        $this->adminName = $admin->name;
+        $this->adminEmail = $admin->email;
         $this->roleSelection = array_fill_keys(
             AdminRole::query()->pluck('id')->map(fn ($v) => (int) $v)->all(),
             false,
@@ -94,8 +94,8 @@ class AdminsIndex extends Component
 
     protected function resetForm(): void
     {
-        $this->adminName     = '';
-        $this->adminEmail    = '';
+        $this->adminName = '';
+        $this->adminEmail = '';
         $this->adminPassword = '';
         $this->roleSelection = array_fill_keys(
             AdminRole::query()->pluck('id')->map(fn ($v) => (int) $v)->all(),
@@ -109,7 +109,7 @@ class AdminsIndex extends Component
         $creating = $this->editingId === null;
 
         $rules = [
-            'adminName'  => ['required', 'min:2', 'max:80'],
+            'adminName' => ['required', 'min:2', 'max:80'],
             'adminEmail' => ['required', 'email', 'max:190', 'unique:admins,email'.($creating ? '' : ','.$this->editingId)],
             'adminPassword' => $creating
                 ? ['required', 'string', 'min:8', 'max:64']
@@ -117,11 +117,11 @@ class AdminsIndex extends Component
         ];
 
         $messages = [
-            'adminName.required'     => 'نام مدیر را وارد کنید.',
-            'adminEmail.required'    => 'ایمیل مدیر را وارد کنید.',
-            'adminEmail.unique'      => 'این ایمیل قبلاً ثبت شده است.',
+            'adminName.required' => 'نام مدیر را وارد کنید.',
+            'adminEmail.required' => 'ایمیل مدیر را وارد کنید.',
+            'adminEmail.unique' => 'این ایمیل قبلاً ثبت شده است.',
             'adminPassword.required' => 'رمز عبور (حداقل ۸ کاراکتر) را وارد کنید.',
-            'adminPassword.min'      => 'رمز عبور باید حداقل ۸ کاراکتر باشد.',
+            'adminPassword.min' => 'رمز عبور باید حداقل ۸ کاراکتر باشد.',
         ];
 
         $this->validateWithToast(fn () => $this->validate($rules, $messages));
@@ -142,7 +142,7 @@ class AdminsIndex extends Component
             return;
         }
 
-        $admin->name  = $this->adminName;
+        $admin->name = $this->adminName;
         $admin->email = $this->adminEmail;
 
         if ($this->adminPassword !== '') {
@@ -186,7 +186,7 @@ class AdminsIndex extends Component
         }
 
         $admin = Admin::query()->find($this->deleteId);
-        $me    = auth('admin')->user();
+        $me = auth('admin')->user();
 
         $this->deleteId = null;
 
@@ -225,9 +225,9 @@ class AdminsIndex extends Component
         $me = auth('admin')->user();
 
         return view('livewire.admin.access.admins-index', [
-            'admins'   => Admin::query()->with('roles')->orderBy('id')->get(),
+            'admins' => Admin::query()->with('roles')->orderBy('id')->get(),
             'allRoles' => AdminRole::query()->orderBy('id')->get(),
-            'me'       => $me,
+            'me' => $me,
         ])->title('لیست مدیران')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — مدیران — لیست مدیران']);
     }

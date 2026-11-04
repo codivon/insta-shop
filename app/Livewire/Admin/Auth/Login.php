@@ -53,7 +53,7 @@ class Login extends Component
 
         // the SUM is the secret; the two numbers are just for display
         session([
-            'admin_captcha_sum'       => $a + $b,
+            'admin_captcha_sum' => $a + $b,
             'admin_captcha_display_a' => $a,
             'admin_captcha_display_b' => $b,
         ]);
@@ -113,7 +113,7 @@ class Login extends Component
 
         try {
             if (SchemaReady::check('settings')) {
-                $max     = max(3, (int) Setting::get('security.login_max_attempts', 5));
+                $max = max(3, (int) Setting::get('security.login_max_attempts', 5));
                 $minutes = max(1, (int) Setting::get('security.login_lockout_minutes', 10));
             }
         } catch (\Throwable) {
@@ -132,7 +132,7 @@ class Login extends Component
         if (ImageCaptcha::available()) {
             $captchaOk = ImageCaptcha::verify($this->captcha);
         } else {
-            $expected  = (int) session('admin_captcha_sum', -1);
+            $expected = (int) session('admin_captcha_sum', -1);
             $captchaOk = $expected >= 0 && $this->captchaValue($this->captcha) === $expected;
         }
 
@@ -208,4 +208,3 @@ class Login extends Component
         ]);
     }
 }
-

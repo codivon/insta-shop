@@ -3,13 +3,13 @@
 namespace App\Livewire\Admin\Access;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
-use App\Support\AdminPermissions;
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\AdminRole;
+use App\Support\AdminPermissions;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — «نقش‌ها» (زیرمنوی مدیران).
@@ -23,8 +23,8 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 #[Title('نقش‌ها و دسترسی‌ها')]
 class RolesIndex extends Component
 {
-    use NotifiesOnValidation;
     use GuardsPermissions;
+    use NotifiesOnValidation;
 
     protected static string $permission = 'admin.access.roles';
 
@@ -53,8 +53,8 @@ class RolesIndex extends Component
     public function createRole(): void
     {
         $this->resetForm();
-        $this->editing   = false;
-        $this->roleId    = null;
+        $this->editing = false;
+        $this->roleId = null;
         $this->modalOpen = true;
     }
 
@@ -62,9 +62,9 @@ class RolesIndex extends Component
     {
         $role = AdminRole::query()->findOrFail($id);
 
-        $this->roleId           = $role->id;
-        $this->roleName         = $role->name;
-        $this->roleDescription  = (string) $role->description;
+        $this->roleId = $role->id;
+        $this->roleName = $role->name;
+        $this->roleDescription = (string) $role->description;
         $this->permissionSelection = array_fill_keys(
             array_keys(AdminPermissions::all()),
             false,
@@ -74,7 +74,7 @@ class RolesIndex extends Component
             $this->permissionSelection[$slug] = true;
         }
 
-        $this->editing   = true;
+        $this->editing = true;
         $this->modalOpen = true;
     }
 
@@ -87,7 +87,7 @@ class RolesIndex extends Component
     public function saveRole(): void
     {
         $this->validateWithToast(fn () => $this->validate([
-            'roleName'        => ['required', 'min:2', 'max:80'],
+            'roleName' => ['required', 'min:2', 'max:80'],
             'roleDescription' => ['nullable', 'max:255'],
         ], [
             'roleName.required' => 'نام نقش را وارد کنید.',
@@ -106,7 +106,7 @@ class RolesIndex extends Component
             ? AdminRole::query()->findOrFail($this->roleId)
             : new AdminRole;
 
-        $role->name        = $this->roleName;
+        $role->name = $this->roleName;
         $role->description = $this->roleDescription ?: null;
         $role->permissions = $permissions;
 
@@ -145,8 +145,8 @@ class RolesIndex extends Component
 
     protected function resetForm(): void
     {
-        $this->roleId          = null;
-        $this->roleName        = '';
+        $this->roleId = null;
+        $this->roleName = '';
         $this->roleDescription = '';
         $this->resetSelection();
         $this->resetErrorBag();
@@ -162,7 +162,7 @@ class RolesIndex extends Component
         $base = Str::slug($name) ?: 'role';
 
         $slug = $base;
-        $i    = 1;
+        $i = 1;
 
         while (AdminRole::query()->where('slug', $slug)->exists()) {
             $slug = $base.'-'.(++$i);
@@ -197,7 +197,7 @@ class RolesIndex extends Component
     public function render()
     {
         return view('livewire.admin.access.roles-index', [
-            'roles'    => AdminRole::query()->withCount('admins')->orderBy('id')->get(),
+            'roles' => AdminRole::query()->withCount('admins')->orderBy('id')->get(),
         ])->title('نقش‌ها و دسترسی‌ها')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — مدیران — نقش‌ها']);
     }

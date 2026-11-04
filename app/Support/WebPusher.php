@@ -4,11 +4,10 @@ namespace App\Support;
 
 use App\Models\PushSubscription;
 use App\Models\Setting;
-use Illuminate\Support\Facades\Http;
 use Minishlink\WebPush\MessageSentReport;
 use Minishlink\WebPush\Subscription;
-use Minishlink\WebPush\WebPush;
 use Minishlink\WebPush\VAPID;
+use Minishlink\WebPush\WebPush;
 use Throwable;
 
 /**
@@ -33,14 +32,14 @@ final class WebPusher
      */
     public static function keys(): array
     {
-        $public  = (string) Setting::get('notifications.vapid_public', '');
+        $public = (string) Setting::get('notifications.vapid_public', '');
         $private = (string) Setting::get('notifications.vapid_private', '');
 
         if ($public === '' || $private === '') {
             $generated = VAPID::createVapidKeys();
 
             Setting::setMany([
-                'notifications.vapid_public'  => ['value' => $generated['publicKey'], 'type' => 'text'],
+                'notifications.vapid_public' => ['value' => $generated['publicKey'], 'type' => 'text'],
                 'notifications.vapid_private' => ['value' => $generated['privateKey'], 'type' => 'text'],
             ]);
 
@@ -56,7 +55,7 @@ final class WebPusher
         $generated = VAPID::createVapidKeys();
 
         Setting::setMany([
-            'notifications.vapid_public'  => ['value' => $generated['publicKey'], 'type' => 'text'],
+            'notifications.vapid_public' => ['value' => $generated['publicKey'], 'type' => 'text'],
             'notifications.vapid_private' => ['value' => $generated['privateKey'], 'type' => 'text'],
         ]);
     }
@@ -74,8 +73,8 @@ final class WebPusher
     /**
      * Send a push to every subscribed device of ONE panel audience.
      *
-     * @param  string|null $audience  'admin' | 'seller' | null (legacy = every device)
-     * @param  int|null    $sellerId  when audience='seller': only this seller's devices
+     * @param  string|null  $audience  'admin' | 'seller' | null (legacy = every device)
+     * @param  int|null  $sellerId  when audience='seller': only this seller's devices
      * @return int number of deliveries attempted successfully
      */
     public static function broadcast(string $title, string $body = '', ?string $url = null, ?string $audience = null, ?int $sellerId = null): int
@@ -99,18 +98,18 @@ final class WebPusher
             $webPush = new WebPush([
                 'VAPID' => [
                     'subject' => 'mailto:support@opashop.ir',
-                    'publicKey'   => $keys['publicKey'],
-                    'privateKey'  => $keys['privateKey'],
+                    'publicKey' => $keys['publicKey'],
+                    'privateKey' => $keys['privateKey'],
                 ],
-                'TTL'         => 3600,
-                'urgency'     => 'high',
-                'batchSize'   => 50,
+                'TTL' => 3600,
+                'urgency' => 'high',
+                'batchSize' => 50,
             ]);
 
             $payload = json_encode([
                 'title' => $title,
-                'body'  => $body,
-                'url'   => $url,
+                'body' => $body,
+                'url' => $url,
             ], JSON_UNESCAPED_UNICODE) ?: '{}';
 
             $sent = 0;
@@ -120,8 +119,8 @@ final class WebPusher
                 try {
                     $webPush->queueNotification(
                         Subscription::create([
-                            'endpoint'      => $sub->endpoint,
-                            'keys'          => ['p256dh' => $sub->p256dh, 'auth' => $sub->auth],
+                            'endpoint' => $sub->endpoint,
+                            'keys' => ['p256dh' => $sub->p256dh, 'auth' => $sub->auth],
                             'clientEncoding' => 'aes128gcm',
                         ]),
                         $payload,

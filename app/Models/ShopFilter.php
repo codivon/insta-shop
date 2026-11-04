@@ -15,7 +15,7 @@ class ShopFilter extends Model
     {
         return [
             'published' => 'boolean',
-            'sort'      => 'integer',
+            'sort' => 'integer',
         ];
     }
 

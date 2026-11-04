@@ -58,12 +58,12 @@ class SmsTemplateSeeder extends Seeder
             SmsTemplate::query()->firstOrCreate(
                 ['key' => $t['key']],
                 [
-                    'title'       => $t['title'],
-                    'group'       => $t['group'],
-                    'body'        => $t['body'],
-                    'variables'   => $t['variables'],
+                    'title' => $t['title'],
+                    'group' => $t['group'],
+                    'body' => $t['body'],
+                    'variables' => $t['variables'],
                     'sample_data' => $t['sample'] + ['app_name' => $app],
-                    'enabled'     => true,
+                    'enabled' => true,
                 ],
             );
         }

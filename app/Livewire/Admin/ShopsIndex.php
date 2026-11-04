@@ -4,13 +4,13 @@ namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Livewire\Concerns\NotifiesOnValidation;
-
 use App\Models\Seller;
 use App\Models\Shop;
 use App\Models\WalletTransaction;
 use App\Support\ActivityLogger;
 use App\Support\Fmt;
 use App\Support\Phone;
+use App\Support\SellerNotifier;
 use App\Support\Wallet\WalletService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -29,6 +29,7 @@ class ShopsIndex extends Component
     use NotifiesOnValidation;
 
     protected static string $permission = 'admin.shops';
+
     public string $search = '';
 
     #[Url]
@@ -67,7 +68,7 @@ class ShopsIndex extends Component
         $shop->forceFill(['status' => $shop->status === 'active' ? 'paused' : 'active'])->save();
 
         // seller notification: «وضعیت فروشگاه»
-        \App\Support\SellerNotifier::notify(
+        SellerNotifier::notify(
             $shop->seller_id,
             'shop.status',
             $shop->status === 'active' ? 'فروشگاه شما فعال شد ✅' : 'فروشگاه شما موقتاً متوقف شد ⛔',
@@ -148,19 +149,19 @@ class ShopsIndex extends Component
             return;
         }
 
-        $this->editingId     = $shop->id;
-        $this->shopName      = (string) $shop->name;
+        $this->editingId = $shop->id;
+        $this->shopName = (string) $shop->name;
         $this->shopInstagram = (string) ($shop->instagram_username ?? '');
-        $this->shopPhone     = (string) ($shop->phone ?? '');
-        $this->shopAddress   = (string) ($shop->address ?? '');
-        $this->shopAbout     = (string) ($shop->about ?? '');
-        $this->shopStatus    = $shop->status === 'paused' ? 'paused' : 'active';
-        $this->editOpen      = true;
+        $this->shopPhone = (string) ($shop->phone ?? '');
+        $this->shopAddress = (string) ($shop->address ?? '');
+        $this->shopAbout = (string) ($shop->about ?? '');
+        $this->shopStatus = $shop->status === 'paused' ? 'paused' : 'active';
+        $this->editOpen = true;
     }
 
     public function closeShopEdit(): void
     {
-        $this->editOpen  = false;
+        $this->editOpen = false;
         $this->editingId = null;
     }
 
@@ -171,9 +172,9 @@ class ShopsIndex extends Component
         }
 
         $this->validateWithToast(fn () => $this->validate([
-            'shopName'      => ['required', 'string', 'min:2', 'max:120'],
+            'shopName' => ['required', 'string', 'min:2', 'max:120'],
             'shopInstagram' => ['nullable', 'string', 'max:60'],
-            'shopPhone'     => ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail) {
+            'shopPhone' => ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail) {
                 if ($value === '' || $value === null) {
                     return;
                 }
@@ -184,12 +185,12 @@ class ShopsIndex extends Component
                     $fail('شماره تماس را صحیح وارد کنید (مثال: ۰۹۱۲۳۴۵۶۷۸۹).');
                 }
             }],
-            'shopAddress'   => ['nullable', 'string', 'max:300'],
-            'shopAbout'     => ['nullable', 'string', 'max:2000'],
-            'shopStatus'    => ['required', 'in:active,paused'],
+            'shopAddress' => ['nullable', 'string', 'max:300'],
+            'shopAbout' => ['nullable', 'string', 'max:2000'],
+            'shopStatus' => ['required', 'in:active,paused'],
         ], [
             'shopName.required' => 'نام فروشگاه را وارد کنید.',
-            'shopName.min'      => 'نام فروشگاه حداقل ۲ کاراکتر است.',
+            'shopName.min' => 'نام فروشگاه حداقل ۲ کاراکتر است.',
         ]), 'ذخیره فروشگاه ناموفق بود');
 
         $shop = Shop::query()->find($this->editingId);
@@ -203,12 +204,12 @@ class ShopsIndex extends Component
         $before = $shop->only(['name', 'instagram_username', 'phone', 'address', 'about', 'status']);
 
         $shop->update([
-            'name'               => trim($this->shopName),
+            'name' => trim($this->shopName),
             'instagram_username' => trim($this->shopInstagram) !== '' ? ltrim(trim($this->shopInstagram), '@') : null,
-            'phone'              => $this->shopPhone !== '' ? Phone::normalize($this->shopPhone) : null,
-            'address'            => trim($this->shopAddress) ?: null,
-            'about'              => trim($this->shopAbout) ?: null,
-            'status'             => $this->shopStatus,
+            'phone' => $this->shopPhone !== '' ? Phone::normalize($this->shopPhone) : null,
+            'address' => trim($this->shopAddress) ?: null,
+            'about' => trim($this->shopAbout) ?: null,
+            'status' => $this->shopStatus,
         ]);
 
         ActivityLogger::log(
@@ -228,8 +229,8 @@ class ShopsIndex extends Component
     {
         $this->resetErrorBag();
         $this->createSellerId = 0;
-        $this->createName     = '';
-        $this->createOpen     = true;
+        $this->createName = '';
+        $this->createOpen = true;
     }
 
     public function closeShopCreate(): void
@@ -250,11 +251,11 @@ class ShopsIndex extends Component
     {
         $this->validateWithToast(fn () => $this->validate([
             'createSellerId' => ['required', 'integer', 'exists:sellers,id'],
-            'createName'     => ['required', 'string', 'min:2', 'max:120'],
+            'createName' => ['required', 'string', 'min:2', 'max:120'],
         ], [
             'createSellerId.required' => 'فروشنده را انتخاب کنید.',
-            'createSellerId.exists'   => 'فروشندهٔ انتخاب‌شده یافت نشد.',
-            'createName.required'     => 'نام فروشگاه را وارد کنید.',
+            'createSellerId.exists' => 'فروشندهٔ انتخاب‌شده یافت نشد.',
+            'createName.required' => 'نام فروشگاه را وارد کنید.',
         ]), 'ایجاد فروشگاه ناموفق بود');
 
         $seller = Seller::query()->find($this->createSellerId);
@@ -265,14 +266,14 @@ class ShopsIndex extends Component
 
         $shop = Shop::query()->create([
             'seller_id' => $seller->id,
-            'name'      => trim($this->createName),
+            'name' => trim($this->createName),
             'instagram_username' => $seller->instagram_username,
-            'status'    => 'active',
+            'status' => 'active',
         ]);
 
         ActivityLogger::log('shop.created', 'فروشگاه «'.$shop->name.'» توسط مدیر ایجاد شد', subject: $shop, after: ['seller_id' => $seller->id]);
 
-        \App\Support\SellerNotifier::notify(
+        SellerNotifier::notify(
             $seller->id,
             'shop.status',
             'فروشگاه شما ساخته شد ✅',
@@ -311,7 +312,7 @@ class ShopsIndex extends Component
         }
 
         $name = $shop->name;
-        $id   = $shop->id;
+        $id = $shop->id;
 
         // children cascade in the DB (products, categories, attributes,
         // carriers, filters…); order history keeps its shop_id via nullOnDelete

@@ -2,6 +2,7 @@
 
 namespace App\Support\Sms\Drivers;
 
+use App\Models\Setting;
 use App\Support\Phone;
 use App\Support\Sms\Contracts\SmsDriver;
 use App\Support\Sms\SmsMessage;
@@ -29,17 +30,17 @@ class FarazIPPanelDriver implements SmsDriver
     public function settingsFields(): array
     {
         return [
-            'apikey'      => ['کلید API (apikey)', true],
-            'sender'      => ['خط ارسال (شماره خط)', true],
+            'apikey' => ['کلید API (apikey)', true],
+            'sender' => ['خط ارسال (شماره خط)', true],
             'pattern_otp' => ['کد الگوی OTP', true],
         ];
     }
 
     public function send(SmsMessage $message): SmsResult
     {
-        $apikey  = (string) \App\Models\Setting::get('sms.ippanel.apikey', '');
-        $sender  = (string) \App\Models\Setting::get('sms.ippanel.sender', '');
-        $pattern = $message->template ?: (string) \App\Models\Setting::get('sms.ippanel.pattern_otp', '');
+        $apikey = (string) Setting::get('sms.ippanel.apikey', '');
+        $sender = (string) Setting::get('sms.ippanel.sender', '');
+        $pattern = $message->template ?: (string) Setting::get('sms.ippanel.pattern_otp', '');
 
         if ($apikey === '' || $pattern === '') {
             return SmsResult::failure('تنظیمات IPPanel ناقص است (apikey یا pattern_otp).');
@@ -48,10 +49,10 @@ class FarazIPPanelDriver implements SmsDriver
         try {
             $response = Http::timeout(15)->withHeaders(['apikey' => $apikey])
                 ->post('https://api2.ippanel.com/api/v1/sms/pattern/normal/send', [
-                    'code'      => $pattern,
-                    'sender'    => $sender,
+                    'code' => $pattern,
+                    'sender' => $sender,
                     'recipient' => Phone::toLocal($message->to),
-                    'variable'  => ['code' => (string) ($message->data['code'] ?? '')],
+                    'variable' => ['code' => (string) ($message->data['code'] ?? '')],
                 ]);
 
             $json = $response->json() ?? [];

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Carrier;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -73,8 +74,8 @@ return new class extends Migration
             $shippingCost = 0;
             foreach ((array) json_decode((string) $order->shipments, true) as $shipment) {
                 if ((int) ($shipment['shop_id'] ?? 0) === (int) $share->shop_id) {
-                    $carrier = \App\Models\Carrier::query()->find((int) ($shipment['carrier_id'] ?? 0));
-                    $cost    = max(0, (int) ($shipment['cost'] ?? 0));
+                    $carrier = Carrier::query()->find((int) ($shipment['carrier_id'] ?? 0));
+                    $cost = max(0, (int) ($shipment['cost'] ?? 0));
                     $shippingCost = ($carrier && $carrier->isPayOnDelivery()) ? 0 : $cost;
 
                     break;
@@ -89,21 +90,21 @@ return new class extends Migration
             $canceled = $order->status === 'canceled';
 
             DB::table('order_shipments')->insert([
-                'order_id'           => $order->id,
-                'shop_id'            => $share->shop_id,
-                'shipment_status'    => $canceled ? 'none' : (string) $order->shipment_status,
-                'tracking_code'      => $canceled ? null : $order->tracking_code,
+                'order_id' => $order->id,
+                'shop_id' => $share->shop_id,
+                'shipment_status' => $canceled ? 'none' : (string) $order->shipment_status,
+                'tracking_code' => $canceled ? null : $order->tracking_code,
                 'shipment_status_at' => $canceled ? null : $order->shipment_status_at,
-                'canceled_at'        => $canceled ? $order->updated_at : null,
-                'cancel_reason'      => $canceled ? 'سفارش لغو شد' : '',
-                'canceled_by'        => $canceled ? 'admin' : null,
-                'refund_amount'      => 0,
-                'items_total'        => max(0, (int) $share->items_total),
-                'shipping_cost'      => $shippingCost,
-                'discount_amount'    => $discountShare,
-                'total'              => max(0, (int) $share->items_total + $shippingCost - $discountShare),
-                'created_at'         => $order->created_at,
-                'updated_at'         => $order->updated_at,
+                'canceled_at' => $canceled ? $order->updated_at : null,
+                'cancel_reason' => $canceled ? 'سفارش لغو شد' : '',
+                'canceled_by' => $canceled ? 'admin' : null,
+                'refund_amount' => 0,
+                'items_total' => max(0, (int) $share->items_total),
+                'shipping_cost' => $shippingCost,
+                'discount_amount' => $discountShare,
+                'total' => max(0, (int) $share->items_total + $shippingCost - $discountShare),
+                'created_at' => $order->created_at,
+                'updated_at' => $order->updated_at,
             ]);
         }
     }

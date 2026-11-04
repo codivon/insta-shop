@@ -2,6 +2,7 @@
 
 namespace App\Support\Sms\Drivers;
 
+use App\Models\Setting;
 use App\Support\Phone;
 use App\Support\Sms\Contracts\SmsDriver;
 use App\Support\Sms\SmsMessage;
@@ -29,15 +30,15 @@ class KavenegarDriver implements SmsDriver
     public function settingsFields(): array
     {
         return [
-            'api_key'    => ['کلید API کاوه‌نگار', true],
+            'api_key' => ['کلید API کاوه‌نگار', true],
             'template_otp' => ['نام قالب OTP در کاوه‌نگار', true],
         ];
     }
 
     public function send(SmsMessage $message): SmsResult
     {
-        $apiKey   = (string) \App\Models\Setting::get('sms.kavenegar.api_key', '');
-        $template = $message->template ?: (string) \App\Models\Setting::get('sms.kavenegar.template_otp', '');
+        $apiKey = (string) Setting::get('sms.kavenegar.api_key', '');
+        $template = $message->template ?: (string) Setting::get('sms.kavenegar.template_otp', '');
 
         if ($apiKey === '' || $template === '') {
             return SmsResult::failure('تنظیمات کاوه‌نگار ناقص است (api_key یا template_otp).');
@@ -48,7 +49,7 @@ class KavenegarDriver implements SmsDriver
                 "https://api.kavenegar.com/v1/{$apiKey}/verify/lookup.json",
                 [
                     'receptor' => Phone::toLocal($message->to),
-                    'token'    => (string) ($message->data['code'] ?? ''),
+                    'token' => (string) ($message->data['code'] ?? ''),
                     'template' => $template,
                 ],
             );

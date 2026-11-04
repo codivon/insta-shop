@@ -14,7 +14,7 @@ class OrderItem extends Model
         return [
             'variant_id' => 'integer',
             'unit_price' => 'integer',
-            'quantity'   => 'integer',
+            'quantity' => 'integer',
         ];
     }
 

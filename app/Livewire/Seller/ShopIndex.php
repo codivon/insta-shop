@@ -2,11 +2,11 @@
 
 namespace App\Livewire\Seller;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Shop;
-use App\Models\ShopCategory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -64,7 +64,7 @@ class ShopIndex extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 8;
+        $this->perPage += 8;
     }
 
     public function togglePublish(int $productId): void
@@ -95,13 +95,13 @@ class ShopIndex extends Component
 
     public function resetFilters(): void
     {
-        $this->search        = '';
+        $this->search = '';
         $this->categoryFilter = 0;
-        $this->statusFilter  = 'all';
-        $this->stockFilter   = 'all';
+        $this->statusFilter = 'all';
+        $this->stockFilter = 'all';
         $this->specialFilter = 'all';
-        $this->perPage       = 8;
-        $this->hasMore       = true;
+        $this->perPage = 8;
+        $this->hasMore = true;
     }
 
     // ── Computed data ────────────────────────────────────────────────
@@ -120,7 +120,7 @@ class ShopIndex extends Component
             return null; // pending shops 404 publicly → hide the button
         }
 
-        $shop   = $this->shop();
+        $shop = $this->shop();
         $handle = $shop->instagram_username ?: $seller->instagram_username;
 
         return $handle ? route('shop.storefront', ['instagram' => $handle]) : null;
@@ -131,22 +131,24 @@ class ShopIndex extends Component
         $base = Product::query()->where('shop_id', $this->shop()->id);
 
         return [
-            'total'     => (clone $base)->count(),
+            'total' => (clone $base)->count(),
             'published' => (clone $base)->where('status', 'published')->count(),
             'outOfStock' => (clone $base)->where('stock', 0)->count(),
-            'categories' => ShopCategory::query()->where('shop_id', $this->shop()->id)->count(),
-            'special'   => (clone $base)->specialActive()->count(),
+            'special' => (clone $base)->specialActive()->count(),
         ];
     }
 
+    /** Global categories present among this shop's published products (filter chips). */
     public function getCategoriesProperty(): Collection
     {
-        return ShopCategory::query()
-            ->where('shop_id', $this->shop()->id)
-            ->withCount('products')
-            ->orderBy('sort')
-            ->orderBy('id')
-            ->get();
+        return $this->shop()
+            ->usedCategories()
+            ->get(['categories.id', 'categories.name'])
+            ->map(fn ($cat) => (object) [
+                'id' => (int) $cat->id,
+                'name' => $cat->name,
+                'products_count' => (int) $cat->shop_products_count,
+            ]);
     }
 
     public function getProductsProperty(): Collection
@@ -167,11 +169,11 @@ class ShopIndex extends Component
     public function render()
     {
         return view('livewire.seller.shop-index', [
-            'shop'          => $this->shop,
-            'stats'         => $this->stats,
+            'shop' => $this->shop,
+            'stats' => $this->stats,
             'storefrontUrl' => $this->storefrontUrl,
-            'categories'    => $this->categories,
-            'products'      => $this->products,
+            'categories' => $this->categories,
+            'products' => $this->products,
         ])->title('فروشگاه من');
     }
 
@@ -186,7 +188,7 @@ class ShopIndex extends Component
         return $product;
     }
 
-    private function filteredQuery(): \Illuminate\Database\Eloquent\Builder
+    private function filteredQuery(): Builder
     {
         $query = Product::query()->where('shop_id', $this->shop()->id);
 
@@ -195,7 +197,7 @@ class ShopIndex extends Component
         }
 
         if ($this->categoryFilter !== 0) {
-            $query->where('shop_category_id', $this->categoryFilter);
+            $query->whereIn('category_id', Category::subtreeIds($this->categoryFilter));
         }
 
         if ($this->statusFilter !== 'all') {

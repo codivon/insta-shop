@@ -32,7 +32,7 @@ class LogDriver implements SmsDriver
 
     public function send(SmsMessage $message): SmsResult
     {
-        Log::info("SMS[log] to=".Phone::toLocal($message->to)." template={$message->template} body=".$message->body());
+        Log::info('SMS[log] to='.Phone::toLocal($message->to)." template={$message->template} body=".$message->body());
 
         return SmsResult::success(providerMessageId: 'log-'.uniqid());
     }

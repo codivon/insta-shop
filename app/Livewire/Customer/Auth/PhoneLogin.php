@@ -157,7 +157,7 @@ class PhoneLogin extends Component
         // (usually «ادامه و پرداخت» / checkout) instead of the home feed.
         // The property is client-tamperable → only same-origin URLs pass.
         $fallback = route('shop.home');
-        $intent   = (string) ($this->intent ?? '');
+        $intent = (string) ($this->intent ?? '');
 
         $this->redirect(
             str_starts_with($intent, url('/').'/') ? $intent : $fallback,

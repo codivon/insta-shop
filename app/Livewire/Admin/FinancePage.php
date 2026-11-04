@@ -71,14 +71,14 @@ class FinancePage extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 25;
+        $this->perPage += 25;
     }
 
     /** Resolved [from, to] Carbon bounds from the Jalali inputs (null = open). */
     protected function range(): array
     {
         $from = JDate::parse($this->fromDate)?->startOfDay();
-        $to   = JDate::parse($this->toDate)?->endOfDay();
+        $to = JDate::parse($this->toDate)?->endOfDay();
 
         if ($from && $to && $from->gt($to)) {
             [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
@@ -107,23 +107,23 @@ class FinancePage extends Component
 
         $commissionRows = $orders->flatMap(fn ($o) => collect($o->commissions ?? []));
 
-        $settled   = (int) WalletTransaction::query()->where('type', 'withdrawal')->where('status', 'done')->sum('amount');
-        $pendingW  = WalletTransaction::query()->where('type', 'withdrawal')->where('status', 'pending');
-        $pendingW  = (clone $pendingW);
+        $settled = (int) WalletTransaction::query()->where('type', 'withdrawal')->where('status', 'done')->sum('amount');
+        $pendingW = WalletTransaction::query()->where('type', 'withdrawal')->where('status', 'pending');
+        $pendingW = (clone $pendingW);
         $pendingSum = (int) $pendingW->sum('amount');
         $pendingCount = (int) $pendingW->count();
-        $walletFloat  = (int) Wallet::query()->sum('balance');
+        $walletFloat = (int) Wallet::query()->sum('balance');
 
         return [
-            'paid_count'    => $orders->count(),
-            'paid_total'    => (int) $orders->sum('total_amount'),
-            'goods_total'   => (int) $commissionRows->sum('items_total'),
-            'commission'    => (int) $commissionRows->sum('commission_amount'),
-            'payout'        => (int) $commissionRows->sum('payout'),
-            'settled'       => $settled,
-            'pending_sum'   => $pendingSum,
+            'paid_count' => $orders->count(),
+            'paid_total' => (int) $orders->sum('total_amount'),
+            'goods_total' => (int) $commissionRows->sum('items_total'),
+            'commission' => (int) $commissionRows->sum('commission_amount'),
+            'payout' => (int) $commissionRows->sum('payout'),
+            'settled' => $settled,
+            'pending_sum' => $pendingSum,
             'pending_count' => $pendingCount,
-            'wallet_float'  => $walletFloat,
+            'wallet_float' => $walletFloat,
         ];
     }
 
@@ -150,19 +150,19 @@ class FinancePage extends Component
 
         // build the LAST 6 Jalali month buckets (oldest → newest)
         $buckets = [];
-        $cursor  = Carbon::today()->subMonths(5)->startOfDay();
+        $cursor = Carbon::today()->subMonths(5)->startOfDay();
 
         for ($i = 0; $i < 6; $i++) {
             $key = JDate::monthKey($cursor);
 
             $buckets[$key] = [
-                'key'        => $key,
-                'label'      => JDate::monthName((int) explode('-', $key)[1]).' '.Fmt::fa(explode('-', $key)[0]),
-                'orders'     => 0,
-                'paid'       => 0,
-                'goods'      => 0,
+                'key' => $key,
+                'label' => JDate::monthName((int) explode('-', $key)[1]).' '.Fmt::fa(explode('-', $key)[0]),
+                'orders' => 0,
+                'paid' => 0,
+                'goods' => 0,
                 'commission' => 0,
-                'settled'    => 0,
+                'settled' => 0,
             ];
 
             $cursor->addMonth();
@@ -179,7 +179,7 @@ class FinancePage extends Component
             $buckets[$key]['paid'] += (int) $order->total_amount;
 
             foreach (collect($order->commissions ?? []) as $row) {
-                $buckets[$key]['goods']      += (int) ($row['items_total'] ?? 0);
+                $buckets[$key]['goods'] += (int) ($row['items_total'] ?? 0);
                 $buckets[$key]['commission'] += (int) ($row['commission_amount'] ?? 0);
             }
         }
@@ -221,7 +221,7 @@ class FinancePage extends Component
 
     public function getLedgerProperty(): Collection
     {
-        $rows  = $this->ledgerQuery()->limit($this->perPage)->get();
+        $rows = $this->ledgerQuery()->limit($this->perPage)->get();
         $total = (clone $this->ledgerQuery())->count();
 
         $this->hasMore = $total > $this->perPage;
@@ -265,21 +265,21 @@ class FinancePage extends Component
 
     public function resetFilters(): void
     {
-        $this->search       = '';
-        $this->typeFilter   = 'all';
+        $this->search = '';
+        $this->typeFilter = 'all';
         $this->statusFilter = 'all';
-        $this->fromDate     = '';
-        $this->toDate       = '';
-        $this->perPage      = 25;
-        $this->hasMore      = true;
+        $this->fromDate = '';
+        $this->toDate = '';
+        $this->perPage = 25;
+        $this->hasMore = true;
     }
 
     public function render()
     {
         return view('livewire.admin.finance-page', [
-            'metrics'     => $this->metrics,
-            'monthly'     => $this->monthly,
-            'ledger'      => $this->ledger,
+            'metrics' => $this->metrics,
+            'monthly' => $this->monthly,
+            'ledger' => $this->ledger,
             'ledgerTotal' => $this->ledgerTotal,
         ])->title('گزارش مالی')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — مالی و حسابداری — گزارش مالی']);

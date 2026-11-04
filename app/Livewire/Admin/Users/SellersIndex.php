@@ -4,7 +4,6 @@ namespace App\Livewire\Admin\Users;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Livewire\Concerns\NotifiesOnValidation;
-
 use App\Models\Seller;
 use App\Models\Shop;
 use App\Support\ActivityLogger;
@@ -12,6 +11,7 @@ use App\Support\AdminNotifier;
 use App\Support\Fmt;
 use App\Support\Phone;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -29,6 +29,7 @@ class SellersIndex extends Component
     use NotifiesOnValidation;
 
     protected static string $permission = 'admin.users.sellers';
+
     public string $search = '';
 
     #[Url]
@@ -90,7 +91,7 @@ class SellersIndex extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 12;
+        $this->perPage += 12;
     }
 
     // ── Actions ──────────────────────────────────────────────────────
@@ -153,13 +154,13 @@ class SellersIndex extends Component
             return;
         }
 
-        $this->editId          = $seller->id;
-        $this->editFullName    = (string) ($seller->full_name ?? '');
-        $this->editInstagram   = (string) ($seller->instagram_username ?? '');
-        $this->editPhone       = Phone::toLocal($seller->phone);
-        $this->editStatus      = (string) $seller->status;
+        $this->editId = $seller->id;
+        $this->editFullName = (string) ($seller->full_name ?? '');
+        $this->editInstagram = (string) ($seller->instagram_username ?? '');
+        $this->editPhone = Phone::toLocal($seller->phone);
+        $this->editStatus = (string) $seller->status;
         $this->editCommissionType = $seller->hasCommissionOverride() ? (string) $seller->commission_type : '';
-        $this->editCommissionValue  = $seller->hasCommissionOverride() ? (string) $seller->commission_value : '';
+        $this->editCommissionValue = $seller->hasCommissionOverride() ? (string) $seller->commission_value : '';
 
         $this->resetErrorBag();
         $this->showEditModal = true;
@@ -196,18 +197,18 @@ class SellersIndex extends Component
         $before = $seller->only(['full_name', 'instagram_username', 'phone', 'status', 'commission_type', 'commission_value']);
 
         $seller->fill([
-            'full_name'         => trim($this->editFullName) !== '' ? trim($this->editFullName) : null,
+            'full_name' => trim($this->editFullName) !== '' ? trim($this->editFullName) : null,
             'instagram_username' => trim($this->editInstagram) !== '' ? trim($this->editInstagram) : null,
-            'phone'             => Phone::normalize($this->editPhone),
-            'status'            => $this->editStatus,
+            'phone' => Phone::normalize($this->editPhone),
+            'status' => $this->editStatus,
         ]);
 
         // commission override: empty type = follow the global default
         if ($this->editCommissionType === '' || trim($this->editCommissionValue) === '') {
-            $seller->commission_type  = null;
+            $seller->commission_type = null;
             $seller->commission_value = null;
         } else {
-            $seller->commission_type  = $this->editCommissionType;
+            $seller->commission_type = $this->editCommissionType;
             $seller->commission_value = (int) $this->editCommissionValue;
         }
 
@@ -234,18 +235,18 @@ class SellersIndex extends Component
     private function editRules(): array
     {
         return [
-            'editFullName'  => ['nullable', 'string', 'min:3', 'max:80'],
+            'editFullName' => ['nullable', 'string', 'min:3', 'max:80'],
             'editInstagram' => ['nullable', 'string', 'min:2', 'max:60', 'regex:/^[A-Za-z0-9._]+$/',
-                \Illuminate\Validation\Rule::unique('sellers', 'instagram_username')->ignore($this->editId)],
-            'editPhone'     => ['required', 'string', 'min:10', 'max:14',
-                \Illuminate\Validation\Rule::unique('sellers', 'phone')->ignore($this->editId)],
-            'editStatus'    => ['required', 'in:pending,approved,suspended'],
-            'editCommissionType'  => ['required', 'in:,percent,fixed'],
+                Rule::unique('sellers', 'instagram_username')->ignore($this->editId)],
+            'editPhone' => ['required', 'string', 'min:10', 'max:14',
+                Rule::unique('sellers', 'phone')->ignore($this->editId)],
+            'editStatus' => ['required', 'in:pending,approved,suspended'],
+            'editCommissionType' => ['required', 'in:,percent,fixed'],
             'editCommissionValue' => [
                 'nullable',
                 'integer',
                 'min:0',
-                \Illuminate\Validation\Rule::excludeIf(fn () => $this->editCommissionType === ''),
+                Rule::excludeIf(fn () => $this->editCommissionType === ''),
                 $this->editCommissionType === 'percent' ? 'max:100' : 'max:999999999999',
             ],
         ];
@@ -254,15 +255,15 @@ class SellersIndex extends Component
     private function editMessages(): array
     {
         return [
-            'editFullName.min'   => 'نام باید حداقل ۳ حرف باشد.',
+            'editFullName.min' => 'نام باید حداقل ۳ حرف باشد.',
             'editInstagram.regex' => 'شناسه اینستاگرام فقط حروف، عدد، نقطه و زیرخط می‌تواند باشد.',
             'editInstagram.unique' => 'این شناسه اینستاگرام برای فروشنده دیگری ثبت شده است.',
             'editPhone.required' => 'شماره موبایل را وارد کنید.',
-            'editPhone.min'      => 'شماره موبایل معتبر نیست.',
-            'editPhone.unique'   => 'این شماره برای فروشنده دیگری ثبت شده است.',
+            'editPhone.min' => 'شماره موبایل معتبر نیست.',
+            'editPhone.unique' => 'این شماره برای فروشنده دیگری ثبت شده است.',
             'editCommissionValue.integer' => 'مقدار کمیسیون باید عدد باشد.',
-            'editCommissionValue.min'     => 'کمیسیون نمی‌تواند منفی باشد.',
-            'editCommissionValue.max'     => 'درصد کمیسیون حداکثر ۱۰۰ است.',
+            'editCommissionValue.min' => 'کمیسیون نمی‌تواند منفی باشد.',
+            'editCommissionValue.max' => 'درصد کمیسیون حداکثر ۱۰۰ است.',
         ];
     }
 
@@ -270,7 +271,7 @@ class SellersIndex extends Component
 
     public function askDelete(int $sellerId): void
     {
-        $this->confirmDeleteId   = $sellerId;
+        $this->confirmDeleteId = $sellerId;
         $this->deleteConfirmText = '';
     }
 
@@ -278,7 +279,7 @@ class SellersIndex extends Component
     {
         $seller = Seller::query()->with('shop')->find((int) $this->confirmDeleteId);
 
-        $this->confirmDeleteId   = null;
+        $this->confirmDeleteId = null;
         $this->deleteConfirmText = '';
 
         if (! $seller) {

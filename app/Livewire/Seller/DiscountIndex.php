@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Seller;
 
-use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Discount;
 use App\Models\Shop;
 use Illuminate\Support\Collection;
@@ -54,9 +53,9 @@ class DiscountIndex extends Component
         $rows = $this->discounts;
 
         return [
-            'total'     => $rows->count(),
+            'total' => $rows->count(),
             'published' => $rows->where('published', true)->count(),
-            'used'      => (int) $rows->sum('used_count'),
+            'used' => (int) $rows->sum('used_count'),
         ];
     }
 
@@ -64,7 +63,7 @@ class DiscountIndex extends Component
     {
         return view('livewire.seller.discount-index', [
             'discounts' => $this->discounts,
-            'stats'     => $this->stats,
+            'stats' => $this->stats,
         ])->title('کدهای تخفیف');
     }
 

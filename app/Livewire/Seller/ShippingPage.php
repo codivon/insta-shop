@@ -2,16 +2,19 @@
 
 namespace App\Livewire\Seller;
 
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Carrier;
 use App\Models\CarrierTariff;
 use App\Models\City;
 use App\Models\Province;
+use App\Models\Shop;
 use App\Support\Fmt;
 use App\Support\IranHolidays;
 use App\Support\JDate;
-use App\Livewire\Concerns\NotifiesOnValidation;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -27,8 +30,8 @@ use Livewire\WithFileUploads;
 #[Layout('layouts.seller-slot', ['hideTabbar' => true])]
 class ShippingPage extends Component
 {
-    use WithFileUploads;
     use NotifiesOnValidation;
+    use WithFileUploads;
 
     /* ══════════ modal state ══════════ */
 
@@ -106,11 +109,11 @@ class ShippingPage extends Component
     {
         // The window the seller can currently produce: from «start days
         // after order» up to the longest range + a generous guard.
-        $from = \Illuminate\Support\Carbon::today()->addDays(max(1, (int) $this->createStartDaysAfterOrder));
-        $to   = $from->copy()->addDays(31 + 14);
+        $from = Carbon::today()->addDays(max(1, (int) $this->createStartDaysAfterOrder));
+        $to = $from->copy()->addDays(31 + 14);
 
         $fromJy = JDate::toJalali((int) $from->format('Y'), (int) $from->format('n'), (int) $from->format('j'))[0];
-        $toJy   = JDate::toJalali((int) $to->format('Y'), (int) $to->format('n'), (int) $to->format('j'))[0];
+        $toJy = JDate::toJalali((int) $to->format('Y'), (int) $to->format('n'), (int) $to->format('j'))[0];
 
         for ($jy = $fromJy; $jy <= $toJy; $jy++) {
             if (! IranHolidays::exists($jy)) {
@@ -137,7 +140,7 @@ class ShippingPage extends Component
 
     protected function shop()
     {
-        return once(fn () => \App\Models\Shop::ensureForSeller(auth('seller')->user()));
+        return once(fn () => Shop::ensureForSeller(auth('seller')->user()));
     }
 
     /* ══════════ modal lifecycle ══════════ */
@@ -163,38 +166,38 @@ class ShippingPage extends Component
         $this->resetForm();
         $this->resetErrorBag();
 
-        $this->editId                   = $carrier->id;
-        $this->createTitle              = (string) $carrier->title;
-        $this->createIsActive           = (bool) $carrier->is_active;
-        $this->createWaitingTime        = (string) ($carrier->waiting_time ?? '');
-        $this->createMaxPackageWeight   = $carrier->max_package_weight ? (string) $carrier->max_package_weight : '';
-        $this->createMinPackageWeight   = $carrier->min_package_weight ? (string) $carrier->min_package_weight : '';
-        $this->createDescription        = (string) ($carrier->description ?? '');
-        $this->createProvinceId         = (int) ($carrier->origin_province_id ?? 0);
-        $this->createCityId             = (int) ($carrier->origin_city_id ?? 0);
-        $this->createCarrigeForward     = (bool) $carrier->carriage_forward;
-        $this->createBasePrice          = $carrier->base_price ? (string) $carrier->base_price : '';
+        $this->editId = $carrier->id;
+        $this->createTitle = (string) $carrier->title;
+        $this->createIsActive = (bool) $carrier->is_active;
+        $this->createWaitingTime = (string) ($carrier->waiting_time ?? '');
+        $this->createMaxPackageWeight = $carrier->max_package_weight ? (string) $carrier->max_package_weight : '';
+        $this->createMinPackageWeight = $carrier->min_package_weight ? (string) $carrier->min_package_weight : '';
+        $this->createDescription = (string) ($carrier->description ?? '');
+        $this->createProvinceId = (int) ($carrier->origin_province_id ?? 0);
+        $this->createCityId = (int) ($carrier->origin_city_id ?? 0);
+        $this->createCarrigeForward = (bool) $carrier->carriage_forward;
+        $this->createBasePrice = $carrier->base_price ? (string) $carrier->base_price : '';
         $this->createFreeShippingWeight = $carrier->free_shipping_weight ? (string) $carrier->free_shipping_weight : '';
-        $this->createFreeShippingPrice  = $carrier->free_shipping_price ? (string) $carrier->free_shipping_price : '';
-        $this->createExtraCost          = (string) ($carrier->extra_cost ?: 0);
-        $this->createCoveredCities      = $carrier->covered_cities;
-        $this->createCoveredCityIds     = $carrier->cities()->pluck('city_id')->map(fn ($v) => (int) $v)->all();
-        $this->createDeliveryTimeType   = $carrier->delivery_time_type;
+        $this->createFreeShippingPrice = $carrier->free_shipping_price ? (string) $carrier->free_shipping_price : '';
+        $this->createExtraCost = (string) ($carrier->extra_cost ?: 0);
+        $this->createCoveredCities = $carrier->covered_cities;
+        $this->createCoveredCityIds = $carrier->cities()->pluck('city_id')->map(fn ($v) => (int) $v)->all();
+        $this->createDeliveryTimeType = $carrier->delivery_time_type;
         $this->createStartDaysAfterOrder = (int) $carrier->start_days_after_order;
         $this->createDefaultDeliveryRange = (string) ($carrier->default_delivery_range ?? '');
-        $this->createUserSelectRanges   = (int) ($carrier->user_select_ranges ?? 7);
-        $this->createDisableFridays     = (bool) $carrier->disable_fridays;
+        $this->createUserSelectRanges = (int) ($carrier->user_select_ranges ?? 7);
+        $this->createDisableFridays = (bool) $carrier->disable_fridays;
 
         // Holiday file gone for the needed years → the toggle is disabled
         // and shows a «فایل نیست» note; don't present a checked-but-dead box.
-        $this->createDisableHolidays    = (bool) $carrier->disable_holidays && ! $this->holidaysUnavailable;
+        $this->createDisableHolidays = (bool) $carrier->disable_holidays && ! $this->holidaysUnavailable;
 
         /* ── تعرفه‌های وزنی ── */
         $this->createTariffs = $carrier->tariffs
             ->map(fn (CarrierTariff $tariff) => [
-                'zone_type'  => $tariff->zone_type,
+                'zone_type' => $tariff->zone_type,
                 'max_weight' => (string) $tariff->max_weight,
-                'cost'       => (string) $tariff->cost,
+                'cost' => (string) $tariff->cost,
             ])
             ->values()
             ->all();
@@ -212,32 +215,32 @@ class ShippingPage extends Component
 
     private function resetForm(): void
     {
-        $this->editId                    = null;
-        $this->createTitle               = '';
-        $this->createImage               = null;
-        $this->removeImage               = false;
-        $this->createIsActive            = true;
-        $this->createWaitingTime         = '';
-        $this->createMaxPackageWeight    = '';
-        $this->createMinPackageWeight    = '';
-        $this->createDescription         = '';
-        $this->createProvinceId          = 0;
-        $this->createCityId              = 0;
-        $this->createCarrigeForward      = false;
-        $this->createBasePrice           = '';
-        $this->createFreeShippingWeight  = '';
-        $this->createFreeShippingPrice   = '';
-        $this->createExtraCost           = '';
-        $this->createCoveredCities       = Carrier::COVERED_ALL;
-        $this->createCoveredCityIds      = [];
-        $this->createZoneProvinceId      = 0;
-        $this->createDeliveryTimeType    = Carrier::TIME_DEFAULT;
+        $this->editId = null;
+        $this->createTitle = '';
+        $this->createImage = null;
+        $this->removeImage = false;
+        $this->createIsActive = true;
+        $this->createWaitingTime = '';
+        $this->createMaxPackageWeight = '';
+        $this->createMinPackageWeight = '';
+        $this->createDescription = '';
+        $this->createProvinceId = 0;
+        $this->createCityId = 0;
+        $this->createCarrigeForward = false;
+        $this->createBasePrice = '';
+        $this->createFreeShippingWeight = '';
+        $this->createFreeShippingPrice = '';
+        $this->createExtraCost = '';
+        $this->createCoveredCities = Carrier::COVERED_ALL;
+        $this->createCoveredCityIds = [];
+        $this->createZoneProvinceId = 0;
+        $this->createDeliveryTimeType = Carrier::TIME_DEFAULT;
         $this->createStartDaysAfterOrder = 1;
         $this->createDefaultDeliveryRange = '';
-        $this->createUserSelectRanges    = 7;
-        $this->createDisableFridays      = false;
-        $this->createDisableHolidays     = false;
-        $this->createTariffs             = [];
+        $this->createUserSelectRanges = 7;
+        $this->createDisableFridays = false;
+        $this->createDisableHolidays = false;
+        $this->createTariffs = [];
     }
 
     /* ══════════ tariff rows (74) ══════════ */
@@ -249,9 +252,9 @@ class ShippingPage extends Component
         }
 
         $this->createTariffs[] = [
-            'zone_type'  => CarrierTariff::ZONE_IN,
+            'zone_type' => CarrierTariff::ZONE_IN,
             'max_weight' => '',
-            'cost'       => '',
+            'cost' => '',
         ];
     }
 
@@ -332,8 +335,8 @@ class ShippingPage extends Component
 
         try {
             $this->validate($this->rules(), $this->messages());
-        } catch (\Illuminate\Validation\ValidationException $exception) {
-            $keys     = array_keys($exception->errors());
+        } catch (ValidationException $exception) {
+            $keys = array_keys($exception->errors());
             $firstMsg = collect($exception->errors())->flatten()->filter()->first();
 
             // first error message as a loud toast + jump to the failing tab
@@ -354,27 +357,27 @@ class ShippingPage extends Component
         }
 
         $carrier->fill([
-            'title'                  => trim($this->createTitle),
-            'is_active'              => $this->createIsActive,
-            'waiting_time'           => trim($this->createWaitingTime) !== '' ? trim($this->createWaitingTime) : null,
-            'max_package_weight'     => $this->createMaxPackageWeight !== '' ? (int) $this->createMaxPackageWeight : null,
-            'min_package_weight'     => $this->createMinPackageWeight !== '' ? (int) $this->createMinPackageWeight : null,
-            'description'            => trim($this->createDescription) !== '' ? trim($this->createDescription) : null,
-            'origin_province_id'     => $this->createProvinceId > 0 ? $this->createProvinceId : null,
-            'origin_city_id'         => $this->createCityId > 0 ? $this->createCityId : null,
-            'carriage_forward'       => $this->createCarrigeForward,
-            'base_price'             => $this->createBasePrice !== '' ? (int) $this->createBasePrice : 0,
-            'free_shipping_weight'   => $this->createFreeShippingWeight !== '' ? (int) $this->createFreeShippingWeight : null,
-            'free_shipping_price'    => $this->createFreeShippingPrice !== '' ? (int) $this->createFreeShippingPrice : null,
-            'extra_cost'             => $this->createExtraCost !== '' ? (int) $this->createExtraCost : 0,
-            'covered_cities'         => $this->createCoveredCities,
-            'delivery_time_type'     => $this->createDeliveryTimeType,
+            'title' => trim($this->createTitle),
+            'is_active' => $this->createIsActive,
+            'waiting_time' => trim($this->createWaitingTime) !== '' ? trim($this->createWaitingTime) : null,
+            'max_package_weight' => $this->createMaxPackageWeight !== '' ? (int) $this->createMaxPackageWeight : null,
+            'min_package_weight' => $this->createMinPackageWeight !== '' ? (int) $this->createMinPackageWeight : null,
+            'description' => trim($this->createDescription) !== '' ? trim($this->createDescription) : null,
+            'origin_province_id' => $this->createProvinceId > 0 ? $this->createProvinceId : null,
+            'origin_city_id' => $this->createCityId > 0 ? $this->createCityId : null,
+            'carriage_forward' => $this->createCarrigeForward,
+            'base_price' => $this->createBasePrice !== '' ? (int) $this->createBasePrice : 0,
+            'free_shipping_weight' => $this->createFreeShippingWeight !== '' ? (int) $this->createFreeShippingWeight : null,
+            'free_shipping_price' => $this->createFreeShippingPrice !== '' ? (int) $this->createFreeShippingPrice : null,
+            'extra_cost' => $this->createExtraCost !== '' ? (int) $this->createExtraCost : 0,
+            'covered_cities' => $this->createCoveredCities,
+            'delivery_time_type' => $this->createDeliveryTimeType,
             'start_days_after_order' => (int) $this->createStartDaysAfterOrder,
             'default_delivery_range' => trim($this->createDefaultDeliveryRange) !== '' ? trim($this->createDefaultDeliveryRange) : null,
-            'user_select_ranges'     => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT ? (int) $this->createUserSelectRanges : null,
-            'disable_fridays'        => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT ? $this->createDisableFridays : false,
+            'user_select_ranges' => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT ? (int) $this->createUserSelectRanges : null,
+            'disable_fridays' => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT ? $this->createDisableFridays : false,
             // never persist the holiday filter without its data file
-            'disable_holidays'       => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT
+            'disable_holidays' => $this->createDeliveryTimeType === Carrier::TIME_USER_SELECT
                 ? ($this->createDisableHolidays && ! $this->holidaysUnavailable)
                 : false,
         ]);
@@ -449,9 +452,9 @@ class ShippingPage extends Component
     {
         $rows = collect($this->createTariffs)
             ->map(fn (array $row) => [
-                'zone_type'  => $row['zone_type'] === CarrierTariff::ZONE_OUT ? CarrierTariff::ZONE_OUT : CarrierTariff::ZONE_IN,
+                'zone_type' => $row['zone_type'] === CarrierTariff::ZONE_OUT ? CarrierTariff::ZONE_OUT : CarrierTariff::ZONE_IN,
                 'max_weight' => (int) $row['max_weight'],
-                'cost'       => (int) $row['cost'],
+                'cost' => (int) $row['cost'],
             ])
             ->filter(fn (array $row) => $row['max_weight'] > 0 && $row['cost'] >= 0)
             ->sortBy('max_weight')
@@ -495,55 +498,55 @@ class ShippingPage extends Component
     protected function rules(): array
     {
         return [
-            'createTitle'              => ['required', 'string', 'min:2', 'max:120'],
-            'createImage'              => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:1024'],
-            'createIsActive'           => ['boolean'],
-            'createWaitingTime'        => ['nullable', 'string', 'max:120'],
-            'createMaxPackageWeight'   => ['nullable', 'integer', 'min:0', 'max:10000000'],
-            'createMinPackageWeight'   => ['nullable', 'integer', 'min:0', 'max:10000000'],
-            'createDescription'        => ['nullable', 'string', 'max:2000'],
-            'createProvinceId'         => ['required', 'integer', 'exists:provinces,id'],
+            'createTitle' => ['required', 'string', 'min:2', 'max:120'],
+            'createImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:1024'],
+            'createIsActive' => ['boolean'],
+            'createWaitingTime' => ['nullable', 'string', 'max:120'],
+            'createMaxPackageWeight' => ['nullable', 'integer', 'min:0', 'max:10000000'],
+            'createMinPackageWeight' => ['nullable', 'integer', 'min:0', 'max:10000000'],
+            'createDescription' => ['nullable', 'string', 'max:2000'],
+            'createProvinceId' => ['required', 'integer', 'exists:provinces,id'],
             // unselected select → int 0 — must NOT hit «exists»
-            'createCityId'             => [Rule::excludeIf(fn () => $this->createCityId === 0), 'integer', 'exists:cities,id'],
-            'createCarrigeForward'     => ['boolean'],
-            'createBasePrice'          => ['nullable', 'integer', 'min:0', 'max:999999999999'],
+            'createCityId' => [Rule::excludeIf(fn () => $this->createCityId === 0), 'integer', 'exists:cities,id'],
+            'createCarrigeForward' => ['boolean'],
+            'createBasePrice' => ['nullable', 'integer', 'min:0', 'max:999999999999'],
             'createFreeShippingWeight' => ['nullable', 'integer', 'min:0', 'max:10000000'],
-            'createFreeShippingPrice'  => ['nullable', 'integer', 'min:0', 'max:999999999999'],
-            'createExtraCost'          => ['nullable', 'integer', 'min:0', 'max:999999999999'],
-            'createCoveredCities'      => ['required', 'in:'.Carrier::COVERED_ALL.','.Carrier::COVERED_SELECT_CITY],
-            'createCoveredCityIds'     => ['exclude_unless:createCoveredCities,'.Carrier::COVERED_SELECT_CITY, 'required', 'array', 'min:1'],
-            'createCoveredCityIds.*'   => ['integer', 'exists:cities,id'],
-            'createDeliveryTimeType'   => ['required', 'in:'.Carrier::TIME_DEFAULT.','.Carrier::TIME_USER_SELECT],
-            'createStartDaysAfterOrder'=> ['required', 'integer', 'min:1', 'max:11'],
-            'createDefaultDeliveryRange'=> ['exclude_unless:createDeliveryTimeType,'.Carrier::TIME_DEFAULT, 'required', 'string', 'min:3', 'max:150'],
-            'createUserSelectRanges'   => ['exclude_unless:createDeliveryTimeType,'.Carrier::TIME_USER_SELECT, 'required', 'integer', 'in:7,10,15,20'],
-            'createDisableFridays'     => ['boolean'],
-            'createDisableHolidays'    => ['boolean'],
+            'createFreeShippingPrice' => ['nullable', 'integer', 'min:0', 'max:999999999999'],
+            'createExtraCost' => ['nullable', 'integer', 'min:0', 'max:999999999999'],
+            'createCoveredCities' => ['required', 'in:'.Carrier::COVERED_ALL.','.Carrier::COVERED_SELECT_CITY],
+            'createCoveredCityIds' => ['exclude_unless:createCoveredCities,'.Carrier::COVERED_SELECT_CITY, 'required', 'array', 'min:1'],
+            'createCoveredCityIds.*' => ['integer', 'exists:cities,id'],
+            'createDeliveryTimeType' => ['required', 'in:'.Carrier::TIME_DEFAULT.','.Carrier::TIME_USER_SELECT],
+            'createStartDaysAfterOrder' => ['required', 'integer', 'min:1', 'max:11'],
+            'createDefaultDeliveryRange' => ['exclude_unless:createDeliveryTimeType,'.Carrier::TIME_DEFAULT, 'required', 'string', 'min:3', 'max:150'],
+            'createUserSelectRanges' => ['exclude_unless:createDeliveryTimeType,'.Carrier::TIME_USER_SELECT, 'required', 'integer', 'in:7,10,15,20'],
+            'createDisableFridays' => ['boolean'],
+            'createDisableHolidays' => ['boolean'],
 
             /* ── تعرفه‌های وزنی (74) ── */
-            'createTariffs'            => ['nullable', 'array', 'max:12'],
-            'createTariffs.*.zone_type'  => ['required', 'in:'.CarrierTariff::ZONE_IN.','.CarrierTariff::ZONE_OUT],
+            'createTariffs' => ['nullable', 'array', 'max:12'],
+            'createTariffs.*.zone_type' => ['required', 'in:'.CarrierTariff::ZONE_IN.','.CarrierTariff::ZONE_OUT],
             'createTariffs.*.max_weight' => ['required', 'integer', 'min:1', 'max:10000000'],
-            'createTariffs.*.cost'       => ['required', 'integer', 'min:0', 'max:999999999999'],
+            'createTariffs.*.cost' => ['required', 'integer', 'min:0', 'max:999999999999'],
         ];
     }
 
     protected function messages(): array
     {
         return [
-            'createTitle.required'   => 'عنوان روش ارسال را وارد کنید.',
-            'createTitle.min'        => 'عنوان حداقل ۲ کاراکتر است.',
-            'createImage.image'      => 'فایل انتخاب‌شده تصویر نیست.',
-            'createImage.max'        => 'حجم تصویر حداکثر ۱ مگابایت است.',
+            'createTitle.required' => 'عنوان روش ارسال را وارد کنید.',
+            'createTitle.min' => 'عنوان حداقل ۲ کاراکتر است.',
+            'createImage.image' => 'فایل انتخاب‌شده تصویر نیست.',
+            'createImage.max' => 'حجم تصویر حداکثر ۱ مگابایت است.',
             'createProvinceId.required' => 'استان فروشگاه (مبدأ ارسال) را انتخاب کنید.',
             'createCoveredCityIds.required' => 'حداقل یک شهر تحت پوشش انتخاب کنید.',
             'createDefaultDeliveryRange.required' => 'متن بازه زمانی ارسال پیش‌فرض را وارد کنید.',
             'createUserSelectRanges.required' => 'طول بازه انتخابی مشتری (۷/۱۰/۱۵/۲۰ روزه) را انتخاب کنید.',
-            'createUserSelectRanges.in'       => 'طول بازه انتخابی مشتری باید ۷، ۱۰، ۱۵ یا ۲۰ روزه باشد.',
-            'createTariffs.*.zone_type.required'  => 'نوع منطقه ارسالی هر پله تعرفه را انتخاب کنید.',
+            'createUserSelectRanges.in' => 'طول بازه انتخابی مشتری باید ۷، ۱۰، ۱۵ یا ۲۰ روزه باشد.',
+            'createTariffs.*.zone_type.required' => 'نوع منطقه ارسالی هر پله تعرفه را انتخاب کنید.',
             'createTariffs.*.max_weight.required' => 'حداکثر وزن هر پله تعرفه را وارد کنید.',
-            'createTariffs.*.max_weight.min'      => 'حداکثر وزن باید بیشتر از صفر باشد.',
-            'createTariffs.*.cost.required'       => 'هزینه ارسال هر پله تعرفه را وارد کنید.',
+            'createTariffs.*.max_weight.min' => 'حداکثر وزن باید بیشتر از صفر باشد.',
+            'createTariffs.*.cost.required' => 'هزینه ارسال هر پله تعرفه را وارد کنید.',
         ];
     }
 
@@ -610,11 +613,11 @@ class ShippingPage extends Component
     public function render()
     {
         return view('livewire.seller.shipping-page', [
-            'carriers'      => $this->carriers,
-            'provinces'     => $this->provinces,
-            'originCities'  => $this->originCities,
-            'zoneCities'    => $this->zoneCities,
-            'coveredNames'  => $this->coveredCitiesNames,
+            'carriers' => $this->carriers,
+            'provinces' => $this->provinces,
+            'originCities' => $this->originCities,
+            'zoneCities' => $this->zoneCities,
+            'coveredNames' => $this->coveredCitiesNames,
             'coveredProvinces' => $this->coveredProvincesLabel,
         ])->title('حمل و نقل');
     }

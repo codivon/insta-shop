@@ -112,7 +112,7 @@ class NotificationsPage extends Component
             ->paginate(20);
 
         return view('livewire.seller.notifications.notifications-page', [
-            'items'       => $items,
+            'items' => $items,
             'unreadCount' => SellerNotification::query()->where('seller_id', $this->sellerId())->unread()->count(),
         ])->title('نوتیفیکیشن‌ها');
     }

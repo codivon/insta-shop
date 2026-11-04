@@ -126,6 +126,15 @@
                         <span x-show="!copied" class="flex items-center gap-1.5"><x-icon name="copy" class="size-3.5" /> کپی آدرس فروشگاه</span>
                         <span x-show="copied" x-cloak class="flex items-center gap-1.5 text-emerald-500"><x-icon name="circle-check" class="size-3.5" /> کپی شد</span>
                     </button>
+
+                    {{-- owner shortcut: this seller is viewing their own shop --}}
+                    @if ((\App\Support\PanelAuth::sellerAcrossPanels()?->id ?? 0) === (int) $shop->seller_id)
+                        <a href="{{ route('seller.home') }}" wire:navigate
+                           class="inline-flex items-center gap-1.5 rounded-2xl bg-primary-600 px-4 py-2.5 text-[11px] font-extrabold text-white shadow-lg shadow-primary-600/30 transition hover:bg-primary-700 active:scale-95 sm:text-xs">
+                            <x-icon name="store" class="size-4" />
+                            بازگشت به پنل فروشندگی
+                        </a>
+                    @endif
                 </div>
 
                 {{-- stats --}}

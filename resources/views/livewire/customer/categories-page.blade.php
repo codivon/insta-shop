@@ -13,42 +13,57 @@
     </div>
 
     <div class="px-4 pt-4">
-        {{-- ── category chips (grouped by shop) ── --}}
-        <button type="button" wire:click="select(0)"
-                class="mb-2 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-extrabold transition {{ $selected === 0 ? 'bg-primary-600 text-white shadow-md shadow-primary-600/25' : 'border border-slate-200 bg-white text-slate-500 hover:border-primary-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300' }}">
-            همه محصولات
-        </button>
-
-        @forelse ($categories->groupBy('shop_id') as $group)
-            @php $shop = $group->first()->shop; @endphp
-            <div class="mb-1 mt-3 flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-                <x-icon name="store" class="size-3" />
-                {{ $shop?->name }}
-            </div>
-            <div class="scroll-slim flex gap-2 overflow-x-auto pb-1">
-                @foreach ($group as $cat)
-                    <button type="button" wire:click="select({{ $cat->id }})"
-                            class="shrink-0 rounded-full px-3.5 py-2 text-[11px] font-bold transition {{ $selected === $cat->id ? 'bg-primary-600 text-white shadow-md shadow-primary-600/25' : 'border border-slate-200 bg-white text-slate-600 hover:border-primary-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300' }}">
-                        {{ $cat->name }}
-                        <span class="mr-1 text-[9px] opacity-70">({{ \App\Support\Fmt::toFa($cat->products_count) }})</span>
+        @if ($openRoot === 0)
+            {{-- ── main categories as image cards ── --}}
+            <div class="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
+                <button type="button" wire:click="select(0)"
+                        class="flex flex-col items-center gap-1.5 rounded-2xl border-2 p-2 transition {{ $selected === 0 ? 'border-primary-500 bg-primary-50/60 dark:bg-primary-950/30' : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900' }}">
+                    <span class="grid size-12 place-items-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+                        <x-icon name="layout-grid" class="size-5" />
+                    </span>
+                    <span class="text-center text-[10px] font-extrabold leading-4 text-slate-600 dark:text-slate-300">همه محصولات</span>
+                </button>
+                @foreach ($roots as $root)
+                    <button type="button" wire:click="select({{ $root->id }})" wire:key="root-{{ $root->id }}"
+                            class="flex flex-col items-center gap-1.5 rounded-2xl border-2 p-2 transition {{ $selected === $root->id ? 'border-primary-500 bg-primary-50/60 dark:bg-primary-950/30' : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900' }}">
+                        <span class="grid size-12 place-items-center overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
+                            @if ($root->image)
+                                <img src="{{ $root->image }}" alt="{{ $root->name }}" loading="lazy" class="size-12 object-contain p-1">
+                            @else
+                                <x-icon name="tag" class="size-5 text-slate-400" />
+                            @endif
+                        </span>
+                        <span class="text-center text-[10px] font-extrabold leading-4 text-slate-600 dark:text-slate-300">{{ $root->name }}</span>
+                        <span class="text-[9px] font-bold text-slate-400">{{ \App\Support\Fmt::toFa($root->products_total) }} محصول</span>
                     </button>
                 @endforeach
             </div>
-        @empty
-            <div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-xs text-slate-400 dark:border-slate-700">
-                هنوز دسته‌بندی‌ای برای نمایش وجود ندارد.
+        @else
+            {{-- ── inside a main category: breadcrumb + sub chips ── --}}
+            <button type="button" wire:click="backToRoots"
+                    class="mb-3 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10.5px] font-bold text-slate-500 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                <x-icon name="chevron-right" class="size-3.5" />
+                همه دسته‌ها
+            </button>
+
+            <div class="scroll-slim flex gap-2 overflow-x-auto pb-1">
+                <button type="button" wire:click="select({{ $openRoot }})"
+                        class="shrink-0 rounded-full px-3.5 py-2 text-[11px] font-extrabold transition {{ $selected === $openRoot ? 'bg-primary-600 text-white shadow-md shadow-primary-600/25' : 'border border-slate-200 bg-white text-slate-600 hover:border-primary-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300' }}">
+                    همه
+                </button>
+                @foreach ($subcategories as $sub)
+                    <button type="button" wire:click="select({{ $sub->id }})" wire:key="sub-{{ $sub->id }}"
+                            class="shrink-0 rounded-full px-3.5 py-2 text-[11px] font-bold transition {{ $selected === $sub->id ? 'bg-primary-600 text-white shadow-md shadow-primary-600/25' : 'border border-slate-200 bg-white text-slate-600 hover:border-primary-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300' }}">
+                        {{ $sub->name }}
+                        <span class="mr-1 text-[9px] opacity-70">({{ \App\Support\Fmt::toFa($sub->products_total) }})</span>
+                    </button>
+                @endforeach
             </div>
-        @endforelse
+        @endif
 
         {{-- ── products ── --}}
         <div class="mt-5 flex items-center justify-between">
-            <h3 class="text-sm font-extrabold">
-                @if ($selected !== 0)
-                    {{ $categories->firstWhere('id', $selected)?->name }}
-                @else
-                    همه محصولات
-                @endif
-            </h3>
+            <h3 class="text-sm font-extrabold">{{ $selectedName }}</h3>
             <span class="text-[11px] font-semibold text-slate-400">{{ \App\Support\Fmt::toFa($products->count()) }} محصول</span>
         </div>
 

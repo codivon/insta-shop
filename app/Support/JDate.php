@@ -83,13 +83,13 @@ class JDate
         $diff = (int) abs($date->timestamp - time());
 
         return match (true) {
-            $diff < 45        => 'چند لحظه پیش',
-            $diff < 90        => 'یک دقیقه پیش',
-            $diff < 3600      => self::fa((string) (int) round($diff / 60)).' دقیقه پیش',
-            $diff < 7200      => 'یک ساعت پیش',
-            $diff < 86400     => self::fa((string) (int) round($diff / 3600)).' ساعت پیش',
-            $diff < 172800    => 'دیروز',
-            default           => self::dateTime($date),
+            $diff < 45 => 'چند لحظه پیش',
+            $diff < 90 => 'یک دقیقه پیش',
+            $diff < 3600 => self::fa((string) (int) round($diff / 60)).' دقیقه پیش',
+            $diff < 7200 => 'یک ساعت پیش',
+            $diff < 86400 => self::fa((string) (int) round($diff / 3600)).' ساعت پیش',
+            $diff < 172800 => 'دیروز',
+            default => self::dateTime($date),
         };
     }
 
@@ -97,6 +97,79 @@ class JDate
     public static function monthName(int $jm): string
     {
         return self::MONTHS[max(1, min(12, $jm))];
+    }
+
+    /** «۹ آبان» — compact label for chart axes. */
+    public static function short(CarbonInterface $date): string
+    {
+        [$jy, $jm, $jd] = self::toJalali((int) $date->format('Y'), (int) $date->format('n'), (int) $date->format('j'));
+
+        return self::fa($jd).' '.self::MONTHS[$jm];
+    }
+
+    /** Jalali month index (year × 12 + month) — lets us walk Jalali months. */
+    public static function monthIndex(CarbonInterface $date): int
+    {
+        [$jy, $jm] = self::toJalali((int) $date->format('Y'), (int) $date->format('n'), (int) $date->format('j'));
+
+        return $jy * 12 + $jm;
+    }
+
+    /** Jalali year bucket key «1404». */
+    public static function yearKey(CarbonInterface $date): string
+    {
+        [$jy] = self::toJalali((int) $date->format('Y'), (int) $date->format('n'), (int) $date->format('j'));
+
+        return (string) $jy;
+    }
+
+    /**
+     * Labeled, zero-filled Jalali month buckets covering [$from .. $to].
+     * Label = «آبان», or «آبان ۱۴۰۴» once the range spans > 1 year
+     * (pass $withYear to force either behaviour).
+     */
+    public static function monthBuckets(CarbonInterface $from, CarbonInterface $to, ?bool $withYear = null, int $max = 36): array
+    {
+        $i1 = self::monthIndex($from);
+        $i2 = self::monthIndex($to);
+        $withYear ??= ($i2 - $i1) >= 12;
+        $todayKey = self::monthKey(Carbon::today());
+
+        $buckets = [];
+
+        for ($i = $i1; $i <= $i2 && count($buckets) < $max; $i++) {
+            $jy = intdiv($i - 1, 12);
+            $jm = $i - $jy * 12;
+            $key = sprintf('%04d-%02d', $jy, $jm);
+
+            $buckets[$key] = [
+                'label' => self::MONTHS[$jm].($withYear ? ' '.self::fa($jy) : ''),
+                'sort' => $key,
+                'today' => $key === $todayKey,
+            ];
+        }
+
+        return $buckets;
+    }
+
+    /** Labeled, zero-filled Jalali year buckets covering [$from .. $to]. */
+    public static function yearBuckets(CarbonInterface $from, CarbonInterface $to, int $max = 10): array
+    {
+        $jy1 = intdiv(self::monthIndex($from) - 1, 12);
+        $jy2 = intdiv(self::monthIndex($to) - 1, 12);
+        $todayKey = self::yearKey(Carbon::today());
+
+        $buckets = [];
+
+        for ($jy = $jy1; $jy <= $jy2 && count($buckets) < $max; $jy++) {
+            $buckets[(string) $jy] = [
+                'label' => self::fa($jy),
+                'sort' => (string) $jy,
+                'today' => (string) $jy === $todayKey,
+            ];
+        }
+
+        return $buckets;
     }
 
     /** Jalali (Solar Hijri) → Gregorian [gy, gm, gd]. Classic jalaali algorithm. */
@@ -131,8 +204,8 @@ class JDate
             $days = ($days - 1) % 365;
         }
 
-        $gd    = $days + 1;
-        $leap  = ($gy % 4 === 0 && $gy % 100 !== 0) || ($gy % 400 === 0);
+        $gd = $days + 1;
+        $leap = ($gy % 4 === 0 && $gy % 100 !== 0) || ($gy % 400 === 0);
         $gDays = [0, 31, $leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
         $gm = 0;
@@ -152,7 +225,7 @@ class JDate
      * Years ≥ 1900 are Gregorian; anything below is treated as Jalali.
      * Returns null when the input is not a valid date.
      */
-    public static function parse(string $value): ?\Illuminate\Support\Carbon
+    public static function parse(string $value): ?Carbon
     {
         $value = strtr(trim($value), array_flip(self::FA_DIGITS));
 
@@ -171,12 +244,12 @@ class JDate
         try {
             if ($y >= 1900) {
                 // Gregorian ISO straight from the datepicker
-                return \Illuminate\Support\Carbon::create($y, $m, $d, 0, 0, 0);
+                return Carbon::create($y, $m, $d, 0, 0, 0);
             }
 
             [$gy, $gm, $gd] = self::toGregorian($y, $m, $d);
 
-            return \Illuminate\Support\Carbon::create($gy, $gm, $gd, 0, 0, 0);
+            return Carbon::create($gy, $gm, $gd, 0, 0, 0);
         } catch (\Throwable) {
             return null;
         }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Fmt;
+use App\Support\JDate;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -50,22 +51,22 @@ class Discount extends Model
     protected function casts(): array
     {
         return [
-            'price'               => 'integer',
-            'percent'             => 'integer',
-            'discount_ceiling'    => 'integer',
-            'starts_at'           => 'datetime',
-            'ends_at'             => 'datetime',
-            'least_price'         => 'integer',
+            'price' => 'integer',
+            'percent' => 'integer',
+            'discount_ceiling' => 'integer',
+            'starts_at' => 'datetime',
+            'ends_at' => 'datetime',
+            'least_price' => 'integer',
             'least_products_count' => 'integer',
-            'quantity'            => 'integer',
-            'quantity_per_user'   => 'integer',
-            'used_count'          => 'integer',
-            'customer_ids'        => 'array',
-            'include_ids'         => 'array',
-            'exclude_ids'         => 'array',
+            'quantity' => 'integer',
+            'quantity_per_user' => 'integer',
+            'used_count' => 'integer',
+            'customer_ids' => 'array',
+            'include_ids' => 'array',
+            'exclude_ids' => 'array',
             'only_first_purchase' => 'boolean',
             'not_discount_products' => 'boolean',
-            'published'           => 'boolean',
+            'published' => 'boolean',
         ];
     }
 
@@ -101,14 +102,14 @@ class Discount extends Model
     /** The JDate window text shown in the list (e.g. «از ۱۴۰۴/۰۱/۰۱»). */
     public function windowLabel(): string
     {
-        $from = $this->starts_at ? \App\Support\JDate::date($this->starts_at) : null;
-        $to   = $this->ends_at ? \App\Support\JDate::date($this->ends_at) : null;
+        $from = $this->starts_at ? JDate::date($this->starts_at) : null;
+        $to = $this->ends_at ? JDate::date($this->ends_at) : null;
 
         return match (true) {
             $from && $to => "از {$from} تا {$to}",
-            $from        => "از {$from}",
-            $to          => "تا {$to}",
-            default      => 'بدون محدودیت زمانی',
+            $from => "از {$from}",
+            $to => "تا {$to}",
+            default => 'بدون محدودیت زمانی',
         };
     }
 

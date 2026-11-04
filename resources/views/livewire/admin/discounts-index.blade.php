@@ -230,14 +230,12 @@
 
             <div>
                 <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">تاریخ شروع</label>
-                <input type="date" wire:model="formStartsAt" dir="ltr"
-                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                <x-jdate-picker model="formStartsAt" placeholder="انتخاب تاریخ شروع" />
                 @error('formStartsAt') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">تاریخ پایان</label>
-                <input type="date" wire:model="formEndsAt" dir="ltr"
-                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                <x-jdate-picker model="formEndsAt" placeholder="انتخاب تاریخ پایان" />
                 @error('formEndsAt') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
             </div>
             <div>

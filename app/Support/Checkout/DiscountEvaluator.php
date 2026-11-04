@@ -2,8 +2,12 @@
 
 namespace App\Support\Checkout;
 
+use App\Models\CartItem;
+use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Discount;
+use App\Models\Order;
+use App\Support\Fmt;
 use Illuminate\Support\Collection;
 
 /**
@@ -19,7 +23,7 @@ class DiscountEvaluator
      * Result shape: [ok(bool), amount(int), reason(string), discount(?Discount)]
      * — amount is in Toman, already capped by the ceiling / subtotal.
      *
-     * @param  Collection<int, \App\Models\CartItem>  $lines  valid lines of ONE shop
+     * @param  Collection<int, CartItem>  $lines  valid lines of ONE shop
      */
     public static function evaluate(?Discount $discount, ?Customer $customer, Collection $lines): array
     {
@@ -40,7 +44,7 @@ class DiscountEvaluator
 
         /* ── only-first-purchase ── */
         if ($discount->only_first_purchase && $customer
-            && \App\Models\Order::query()->where('customer_id', $customer->id)->where('status', 'paid')->exists()) {
+            && Order::query()->where('customer_id', $customer->id)->where('status', 'paid')->exists()) {
             return [false, 0, 'این کد فقط برای اولین خرید قابل استفاده است.', $discount];
         }
 
@@ -53,19 +57,19 @@ class DiscountEvaluator
 
         /* ── minimum order requirements ── */
         $subtotal = (int) $lines->sum(fn ($item) => $item->lineTotal());
-        $count    = (int) $lines->sum('quantity');
+        $count = (int) $lines->sum('quantity');
 
         if ($discount->least_price > 0 && $subtotal < $discount->least_price) {
-            return [false, 0, 'مبلغ سفارش برای استفاده از این کد کافی نیست (حداقل '.\App\Support\Fmt::money($discount->least_price).' تومان).', $discount];
+            return [false, 0, 'مبلغ سفارش برای استفاده از این کد کافی نیست (حداقل '.Fmt::money($discount->least_price).' تومان).', $discount];
         }
 
         if ($discount->least_products_count > 0 && $count < $discount->least_products_count) {
-            return [false, 0, 'تعداد محصولات سبد برای این کد کافی نیست (حداقل '.\App\Support\Fmt::toFa($discount->least_products_count).' عدد).', $discount];
+            return [false, 0, 'تعداد محصولات سبد برای این کد کافی نیست (حداقل '.Fmt::toFa($discount->least_products_count).' عدد).', $discount];
         }
 
         /* ── per-user usage ── */
         if ($discount->quantity_per_user > 0 && $customer) {
-            $used = \App\Models\Order::query()
+            $used = Order::query()
                 ->where('customer_id', $customer->id)
                 ->whereIn('status', ['pending', 'paid'])
                 ->where('discount_code', $discount->code)
@@ -98,7 +102,7 @@ class DiscountEvaluator
     protected static function scopeLines(Discount $discount, Collection $lines): Collection
     {
         $include = self::includedLine($discount, $lines);
-        $lines   = $include ?? $lines;
+        $lines = $include ?? $lines;
 
         $exclude = $discount->exclude_type !== Discount::EXCLUDE_NONE
             ? array_map('intval', (array) ($discount->exclude_ids ?? []))
@@ -119,7 +123,7 @@ class DiscountEvaluator
                 return in_array((int) $product->id, $exclude, true);
             }
 
-            return in_array((int) $product->shop_category_id, $exclude, true);
+            return in_array((int) $product->category_id, self::expandCategoryIds($exclude), true);
         })->values();
     }
 
@@ -127,8 +131,7 @@ class DiscountEvaluator
     protected static function includedLine(Discount $discount, Collection $lines): ?Collection
     {
         $ids = match ($discount->include_type) {
-            Discount::INCLUDE_CATEGORY, Discount::INCLUDE_PRODUCT
-                => array_map('intval', (array) ($discount->include_ids ?? [])),
+            Discount::INCLUDE_CATEGORY, Discount::INCLUDE_PRODUCT => array_map('intval', (array) ($discount->include_ids ?? [])),
             default => [],
         };
 
@@ -145,7 +148,24 @@ class DiscountEvaluator
 
             return $discount->include_type === Discount::INCLUDE_PRODUCT
                 ? in_array((int) $product->id, $ids, true)
-                : in_array((int) $product->shop_category_id, $ids, true);
+                : in_array((int) $product->category_id, self::expandCategoryIds($ids), true);
         })->values();
+    }
+
+    /**
+     * A picked global category covers its whole branch — expand every
+     * selected id into itself + all descendant ids before matching.
+     */
+    protected static function expandCategoryIds(array $ids): array
+    {
+        $out = [];
+
+        foreach ($ids as $id) {
+            foreach (Category::subtreeIds((int) $id) as $subId) {
+                $out[$subId] = true;
+            }
+        }
+
+        return array_keys($out);
     }
 }

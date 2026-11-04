@@ -117,7 +117,7 @@ final class Banking
 
         // Rearrange: IBAN first four chars move to the end, letters → numbers.
         $rearranged = substr($sheba, 4).substr($sheba, 0, 4);
-        $numeric    = '';
+        $numeric = '';
 
         foreach (str_split($rearranged) as $char) {
             if (ctype_alpha($char)) {

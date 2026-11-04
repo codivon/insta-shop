@@ -3,13 +3,16 @@
 namespace App\Livewire\Seller;
 
 use App\Livewire\Concerns\NotifiesOnValidation;
+use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Discount;
 use App\Models\Product;
 use App\Models\Shop;
-use App\Models\ShopCategory;
 use App\Support\Fmt;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -84,28 +87,28 @@ class DiscountForm extends Component
         if ($discount !== null && $discount->exists) {
             abort_unless($discount->shop_id === $shop->id, 404, 'کد تخفیف یافت نشد.');
 
-            $this->discountId           = $discount->id;
-            $this->title                = (string) $discount->title;
-            $this->code                 = (string) $discount->code;
-            $this->start_date           = $discount->starts_at?->toDateString() ?? '';
-            $this->end_date             = $discount->ends_at?->toDateString() ?? '';
-            $this->type                 = $discount->type;
-            $this->price                = $discount->price > 0 ? (string) $discount->price : '';
-            $this->percent              = $discount->percent > 0 ? (string) $discount->percent : '';
-            $this->discount_ceiling     = $discount->discount_ceiling > 0 ? (string) $discount->discount_ceiling : '';
-            $this->description          = (string) ($discount->description ?? '');
-            $this->customerIds          = array_map('intval', (array) ($discount->customer_ids ?? []));
-            $this->least_price          = $discount->least_price > 0 ? (string) $discount->least_price : '';
+            $this->discountId = $discount->id;
+            $this->title = (string) $discount->title;
+            $this->code = (string) $discount->code;
+            $this->start_date = $discount->starts_at?->toDateString() ?? '';
+            $this->end_date = $discount->ends_at?->toDateString() ?? '';
+            $this->type = $discount->type;
+            $this->price = $discount->price > 0 ? (string) $discount->price : '';
+            $this->percent = $discount->percent > 0 ? (string) $discount->percent : '';
+            $this->discount_ceiling = $discount->discount_ceiling > 0 ? (string) $discount->discount_ceiling : '';
+            $this->description = (string) ($discount->description ?? '');
+            $this->customerIds = array_map('intval', (array) ($discount->customer_ids ?? []));
+            $this->least_price = $discount->least_price > 0 ? (string) $discount->least_price : '';
             $this->least_products_count = $discount->least_products_count > 0 ? (string) $discount->least_products_count : '';
-            $this->quantity             = $discount->quantity > 0 ? (string) $discount->quantity : '';
-            $this->quantity_per_user    = $discount->quantity_per_user > 0 ? (string) $discount->quantity_per_user : '';
-            $this->include_type         = $discount->include_type;
-            $this->includeIds           = array_map('intval', (array) ($discount->include_ids ?? []));
-            $this->exclude_type         = $discount->exclude_type;
-            $this->excludeIds           = array_map('intval', (array) ($discount->exclude_ids ?? []));
-            $this->only_first_purchase  = $discount->only_first_purchase;
+            $this->quantity = $discount->quantity > 0 ? (string) $discount->quantity : '';
+            $this->quantity_per_user = $discount->quantity_per_user > 0 ? (string) $discount->quantity_per_user : '';
+            $this->include_type = $discount->include_type;
+            $this->includeIds = array_map('intval', (array) ($discount->include_ids ?? []));
+            $this->exclude_type = $discount->exclude_type;
+            $this->excludeIds = array_map('intval', (array) ($discount->exclude_ids ?? []));
+            $this->only_first_purchase = $discount->only_first_purchase;
             $this->not_discount_products = $discount->not_discount_products;
-            $this->published            = $discount->published;
+            $this->published = $discount->published;
         }
     }
 
@@ -152,10 +155,10 @@ class DiscountForm extends Component
     public function generateCode(): void
     {
         $base = strtoupper(preg_replace('/[^A-Za-z0-9]+/', '', $this->title)) ?: 'SHOP';
-        $code = substr($base, 0, 8).strtoupper(\Illuminate\Support\Str::random(4));
+        $code = substr($base, 0, 8).strtoupper(Str::random(4));
 
         while (Discount::query()->where('code', $code)->whereKeyNot($this->discountId ?? 0)->exists()) {
-            $code = substr($base, 0, 8).strtoupper(\Illuminate\Support\Str::random(4));
+            $code = substr($base, 0, 8).strtoupper(Str::random(4));
         }
 
         $this->code = $code;
@@ -176,7 +179,7 @@ class DiscountForm extends Component
     {
         try {
             $this->validate($this->rules(), $this->messages());
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             $firstMsg = collect($exception->errors())->flatten()->filter()->first();
 
             $this->dispatch('panel-toast', message: $firstMsg ?: 'لطفاً خطاهای فرم تخفیف را برطرف کنید.');
@@ -206,27 +209,27 @@ class DiscountForm extends Component
         }
 
         $discount->fill([
-            'title'                => trim($this->title),
-            'code'                 => strtoupper(trim($this->code)),
-            'type'                 => $this->type,
-            'price'                => $this->type === Discount::TYPE_AMOUNT ? max(0, (int) $this->price) : 0,
-            'percent'              => $this->type === Discount::TYPE_PERCENT ? min(100, max(0, (int) $this->percent)) : 0,
-            'discount_ceiling'     => $this->type === Discount::TYPE_PERCENT && $this->discount_ceiling !== '' ? max(0, (int) $this->discount_ceiling) : null,
-            'starts_at'            => $this->start_date !== '' ? $this->start_date.' 00:00:00' : null,
-            'ends_at'              => $this->end_date !== '' ? $this->end_date.' 23:59:59' : null,
-            'description'          => trim($this->description) !== '' ? trim($this->description) : null,
-            'customer_ids'         => $this->customerIds,
-            'least_price'          => max(0, (int) $this->least_price),
+            'title' => trim($this->title),
+            'code' => strtoupper(trim($this->code)),
+            'type' => $this->type,
+            'price' => $this->type === Discount::TYPE_AMOUNT ? max(0, (int) $this->price) : 0,
+            'percent' => $this->type === Discount::TYPE_PERCENT ? min(100, max(0, (int) $this->percent)) : 0,
+            'discount_ceiling' => $this->type === Discount::TYPE_PERCENT && $this->discount_ceiling !== '' ? max(0, (int) $this->discount_ceiling) : null,
+            'starts_at' => $this->start_date !== '' ? $this->start_date.' 00:00:00' : null,
+            'ends_at' => $this->end_date !== '' ? $this->end_date.' 23:59:59' : null,
+            'description' => trim($this->description) !== '' ? trim($this->description) : null,
+            'customer_ids' => $this->customerIds,
+            'least_price' => max(0, (int) $this->least_price),
             'least_products_count' => max(0, (int) $this->least_products_count),
-            'quantity'             => max(0, (int) $this->quantity),
-            'quantity_per_user'    => max(0, (int) $this->quantity_per_user),
-            'include_type'         => $this->include_type,
-            'include_ids'          => in_array($this->include_type, [Discount::INCLUDE_CATEGORY, Discount::INCLUDE_PRODUCT], true) ? $this->includeIds : null,
-            'exclude_type'         => $this->exclude_type,
-            'exclude_ids'          => $this->exclude_type !== Discount::EXCLUDE_NONE ? $this->excludeIds : null,
-            'only_first_purchase'  => $this->only_first_purchase,
+            'quantity' => max(0, (int) $this->quantity),
+            'quantity_per_user' => max(0, (int) $this->quantity_per_user),
+            'include_type' => $this->include_type,
+            'include_ids' => in_array($this->include_type, [Discount::INCLUDE_CATEGORY, Discount::INCLUDE_PRODUCT], true) ? $this->includeIds : null,
+            'exclude_type' => $this->exclude_type,
+            'exclude_ids' => $this->exclude_type !== Discount::EXCLUDE_NONE ? $this->excludeIds : null,
+            'only_first_purchase' => $this->only_first_purchase,
             'not_discount_products' => $this->not_discount_products,
-            'published'            => $this->published,
+            'published' => $this->published,
         ]);
         $discount->save();
 
@@ -242,25 +245,25 @@ class DiscountForm extends Component
         $shopId = $this->shop()->id;
 
         return [
-            'title'    => ['required', 'string', 'min:2', 'max:120'],
-            'code'     => ['required', 'string', 'min:3', 'max:60', 'regex:/^[A-Za-z0-9_-]+$/',
-                \Illuminate\Validation\Rule::unique('discounts', 'code')->ignore($this->discountId)],
+            'title' => ['required', 'string', 'min:2', 'max:120'],
+            'code' => ['required', 'string', 'min:3', 'max:60', 'regex:/^[A-Za-z0-9_-]+$/',
+                Rule::unique('discounts', 'code')->ignore($this->discountId)],
             'start_date' => ['nullable', 'date'],
-            'end_date'   => ['nullable', 'date', 'after_or_equal:start_date'],
-            'type'     => ['required', 'in:'.Discount::TYPE_AMOUNT.','.Discount::TYPE_PERCENT],
-            'price'    => ['exclude_unless:type,'.Discount::TYPE_AMOUNT, 'required', 'integer', 'min:1000', 'max:999999999999'],
-            'percent'  => ['exclude_unless:type,'.Discount::TYPE_PERCENT, 'required', 'integer', 'min:1', 'max:100'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'type' => ['required', 'in:'.Discount::TYPE_AMOUNT.','.Discount::TYPE_PERCENT],
+            'price' => ['exclude_unless:type,'.Discount::TYPE_AMOUNT, 'required', 'integer', 'min:1000', 'max:999999999999'],
+            'percent' => ['exclude_unless:type,'.Discount::TYPE_PERCENT, 'required', 'integer', 'min:1', 'max:100'],
             'discount_ceiling' => ['nullable', 'exclude_unless:type,'.Discount::TYPE_PERCENT, 'integer', 'min:0', 'max:999999999999'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'least_price'          => ['nullable', 'integer', 'min:0', 'max:999999999999'],
+            'least_price' => ['nullable', 'integer', 'min:0', 'max:999999999999'],
             'least_products_count' => ['nullable', 'integer', 'min:0', 'max:100000'],
-            'quantity'             => ['nullable', 'integer', 'min:0', 'max:1000000'],
-            'quantity_per_user'    => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'quantity' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'quantity_per_user' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'include_type' => ['required', 'in:'.Discount::INCLUDE_ALL.','.Discount::INCLUDE_CATEGORY.','.Discount::INCLUDE_PRODUCT],
-            'includeIds'   => ['nullable', 'array'],
+            'includeIds' => ['nullable', 'array'],
             'exclude_type' => ['required', 'in:'.Discount::EXCLUDE_NONE.','.Discount::INCLUDE_CATEGORY.','.Discount::INCLUDE_PRODUCT],
-            'excludeIds'   => ['nullable', 'array'],
-            'only_first_purchase'  => ['boolean'],
+            'excludeIds' => ['nullable', 'array'],
+            'only_first_purchase' => ['boolean'],
             'not_discount_products' => ['boolean'],
             'published' => ['boolean'],
         ];
@@ -270,14 +273,14 @@ class DiscountForm extends Component
     {
         return [
             'title.required' => 'عنوان تخفیف را وارد کنید.',
-            'title.min'      => 'عنوان حداقل ۲ کاراکتر است.',
-            'code.required'  => 'کد تخفیف را وارد کنید یا با دکمهٔ کلید بسازید.',
-            'code.unique'    => 'این کد تخفیف قبلاً استفاده شده است؛ کد دیگری بسازید.',
-            'code.regex'     => 'کد تخفیف فقط می‌تواند حروف انگلیسی، عدد، خط تیره و زیرخط باشد.',
-            'code.min'       => 'کد تخفیف حداقل ۳ کاراکتر است.',
+            'title.min' => 'عنوان حداقل ۲ کاراکتر است.',
+            'code.required' => 'کد تخفیف را وارد کنید یا با دکمهٔ کلید بسازید.',
+            'code.unique' => 'این کد تخفیف قبلاً استفاده شده است؛ کد دیگری بسازید.',
+            'code.regex' => 'کد تخفیف فقط می‌تواند حروف انگلیسی، عدد، خط تیره و زیرخط باشد.',
+            'code.min' => 'کد تخفیف حداقل ۳ کاراکتر است.',
             'end_date.after_or_equal' => 'تاریخ پایان باید بعد از تاریخ شروع باشد.',
             'price.required' => 'مقدار تخفیف (تومان) را وارد کنید.',
-            'price.min'      => 'مقدار تخفیف حداقل ۱٬۰۰۰ تومان است.',
+            'price.min' => 'مقدار تخفیف حداقل ۱٬۰۰۰ تومان است.',
             'percent.required' => 'درصد تخفیف را وارد کنید.',
         ];
     }
@@ -286,7 +289,8 @@ class DiscountForm extends Component
 
     public function getCategoriesProperty(): Collection
     {
-        return ShopCategory::query()->where('shop_id', $this->shop()->id)->orderBy('sort')->orderBy('id')->get(['id', 'name']);
+        // Global (admin-managed) main categories — a pick covers the whole branch.
+        return Category::query()->whereNull('parent_id')->orderBy('sort')->orderBy('id')->get(['id', 'name']);
     }
 
     public function getProductsProperty(): Collection
@@ -328,9 +332,9 @@ class DiscountForm extends Component
     public function render()
     {
         return view('livewire.seller.discount-form', [
-            'categories'        => $this->categories,
-            'products'          => $this->products,
-            'searchResults'     => $this->searchResults,
+            'categories' => $this->categories,
+            'products' => $this->products,
+            'searchResults' => $this->searchResults,
             'selectedCustomers' => $this->selectedCustomers,
         ])->title($this->discountId ? 'ویرایش کد تخفیف' : 'ایجاد تخفیف جدید');
     }

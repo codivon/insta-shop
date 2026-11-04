@@ -49,7 +49,7 @@ class Setting extends Model
     {
         foreach ($pairs as $groupKey => $pair) {
             $value = is_array($pair) ? $pair['value'] : $pair;
-            $type  = is_array($pair) ? ($pair['type'] ?? 'text') : 'text';
+            $type = is_array($pair) ? ($pair['type'] ?? 'text') : 'text';
             self::set($groupKey, $value, $type);
         }
     }
@@ -108,9 +108,9 @@ class Setting extends Model
     {
         return match ($type) {
             'boolean' => $raw === null ? null : filter_var($raw, FILTER_VALIDATE_BOOLEAN),
-            'number'  => $raw === null ? null : (is_numeric($raw) ? $raw + 0 : $raw),
-            'json'    => $raw === null ? null : json_decode($raw, true),
-            default   => $raw,
+            'number' => $raw === null ? null : (is_numeric($raw) ? $raw + 0 : $raw),
+            'json' => $raw === null ? null : json_decode($raw, true),
+            default => $raw,
         };
     }
 }

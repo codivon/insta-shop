@@ -6,7 +6,6 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Product;
 use App\Models\ProductVariantValue;
 use App\Models\Shop;
-use App\Models\ShopAttribute;
 use App\Models\ShopFilter;
 use App\Models\ShopFilterItem;
 use Illuminate\Support\Collection;
@@ -87,11 +86,11 @@ class FilteringManager extends Component
         $this->resetForm();
         $this->resetErrorBag();
 
-        $this->editId    = $filter->id;
-        $this->title     = (string) $filter->title;
+        $this->editId = $filter->id;
+        $this->title = (string) $filter->title;
         $this->published = (bool) $filter->published;
         $this->specNames = $filter->items->where('kind', ShopFilterItem::KIND_SPEC)->pluck('spec_name')->all();
-        $this->attrIds   = $filter->items->where('kind', ShopFilterItem::KIND_ATTRIBUTE)->pluck('shop_attribute_id')->map(fn ($id) => (int) $id)->all();
+        $this->attrIds = $filter->items->where('kind', ShopFilterItem::KIND_ATTRIBUTE)->pluck('shop_attribute_id')->map(fn ($id) => (int) $id)->all();
 
         $this->showModal = true;
     }
@@ -104,11 +103,11 @@ class FilteringManager extends Component
 
     private function resetForm(): void
     {
-        $this->editId     = null;
-        $this->title      = '';
-        $this->published  = true;
-        $this->specNames  = [];
-        $this->attrIds    = [];
+        $this->editId = null;
+        $this->title = '';
+        $this->published = true;
+        $this->specNames = [];
+        $this->attrIds = [];
         $this->specSearch = '';
     }
 
@@ -203,7 +202,7 @@ class FilteringManager extends Component
         $wasEditing = $this->editId !== null;
 
         $filter->fill([
-            'title'     => trim($this->title),
+            'title' => trim($this->title),
             'published' => $this->published,
         ]);
 
@@ -219,8 +218,8 @@ class FilteringManager extends Component
         foreach (array_values(array_unique($this->specNames)) as $name) {
             ShopFilterItem::query()->create([
                 'shop_filter_id' => $filter->id,
-                'spec_name'      => $name,
-                'kind'           => ShopFilterItem::KIND_SPEC,
+                'spec_name' => $name,
+                'kind' => ShopFilterItem::KIND_SPEC,
             ]);
         }
 
@@ -230,9 +229,9 @@ class FilteringManager extends Component
 
         foreach ($attributes as $attribute) {
             ShopFilterItem::query()->create([
-                'shop_filter_id'    => $filter->id,
-                'spec_name'         => $attribute->name,
-                'kind'              => ShopFilterItem::KIND_ATTRIBUTE,
+                'shop_filter_id' => $filter->id,
+                'spec_name' => $attribute->name,
+                'kind' => ShopFilterItem::KIND_ATTRIBUTE,
                 'shop_attribute_id' => $attribute->id,
             ]);
         }
@@ -284,11 +283,11 @@ class FilteringManager extends Component
     protected function rules(): array
     {
         return [
-            'title'     => ['required', 'string', 'min:2', 'max:80'],
+            'title' => ['required', 'string', 'min:2', 'max:80'],
             'published' => ['boolean'],
             'specNames' => ['required_without:attrIds', 'nullable', 'array', 'max:8'],
             'specNames.*' => ['string', 'max:80'],
-            'attrIds'   => ['required_without:specNames', 'nullable', 'array', 'max:8'],
+            'attrIds' => ['required_without:specNames', 'nullable', 'array', 'max:8'],
             'attrIds.*' => ['integer', Rule::exists('shop_attributes', 'id')->where('shop_id', $this->shop()->id)],
         ];
     }
@@ -297,9 +296,9 @@ class FilteringManager extends Component
     {
         return [
             'title.required' => 'عنوان فیلتر را وارد کنید.',
-            'title.min'      => 'عنوان فیلتر حداقل ۲ کاراکتر است.',
+            'title.min' => 'عنوان فیلتر حداقل ۲ کاراکتر است.',
             'specNames.required_without' => 'حداقل یک مشخصه به فیلتر اضافه کنید.',
-            'attrIds.required_without'   => 'حداقل یک مشخصه به فیلتر اضافه کنید.',
+            'attrIds.required_without' => 'حداقل یک مشخصه به فیلتر اضافه کنید.',
             'attrIds.*.exists' => 'یکی از ویژگی‌های انتخابی معتبر نیست.',
         ];
     }
@@ -444,13 +443,13 @@ class FilteringManager extends Component
     public function render()
     {
         return view('livewire.seller.filtering-manager', [
-            'filters'          => $this->filters,
-            'availableSpecs'   => $this->availableSpecs,
-            'specValueCounts'  => $this->specValueCounts,
-            'availableAttrs'   => $this->availableAttrs,
-            'attrNameById'     => $this->attrNameById,
-            'attrUsedCounts'   => $this->attrUsedValueCounts,
-            'productsCount'    => $this->productsCount,
+            'filters' => $this->filters,
+            'availableSpecs' => $this->availableSpecs,
+            'specValueCounts' => $this->specValueCounts,
+            'availableAttrs' => $this->availableAttrs,
+            'attrNameById' => $this->attrNameById,
+            'attrUsedCounts' => $this->attrUsedValueCounts,
+            'productsCount' => $this->productsCount,
         ])->title('فیلترینگ');
     }
 }

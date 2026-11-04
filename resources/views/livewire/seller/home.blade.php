@@ -75,7 +75,7 @@
                 @foreach ([
                     ['icon' => 'package', 'value' => \App\Support\Fmt::fa($stats['total']),     'label' => 'محصول',   'href' => route('seller.shop')],
                     ['icon' => 'eye',     'value' => \App\Support\Fmt::fa($stats['published']), 'label' => 'منتشرشده', 'href' => route('seller.shop')],
-                    ['icon' => 'tag',     'value' => \App\Support\Fmt::fa($stats['categories']), 'label' => 'دسته',    'href' => route('seller.categories')],
+                    ['icon' => 'alert', 'value' => \App\Support\Fmt::fa($stats['outOfStock']), 'label' => 'ناموجود', 'href' => route('seller.shop')],
                 ] as $st)
                     <a href="{{ $st['href'] }}" wire:navigate class="rounded-2xl bg-white/15 p-2.5 backdrop-blur transition hover:bg-white/25 active:scale-95">
                         <x-icon name="{{ $st['icon'] }}" class="size-4 opacity-80" />
@@ -172,12 +172,6 @@
                     <x-icon name="package" class="size-5" />
                 </span>
                 <span class="text-center text-[10px] font-semibold leading-3 text-slate-600 dark:text-slate-300">محصولات</span>
-            </a>
-            <a href="{{ route('seller.categories') }}" wire:navigate class="flex flex-col items-center gap-1.5 rounded-2xl p-2 transition active:scale-95">
-                <span class="grid size-12 w-full place-items-center rounded-2xl border border-slate-200 bg-white text-primary-600 dark:border-slate-800 dark:bg-slate-900 dark:text-primary-400">
-                    <x-icon name="tag" class="size-5" />
-                </span>
-                <span class="text-center text-[10px] font-semibold leading-3 text-slate-600 dark:text-slate-300">دسته‌بندی‌ها</span>
             </a>
             <a href="{{ route('seller.shop.attributes') }}" wire:navigate class="flex flex-col items-center gap-1.5 rounded-2xl p-2 transition active:scale-95">
                 <span class="grid size-12 w-full place-items-center rounded-2xl border border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 to-orange-50 text-fuchsia-600 dark:border-fuchsia-900 dark:from-fuchsia-950/40 dark:to-orange-950/30 dark:text-fuchsia-400">

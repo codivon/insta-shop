@@ -11,6 +11,7 @@ use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
 use App\Support\Banking;
 use App\Support\Fmt;
+use App\Support\JDate;
 use App\Support\Wallet\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
@@ -342,8 +343,8 @@ class WalletPage extends Component
     {
         return match ($mode) {
             'weekly' => $date->startOfWeek(Carbon::SATURDAY)->toDateString(),
-            'monthly' => $date->format('Y-m'),
-            'yearly' => $date->format('Y'),
+            'monthly' => JDate::monthKey($date),
+            'yearly' => JDate::yearKey($date),
             default => $date->toDateString(),
         };
     }
@@ -378,7 +379,7 @@ class WalletPage extends Component
                 $key = $cursor->toDateString();
 
                 $buckets[$key] = [
-                    'label' => Fmt::fa($cursor->day).' '.$cursor->locale('fa')->monthName,
+                    'label' => JDate::short($cursor),
                     'sort' => $key,
                     'deposit' => 0,
                     'withdrawal' => 0,
@@ -387,38 +388,9 @@ class WalletPage extends Component
                 $cursor = $cursor->addWeeks(1);
             }
         } elseif ($mode === 'monthly') {
-            $cursor = $from->startOfMonth();
-            $steps = min((int) $cursor->diffInMonths($to->endOfDay()) + 1, 36);
-            $spanYrs = $cursor->diffInYears($to->endOfDay()) >= 1;
-
-            for ($i = 0; $i < $steps; $i++) {
-                $key = $cursor->format('Y-m');
-
-                $buckets[$key] = [
-                    'label' => $cursor->locale('fa')->monthName.($spanYrs ? ' '.Fmt::fa($cursor->year) : ''),
-                    'sort' => $key,
-                    'deposit' => 0,
-                    'withdrawal' => 0,
-                    'today' => $key === CarbonImmutable::today()->format('Y-m'),
-                ];
-                $cursor = $cursor->addMonths(1)->startOfMonth();
-            }
+            $buckets = JDate::monthBuckets($from, $to);
         } else {
-            $cursor = $from->startOfYear();
-            $steps = min((int) $cursor->diffInYears($to->endOfDay()) + 1, 10);
-
-            for ($i = 0; $i < $steps; $i++) {
-                $key = $cursor->format('Y');
-
-                $buckets[$key] = [
-                    'label' => Fmt::fa($cursor->year),
-                    'sort' => $key,
-                    'deposit' => 0,
-                    'withdrawal' => 0,
-                    'today' => $key === CarbonImmutable::today()->format('Y'),
-                ];
-                $cursor = $cursor->addYears(1)->startOfYear();
-            }
+            $buckets = JDate::yearBuckets($from, $to);
         }
 
         return $buckets;
@@ -445,10 +417,10 @@ class WalletPage extends Component
                         }
 
                         if ($tx->type === WalletTransaction::TYPE_DEPOSIT) {
-                            $buckets[$key]['deposit'] += (int) $tx->amount;
+                            $buckets[$key]['deposit'] = ($buckets[$key]['deposit'] ?? 0) + (int) $tx->amount;
                         } elseif ($tx->status !== WalletTransaction::STATUS_REJECTED) {
                             // pending + done withdrawals: money actually leaving the wallet
-                            $buckets[$key]['withdrawal'] += (int) $tx->amount;
+                            $buckets[$key]['withdrawal'] = ($buckets[$key]['withdrawal'] ?? 0) + (int) $tx->amount;
                         }
                     });
 
@@ -456,8 +428,8 @@ class WalletPage extends Component
                     ->sortBy('sort')
                     ->map(fn ($b) => [
                         'label' => $b['label'],
-                        'deposit' => (int) $b['deposit'],
-                        'withdrawal' => (int) $b['withdrawal'],
+                        'deposit' => (int) ($b['deposit'] ?? 0),
+                        'withdrawal' => (int) ($b['withdrawal'] ?? 0),
                         'today' => $b['today'],
                     ])
                     ->values();

@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use Illuminate\Support\Facades\Process;
 use Throwable;
 
 /**
@@ -21,7 +20,7 @@ final class EnvEditor
     /** @return string the raw .env content ('' when missing/unreadable) */
     public static function raw(): string
     {
-        $path = static::path();
+        $path = self::path();
 
         try {
             return is_file($path) ? (string) file_get_contents($path) : '';
@@ -33,7 +32,7 @@ final class EnvEditor
     /** Current value of a key as written in the .env file (or null). */
     public static function get(string $key): ?string
     {
-        $content = static::raw();
+        $content = self::raw();
 
         if ($content === '') {
             return null;
@@ -41,7 +40,7 @@ final class EnvEditor
 
         foreach (preg_split('/\R/', $content) ?: [] as $line) {
             if (preg_match('/^\s*'.preg_quote($key, '/').'\s*=\s*(.*?)\s*$/', $line, $m)) {
-                return static::unquote(trim($m[1]));
+                return self::unquote(trim($m[1]));
             }
         }
 
@@ -55,7 +54,7 @@ final class EnvEditor
      */
     public static function setMany(array $values): array
     {
-        $path = static::path();
+        $path = self::path();
 
         if (! is_file($path) || ! is_writable($path)) {
             // Missing .env → build it from the example file when possible.
@@ -70,16 +69,16 @@ final class EnvEditor
             }
         }
 
-        $content = static::raw();
+        $content = self::raw();
 
-        $lines   = preg_split('/\R/', $content) ?: [];
+        $lines = preg_split('/\R/', $content) ?: [];
         $pending = $values;
 
         // 1) replace existing lines in place
         foreach ($lines as $i => $line) {
             foreach (array_keys($pending) as $key) {
                 if (preg_match('/^\s*'.preg_quote($key, '/').'\s*=/', $line)) {
-                    $lines[$i] = $key.'='.static::quote($pending[$key]);
+                    $lines[$i] = $key.'='.self::quote($pending[$key]);
                     unset($pending[$key]);
 
                     break;
@@ -89,7 +88,7 @@ final class EnvEditor
 
         // 2) append keys that were not present yet
         foreach ($pending as $key => $value) {
-            $lines[] = $key.'='.static::quote($value);
+            $lines[] = $key.'='.self::quote($value);
         }
 
         $new = implode(PHP_EOL, $lines);
@@ -126,7 +125,7 @@ final class EnvEditor
         }
 
         // 4) config caches must go — otherwise the old values stay loaded
-        static::refreshConfig();
+        self::refreshConfig();
 
         return [true, null];
     }
@@ -134,7 +133,7 @@ final class EnvEditor
     /** Convenience: write one key. */
     public static function set(string $key, string $value): array
     {
-        return static::setMany([$key => $value]);
+        return self::setMany([$key => $value]);
     }
 
     /* ───────────────────────── internals ───────────────────────── */

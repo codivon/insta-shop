@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
+use App\Support\AdminNotifier;
 use App\Support\Fmt;
 use App\Support\IranCalendar;
 use App\Support\JDate;
+use App\Support\SellerNotifier;
+use App\Support\Wallet\WalletService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 #[Fillable([
@@ -29,13 +31,13 @@ class Order extends Model
     protected function casts(): array
     {
         return [
-            'total_amount'    => 'integer',
-            'shipping_cost'   => 'integer',
+            'total_amount' => 'integer',
+            'shipping_cost' => 'integer',
             'discount_amount' => 'integer',
-            'items_count'     => 'integer',
-            'shipments'       => 'array',
-            'commissions'     => 'array',
-            'paid_at'         => 'datetime',
+            'items_count' => 'integer',
+            'shipments' => 'array',
+            'commissions' => 'array',
+            'paid_at' => 'datetime',
             'shipment_status_at' => 'datetime',
         ];
     }
@@ -87,13 +89,13 @@ class Order extends Model
                 && $item->product->status === 'published'
                 && self::lineStock($item) > 0)
             ->map(fn ($item) => [
-                'shop_id'       => $item->product->shop_id,
-                'product_id'    => $item->product->id,
-                'product_name'  => $item->product->name,
-                'variant_id'    => (int) $item->variant_id,
+                'shop_id' => $item->product->shop_id,
+                'product_id' => $item->product->id,
+                'product_name' => $item->product->name,
+                'variant_id' => (int) $item->variant_id,
                 'variant_label' => $item->variant_id > 0 ? $item->variant?->label() : null,
-                'unit_price'    => $item->unitPrice(),
-                'quantity'      => min((int) $item->quantity, self::lineStock($item)),
+                'unit_price' => $item->unitPrice(),
+                'quantity' => min((int) $item->quantity, self::lineStock($item)),
             ])
             ->values();
 
@@ -101,27 +103,27 @@ class Order extends Model
             return null;
         }
 
-        $shipping  = max(0, (int) ($checkout['shipping_cost'] ?? 0));
-        $discount  = $checkout['discount'] ?? null;
+        $shipping = max(0, (int) ($checkout['shipping_cost'] ?? 0));
+        $discount = $checkout['discount'] ?? null;
         $discountAmount = $discount instanceof Discount
             ? max(0, (int) ($checkout['discount_amount'] ?? 0))
             : 0;
 
         $order = DB::transaction(function () use ($customer, $delivery, $gateway, $lines, $shipping, $discount, $discountAmount, $checkout) {
             $order = static::query()->create([
-                'customer_id'      => $customer->id,
-                'status'           => 'pending',
-                'total_amount'     => max(0, (int) $lines->sum(fn ($line) => $line['unit_price'] * $line['quantity']) + $shipping - $discountAmount),
-                'shipping_cost'    => $shipping,
-                'discount_amount'  => $discountAmount,
-                'discount_code'    => $discount?->code,
-                'shipments'        => array_values((array) ($checkout['shipments'] ?? [])),
-                'items_count'      => (int) $lines->sum('quantity'),
-                'receiver_name'    => (string) $delivery['receiver_name'],
-                'delivery_phone'   => (string) $delivery['delivery_phone'],
+                'customer_id' => $customer->id,
+                'status' => 'pending',
+                'total_amount' => max(0, (int) $lines->sum(fn ($line) => $line['unit_price'] * $line['quantity']) + $shipping - $discountAmount),
+                'shipping_cost' => $shipping,
+                'discount_amount' => $discountAmount,
+                'discount_code' => $discount?->code,
+                'shipments' => array_values((array) ($checkout['shipments'] ?? [])),
+                'items_count' => (int) $lines->sum('quantity'),
+                'receiver_name' => (string) $delivery['receiver_name'],
+                'delivery_phone' => (string) $delivery['delivery_phone'],
                 'delivery_address' => (string) $delivery['delivery_address'],
-                'postal_code'      => $delivery['postal_code'] ?? null,
-                'gateway'          => $gateway,
+                'postal_code' => $delivery['postal_code'] ?? null,
+                'gateway' => $gateway,
             ]);
 
             $order->items()->createMany($lines->all());
@@ -137,11 +139,11 @@ class Order extends Model
 
         // seller notifications AFTER the transaction (Web Push = HTTP calls
         // must never hold a DB write lock): «سفارش جدید شامل محصولات شما»
-        \App\Support\SellerNotifier::toShops(
+        SellerNotifier::toShops(
             $lines->pluck('shop_id')->all(),
             'order.new',
-            'سفارش جدید '.\App\Support\Fmt::fa($order->id).' ثبت شد 🛍️',
-            \App\Support\Fmt::fa($lines->sum('quantity')).' قلم کالا از فروشگاه شما در این سفارش وجود دارد.',
+            'سفارش جدید '.Fmt::fa($order->id).' ثبت شد 🛍️',
+            Fmt::fa($lines->sum('quantity')).' قلم کالا از فروشگاه شما در این سفارش وجود دارد.',
             route('seller.orders'),
             'bag',
             $order,
@@ -193,22 +195,22 @@ class Order extends Model
                 });
 
             $order->forceFill([
-                'status'      => 'paid',
+                'status' => 'paid',
                 'receipt_ref' => $receiptRef,
-                'paid_at'     => now(),
+                'paid_at' => now(),
             ])->save();
 
             ($order->customer->cart)?->items()->delete();
 
             // seller wallets: credit each shop's share of this paid order
-            \App\Support\Wallet\WalletService::creditOrder($order);
+            WalletService::creditOrder($order);
 
             // notify every shop's seller: «پرداخت شد — آماده پردازش/ارسال»
-            \App\Support\SellerNotifier::toShops(
+            SellerNotifier::toShops(
                 $order->items->pluck('shop_id')->all(),
                 'order.paid',
-                'پرداخت سفارش '.\App\Support\Fmt::fa($order->id).' موفق شد ✅',
-                'مبلغ '.\App\Support\Fmt::money($order->total_amount).' پرداخت شد — سفارش آماده پردازش و ارسال است.',
+                'پرداخت سفارش '.Fmt::fa($order->id).' موفق شد ✅',
+                'مبلغ '.Fmt::money($order->total_amount).' پرداخت شد — سفارش آماده پردازش و ارسال است.',
                 route('seller.orders'),
                 'circle-check',
                 $order,
@@ -233,10 +235,10 @@ class Order extends Model
     public function statusLabel(): string
     {
         return match ($this->status) {
-            'paid'    => 'پرداخت‌شده',
-            'failed'  => 'پرداخت ناموفق',
-            'canceled'=> 'لغو شده',
-            default   => 'در انتظار پرداخت',
+            'paid' => 'پرداخت‌شده',
+            'failed' => 'پرداخت ناموفق',
+            'canceled' => 'لغو شده',
+            default => 'در انتظار پرداخت',
         };
     }
 
@@ -244,10 +246,10 @@ class Order extends Model
     public function statusClasses(): string
     {
         return match ($this->status) {
-            'paid'    => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
-            'failed'  => 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400',
-            'canceled'=> 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
-            default   => 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+            'paid' => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+            'failed' => 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400',
+            'canceled' => 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+            default => 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
         };
     }
 
@@ -255,12 +257,12 @@ class Order extends Model
     public function gatewayLabel(): string
     {
         return match ($this->gateway) {
-            'zarinpal'    => 'زرین‌پال',
-            'idpay'       => 'آیدی‌پی',
-            'zibal'       => 'زیبال',
+            'zarinpal' => 'زرین‌پال',
+            'idpay' => 'آیدی‌پی',
+            'zibal' => 'زیبال',
             'behpardakht' => 'بانک ملت',
-            'sep'         => 'درگاه سپ',
-            default       => 'درگاه آزمایشی (محلی)',
+            'sep' => 'درگاه سپ',
+            default => 'درگاه آزمایشی (محلی)',
         };
     }
 
@@ -292,12 +294,12 @@ class Order extends Model
             // per-shop carrier cost + customer-picked delivery day from the
             // shipments JSON snapshot (pay-on-delivery carriers are NOT
             // charged online → 0)
-            $shipping     = 0;
+            $shipping = 0;
             $deliveryDate = null;
 
             foreach ((array) ($this->shipments ?? []) as $entry) {
                 if ((int) ($entry['shop_id'] ?? 0) === $shopId) {
-                    $carrier  = Carrier::query()->find((int) ($entry['carrier_id'] ?? 0));
+                    $carrier = Carrier::query()->find((int) ($entry['carrier_id'] ?? 0));
                     $shipping = ($carrier && $carrier->isPayOnDelivery())
                         ? 0
                         : max(0, (int) ($entry['cost'] ?? 0));
@@ -316,13 +318,13 @@ class Order extends Model
             $itemsTotal = max(0, (int) $share->items_total);
 
             OrderShipment::query()->create([
-                'order_id'        => $this->id,
-                'shop_id'         => $shopId,
-                'items_total'     => $itemsTotal,
-                'shipping_cost'   => $shipping,
+                'order_id' => $this->id,
+                'shop_id' => $shopId,
+                'items_total' => $itemsTotal,
+                'shipping_cost' => $shipping,
                 'discount_amount' => $discount,
-                'total'           => max(0, $itemsTotal + $shipping - $discount),
-                'delivery_date'   => $deliveryDate,
+                'total' => max(0, $itemsTotal + $shipping - $discount),
+                'delivery_date' => $deliveryDate,
             ]);
         }
     }
@@ -369,8 +371,8 @@ class Order extends Model
         }
 
         $shipment->forceFill([
-            'shipment_status'    => $status,
-            'tracking_code'      => $trackingCode !== '' ? $trackingCode : ($status === 'none' ? null : $shipment->tracking_code),
+            'shipment_status' => $status,
+            'tracking_code' => $trackingCode !== '' ? $trackingCode : ($status === 'none' ? null : $shipment->tracking_code),
             'shipment_status_at' => now(),
         ])->save();
 
@@ -452,11 +454,11 @@ class Order extends Model
 
             // 2) slice → canceled, refund snapshot frozen
             $shipment->forceFill([
-                'canceled_at'        => now(),
-                'cancel_reason'      => mb_substr($reason, 0, 300),
-                'canceled_by'        => $by === 'admin' ? 'admin' : 'seller',
-                'refund_amount'      => (int) $shipment->total,
-                'shipment_status'    => 'none',
+                'canceled_at' => now(),
+                'cancel_reason' => mb_substr($reason, 0, 300),
+                'canceled_by' => $by === 'admin' ? 'admin' : 'seller',
+                'refund_amount' => (int) $shipment->total,
+                'shipment_status' => 'none',
                 'shipment_status_at' => now(),
             ])->save();
 
@@ -472,13 +474,13 @@ class Order extends Model
                     $wallet->decrement('balance', $payout);
 
                     WalletTransaction::query()->create([
-                        'wallet_id'   => $wallet->id,
-                        'type'        => WalletTransaction::TYPE_WITHDRAWAL,
-                        'amount'      => $payout,
-                        'commission'  => 0,
-                        'status'      => WalletTransaction::STATUS_DONE,
-                        'order_id'    => $this->id,
-                        'description' => 'لغو سهم فروشگاه از سفارش #'.\App\Support\Wallet\WalletService::orderCode($this).' — بازگشت وجه به مشتری',
+                        'wallet_id' => $wallet->id,
+                        'type' => WalletTransaction::TYPE_WITHDRAWAL,
+                        'amount' => $payout,
+                        'commission' => 0,
+                        'status' => WalletTransaction::STATUS_DONE,
+                        'order_id' => $this->id,
+                        'description' => 'لغو سهم فروشگاه از سفارش #'.WalletService::orderCode($this).' — بازگشت وجه به مشتری',
                     ]);
                 }
             }
@@ -490,7 +492,7 @@ class Order extends Model
         $shop = Shop::query()->find($shopId);
 
         if ($shop?->seller_id) {
-            \App\Support\SellerNotifier::notify(
+            SellerNotifier::notify(
                 (int) $shop->seller_id,
                 'order.canceled',
                 'سهم فروشگاه شما از سفارش '.Fmt::fa($this->id).' لغو شد ⛔',
@@ -502,7 +504,7 @@ class Order extends Model
         }
 
         // and the admin panel
-        \App\Support\AdminNotifier::notify(
+        AdminNotifier::notify(
             'order.canceled',
             'لغو سهم فروشگاه از سفارش '.Fmt::fa($this->id),
             'توسط '.($by === 'admin' ? 'مدیر' : 'فروشنده').' — دلیل: '.$reason,
@@ -525,9 +527,9 @@ class Order extends Model
     {
         return match ($this->shipment_status) {
             'processing' => 'در حال پردازش',
-            'shipped'    => 'در حال ارسال',
-            'delivered'  => 'تحویل شد',
-            default      => 'پردازش نشده',
+            'shipped' => 'در حال ارسال',
+            'delivered' => 'تحویل شد',
+            default => 'پردازش نشده',
         };
     }
 
@@ -536,9 +538,9 @@ class Order extends Model
     {
         return match ($this->shipment_status) {
             'processing' => 'bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400',
-            'shipped'    => 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400',
-            'delivered'  => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
-            default      => 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+            'shipped' => 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400',
+            'delivered' => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+            default => 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
         };
     }
 

@@ -13,9 +13,9 @@ class ProductFile extends Model
     protected function casts(): array
     {
         return [
-            'price'            => 'integer',
+            'price' => 'integer',
             'discount_percent' => 'integer',
-            'file_size'        => 'integer',
+            'file_size' => 'integer',
         ];
     }
 

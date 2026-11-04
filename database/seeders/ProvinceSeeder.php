@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Province;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class ProvinceSeeder extends Seeder
 {
@@ -178,12 +177,12 @@ class ProvinceSeeder extends Seeder
         foreach ($provinces as $province) {
             Province::firstOrCreate(
                 [
-                    'name'      => $province['name']
+                    'name' => $province['name'],
                 ],
                 [
-                    'latitude'  => $province['latitude'],
+                    'latitude' => $province['latitude'],
                     'longitude' => $province['longitude'],
-                    'ordering'  => $ordering++,
+                    'ordering' => $ordering++,
                 ]
             );
         }

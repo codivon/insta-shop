@@ -3,20 +3,19 @@
 namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
-
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Setting;
 use App\Support\ActivityLogger;
 use App\Support\Color;
 use App\Support\Theme;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 
 #[Layout('layouts.admin-slot')]
 class AppearanceSettings extends Component
 {
-    use NotifiesOnValidation;
     use GuardsPermissions;
+    use NotifiesOnValidation;
 
     protected static string $permission = 'admin.settings.appearance';
 

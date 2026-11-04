@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
+use App\Models\Order;
 use App\Models\Shop;
 use App\Support\Fmt;
 use Illuminate\Support\Carbon;
@@ -60,20 +61,20 @@ class IncomePage extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 15;
+        $this->perPage += 15;
     }
 
     /** Paid orders whose commissions snapshot exists, filtered. */
     private function ordersQuery()
     {
         $from = match ($this->range) {
-            '7'     => Carbon::today()->subDays(6)->startOfDay(),
-            '30'    => Carbon::today()->subDays(29)->startOfDay(),
-            '90'    => Carbon::today()->subDays(89)->startOfDay(),
+            '7' => Carbon::today()->subDays(6)->startOfDay(),
+            '30' => Carbon::today()->subDays(29)->startOfDay(),
+            '90' => Carbon::today()->subDays(89)->startOfDay(),
             default => null,
         };
 
-        return \App\Models\Order::query()
+        return Order::query()
             ->where('status', 'paid')
             ->whereNotNull('commissions')
             ->when($from !== null, fn ($q) => $q->whereBetween('paid_at', [$from, now()]))
@@ -89,16 +90,16 @@ class IncomePage extends Component
             return collect($order->commissions ?? [])
                 ->filter(fn (array $row) => $this->shopId === 0 || (int) $row['shop_id'] === $this->shopId)
                 ->map(fn (array $row) => (object) [
-                    'order_id'    => (int) $order->id,
-                    'order_code'  => str_pad((string) $order->id, 5, '0', STR_PAD_LEFT),
-                    'paid_at'     => $order->paid_at,
-                    'shop_id'     => (int) ($row['shop_id'] ?? 0),
-                    'shop_name'   => (string) ($row['shop_name'] ?? '—'),
+                    'order_id' => (int) $order->id,
+                    'order_code' => str_pad((string) $order->id, 5, '0', STR_PAD_LEFT),
+                    'paid_at' => $order->paid_at,
+                    'shop_id' => (int) ($row['shop_id'] ?? 0),
+                    'shop_name' => (string) ($row['shop_name'] ?? '—'),
                     'items_total' => (int) ($row['items_total'] ?? 0),
-                    'type'        => (string) ($row['commission_type'] ?? 'percent'),
-                    'value'       => (int) ($row['commission_value'] ?? 0),
-                    'commission'  => (int) ($row['commission_amount'] ?? 0),
-                    'payout'      => (int) ($row['payout'] ?? 0),
+                    'type' => (string) ($row['commission_type'] ?? 'percent'),
+                    'value' => (int) ($row['commission_value'] ?? 0),
+                    'commission' => (int) ($row['commission_amount'] ?? 0),
+                    'payout' => (int) ($row['payout'] ?? 0),
                 ]);
         })->values();
 
@@ -116,9 +117,9 @@ class IncomePage extends Component
 
         return [
             'commission' => (int) $rows->sum('commission_amount'),
-            'goods'      => (int) $rows->sum('items_total'),
-            'payout'     => (int) $rows->sum('payout'),
-            'orders'     => $orders->count(),
+            'goods' => (int) $rows->sum('items_total'),
+            'payout' => (int) $rows->sum('payout'),
+            'orders' => $orders->count(),
         ];
     }
 
@@ -127,7 +128,7 @@ class IncomePage extends Component
     {
         $from = Carbon::today()->subDays(13);
 
-        $orders = \App\Models\Order::query()
+        $orders = Order::query()
             ->where('status', 'paid')
             ->whereNotNull('commissions')
             ->whereBetween('paid_at', [$from->copy()->startOfDay(), now()])
@@ -143,8 +144,8 @@ class IncomePage extends Component
             $day = $from->copy()->addDays($i);
 
             return [
-                'label'          => Fmt::toFa($day->format('m/d')),
-                'commission'     => (int) ($byDay[$day->format('Y-m-d')] ?? 0),
+                'label' => $day->locale('fa')->minDayName.' '.Fmt::toFa($day->day),
+                'commission' => (int) ($byDay[$day->format('Y-m-d')] ?? 0),
             ];
         });
     }
@@ -157,11 +158,11 @@ class IncomePage extends Component
     public function render()
     {
         return view('livewire.admin.income-page', [
-            'rows'        => $this->rows,
-            'totals'      => $this->totals,
-            'chart'       => $this->chart,
+            'rows' => $this->rows,
+            'totals' => $this->totals,
+            'chart' => $this->chart,
             'shopOptions' => $this->shopOptions,
-            'hasMore'     => $this->hasMore,
+            'hasMore' => $this->hasMore,
         ])->title('درآمد پلتفرم')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — درآمد']);
     }

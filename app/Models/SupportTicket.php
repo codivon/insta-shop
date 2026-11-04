@@ -17,23 +17,23 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class SupportTicket extends Model
 {
-    public const STATUS_OPEN     = 'open';
+    public const STATUS_OPEN = 'open';
 
     public const STATUS_ANSWERED = 'answered';
 
-    public const STATUS_CLOSED   = 'closed';
+    public const STATUS_CLOSED = 'closed';
 
     public const STATUSES = [self::STATUS_OPEN, self::STATUS_ANSWERED, self::STATUS_CLOSED];
 
     /** Ticket categories shown in the creation form. */
     public const CATEGORIES = [
-        'orders'   => 'سفارش‌ها',
-        'payment'  => 'پرداخت',
-        'wallet'   => 'کیف پول و برداشت',
+        'orders' => 'سفارش‌ها',
+        'payment' => 'پرداخت',
+        'wallet' => 'کیف پول و برداشت',
         'products' => 'محصولات',
-        'shop'     => 'فروشگاه',
+        'shop' => 'فروشگاه',
         'feedback' => 'پیشنهاد و انتقاد',
-        'other'    => 'سایر',
+        'other' => 'سایر',
     ];
 
     protected $fillable = ['subject', 'category', 'status', 'last_reply_at', 'ticketable_type', 'ticketable_id'];
@@ -77,8 +77,8 @@ class SupportTicket extends Model
     {
         return match ($this->status) {
             self::STATUS_ANSWERED => 'پاسخ داده شد',
-            self::STATUS_CLOSED   => 'بسته شده',
-            default               => 'در انتظار بررسی',
+            self::STATUS_CLOSED => 'بسته شده',
+            default => 'در انتظار بررسی',
         };
     }
 
@@ -86,8 +86,8 @@ class SupportTicket extends Model
     {
         return match ($this->status) {
             self::STATUS_ANSWERED => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
-            self::STATUS_CLOSED   => 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
-            default               => 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
+            self::STATUS_CLOSED => 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+            default => 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
         };
     }
 

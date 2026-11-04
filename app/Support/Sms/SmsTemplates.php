@@ -2,6 +2,7 @@
 
 namespace App\Support\Sms;
 
+use App\Models\Setting;
 use App\Models\SmsTemplate;
 use App\Support\SchemaReady;
 
@@ -26,7 +27,7 @@ class SmsTemplates
     /** Group registry: slug => [label, icon] (sidebar/filter chips). */
     public const GROUPS = [
         'orders' => ['سفارش‌ها', 'bag'],
-        'auth'   => ['ورود و احراز', 'message'],
+        'auth' => ['ورود و احراز', 'message'],
     ];
 
     /** Legacy view fallback for keys that predate the templates table. */
@@ -82,7 +83,7 @@ class SmsTemplates
     public static function sampleData(?SmsTemplate $template): array
     {
         return array_merge(
-            ['app_name' => (string) \App\Models\Setting::get('theme.app_name', 'InstaShop')],
+            ['app_name' => (string) Setting::get('theme.app_name', 'InstaShop')],
             $template->sample_data ?? [],
         );
     }

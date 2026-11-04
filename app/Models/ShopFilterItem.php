@@ -20,7 +20,7 @@ class ShopFilterItem extends Model
     protected function casts(): array
     {
         return [
-            'kind'              => 'string',
+            'kind' => 'string',
             'shop_attribute_id' => 'integer',
         ];
     }

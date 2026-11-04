@@ -58,12 +58,14 @@ class ProductForm extends SellerProductForm
     public function render()
     {
         return view('livewire.admin.product-form', [
-            'shop'           => $this->shop(),
+            'shop' => $this->shop(),
             'existingImages' => $this->existingImages,
-            'existingFiles'  => $this->existingFiles,
+            'existingFiles' => $this->existingFiles,
             'shopAttributes' => $this->attributesWithValues,
-            'shopCategories' => $this->shop()->categories()->orderBy('sort')->orderBy('id')->get(),
-            'specTemplates'  => $this->specTemplates,
+            'categoryRoots' => $this->categoryRoots(),
+            'categoryOptions' => $this->categoryOptions(),
+            'selectedCategoryLabel' => $this->selectedCategoryLabel(),
+            'specTemplates' => $this->specTemplates,
         ])->title($this->productId ? 'ویرایش محصول' : 'افزودن محصول')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — محصولات — '.($this->productId ? 'ویرایش محصول' : 'افزودن محصول')]);
     }

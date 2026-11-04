@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['customer_id', 'title', 'province_id', 'city_id', 'province_name', 'city_name', 'address', 'postal_code', 'plaque', 'unit', 'recipient_name', 'phone', 'is_default'])]
 class CustomerAddress extends Model
@@ -16,8 +15,8 @@ class CustomerAddress extends Model
     {
         return [
             'province_id' => 'integer',
-            'city_id'     => 'integer',
-            'is_default'  => 'boolean',
+            'city_id' => 'integer',
+            'is_default' => 'boolean',
         ];
     }
 

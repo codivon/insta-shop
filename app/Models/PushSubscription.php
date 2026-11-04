@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * PushSubscription — a browser/device registered for Web Push so panel
@@ -21,14 +22,15 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $device_label
  * @property string $audience
  * @property int|null $seller_id
- * @property \Illuminate\Support\Carbon|null $last_used_at
- * @property \Illuminate\Support\Carbon|null $created_at
+ * @property Carbon|null $last_used_at
+ * @property Carbon|null $created_at
  */
 class PushSubscription extends Model
 {
     public const UPDATED_AT = null;
 
-    public const AUDIENCE_ADMIN  = 'admin';
+    public const AUDIENCE_ADMIN = 'admin';
+
     public const AUDIENCE_SELLER = 'seller';
 
     protected $fillable = [
@@ -38,8 +40,8 @@ class PushSubscription extends Model
     ];
 
     protected $casts = [
-        'seller_id'   => 'integer',
+        'seller_id' => 'integer',
         'last_used_at' => 'datetime',
-        'created_at'   => 'datetime',
+        'created_at' => 'datetime',
     ];
 }

@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -30,7 +31,7 @@ class SettlementsPage extends Component
 
     protected static string $permission = 'admin.finance';
 
-    #[\Livewire\Attributes\Url]
+    #[Url]
     public int $shopId = 0;
 
     public string $fromDate = '';
@@ -60,13 +61,13 @@ class SettlementsPage extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 20;
+        $this->perPage += 20;
     }
 
     protected function range(): array
     {
         $from = JDate::parse($this->fromDate)?->startOfDay();
-        $to   = JDate::parse($this->toDate)?->endOfDay();
+        $to = JDate::parse($this->toDate)?->endOfDay();
 
         if ($from && $to && $from->gt($to)) {
             [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
@@ -89,13 +90,13 @@ class SettlementsPage extends Component
 
         return $orders->flatMap(function ($order) {
             return collect($order->commissions ?? [])->map(fn (array $row) => (object) [
-                'order_id'    => (int) $order->id,
-                'paid_at'     => $order->paid_at,
-                'shop_id'     => (int) ($row['shop_id'] ?? 0),
-                'shop_name'   => (string) ($row['shop_name'] ?? '—'),
+                'order_id' => (int) $order->id,
+                'paid_at' => $order->paid_at,
+                'shop_id' => (int) ($row['shop_id'] ?? 0),
+                'shop_name' => (string) ($row['shop_name'] ?? '—'),
                 'items_total' => (int) ($row['items_total'] ?? 0),
-                'commission'  => (int) ($row['commission_amount'] ?? 0),
-                'payout'      => (int) ($row['payout'] ?? 0),
+                'commission' => (int) ($row['commission_amount'] ?? 0),
+                'payout' => (int) ($row['payout'] ?? 0),
             ]);
         })->when($this->shopId > 0, fn ($c) => $c->filter(fn ($r) => $r->shop_id === $this->shopId))->values();
     }
@@ -115,12 +116,12 @@ class SettlementsPage extends Component
         $pending = (clone $withdrawals)->where('status', 'pending');
 
         return [
-            'orders_count'  => $rows->pluck('order_id')->unique()->count(),
-            'goods'         => (int) $rows->sum('items_total'),
-            'commission'    => (int) $rows->sum('commission'),
-            'payout'        => (int) $rows->sum('payout'),
-            'settled'       => (int) $done->sum('amount'),
-            'pending_sum'   => (int) $pending->clone()->sum('amount'),
+            'orders_count' => $rows->pluck('order_id')->unique()->count(),
+            'goods' => (int) $rows->sum('items_total'),
+            'commission' => (int) $rows->sum('commission'),
+            'payout' => (int) $rows->sum('payout'),
+            'settled' => (int) $done->sum('amount'),
+            'pending_sum' => (int) $pending->clone()->sum('amount'),
             'pending_count' => (int) $pending->count(),
         ];
     }
@@ -132,7 +133,7 @@ class SettlementsPage extends Component
 
         for ($i = 7; $i >= 0; $i--) {
             $start = Carbon::today()->subWeeks($i)->startOfWeek()->copy();
-            $end   = $start->copy()->endOfWeek();
+            $end = $start->copy()->endOfWeek();
 
             $q = WalletTransaction::query()
                 ->where('type', 'withdrawal')
@@ -162,12 +163,12 @@ class SettlementsPage extends Component
         return $rows
             ->groupBy('shop_id')
             ->map(fn ($group, $shopId) => (object) [
-                'shop_id'    => (int) $shopId,
-                'shop_name'  => $group->first()->shop_name,
-                'orders'     => $group->pluck('order_id')->unique()->count(),
-                'goods'      => (int) $group->sum('items_total'),
+                'shop_id' => (int) $shopId,
+                'shop_name' => $group->first()->shop_name,
+                'orders' => $group->pluck('order_id')->unique()->count(),
+                'goods' => (int) $group->sum('items_total'),
                 'commission' => (int) $group->sum('commission'),
-                'payout'     => (int) $group->sum('payout'),
+                'payout' => (int) $group->sum('payout'),
             ])
             ->sortByDesc('payout')
             ->values();
@@ -199,17 +200,17 @@ class SettlementsPage extends Component
 
     public function resetFilters(): void
     {
-        $this->shopId   = 0;
+        $this->shopId = 0;
         $this->fromDate = '';
-        $this->toDate   = '';
+        $this->toDate = '';
     }
 
     public function render()
     {
         return view('livewire.admin.settlements-page', [
-            'metrics'     => $this->metrics,
-            'weekly'      => $this->weekly,
-            'shops'       => $this->shops,
+            'metrics' => $this->metrics,
+            'weekly' => $this->weekly,
+            'shops' => $this->shops,
             'shopOptions' => $this->shopOptions,
         ])->title('تسویه‌ها')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — مالی و حسابداری — تسویه‌ها']);

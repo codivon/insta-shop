@@ -24,7 +24,7 @@ Artisan::command('inspire', function () {
 Schedule::call(function () {
     try {
         Setting::set('developer.cron_last_run', now()->format('Y-m-d H:i:s'));
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         logger()->warning('cron heartbeat failed: '.$e->getMessage());
     }
 })

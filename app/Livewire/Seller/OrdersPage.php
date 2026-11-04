@@ -67,7 +67,7 @@ class OrdersPage extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 8;
+        $this->perPage += 8;
     }
 
     /** The single shop of the logged-in seller. */
@@ -121,15 +121,15 @@ class OrdersPage extends Component
             return;
         }
 
-        $this->shipOrderId  = $order->id;
-        $this->shipStatus   = $slice->shipment_status !== 'none' ? $slice->shipment_status : 'processing';
+        $this->shipOrderId = $order->id;
+        $this->shipStatus = $slice->shipment_status !== 'none' ? $slice->shipment_status : 'processing';
         $this->shipTracking = (string) ($slice->tracking_code ?? '');
     }
 
     public function closeShipment(): void
     {
-        $this->shipOrderId  = null;
-        $this->shipStatus   = 'processing';
+        $this->shipOrderId = null;
+        $this->shipStatus = 'processing';
         $this->shipTracking = '';
     }
 
@@ -150,13 +150,13 @@ class OrdersPage extends Component
         }
 
         $this->validateWithToast(fn () => $this->validate([
-            'shipStatus'   => ['required', 'in:'.implode(',', OrderShipment::STATUSES)],
+            'shipStatus' => ['required', 'in:'.implode(',', OrderShipment::STATUSES)],
             'shipTracking' => [$this->shipStatus === 'shipped' ? 'required' : 'nullable', 'string', 'max:60'],
         ], [
-            'shipStatus.required'   => 'وضعیت ارسال را انتخاب کنید.',
-            'shipStatus.in'         => 'وضعیت ارسال نامعتبر است.',
+            'shipStatus.required' => 'وضعیت ارسال را انتخاب کنید.',
+            'shipStatus.in' => 'وضعیت ارسال نامعتبر است.',
             'shipTracking.required' => 'برای «در حال ارسال» وارد کردن کد رهگیری پستی الزامی است.',
-            'shipTracking.max'      => 'کد رهگیری حداکثر ۶۰ کاراکتر است.',
+            'shipTracking.max' => 'کد رهگیری حداکثر ۶۰ کاراکتر است.',
         ]), 'ثبت وضعیت ارسال ناموفق بود');
 
         if ($this->shipStatus !== 'shipped') {
@@ -243,13 +243,13 @@ class OrdersPage extends Component
         }
 
         $this->cancelOrderId = $order->id;
-        $this->cancelReason  = '';
+        $this->cancelReason = '';
     }
 
     public function closeCancel(): void
     {
         $this->cancelOrderId = null;
-        $this->cancelReason  = '';
+        $this->cancelReason = '';
     }
 
     /** Cancel THIS shop's slice of the order with a mandatory reason. */
@@ -263,8 +263,8 @@ class OrdersPage extends Component
             'cancelReason' => ['required', 'string', 'min:3', 'max:300'],
         ], [
             'cancelReason.required' => 'دلیل لغو سفارش را بنویسید.',
-            'cancelReason.min'      => 'دلیل لغو باید حداقل ۳ کاراکتر باشد.',
-            'cancelReason.max'      => 'دلیل لغو حداکثر ۳۰۰ کاراکتر است.',
+            'cancelReason.min' => 'دلیل لغو باید حداقل ۳ کاراکتر باشد.',
+            'cancelReason.max' => 'دلیل لغو حداکثر ۳۰۰ کاراکتر است.',
         ]), 'لغو سفارش ناموفق بود');
 
         $order = Order::query()->find($this->cancelOrderId);
@@ -305,7 +305,7 @@ class OrdersPage extends Component
             ->latest('id');
 
         $total = (clone $query)->count();
-        $rows  = $query->limit($this->perPage)->get();
+        $rows = $query->limit($this->perPage)->get();
 
         $this->hasMore = $total > $this->perPage;
 
@@ -334,8 +334,8 @@ class OrdersPage extends Component
     public function render()
     {
         return view('livewire.seller.orders-page', [
-            'shop'    => $this->shop(),
-            'orders'  => $this->orders,
+            'shop' => $this->shop(),
+            'orders' => $this->orders,
             'hasMore' => $this->hasMore,
         ])->title('سفارش‌های فروشگاه');
     }

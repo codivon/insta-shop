@@ -2,6 +2,7 @@
 
 namespace App\Support\Sms;
 
+use App\Models\Setting;
 use App\Models\SmsLog;
 use App\Support\Sms\Contracts\SmsDriver;
 use App\Support\Sms\Drivers\FarazIPPanelDriver;
@@ -47,7 +48,7 @@ class SmsManager
     /** Active driver name from settings (fallback: log). */
     public function activeDriverName(): string
     {
-        $name = (string) \App\Models\Setting::get('sms.driver', 'log');
+        $name = (string) Setting::get('sms.driver', 'log');
 
         return $this->has($name) ? $name : 'log';
     }
@@ -71,15 +72,15 @@ class SmsManager
         }
 
         SmsLog::create([
-            'panel'               => $message->panel,
-            'driver'              => $driver->name(),
-            'phone'               => $message->to,
-            'template'            => $message->templateKey ?? $message->template,
-            'message'             => $message->body(),
-            'status'              => $result->ok ? 'sent' : 'failed',
-            'error'               => $result->error,
+            'panel' => $message->panel,
+            'driver' => $driver->name(),
+            'phone' => $message->to,
+            'template' => $message->templateKey ?? $message->template,
+            'message' => $message->body(),
+            'status' => $result->ok ? 'sent' : 'failed',
+            'error' => $result->error,
             'provider_message_id' => $result->providerMessageId,
-            'meta'                => $result->raw ?: null,
+            'meta' => $result->raw ?: null,
         ]);
 
         return $result;

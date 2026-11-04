@@ -4,7 +4,6 @@ namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Livewire\Concerns\NotifiesOnValidation;
-
 use App\Models\Order;
 use App\Models\OrderShipment;
 use App\Models\PaymentLog;
@@ -29,6 +28,7 @@ class OrderShow extends Component
     use NotifiesOnValidation;
 
     protected static string $permission = 'admin.orders.show';
+
     public Order $order;
 
     /* ── per-shop shipment control ── */
@@ -65,12 +65,12 @@ class OrderShow extends Component
                 $slice = $this->order->shopShipments->firstWhere('shop_id', (int) $shopId);
 
                 return [
-                    'shopId'       => (int) $shopId,
-                    'shop'         => $this->order->shopShipments->firstWhere('shop_id', (int) $shopId)?->shop
+                    'shopId' => (int) $shopId,
+                    'shop' => $this->order->shopShipments->firstWhere('shop_id', (int) $shopId)?->shop
                         ?? $items->first?->product?->shop
                         ?? $items->first?->shop,
-                    'items'        => $items->values(),
-                    'slice'        => $slice,
+                    'items' => $items->values(),
+                    'slice' => $slice,
                     'carrierTitle' => (string) ($carrierByShop->get((int) $shopId)['carrier_title'] ?? ''),
                 ];
             })
@@ -90,15 +90,15 @@ class OrderShow extends Component
             return;
         }
 
-        $this->shipShopId   = $shopId;
-        $this->shipStatus   = $slice->shipment_status !== 'none' ? $slice->shipment_status : 'processing';
+        $this->shipShopId = $shopId;
+        $this->shipStatus = $slice->shipment_status !== 'none' ? $slice->shipment_status : 'processing';
         $this->shipTracking = (string) ($slice->tracking_code ?? '');
     }
 
     public function closeShipment(): void
     {
-        $this->shipShopId   = null;
-        $this->shipStatus   = 'none';
+        $this->shipShopId = null;
+        $this->shipStatus = 'none';
         $this->shipTracking = '';
     }
 
@@ -109,13 +109,13 @@ class OrderShow extends Component
         }
 
         $this->validateWithToast(fn () => $this->validate([
-            'shipStatus'   => ['required', 'in:'.implode(',', OrderShipment::STATUSES)],
+            'shipStatus' => ['required', 'in:'.implode(',', OrderShipment::STATUSES)],
             'shipTracking' => [$this->shipStatus === 'shipped' ? 'required' : 'nullable', 'string', 'max:60'],
         ], [
-            'shipStatus.required'   => 'وضعیت ارسال را انتخاب کنید.',
-            'shipStatus.in'         => 'وضعیت ارسال نامعتبر است.',
+            'shipStatus.required' => 'وضعیت ارسال را انتخاب کنید.',
+            'shipStatus.in' => 'وضعیت ارسال نامعتبر است.',
             'shipTracking.required' => 'برای «در حال ارسال» وارد کردن کد رهگیری پستی الزامی است.',
-            'shipTracking.max'      => 'کد رهگیری حداکثر ۶۰ کاراکتر است.',
+            'shipTracking.max' => 'کد رهگیری حداکثر ۶۰ کاراکتر است.',
         ]), 'ثبت وضعیت ارسال ناموفق بود');
 
         $slice = $this->order->shipmentForShop($this->shipShopId);
@@ -173,14 +173,14 @@ class OrderShow extends Component
             return;
         }
 
-        $this->cancelShopId  = $shopId;
-        $this->cancelReason  = '';
+        $this->cancelShopId = $shopId;
+        $this->cancelReason = '';
     }
 
     public function closeCancel(): void
     {
-        $this->cancelShopId  = null;
-        $this->cancelReason  = '';
+        $this->cancelShopId = null;
+        $this->cancelReason = '';
     }
 
     public function confirmCancel(): void
@@ -193,8 +193,8 @@ class OrderShow extends Component
             'cancelReason' => ['required', 'string', 'min:3', 'max:300'],
         ], [
             'cancelReason.required' => 'دلیل لغو را بنویسید.',
-            'cancelReason.min'      => 'دلیل لغو باید حداقل ۳ کاراکتر باشد.',
-            'cancelReason.max'      => 'دلیل لغو حداکثر ۳۰۰ کاراکتر است.',
+            'cancelReason.min' => 'دلیل لغو باید حداقل ۳ کاراکتر باشد.',
+            'cancelReason.max' => 'دلیل لغو حداکثر ۳۰۰ کاراکتر است.',
         ]), 'لغو ناموفق بود');
 
         $shop = Shop::query()->find($this->cancelShopId);
@@ -245,7 +245,7 @@ class OrderShow extends Component
     public function render()
     {
         return view('livewire.admin.order-show', [
-            'logs'       => $this->logs,
+            'logs' => $this->logs,
             'shopGroups' => $this->shopGroups,
         ])->title('سفارش #'.Fmt::fa($this->order->id))
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — جزئیات سفارش']);

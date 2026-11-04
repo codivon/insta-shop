@@ -141,13 +141,13 @@ class MigrationInspector
         $len = strlen($code);
 
         foreach ($m[2] as $i => $cap) {
-            $kind  = $m[1][$i][0];           // create | table
+            $kind = $m[1][$i][0];           // create | table
             $table = $cap[0];
 
             // crude block end: the next "});" after the match start
             $start = $cap[1];
-            $end   = strpos($code, '});', $start);
-            $end   = $end === false ? $len : $end + 3;
+            $end = strpos($code, '});', $start);
+            $end = $end === false ? $len : $end + 3;
 
             $body = substr($code, $start, $end - $start);
 

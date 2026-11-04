@@ -2,18 +2,21 @@
 
 namespace App\Livewire\Seller;
 
+use App\Livewire\Concerns\NotifiesOnValidation;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductFile;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\Shop;
-use App\Models\ShopCategory;
 use App\Models\SpecificationTemplate;
+use App\Support\ActivityLogger;
+use App\Support\AdminNotifier;
 use App\Support\Fmt;
-use App\Livewire\Concerns\NotifiesOnValidation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -21,8 +24,8 @@ use Livewire\WithFileUploads;
 #[Layout('layouts.seller-slot', ['hideTabbar' => true])]
 class ProductForm extends Component
 {
-    use WithFileUploads;
     use NotifiesOnValidation;
+    use WithFileUploads;
 
     public ?int $productId = null;
 
@@ -41,6 +44,9 @@ class ProductForm extends Component
     public string $description = '';
 
     public int $categoryId = 0;
+
+    /** Selected main category (root) — sub-category picks come after it. */
+    public int $categoryRootId = 0;
 
     public string $productType = Product::TYPE_PHYSICAL;
 
@@ -94,19 +100,20 @@ class ProductForm extends Component
         if ($product !== null) {
             abort_unless($product->shop_id === $shop->id, 404, 'محصول یافت نشد.');
 
-            $this->productId      = $product->id;
-            $this->name           = $product->name;
-            $this->slug           = (string) ($product->slug ?? '');
-            $this->description    = (string) $product->description;
-            $this->categoryId     = (int) $product->shop_category_id;
-            $this->productType    = $product->type ?: Product::TYPE_PHYSICAL;
-            $this->weight         = $product->weight_grams ? (string) $product->weight_grams : '';
-            $this->unit           = (string) ($product->unit ?: 'تعداد');
-            $this->status         = $product->status;
-            $this->isSpecial      = $product->is_special;
-            $this->specialEndsAt  = $product->special_ends_at?->toDateString() ?? '';
+            $this->productId = $product->id;
+            $this->name = $product->name;
+            $this->slug = (string) ($product->slug ?? '');
+            $this->description = (string) $product->description;
+            $this->categoryId = (int) $product->category_id;
+            $this->categoryRootId = $this->categoryRootAncestorId($product->category);
+            $this->productType = $product->type ?: Product::TYPE_PHYSICAL;
+            $this->weight = $product->weight_grams ? (string) $product->weight_grams : '';
+            $this->unit = (string) ($product->unit ?: 'تعداد');
+            $this->status = $product->status;
+            $this->isSpecial = $product->is_special;
+            $this->specialEndsAt = $product->special_ends_at?->toDateString() ?? '';
             $this->specifications = $product->specifications ?? [];
-            $this->specType       = (string) ($product->spec_type ?? '');
+            $this->specType = (string) ($product->spec_type ?? '');
 
             if ($this->specType !== '') {
                 $template = SpecificationTemplate::query()
@@ -200,8 +207,8 @@ class ProductForm extends Component
 
         $this->resetErrorBag(['specifications']);
 
-        $this->specType        = $template->title;
-        $this->specTemplateId  = (int) $template->id;
+        $this->specType = $template->title;
+        $this->specTemplateId = (int) $template->id;
 
         $this->loadTemplateIntoSpecifications($template);
     }
@@ -307,7 +314,7 @@ class ProductForm extends Component
 
         $template = SpecificationTemplate::query()->firstOrNew([
             'shop_id' => $this->shop()->id,
-            'title'   => $title,
+            'title' => $title,
         ]);
 
         $template->mergeGroups($this->normalizedSpecifications());
@@ -355,15 +362,15 @@ class ProductForm extends Component
             }
 
             $this->variants[] = [
-                'id'                  => null,
-                'price'               => '',
-                'stock'               => '',
-                'discount'            => '',
+                'id' => null,
+                'price' => '',
+                'stock' => '',
+                'discount' => '',
                 'discount_expires_at' => '',
-                'max_purchase'        => '',
-                'min_purchase'        => '',
-                'status'              => 'active',
-                'values'              => $values,
+                'max_purchase' => '',
+                'min_purchase' => '',
+                'status' => 'active',
+                'values' => $values,
             ];
 
             $index = count($this->variants) - 1;
@@ -406,16 +413,16 @@ class ProductForm extends Component
 
         try {
             $this->validate([
-                "variants.$index.price"       => ['required', 'numeric', 'min:0', 'max:999999999999'],
-                "variants.$index.stock"       => ['required', 'integer', 'min:0', 'max:1000000'],
-                "variants.$index.discount"    => ['nullable', 'integer', 'min:0', 'max:100'],
+                "variants.$index.price" => ['required', 'numeric', 'min:0', 'max:999999999999'],
+                "variants.$index.stock" => ['required', 'integer', 'min:0', 'max:1000000'],
+                "variants.$index.discount" => ['nullable', 'integer', 'min:0', 'max:100'],
                 "variants.$index.max_purchase" => ['nullable', 'integer', 'min:1', 'max:1000000'],
                 "variants.$index.min_purchase" => ['nullable', 'integer', 'min:1', 'max:1000000'],
             ], [
                 "variants.$index.price.required" => 'قیمت این تنوع را وارد کنید.',
                 "variants.$index.stock.required" => 'موجودی انبار این تنوع را وارد کنید.',
             ]);
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             // مودال باز می‌ماند و خطاها زیر فیلدها نشان داده می‌شوند — به‌همراه پیام پررنگ
             $this->dispatch('panel-toast', message: collect($exception->errors())->flatten()->filter()->first()
                 ?: 'قیمت و موجودی این تنوع را تکمیل کنید.');
@@ -462,15 +469,15 @@ class ProductForm extends Component
         }
 
         $this->variants[] = [
-            'id'                  => null,
-            'price'               => '',
-            'stock'               => '',
-            'discount'            => '',
+            'id' => null,
+            'price' => '',
+            'stock' => '',
+            'discount' => '',
             'discount_expires_at' => '',
-            'max_purchase'        => '',
-            'min_purchase'        => '',
-            'status'              => 'active',
-            'values'              => $values,
+            'max_purchase' => '',
+            'min_purchase' => '',
+            'status' => 'active',
+            'values' => $values,
         ];
     }
 
@@ -479,12 +486,12 @@ class ProductForm extends Component
     public function addFile(): void
     {
         $this->files[] = [
-            'id'       => null,
-            'title'    => '',
-            'price'    => '',
+            'id' => null,
+            'title' => '',
+            'price' => '',
             'discount' => '',
-            'status'   => 'active',
-            'file'     => null,
+            'status' => 'active',
+            'file' => null,
         ];
     }
 
@@ -501,7 +508,7 @@ class ProductForm extends Component
     public function removeExistingFile(int $fileId): void
     {
         $this->removedFileIds[] = $fileId;
-        $this->removedFileIds   = array_values(array_unique($this->removedFileIds));
+        $this->removedFileIds = array_values(array_unique($this->removedFileIds));
     }
 
     public function undoRemoveExistingFile(int $fileId): void
@@ -573,7 +580,7 @@ class ProductForm extends Component
             $this->productType === Product::TYPE_DOWNLOADABLE
                 ? $this->validateFiles()
                 : $this->validateVariants();
-        } catch (\Illuminate\Validation\ValidationException $exception) {
+        } catch (ValidationException $exception) {
             $this->announceFormErrors($exception->errors());
 
             throw $exception;
@@ -597,21 +604,21 @@ class ProductForm extends Component
 
         DB::transaction(function () use ($product) {
             $product->fill([
-                'shop_id'          => $this->shop()->id,
-                'shop_category_id' => $this->categoryId ?: null,
-                'name'             => trim($this->name),
+                'shop_id' => $this->shop()->id,
+                'category_id' => $this->categoryId ?: null,
+                'name' => trim($this->name),
                 // خالی → خودکار از عنوان ساخته می‌شود (هوک مدل، فارسی‌پسند)
-                'slug'             => trim($this->slug) !== '' ? trim($this->slug) : null,
-                'description'      => trim($this->description) ?: null,
-                'specifications'   => $this->normalizedSpecifications(),
-                'spec_type'        => trim($this->specType) !== '' ? trim($this->specType) : null,
-                'type'             => $this->productType,
-                'weight_grams'     => $this->productType === Product::TYPE_PHYSICAL && $this->weight !== '' ? (int) $this->weight : null,
-                'unit'             => $this->productType === Product::TYPE_PHYSICAL ? (trim($this->unit) ?: 'تعداد') : null,
-                'status'           => $this->status,
-                'is_special'       => $this->isSpecial,
+                'slug' => trim($this->slug) !== '' ? trim($this->slug) : null,
+                'description' => trim($this->description) ?: null,
+                'specifications' => $this->normalizedSpecifications(),
+                'spec_type' => trim($this->specType) !== '' ? trim($this->specType) : null,
+                'type' => $this->productType,
+                'weight_grams' => $this->productType === Product::TYPE_PHYSICAL && $this->weight !== '' ? (int) $this->weight : null,
+                'unit' => $this->productType === Product::TYPE_PHYSICAL ? (trim($this->unit) ?: 'تعداد') : null,
+                'status' => $this->status,
+                'is_special' => $this->isSpecial,
                 // the picked Jalali day counts as a full sale day → 23:59:59
-                'special_ends_at'  => $this->isSpecial && $this->specialEndsAt !== ''
+                'special_ends_at' => $this->isSpecial && $this->specialEndsAt !== ''
                     ? $this->specialEndsAt.' 23:59:59'
                     : null,
             ]);
@@ -632,7 +639,7 @@ class ProductForm extends Component
             $product->syncAggregates();
         });
 
-        \App\Support\ActivityLogger::log(
+        ActivityLogger::log(
             $this->productId ? 'product.updated' : 'product.created',
             'محصول «'.$product->name.'» '.($this->productId ? 'ویرایش' : 'ایجاد').($this->status === 'published' ? ' شد (منتشر)' : ' شد (پیش‌نویس)'),
             subject: $product,
@@ -641,7 +648,7 @@ class ProductForm extends Component
         );
 
         if (! $this->productId && $this->status === 'published') {
-            \App\Support\AdminNotifier::notify(
+            AdminNotifier::notify(
                 'product.new',
                 'محصول جدید 📦 '.$product->name,
                 'از فروشگاه '.($product->shop?->name ?: '—').' منتشر شد.',
@@ -721,62 +728,61 @@ class ProductForm extends Component
             ? ProductImage::query()->where('product_id', $this->productId)->count()
             : 0;
 
-        // دسته‌بندی الزامی است — هر محصول باید به یکی از دسته‌های همین فروشگاه
-        // وصل باشد (خواستهٔ کاربر: هم پنل فروشنده هم پنل مدیریت).
-        $categoryIds = $this->shop()->categories()->pluck('id')->all();
-
+        // دسته‌بندی الزامی است — هر محصول به یکی از دسته‌های سراسری
+        // (سطح اول یا زیر‌دستهٔ همان شاخه) وصل می‌شود.
         $this->validate([
-            'name'        => ['required', 'string', 'min:2', 'max:150'],
-            'slug'        => ['nullable', 'string', 'max:190', 'regex:/^[a-z0-9\x{0600}-\x{06FF}]+(?:-[a-z0-9\x{0600}-\x{06FF}]+)*$/u'],
+            'name' => ['required', 'string', 'min:2', 'max:150'],
+            'slug' => ['nullable', 'string', 'max:190', 'regex:/^[a-z0-9\x{0600}-\x{06FF}]+(?:-[a-z0-9\x{0600}-\x{06FF}]+)*$/u'],
             'description' => ['nullable', 'string', 'max:5000'],
-            // یک قانون واحد → دقیقاً یک پیام: خالی = «انتخاب کنید»، فروشگاه
-            // بدون دسته = راهنمای ساخت دسته، شناسهٔ غریبه = «تعلق ندارد»
-            'categoryId'  => ['required', 'integer', function ($attribute, $value, $fail) use ($categoryIds) {
-                if ($categoryIds === []) {
-                    $fail('ابتدا از «مدیریت دسته‌بندی‌ها» یک دسته‌بندی بسازید، سپس محصول را ثبت کنید.');
-
-                    return;
-                }
-
+            'categoryRootId' => ['required', 'integer', 'exists:categories,id'],
+            'categoryId' => ['required', 'integer', function ($attribute, $value, $fail) {
                 if ((int) $value < 1) {
                     $fail('دسته‌بندی محصول را انتخاب کنید.');
 
                     return;
                 }
 
-                if (! in_array((int) $value, $categoryIds, true)) {
-                    $fail('دستهٔ انتخابی به این فروشگاه تعلق ندارد.');
+                $category = Category::query()->find((int) $value);
+
+                if (! $category) {
+                    $fail('دستهٔ انتخابی معتبر نیست.');
+
+                    return;
+                }
+
+                if ($this->categoryRootAncestorId($category) !== (int) $this->categoryRootId) {
+                    $fail('زیر‌دستهٔ انتخابی با دستهٔ اصلی هم‌خوانی ندارد.');
                 }
             }],
             'productType' => ['required', 'in:'.Product::TYPE_PHYSICAL.','.Product::TYPE_DOWNLOADABLE],
             // کالای فیزیکی بدون وزن پذیرفته نمی‌شود (حمل‌ونقل بر اساس وزن)
-            'weight'      => ['exclude_unless:productType,'.Product::TYPE_PHYSICAL, 'required', 'numeric', 'min:1', 'max:10000000'],
-            'unit'        => ['nullable', 'string', 'max:20'],
-            'status'      => ['required', 'in:draft,published'],
-            'isSpecial'   => ['boolean'],
+            'weight' => ['exclude_unless:productType,'.Product::TYPE_PHYSICAL, 'required', 'numeric', 'min:1', 'max:10000000'],
+            'unit' => ['nullable', 'string', 'max:20'],
+            'status' => ['required', 'in:draft,published'],
+            'isSpecial' => ['boolean'],
             'specialEndsAt' => ['nullable', 'exclude_unless:isSpecial,true', 'required', 'date'],
-            'photos'      => ['nullable', 'array', 'max:'.max(0, 6 - $existingCount)],
-            'photos.*'    => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'specifications'              => ['nullable', 'array', 'max:10'],
-            'specifications.*.name'       => ['nullable', 'string', 'max:80'],
-            'specifications.*.items'      => ['nullable', 'array', 'max:25'],
+            'photos' => ['nullable', 'array', 'max:'.max(0, 6 - $existingCount)],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'specifications' => ['nullable', 'array', 'max:10'],
+            'specifications.*.name' => ['nullable', 'string', 'max:80'],
+            'specifications.*.items' => ['nullable', 'array', 'max:25'],
             'specifications.*.items.*.title' => ['nullable', 'string', 'max:80'],
             'specifications.*.items.*.value' => ['nullable', 'string', 'max:200'],
-            'specType'                    => ['nullable', 'string', 'max:120'],
+            'specType' => ['nullable', 'string', 'max:120'],
         ], [
-            'name.required'  => 'نام محصول را وارد کنید.',
-            'name.min'       => 'نام محصول حداقل ۲ کاراکتر است.',
+            'name.required' => 'نام محصول را وارد کنید.',
+            'name.min' => 'نام محصول حداقل ۲ کاراکتر است.',
             'categoryId.required' => 'دسته‌بندی محصول را انتخاب کنید.',
-            'slug.regex'     => 'آدرس محصول فقط می‌تواند شامل حروف کوچک انگلیسی، حروف فارسی، عدد و خط تیره باشد (بدون فاصله).',
-            'slug.max'       => 'آدرس محصول حداکثر ۱۹۰ کاراکتر است.',
-            'photos.max'     => 'حداکثر ۶ تصویر برای هر محصول مجاز است (تصاویر فعلی + جدید).',
+            'slug.regex' => 'آدرس محصول فقط می‌تواند شامل حروف کوچک انگلیسی، حروف فارسی، عدد و خط تیره باشد (بدون فاصله).',
+            'slug.max' => 'آدرس محصول حداکثر ۱۹۰ کاراکتر است.',
+            'photos.max' => 'حداکثر ۶ تصویر برای هر محصول مجاز است (تصاویر فعلی + جدید).',
             'photos.*.image' => 'فایل انتخاب‌شده تصویر نیست.',
-            'photos.*.max'   => 'حجم هر تصویر حداکثر ۲ مگابایت است.',
+            'photos.*.max' => 'حجم هر تصویر حداکثر ۲ مگابایت است.',
             'specialEndsAt.required' => 'تاریخ پایان فروش ویژه را انتخاب کنید.',
-            'specialEndsAt.date'     => 'تاریخ پایان فروش ویژه معتبر نیست.',
-            'weight.required'        => 'برای کالای فیزیکی، وزن محصول (گرم) الزامی است.',
-            'weight.numeric'         => 'وزن محصول باید عدد باشد.',
-            'weight.min'             => 'وزن محصول باید بیشتر از صفر باشد.',
+            'specialEndsAt.date' => 'تاریخ پایان فروش ویژه معتبر نیست.',
+            'weight.required' => 'برای کالای فیزیکی، وزن محصول (گرم) الزامی است.',
+            'weight.numeric' => 'وزن محصول باید عدد باشد.',
+            'weight.min' => 'وزن محصول باید بیشتر از صفر باشد.',
         ]);
 
         if ($this->isSpecial && trim($this->specialEndsAt) === '') {
@@ -807,23 +813,23 @@ class ProductForm extends Component
             ->all();
 
         $this->validate([
-            'variants'                        => ['required', 'array', 'min:1'],
-            'variants.*.price'                => ['required', 'numeric', 'min:0', 'max:999999999999'],
-            'variants.*.stock'                => ['required', 'integer', 'min:0', 'max:1000000'],
-            'variants.*.discount'             => ['nullable', 'integer', 'min:0', 'max:100'],
-            'variants.*.discount_expires_at'  => ['nullable', 'date'],
-            'variants.*.max_purchase'         => ['nullable', 'integer', 'min:1', 'max:1000000'],
-            'variants.*.min_purchase'         => ['nullable', 'integer', 'min:1', 'max:1000000'],
-            'variants.*.status'               => ['required', 'in:active,hidden'],
-            'variants.*.values.*.value_id'    => ['nullable', 'integer', Rule::in($validValueIds)],
-            'variants.*.values.*.text'        => ['nullable', 'string', 'max:120'],
+            'variants' => ['required', 'array', 'min:1'],
+            'variants.*.price' => ['required', 'numeric', 'min:0', 'max:999999999999'],
+            'variants.*.stock' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'variants.*.discount' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'variants.*.discount_expires_at' => ['nullable', 'date'],
+            'variants.*.max_purchase' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'variants.*.min_purchase' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'variants.*.status' => ['required', 'in:active,hidden'],
+            'variants.*.values.*.value_id' => ['nullable', 'integer', Rule::in($validValueIds)],
+            'variants.*.values.*.text' => ['nullable', 'string', 'max:120'],
         ], [
-            'variants.required'                       => 'حداقل یک تنوع باید وجود داشته باشد.',
-            'variants.min'                            => 'حداقل یک تنوع باید وجود داشته باشد.',
-            'variants.*.price.required'               => 'قیمت هر تنوع الزامی است.',
-            'variants.*.stock.required'               => 'موجودی انبار هر تنوع الزامی است.',
-            'variants.*.discount.max'                 => 'تخفیف باید بین ۰ تا ۱۰۰ درصد باشد.',
-            'variants.*.values.*.value_id.in'         => 'مقدار انتخاب‌شده معتبر نیست؛ ویژگی‌ها را به‌روز کنید.',
+            'variants.required' => 'حداقل یک تنوع باید وجود داشته باشد.',
+            'variants.min' => 'حداقل یک تنوع باید وجود داشته باشد.',
+            'variants.*.price.required' => 'قیمت هر تنوع الزامی است.',
+            'variants.*.stock.required' => 'موجودی انبار هر تنوع الزامی است.',
+            'variants.*.discount.max' => 'تخفیف باید بین ۰ تا ۱۰۰ درصد باشد.',
+            'variants.*.values.*.value_id.in' => 'مقدار انتخاب‌شده معتبر نیست؛ ویژگی‌ها را به‌روز کنید.',
         ]);
 
         foreach ($this->variants as $i => $variant) {
@@ -847,19 +853,19 @@ class ProductForm extends Component
             : 0;
 
         $this->validate([
-            'files'               => $existingCount > 0 ? ['nullable', 'array'] : ['required', 'array', 'min:1'],
-            'files.*.title'       => ['required', 'string', 'min:1', 'max:150'],
-            'files.*.price'       => ['required', 'numeric', 'min:0', 'max:999999999999'],
-            'files.*.discount'    => ['nullable', 'integer', 'min:0', 'max:100'],
-            'files.*.status'      => ['required', 'in:active,hidden'],
-            'files.*.file'        => ['nullable', 'file', 'max:102400'],
+            'files' => $existingCount > 0 ? ['nullable', 'array'] : ['required', 'array', 'min:1'],
+            'files.*.title' => ['required', 'string', 'min:1', 'max:150'],
+            'files.*.price' => ['required', 'numeric', 'min:0', 'max:999999999999'],
+            'files.*.discount' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'files.*.status' => ['required', 'in:active,hidden'],
+            'files.*.file' => ['nullable', 'file', 'max:102400'],
         ], [
-            'files.required'            => 'حداقل یک فایل دانلودی اضافه کنید.',
-            'files.min'                 => 'حداقل یک فایل دانلودی اضافه کنید.',
-            'files.*.title.required'    => 'عنوان فایل را وارد کنید.',
-            'files.*.price.required'    => 'قیمت فایل را وارد کنید.',
-            'files.*.discount.max'      => 'تخفیف باید بین ۰ تا ۱۰۰ درصد باشد.',
-            'files.*.file.max'          => 'حجم فایل حداکثر ۱۰۰ مگابایت است.',
+            'files.required' => 'حداقل یک فایل دانلودی اضافه کنید.',
+            'files.min' => 'حداقل یک فایل دانلودی اضافه کنید.',
+            'files.*.title.required' => 'عنوان فایل را وارد کنید.',
+            'files.*.price.required' => 'قیمت فایل را وارد کنید.',
+            'files.*.discount.max' => 'تخفیف باید بین ۰ تا ۱۰۰ درصد باشد.',
+            'files.*.file.max' => 'حجم فایل حداکثر ۱۰۰ مگابایت است.',
         ]);
 
         if ($this->status === 'published' && ($existingCount + count($this->files)) === 0) {
@@ -894,19 +900,19 @@ class ProductForm extends Component
 
             ProductImage::query()->create([
                 'product_id' => $product->id,
-                'path'       => $path,
-                'sort'       => $baseSort + $i,
+                'path' => $path,
+                'sort' => $baseSort + $i,
             ]);
         }
 
-        $this->photos          = [];
+        $this->photos = [];
         $this->featuredPhotoKey = null;
     }
 
     protected function persistVariants(Product $product): void
     {
-        $keepIds          = [];
-        $validAttributes  = $this->shop()->attributes()->with('values')->get()->keyBy('id');
+        $keepIds = [];
+        $validAttributes = $this->shop()->attributes()->with('values')->get()->keyBy('id');
 
         foreach (array_values($this->variants) as $i => $row) {
             $variant = $row['id']
@@ -918,15 +924,15 @@ class ProductForm extends Component
             }
 
             $variant->fill([
-                'product_id'           => $product->id,
-                'price'                => (int) $row['price'],
-                'stock'                => (int) $row['stock'],
-                'discount_percent'     => (int) ($row['discount'] ?: 0),
-                'discount_expires_at'  => $row['discount_expires_at'] !== '' ? $row['discount_expires_at'] : null,
-                'max_purchase'         => $row['max_purchase'] !== '' ? (int) $row['max_purchase'] : null,
-                'min_purchase'         => $row['min_purchase'] !== '' ? (int) $row['min_purchase'] : null,
-                'status'               => $row['status'],
-                'sort'                 => $i,
+                'product_id' => $product->id,
+                'price' => (int) $row['price'],
+                'stock' => (int) $row['stock'],
+                'discount_percent' => (int) ($row['discount'] ?: 0),
+                'discount_expires_at' => $row['discount_expires_at'] !== '' ? $row['discount_expires_at'] : null,
+                'max_purchase' => $row['max_purchase'] !== '' ? (int) $row['max_purchase'] : null,
+                'min_purchase' => $row['min_purchase'] !== '' ? (int) $row['min_purchase'] : null,
+                'status' => $row['status'],
+                'sort' => $i,
             ]);
             $variant->save();
 
@@ -937,7 +943,7 @@ class ProductForm extends Component
                 $picked = $row['values'][$attributeId] ?? ['value_id' => 0, 'text' => ''];
 
                 $valueId = (int) ($picked['value_id'] ?? 0);
-                $text    = trim((string) ($picked['text'] ?? ''));
+                $text = trim((string) ($picked['text'] ?? ''));
 
                 if ($attribute->type === 'text') {
                     $payload = ['value_text' => $text !== '' ? $text : null, 'shop_attribute_value_id' => null];
@@ -991,10 +997,10 @@ class ProductForm extends Component
 
             if ($file) {
                 $file->fill([
-                    'title'            => trim($row['title']),
-                    'price'            => (int) $row['price'],
+                    'title' => trim($row['title']),
+                    'price' => (int) $row['price'],
                     'discount_percent' => (int) ($row['discount'] ?: 0),
-                    'status'           => $row['status'],
+                    'status' => $row['status'],
                 ]);
                 $file->save();
 
@@ -1011,21 +1017,21 @@ class ProductForm extends Component
             }
 
             ProductFile::query()->create([
-                'product_id'       => $product->id,
-                'title'            => trim($row['title']),
-                'price'            => (int) $row['price'],
+                'product_id' => $product->id,
+                'title' => trim($row['title']),
+                'price' => (int) $row['price'],
                 'discount_percent' => (int) ($row['discount'] ?: 0),
-                'status'           => $row['status'],
-                'file_path'        => $this->storeProductFile($product, $row['file']),
-                'file_size'        => $row['file']->getSize(),
-                'sort'             => $baseSort + $i,
+                'status' => $row['status'],
+                'file_path' => $this->storeProductFile($product, $row['file']),
+                'file_size' => $row['file']->getSize(),
+                'sort' => $baseSort + $i,
             ]);
         }
     }
 
     protected function storeProductFile(Product $product, $uploaded): string
     {
-        $ext  = strtolower($uploaded->getClientOriginalExtension() ?: 'bin');
+        $ext = strtolower($uploaded->getClientOriginalExtension() ?: 'bin');
         $name = $product->id.'-'.bin2hex(random_bytes(8)).'.'.$ext;
 
         return $uploaded->storeAs('product-files/'.$product->id, $name, 'local');
@@ -1036,13 +1042,81 @@ class ProductForm extends Component
     public function render()
     {
         return view('livewire.seller.product-form', [
-            'shop'           => $this->shop(),
+            'shop' => $this->shop(),
             'existingImages' => $this->existingImages,
-            'existingFiles'  => $this->existingFiles,
+            'existingFiles' => $this->existingFiles,
             'shopAttributes' => $this->attributesWithValues,
-            'shopCategories' => $this->shop()->categories()->orderBy('sort')->orderBy('id')->get(),
-            'specTemplates'  => $this->specTemplates,
+            'categoryRoots' => $this->categoryRoots(),
+            'categoryOptions' => $this->categoryOptions(),
+            'selectedCategoryLabel' => $this->selectedCategoryLabel(),
+            'specTemplates' => $this->specTemplates,
         ])->title($this->productId ? 'ویرایش محصول' : 'افزودن محصول');
+    }
+
+    /** Category hooks ─ global tree helpers shared with the admin form. */
+
+    /** Walk up to the root ancestor of a category (itself if root). */
+    protected function categoryRootAncestorId(?Category $category): int
+    {
+        $node = $category;
+
+        while ($node !== null && $node->parent_id !== null) {
+            $node = $node->parent;
+        }
+
+        return (int) ($node->id ?? 0);
+    }
+
+    /** Main (root) categories for the first dropdown. */
+    protected function categoryRoots(): Collection
+    {
+        return Category::query()
+            ->whereNull('parent_id')
+            ->orderBy('sort')
+            ->orderBy('id')
+            ->get(['id', 'name']);
+    }
+
+    /** Flattened, path-labelled options of the selected root's subtree. */
+    protected function categoryOptions(): Collection
+    {
+        if ($this->categoryRootId <= 0) {
+            return collect();
+        }
+
+        $nodes = Category::query()->orderBy('sort')->orderBy('id')->get(['id', 'parent_id', 'name']);
+        $byParent = $nodes->groupBy('parent_id');
+        $options = collect();
+
+        $walk = function (int $parentId, string $prefix) use (&$walk, $byParent, $options): void {
+            foreach ($byParent->get($parentId, collect()) as $node) {
+                $path = $prefix === '' ? $node->name : $prefix.' › '.$node->name;
+                $options->push(['id' => $node->id, 'name' => $node->name, 'path' => $path]);
+                $walk((int) $node->id, $path);
+            }
+        };
+
+        $walk($this->categoryRootId, '');
+
+        return $options;
+    }
+
+    /** Path label of the currently picked category (for the closed combobox). */
+    protected function selectedCategoryLabel(): string
+    {
+        if ($this->categoryId <= 0) {
+            return '';
+        }
+
+        $category = Category::query()->with('parent')->find($this->categoryId);
+
+        return $category ? $category->pathLabel() : '';
+    }
+
+    /** Picking a new main category invalidates the sub-category pick. */
+    public function updatedCategoryRootId(): void
+    {
+        $this->categoryId = 0;
     }
 
     /** Saved spec-type library of this shop (for the نوع مشخصات selector). */
@@ -1055,13 +1129,13 @@ class ProductForm extends Component
     }
 
     /** Shop attribute fields with their values (for the variant pickers). */
-    public function getAttributesWithValuesProperty(): \Illuminate\Support\Collection
+    public function getAttributesWithValuesProperty(): Collection
     {
         return $this->shop()->attributes()->with('values')->get();
     }
 
     /** Already-saved gallery images (edit mode only). */
-    public function getExistingImagesProperty(): \Illuminate\Support\Collection
+    public function getExistingImagesProperty(): Collection
     {
         if (! $this->productId) {
             return collect();
@@ -1075,7 +1149,7 @@ class ProductForm extends Component
     }
 
     /** Already-saved downloadable files (edit mode only). */
-    public function getExistingFilesProperty(): \Illuminate\Support\Collection
+    public function getExistingFilesProperty(): Collection
     {
         if (! $this->productId) {
             return collect();
@@ -1105,15 +1179,15 @@ class ProductForm extends Component
             }
 
             return [
-                'id'                  => $variant->id,
-                'price'               => (string) $variant->price,
-                'stock'               => (string) $variant->stock,
-                'discount'            => (string) $variant->discount_percent,
+                'id' => $variant->id,
+                'price' => (string) $variant->price,
+                'stock' => (string) $variant->stock,
+                'discount' => (string) $variant->discount_percent,
                 'discount_expires_at' => $variant->discount_expires_at?->format('Y-m-d') ?? '',
-                'max_purchase'        => $variant->max_purchase ? (string) $variant->max_purchase : '',
-                'min_purchase'        => $variant->min_purchase ? (string) $variant->min_purchase : '',
-                'status'              => $variant->status,
-                'values'              => $values,
+                'max_purchase' => $variant->max_purchase ? (string) $variant->max_purchase : '',
+                'min_purchase' => $variant->min_purchase ? (string) $variant->min_purchase : '',
+                'status' => $variant->status,
+                'values' => $values,
             ];
         })->all();
     }

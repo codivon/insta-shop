@@ -4,11 +4,11 @@ namespace App\Livewire\Admin\Users;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Livewire\Concerns\NotifiesOnValidation;
-
 use App\Models\Customer;
 use App\Support\Fmt;
 use App\Support\Phone;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -25,6 +25,7 @@ class CustomersIndex extends Component
     use NotifiesOnValidation;
 
     protected static string $permission = 'admin.users.customers';
+
     public string $search = '';
 
     #[Url]
@@ -93,10 +94,10 @@ class CustomersIndex extends Component
             return;
         }
 
-        $this->editId       = $customer->id;
+        $this->editId = $customer->id;
         $this->editFullName = (string) ($customer->full_name ?? '');
-        $this->editPhone    = Phone::toLocal($customer->phone);
-        $this->editStatus   = (string) $customer->status;
+        $this->editPhone = Phone::toLocal($customer->phone);
+        $this->editStatus = (string) $customer->status;
 
         $this->resetErrorBag();
         $this->showEditModal = true;
@@ -117,14 +118,14 @@ class CustomersIndex extends Component
     {
         $this->validateWithToast(fn () => $this->validate([
             'editFullName' => ['nullable', 'string', 'min:3', 'max:80'],
-            'editPhone'    => ['required', 'string', 'min:10', 'max:14',
-                \Illuminate\Validation\Rule::unique('customers', 'phone')->ignore($this->editId)],
-            'editStatus'   => ['required', 'in:active,blocked'],
+            'editPhone' => ['required', 'string', 'min:10', 'max:14',
+                Rule::unique('customers', 'phone')->ignore($this->editId)],
+            'editStatus' => ['required', 'in:active,blocked'],
         ], [
-            'editFullName.min'   => 'نام باید حداقل ۳ حرف باشد.',
+            'editFullName.min' => 'نام باید حداقل ۳ حرف باشد.',
             'editPhone.required' => 'شماره موبایل را وارد کنید.',
-            'editPhone.min'      => 'شماره موبایل معتبر نیست.',
-            'editPhone.unique'   => 'این شماره برای مشتری دیگری ثبت شده است.',
+            'editPhone.min' => 'شماره موبایل معتبر نیست.',
+            'editPhone.unique' => 'این شماره برای مشتری دیگری ثبت شده است.',
         ]));
 
         $customer = Customer::query()->find((int) $this->editId);
@@ -137,8 +138,8 @@ class CustomersIndex extends Component
 
         $customer->fill([
             'full_name' => trim($this->editFullName) !== '' ? trim($this->editFullName) : null,
-            'phone'     => Phone::normalize($this->editPhone),
-            'status'    => $this->editStatus,
+            'phone' => Phone::normalize($this->editPhone),
+            'status' => $this->editStatus,
         ]);
 
         $customer->save();
@@ -152,7 +153,7 @@ class CustomersIndex extends Component
 
     public function askDelete(int $customerId): void
     {
-        $this->confirmDeleteId   = $customerId;
+        $this->confirmDeleteId = $customerId;
         $this->deleteConfirmText = '';
     }
 
@@ -160,7 +161,7 @@ class CustomersIndex extends Component
     {
         $customer = Customer::query()->find((int) $this->confirmDeleteId);
 
-        $this->confirmDeleteId   = null;
+        $this->confirmDeleteId = null;
         $this->deleteConfirmText = '';
 
         if (! $customer) {

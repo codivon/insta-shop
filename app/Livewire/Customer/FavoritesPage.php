@@ -5,6 +5,7 @@ namespace App\Livewire\Customer;
 use App\Models\Cart;
 use App\Models\Customer;
 use App\Models\Product;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -25,7 +26,7 @@ class FavoritesPage extends Component
     public function addToCart(int $productId): void
     {
         $customer = $this->customer();
-        $product  = $customer?->favorites()->where('product_id', $productId)->first()?->product;
+        $product = $customer?->favorites()->where('product_id', $productId)->first()?->product;
 
         if (! $customer || ! $product || $product->status !== 'published') {
             return;
@@ -61,7 +62,7 @@ class FavoritesPage extends Component
 
     // ── Computed data ────────────────────────────────────────────────
 
-    public function getFavoritesProperty(): \Illuminate\Support\Collection
+    public function getFavoritesProperty(): Collection
     {
         return $this->customer()
             ? $this->customer()->favorites()

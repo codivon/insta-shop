@@ -26,33 +26,34 @@ return [
         'overview' => [
             'label' => 'نمای کلی',
             'permissions' => [
-                'admin.dashboard'  => 'داشبورد',
-                'admin.activity'   => 'فعالیت‌های اخیر (گزارش کامل رویدادها)',
+                'admin.dashboard' => 'داشبورد',
+                'admin.activity' => 'فعالیت‌های اخیر (گزارش کامل رویدادها)',
                 'admin.notifications' => 'نوتیفیکیشن‌ها',
-                'admin.profile'    => 'پروفایل مدیر (ویرایش اطلاعات و رمز عبور)',
+                'admin.profile' => 'پروفایل مدیر (ویرایش اطلاعات و رمز عبور)',
             ],
         ],
 
         'catalog' => [
             'label' => 'مدیریت فروشگاه و سفارش‌ها',
             'permissions' => [
-                'admin.orders'      => 'سفارش‌ها',
+                'admin.orders' => 'سفارش‌ها',
                 'admin.orders.show' => 'جزئیات سفارش',
-                'admin.shops'       => 'فروشگاه‌ها',
-                'admin.products'    => 'محصولات',
-                'admin.discounts'   => 'کدهای تخفیف',
-                'admin.income'      => 'درآمد و کمیسیون‌ها',
-                'admin.finance'     => 'گزارش مالی',
+                'admin.shops' => 'فروشگاه‌ها',
+                'admin.categories' => 'دسته‌بندی‌های سراسری (درخت دسته‌ها)',
+                'admin.products' => 'محصولات',
+                'admin.discounts' => 'کدهای تخفیف',
+                'admin.income' => 'درآمد و کمیسیون‌ها',
+                'admin.finance' => 'گزارش مالی',
                 'admin.settlements' => 'تسویه‌ها',
                 'admin.withdrawals' => 'مدیریت برداشت‌ها',
-                'admin.locations'   => 'استان‌ها و شهرها',
+                'admin.locations' => 'استان‌ها و شهرها',
             ],
         ],
 
         'users' => [
             'label' => 'کاربران',
             'permissions' => [
-                'admin.users.sellers'  => 'فروشندگان',
+                'admin.users.sellers' => 'فروشندگان',
                 'admin.users.customers' => 'مشتریان',
             ],
         ],
@@ -60,7 +61,7 @@ return [
         'support' => [
             'label' => 'پشتیبانی',
             'permissions' => [
-                'admin.tickets'      => 'تیکت پشتیبانی (لیست تیکت‌ها)',
+                'admin.tickets' => 'تیکت پشتیبانی (لیست تیکت‌ها)',
                 'admin.tickets.show' => 'جزئیات و پاسخ تیکت',
             ],
         ],
@@ -68,9 +69,9 @@ return [
         'system' => [
             'label' => 'سیستم',
             'permissions' => [
-                'admin.backups'          => 'پشتیبان‌گیری و بازگردانی (صفحهٔ مدیریت پشتیبان‌ها)',
+                'admin.backups' => 'پشتیبان‌گیری و بازگردانی (صفحهٔ مدیریت پشتیبان‌ها)',
                 'admin.backups.download' => 'دانلود فایل پشتیبان',
-                'admin.backups.upload'   => 'بارگذاری فایل پشتیبان (بازگردانی)',
+                'admin.backups.upload' => 'بارگذاری فایل پشتیبان (بازگردانی)',
             ],
         ],
 
@@ -79,22 +80,22 @@ return [
         'settings' => [
             'label' => 'تنظیمات سیستم',
             'permissions' => [
-                'admin.settings'            => 'مرکز تنظیمات (دسترسی به صفحه تنظیمات)',
-                'admin.settings.general'    => 'تنظیمات عمومی (عنوان، لوگو، فاوآیکون)',
+                'admin.settings' => 'مرکز تنظیمات (دسترسی به صفحه تنظیمات)',
+                'admin.settings.general' => 'تنظیمات عمومی (عنوان، لوگو، فاوآیکون)',
                 'admin.settings.appearance' => 'ظاهر و رنگ‌بندی',
-                'admin.settings.sms'            => 'پیامک و پرووایدر',
-                'admin.settings.sms.templates'  => 'قالب‌های پیامک',
-                'admin.settings.payment'        => 'درگاه پرداخت',
-                'admin.settings.shops'          => 'تنظیمات فروشگاه‌ها (تایید خودکار، کمیسیون)',
-                'admin.settings.notifications'  => 'نوتیفیکیشن‌ها (پوش و رویدادها)',
-                'admin.settings.backups'        => 'پشتیبان‌گیری خودکار + ایمیل و SMTP',
+                'admin.settings.sms' => 'پیامک و پرووایدر',
+                'admin.settings.sms.templates' => 'قالب‌های پیامک',
+                'admin.settings.payment' => 'درگاه پرداخت',
+                'admin.settings.shops' => 'تنظیمات فروشگاه‌ها (تایید خودکار، کمیسیون)',
+                'admin.settings.notifications' => 'نوتیفیکیشن‌ها (پوش و رویدادها)',
+                'admin.settings.backups' => 'پشتیبان‌گیری خودکار + ایمیل و SMTP',
             ],
         ],
 
         'managers' => [
             'label' => 'مدیران و نقش‌ها',
             'permissions' => [
-                'admin.admins'       => 'لیست مدیران',
+                'admin.admins' => 'لیست مدیران',
                 'admin.access.roles' => 'نقش‌ها و دسترسی‌ها',
             ],
         ],

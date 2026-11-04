@@ -108,6 +108,8 @@
 
     @include('partials.build-check')
 
+    @include('partials.seller-return-fab')
+
     @stack('scripts')
 </body>
 </html>

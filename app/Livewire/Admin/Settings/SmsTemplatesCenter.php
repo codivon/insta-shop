@@ -3,16 +3,15 @@
 namespace App\Livewire\Admin\Settings;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
+use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\SmsLog;
 use App\Models\SmsTemplate;
 use App\Support\Phone;
-use App\Support\Sms\SmsManager;
 use App\Support\Sms\SmsTemplates;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 
 /**
  * Admin — «مرکز پیامک» / قالب‌های پیامک.
@@ -27,8 +26,8 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 #[Title('قالب‌های پیامک')]
 class SmsTemplatesCenter extends Component
 {
-    use NotifiesOnValidation;
     use GuardsPermissions;
+    use NotifiesOnValidation;
 
     protected static string $permission = 'admin.settings.sms';
 
@@ -132,11 +131,11 @@ class SmsTemplatesCenter extends Component
     {
         $tpl = SmsTemplate::query()->findOrFail($id);
 
-        $this->editId      = $tpl->id;
-        $this->editKey     = $tpl->key;
-        $this->editGroup   = $tpl->group;
-        $this->editTitle   = $tpl->title;
-        $this->editBody    = $tpl->body;
+        $this->editId = $tpl->id;
+        $this->editKey = $tpl->key;
+        $this->editGroup = $tpl->group;
+        $this->editTitle = $tpl->title;
+        $this->editBody = $tpl->body;
         $this->editPattern = (string) $tpl->pattern_code;
         $this->editEnabled = $tpl->enabled;
 
@@ -172,21 +171,21 @@ class SmsTemplatesCenter extends Component
     public function saveTemplate(): void
     {
         $this->validateWithToast(fn () => $this->validate([
-            'editTitle'   => ['required', 'min:2', 'max:120'],
-            'editBody'    => ['required', 'min:2', 'max:1000'],
+            'editTitle' => ['required', 'min:2', 'max:120'],
+            'editBody' => ['required', 'min:2', 'max:1000'],
             'editPattern' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z0-9_\-\.]+$/'],
         ], [
-            'editTitle.required'   => 'عنوان رویداد را وارد کنید.',
-            'editBody.required'    => 'متن پیامک را وارد کنید.',
-            'editPattern.regex'    => 'کد پترن فقط می‌تواند شامل حروف لاتین، عدد، خط تیره و زیرخط باشد.',
+            'editTitle.required' => 'عنوان رویداد را وارد کنید.',
+            'editBody.required' => 'متن پیامک را وارد کنید.',
+            'editPattern.regex' => 'کد پترن فقط می‌تواند شامل حروف لاتین، عدد، خط تیره و زیرخط باشد.',
         ]));
 
         $tpl = SmsTemplate::query()->findOrFail($this->editId);
 
-        $tpl->title        = $this->editTitle;
-        $tpl->body         = $this->editBody;
+        $tpl->title = $this->editTitle;
+        $tpl->body = $this->editBody;
         $tpl->pattern_code = trim($this->editPattern) !== '' ? trim($this->editPattern) : null;
-        $tpl->enabled      = $this->editEnabled;
+        $tpl->enabled = $this->editEnabled;
         $tpl->save();
 
         SmsTemplates::flush($tpl->key);
@@ -205,8 +204,8 @@ class SmsTemplatesCenter extends Component
     /** Open the test dialog directly from a card or the edit dialog. */
     public function openTest(string $key, bool $fromEdit = false): void
     {
-        $this->testKey   = $key;
-        $this->testReal  = false;
+        $this->testKey = $key;
+        $this->testReal = false;
         $this->testPhone = '';
 
         if ($fromEdit) {
@@ -295,8 +294,8 @@ class SmsTemplatesCenter extends Component
     {
         return view('livewire.admin.settings.sms-templates-center', [
             'templates' => $this->filtered(),
-            'counts'    => $this->counts(),
-            'logs'      => $this->recentLogs(),
+            'counts' => $this->counts(),
+            'logs' => $this->recentLogs(),
         ])->title('قالب‌های پیامک')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — پیامک — قالب‌های پیامک']);
     }

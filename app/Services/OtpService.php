@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\OtpCode;
 use App\Support\Sms\SmsManager;
+use App\Support\Sms\SmsTemplates;
 
 /**
  * Phone OTP lifecycle: issue → send → verify, with per-phone throttles.
@@ -59,7 +60,7 @@ class OtpService
         ]);
 
         $result = $this->sms->send(
-            \App\Support\Sms\SmsTemplates::make(
+            SmsTemplates::make(
                 'otp_login',
                 $phone,
                 ['code' => $code, 'minutes' => self::EXPIRY_MINUTES],

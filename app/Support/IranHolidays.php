@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Carbon\CarbonInterface;
+
 /**
  * Iran official holidays — driven by the bundled per-year JSON files in
  * «resources/holidays/{جy}.json» (each day of the Jalali year carries an
@@ -120,7 +122,7 @@ class IranHolidays
     }
 
     /** Jalali years a Gregorian window (inclusive) spans. */
-    public static function yearsSpanned(\Carbon\CarbonInterface $from, \Carbon\CarbonInterface $to): array
+    public static function yearsSpanned(CarbonInterface $from, CarbonInterface $to): array
     {
         $years = [];
         $cursor = $from->copy()->startOfDay();

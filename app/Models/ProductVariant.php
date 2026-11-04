@@ -13,12 +13,12 @@ class ProductVariant extends Model
     protected function casts(): array
     {
         return [
-            'price'               => 'integer',
-            'stock'               => 'integer',
-            'discount_percent'    => 'integer',
+            'price' => 'integer',
+            'stock' => 'integer',
+            'discount_percent' => 'integer',
             'discount_expires_at' => 'datetime',
-            'max_purchase'        => 'integer',
-            'min_purchase'        => 'integer',
+            'max_purchase' => 'integer',
+            'min_purchase' => 'integer',
         ];
     }
 

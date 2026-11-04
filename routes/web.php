@@ -8,36 +8,36 @@ use App\Http\Controllers\PwaController;
 use App\Http\Controllers\Seller\ProductFileDownload;
 use App\Http\Controllers\Shop\PaymentCallback;
 use App\Http\Controllers\Shop\PaymentRedirect;
-use App\Livewire\Admin\ActivityPage;
-use App\Livewire\Admin\BackupsPage;
-use App\Livewire\Admin\Dashboard;
-use App\Livewire\Admin\DiscountsIndex;
-use App\Livewire\Admin\LocationsPage;
 use App\Livewire\Admin\Access\AdminsIndex;
 use App\Livewire\Admin\Access\RolesIndex;
+use App\Livewire\Admin\ActivityPage;
 use App\Livewire\Admin\Auth\Login;
+use App\Livewire\Admin\BackupsPage;
+use App\Livewire\Admin\CategoriesPage as AdminCategoriesPage;
+use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\Developer\DeveloperSettings;
 use App\Livewire\Admin\Developer\SystemLogs;
+use App\Livewire\Admin\DiscountsIndex;
 use App\Livewire\Admin\FinancePage;
 use App\Livewire\Admin\IncomePage;
+use App\Livewire\Admin\LocationsPage;
 use App\Livewire\Admin\Notifications\NotificationsPage;
-use App\Livewire\Admin\OrdersIndex;
 use App\Livewire\Admin\OrderShow;
+use App\Livewire\Admin\OrdersIndex;
 use App\Livewire\Admin\ProductForm as AdminProductForm;
-use App\Livewire\Admin\ProfilePage as AdminProfilePage;
 use App\Livewire\Admin\ProductsIndex;
+use App\Livewire\Admin\ProfilePage as AdminProfilePage;
+use App\Livewire\Admin\Settings\SettingsHub;
+use App\Livewire\Admin\Settings\SmsTemplatesCenter;
 use App\Livewire\Admin\SettlementsPage;
 use App\Livewire\Admin\ShopsIndex;
-use App\Livewire\Admin\Users\CustomersIndex;
+use App\Livewire\Admin\Support\TicketShow;
+use App\Livewire\Admin\Support\TicketsIndex;
 use App\Livewire\Admin\Users\CustomerShow;
+use App\Livewire\Admin\Users\CustomersIndex;
 use App\Livewire\Admin\Users\SellerShow;
 use App\Livewire\Admin\Users\SellersIndex;
 use App\Livewire\Admin\WithdrawalsPage;
-use App\Livewire\Admin\Settings\SmsSettings;
-use App\Livewire\Admin\Settings\SmsTemplatesCenter;
-use App\Livewire\Admin\Settings\SettingsHub;
-use App\Livewire\Admin\Support\TicketShow;
-use App\Livewire\Admin\Support\TicketsIndex;
 use App\Livewire\Customer\AddressesPage;
 use App\Livewire\Customer\Auth\PhoneLogin;
 use App\Livewire\Customer\CartPage;
@@ -52,11 +52,9 @@ use App\Livewire\Customer\ProductShow;
 use App\Livewire\Customer\ProfilePage;
 use App\Livewire\Customer\Support\TicketShowPage as CustomerTicketShowPage;
 use App\Livewire\Customer\Support\TicketsPage as CustomerTicketsPage;
-use App\Livewire\Storefront\StorefrontShow;
 use App\Livewire\Seller\AttributeManager;
 use App\Livewire\Seller\Auth\PhoneAuth;
 use App\Livewire\Seller\BankCardsPage;
-use App\Livewire\Seller\CategoryManager;
 use App\Livewire\Seller\DiscountForm;
 use App\Livewire\Seller\DiscountIndex;
 use App\Livewire\Seller\FilteringManager;
@@ -74,7 +72,9 @@ use App\Livewire\Seller\ShopIndex;
 use App\Livewire\Seller\Support\TicketShowPage;
 use App\Livewire\Seller\Support\TicketsPage;
 use App\Livewire\Seller\WalletPage;
+use App\Livewire\Storefront\StorefrontShow;
 use App\Models\Product;
+use App\Models\Shop;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -125,6 +125,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // ── Catalog management (shops & products) ──
         Route::get('/shops', ShopsIndex::class)->name('shops');
+        Route::get('/categories', AdminCategoriesPage::class)->name('categories');
         Route::get('/products', ProductsIndex::class)->name('products');
         Route::get('/products/create', AdminProductForm::class)->name('products.create');
         Route::get('/products/{product}/edit', AdminProductForm::class)->name('products.edit');
@@ -212,7 +213,6 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/shop/attributes', AttributeManager::class)->name('shop.attributes');
         Route::get('/products/create', ProductForm::class)->name('products.create');
         Route::get('/products/{product}/edit', ProductForm::class)->name('products.edit');
-        Route::get('/categories', CategoryManager::class)->name('categories');
 
         // ── Downloadable product files (private disk, seller-only) ──
         Route::get('/products/files/{file}/download', ProductFileDownload::class)
@@ -346,7 +346,7 @@ Route::prefix('shop')->name('shop.')->group(function () {
      | handle and every legacy shop link would 404.
      */
     Route::get('/s/{slug}', function (string $slug) {
-        $shop = \App\Models\Shop::query()->publiclyVisible()->where('slug', $slug)->first();
+        $shop = Shop::query()->publiclyVisible()->where('slug', $slug)->first();
 
         abort_if(! $shop, 404);
 

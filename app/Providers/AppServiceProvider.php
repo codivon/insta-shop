@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Setting;
+use App\Support\SchemaReady;
 use App\Support\Sms\SmsManager;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -38,12 +40,12 @@ class AppServiceProvider extends ServiceProvider
          * Guarded so pre-install requests (no settings table) never break.
          */
         try {
-            if (\App\Support\SchemaReady::check('settings')) {
-                if ((bool) \App\Models\Setting::get('developer.dev_mode')) {
+            if (SchemaReady::check('settings')) {
+                if ((bool) Setting::get('developer.dev_mode')) {
                     config(['app.debug' => true]);
                 }
 
-                $lifetime = (int) \App\Models\Setting::get('security.session_lifetime', 0);
+                $lifetime = (int) Setting::get('security.session_lifetime', 0);
 
                 if ($lifetime > 0) {
                     config(['session.lifetime' => $lifetime]);

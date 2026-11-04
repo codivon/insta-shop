@@ -12,9 +12,9 @@ class ShopAttribute extends Model
 {
     /** Attribute field types (نوع ویژگی). */
     public const TYPES = [
-        'color'  => 'رنگی',
+        'color' => 'رنگی',
         'select' => 'انتخابی',
-        'text'   => 'متنی',
+        'text' => 'متنی',
     ];
 
     protected function casts(): array
@@ -84,17 +84,17 @@ class ShopAttribute extends Model
 
         foreach ($defaults as $default) {
             $attribute = $shop->attributes()->create([
-                'name'       => $default['name'],
-                'type'       => $default['type'],
+                'name' => $default['name'],
+                'type' => $default['type'],
                 'is_default' => true,
-                'sort'       => $default['sort'],
+                'sort' => $default['sort'],
             ]);
 
             foreach ($default['values'] as $i => $value) {
                 $attribute->values()->create([
-                    'value'     => $value['value'],
+                    'value' => $value['value'],
                     'color_hex' => $value['hex'] ?? null,
-                    'sort'      => $i,
+                    'sort' => $i,
                 ]);
             }
         }

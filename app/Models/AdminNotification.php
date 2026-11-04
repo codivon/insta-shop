@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * AdminNotification — an in-app notification for the admin panel bell.
@@ -18,8 +19,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $subject_type
  * @property int|null $subject_id
  * @property bool $is_read
- * @property \Illuminate\Support\Carbon|null $read_at
- * @property \Illuminate\Support\Carbon|null $created_at
+ * @property Carbon|null $read_at
+ * @property Carbon|null $created_at
  */
 class AdminNotification extends Model
 {
@@ -31,9 +32,9 @@ class AdminNotification extends Model
     ];
 
     protected $casts = [
-        'is_read'    => 'boolean',
+        'is_read' => 'boolean',
         'subject_id' => 'integer',
-        'read_at'    => 'datetime',
+        'read_at' => 'datetime',
         'created_at' => 'datetime',
     ];
 

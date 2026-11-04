@@ -2,13 +2,14 @@
 
 namespace App\Livewire\Seller;
 
+use App\Livewire\Concerns\NotifiesOnValidation;
+use App\Models\Shop;
 use App\Support\Fmt;
 use App\Support\Phone;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use App\Livewire\Concerns\NotifiesOnValidation;
 use Livewire\WithFileUploads;
 
 #[Layout('layouts.seller-slot')]
@@ -29,6 +30,9 @@ class ShopEdit extends Component
 
     public string $status = 'active';
 
+    /** Seller-approved display of remaining stock on shop/product pages. */
+    public bool $showStock = false;
+
     /** Newly picked uploads (wire:model bindings — persisted instantly in the updated hooks). */
     public $logo = null;
 
@@ -36,20 +40,21 @@ class ShopEdit extends Component
 
     public function mount(): void
     {
-        $shop   = $this->shop();
+        $shop = $this->shop();
         $seller = auth('seller')->user();
 
-        $this->name              = $shop->name;
+        $this->name = $shop->name;
         $this->instagramUsername = (string) ($seller->instagram_username ?? '');
-        $this->about             = (string) $shop->about;
-        $this->phone             = $shop->phone ? Phone::toLocal($shop->phone) : '';
-        $this->address           = (string) $shop->address;
-        $this->status            = $shop->status;
+        $this->about = (string) $shop->about;
+        $this->phone = $shop->phone ? Phone::toLocal($shop->phone) : '';
+        $this->address = (string) $shop->address;
+        $this->status = $shop->status;
+        $this->showStock = (bool) $shop->show_stock;
     }
 
-    protected function shop(): \App\Models\Shop
+    protected function shop(): Shop
     {
-        return once(fn () => \App\Models\Shop::ensureForSeller(auth('seller')->user()));
+        return once(fn () => Shop::ensureForSeller(auth('seller')->user()));
     }
 
     public function updatedPhone(string $value): void
@@ -83,12 +88,12 @@ class ShopEdit extends Component
         $this->resetErrorBag([$property]);
 
         // size/mime rules here so the seller sees the problem immediately
-        $validator = \Illuminate\Support\Facades\Validator::make([$property => $file], [
+        $validator = Validator::make([$property => $file], [
             $property => ['image', 'mimes:jpg,jpeg,png,webp', "max:{$maxKb}"],
         ], [
             "{$property}.image" => "فایل {$label} تصویر نیست.",
             "{$property}.mimes" => "فرمت {$label} باید JPG، PNG یا WebP باشد.",
-            "{$property}.max"   => 'حجم '.$label.' حداکثر '.(int) ($maxKb / 1024).' مگابایت است.',
+            "{$property}.max" => 'حجم '.$label.' حداکثر '.(int) ($maxKb / 1024).' مگابایت است.',
         ]);
 
         if ($validator->fails()) {
@@ -135,9 +140,9 @@ class ShopEdit extends Component
     public function save(): void
     {
         $this->validateWithToast(fn () => $this->validate([
-            'name'    => ['required', 'string', 'min:2', 'max:120'],
-            'about'   => ['nullable', 'string', 'max:2000'],
-            'phone'   => ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail) {
+            'name' => ['required', 'string', 'min:2', 'max:120'],
+            'about' => ['nullable', 'string', 'max:2000'],
+            'phone' => ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail) {
                 if ($value === '' || $value === null) {
                     return;
                 }
@@ -149,18 +154,20 @@ class ShopEdit extends Component
                 }
             }],
             'address' => ['nullable', 'string', 'max:300'],
-            'status'  => ['required', 'in:active,paused'],
+            'status' => ['required', 'in:active,paused'],
+            'showStock' => ['boolean'],
         ], [
             'name.required' => 'نام فروشگاه را وارد کنید.',
-            'name.min'      => 'نام فروشگاه حداقل ۲ کاراکتر است.',
+            'name.min' => 'نام فروشگاه حداقل ۲ کاراکتر است.',
         ]));
 
         $this->shop()->update([
-            'name'     => trim($this->name),
-            'about'    => trim($this->about) ?: null,
-            'phone'    => $this->phone !== '' ? Phone::normalize($this->phone) : null,
-            'address'  => trim($this->address) ?: null,
-            'status'   => $this->status,
+            'name' => trim($this->name),
+            'about' => trim($this->about) ?: null,
+            'phone' => $this->phone !== '' ? Phone::normalize($this->phone) : null,
+            'address' => trim($this->address) ?: null,
+            'status' => $this->status,
+            'show_stock' => $this->showStock,
         ]);
 
         // NOTE: the Instagram handle is intentionally NOT editable here —
@@ -180,7 +187,7 @@ class ShopEdit extends Component
 
     // ── Computed ─────────────────────────────────────────────────────
 
-    public function getShopProperty(): \App\Models\Shop
+    public function getShopProperty(): Shop
     {
         return $this->shop();
     }

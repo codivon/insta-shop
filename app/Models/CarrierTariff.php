@@ -18,7 +18,7 @@ class CarrierTariff extends Model
     public const ZONE_OUT = 'out_province';
 
     public const ZONES = [
-        self::ZONE_IN  => 'درون استانی',
+        self::ZONE_IN => 'درون استانی',
         self::ZONE_OUT => 'بیرون استانی',
     ];
 
@@ -26,8 +26,8 @@ class CarrierTariff extends Model
     {
         return [
             'max_weight' => 'integer',
-            'cost'       => 'integer',
-            'sort'       => 'integer',
+            'cost' => 'integer',
+            'sort' => 'integer',
         ];
     }
 

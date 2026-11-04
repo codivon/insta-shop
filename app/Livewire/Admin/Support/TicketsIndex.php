@@ -51,7 +51,7 @@ class TicketsIndex extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 20;
+        $this->perPage += 20;
     }
 
     /** Status tab counts (60 s cache — the sidebar badge uses the same key). */
@@ -64,9 +64,9 @@ class TicketsIndex extends Component
                 ->pluck('c', 'status');
 
             return [
-                'open'     => (int) ($rows[SupportTicket::STATUS_OPEN] ?? 0),
+                'open' => (int) ($rows[SupportTicket::STATUS_OPEN] ?? 0),
                 'answered' => (int) ($rows[SupportTicket::STATUS_ANSWERED] ?? 0),
-                'closed'   => (int) ($rows[SupportTicket::STATUS_CLOSED] ?? 0),
+                'closed' => (int) ($rows[SupportTicket::STATUS_CLOSED] ?? 0),
             ];
         });
     }
@@ -83,7 +83,7 @@ class TicketsIndex extends Component
             ->orderByDesc('id');
 
         $total = (clone $query)->count();
-        $rows  = $query->limit($this->perPage)->get();
+        $rows = $query->limit($this->perPage)->get();
 
         $this->hasMore = $total > $this->perPage;
 
@@ -120,7 +120,7 @@ class TicketsIndex extends Component
     {
         return view('livewire.admin.support.tickets-index', [
             'tickets' => $this->tickets,
-            'counts'  => $this->counts,
+            'counts' => $this->counts,
         ]);
     }
 }

@@ -50,9 +50,9 @@ class ProductView extends Model
             if (! $updated) {
                 static::query()->create([
                     'product_id' => $product->id,
-                    'shop_id'    => $product->shop_id,
-                    'day'        => $day,
-                    'views'      => 1,
+                    'shop_id' => $product->shop_id,
+                    'day' => $day,
+                    'views' => 1,
                 ]);
             }
         } catch (Throwable $e) {

@@ -21,7 +21,7 @@ namespace App\Support;
  */
 class ImageCaptcha
 {
-    public const SESSION_KEY  = 'admin_captcha_code';
+    public const SESSION_KEY = 'admin_captcha_code';
 
     public const SESSION_SEED = 'admin_captcha_seed';
 
@@ -52,7 +52,7 @@ class ImageCaptcha
         }
 
         session([
-            self::SESSION_KEY  => $code,
+            self::SESSION_KEY => $code,
             self::SESSION_SEED => random_int(1, PHP_INT_MAX),
         ]);
     }
@@ -110,7 +110,7 @@ class ImageCaptcha
     /** Render the code into a noisy PNG (GD) and return the binary string. */
     private static function draw(string $code): string
     {
-        $width  = 190;
+        $width = 190;
         $height = 60;
 
         $img = imagecreatetruecolor($width, $height);
@@ -154,21 +154,21 @@ class ImageCaptcha
         }
 
         // the characters — each tilted its own way
-        $font  = self::fontPath();
+        $font = self::fontPath();
         $count = mb_strlen($code);
-        $slot  = ($width - 24) / $count;
+        $slot = ($width - 24) / $count;
 
         for ($i = 0; $i < $count; $i++) {
-            $char  = mb_substr($code, $i, 1);
-            $size  = random_int(21, 25);
+            $char = mb_substr($code, $i, 1);
+            $size = random_int(21, 25);
             $angle = random_int(-20, 20);
 
             [$r, $g, $b] = $palette[random_int(0, count($palette) - 1)];
             $ink = imagecolorallocate($img, $r, $g, $b);
 
             $box = imagettfbbox($size, $angle, $font, $char);
-            $cw  = abs($box[4] - $box[0]);
-            $ch  = abs($box[5] - $box[1]);
+            $cw = abs($box[4] - $box[0]);
+            $ch = abs($box[5] - $box[1]);
 
             $x = (int) (12 + $slot * $i + ($slot - $cw) / 2);
             $y = (int) (($height + $ch) / 2 + random_int(-3, 3));

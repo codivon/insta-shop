@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * SellerNotification — an in-app notification row for the SELLER panel
@@ -20,8 +21,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $subject_type
  * @property int|null $subject_id
  * @property bool $is_read
- * @property \Illuminate\Support\Carbon|null $read_at
- * @property \Illuminate\Support\Carbon|null $created_at
+ * @property Carbon|null $read_at
+ * @property Carbon|null $created_at
  */
 class SellerNotification extends Model
 {
@@ -33,10 +34,10 @@ class SellerNotification extends Model
     ];
 
     protected $casts = [
-        'seller_id'  => 'integer',
+        'seller_id' => 'integer',
         'subject_id' => 'integer',
-        'is_read'    => 'boolean',
-        'read_at'    => 'datetime',
+        'is_read' => 'boolean',
+        'read_at' => 'datetime',
         'created_at' => 'datetime',
     ];
 

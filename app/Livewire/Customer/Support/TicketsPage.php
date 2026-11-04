@@ -44,7 +44,7 @@ class TicketsPage extends Component
         }
 
         $this->lastLoadAt = $now;
-        $this->perPage   += 10;
+        $this->perPage += 10;
     }
 
     /* ── create-ticket modal ── */
@@ -52,9 +52,9 @@ class TicketsPage extends Component
     public function openCreate(): void
     {
         $this->resetErrorBag();
-        $this->subject    = '';
-        $this->category   = 'other';
-        $this->body       = '';
+        $this->subject = '';
+        $this->category = 'other';
+        $this->body = '';
         $this->createOpen = true;
     }
 
@@ -67,34 +67,34 @@ class TicketsPage extends Component
     public function submitTicket(): void
     {
         $this->validateWithToast(fn () => $this->validate([
-            'subject'  => ['required', 'string', 'min:3', 'max:120'],
+            'subject' => ['required', 'string', 'min:3', 'max:120'],
             'category' => ['required', 'in:'.implode(',', array_keys(SupportTicket::CATEGORIES))],
-            'body'     => ['required', 'string', 'min:5', 'max:3000'],
+            'body' => ['required', 'string', 'min:5', 'max:3000'],
         ], [
-            'subject.required'  => 'موضوع تیکت را بنویسید.',
-            'subject.min'       => 'موضوع تیکت حداقل ۳ کاراکتر است.',
-            'subject.max'       => 'موضوع تیکت حداکثر ۱۲۰ کاراکتر است.',
+            'subject.required' => 'موضوع تیکت را بنویسید.',
+            'subject.min' => 'موضوع تیکت حداقل ۳ کاراکتر است.',
+            'subject.max' => 'موضوع تیکت حداکثر ۱۲۰ کاراکتر است.',
             'category.required' => 'دسته‌بندی تیکت را انتخاب کنید.',
-            'category.in'       => 'دسته‌بندی نامعتبر است.',
-            'body.required'     => 'متن تیکت را بنویسید.',
-            'body.min'          => 'متن تیکت حداقل ۵ کاراکتر است.',
-            'body.max'          => 'متن تیکت حداکثر ۳۰۰۰ کاراکتر است.',
+            'category.in' => 'دسته‌بندی نامعتبر است.',
+            'body.required' => 'متن تیکت را بنویسید.',
+            'body.min' => 'متن تیکت حداقل ۵ کاراکتر است.',
+            'body.max' => 'متن تیکت حداکثر ۳۰۰۰ کاراکتر است.',
         ]));
 
         $ticket = SupportTicket::query()->create([
-            'subject'         => trim($this->subject),
-            'category'        => $this->category,
-            'status'          => SupportTicket::STATUS_OPEN,
+            'subject' => trim($this->subject),
+            'category' => $this->category,
+            'status' => SupportTicket::STATUS_OPEN,
             'ticketable_type' => Customer::class,
-            'ticketable_id'   => auth('customer')->id(),
-            'last_reply_at'   => now(),
+            'ticketable_id' => auth('customer')->id(),
+            'last_reply_at' => now(),
         ]);
 
         SupportTicketMessage::query()->create([
-            'ticket_id'   => $ticket->id,
+            'ticket_id' => $ticket->id,
             'author_type' => Customer::class,
-            'author_id'   => auth('customer')->id(),
-            'body'        => trim($this->body),
+            'author_id' => auth('customer')->id(),
+            'body' => trim($this->body),
         ]);
 
         $customer = auth('customer')->user();
@@ -123,7 +123,7 @@ class TicketsPage extends Component
             ->orderByDesc('id');
 
         $total = (clone $query)->count();
-        $rows  = $query->limit($this->perPage)->get();
+        $rows = $query->limit($this->perPage)->get();
 
         $this->hasMore = $total > $this->perPage;
 
@@ -133,7 +133,7 @@ class TicketsPage extends Component
     public function render()
     {
         return view('livewire.customer.support.tickets-page', [
-            'tickets'    => $this->tickets,
+            'tickets' => $this->tickets,
             'categories' => SupportTicket::CATEGORIES,
         ])->title('پشتیبانی');
     }

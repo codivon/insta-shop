@@ -49,9 +49,9 @@ class ReportsPage extends Component
         $today = CarbonImmutable::today();
 
         // default windows: sales → last 7 days, views → last 14 days
-        $this->salesTo   = $today->toDateString();
+        $this->salesTo = $today->toDateString();
         $this->salesFrom = $today->subDays(6)->toDateString();
-        $this->viewsTo   = $today->toDateString();
+        $this->viewsTo = $today->toDateString();
         $this->viewsFrom = $today->subDays(13)->toDateString();
     }
 
@@ -61,7 +61,7 @@ class ReportsPage extends Component
 
         [$from, $to] = $this->defaultWindow($this->salesMode);
         $this->salesFrom = $from;
-        $this->salesTo   = $to;
+        $this->salesTo = $to;
     }
 
     public function setViewsMode(string $mode): void
@@ -70,7 +70,7 @@ class ReportsPage extends Component
 
         [$from, $to] = $this->defaultWindow($this->viewsMode);
         $this->viewsFrom = $from;
-        $this->viewsTo   = $to;
+        $this->viewsTo = $to;
     }
 
     /* ───────────────────────── CSV exports ───────────────────────── */
@@ -149,10 +149,10 @@ class ReportsPage extends Component
                 ->orderByDesc('views')
                 ->get(['id', 'name', 'status', 'views'])
                 ->map(fn ($p) => [
-                    'name'   => $p->name,
+                    'name' => $p->name,
                     'status' => $p->status === 'published' ? 'published' : 'draft',
                     'period' => (int) ($periodViews[$p->id] ?? 0),
-                    'total'  => (int) $p->views,
+                    'total' => (int) $p->views,
                 ]);
         }
 
@@ -175,7 +175,7 @@ class ReportsPage extends Component
     public function render()
     {
         $seller = auth('seller')->user();
-        $shop   = $seller?->shop;
+        $shop = $seller?->shop;
         $shopId = (int) ($shop?->id ?? 0);
 
         [$salesFrom, $salesTo] = $this->resolveRange($this->salesFrom, $this->salesTo, $this->salesMode);
@@ -187,12 +187,12 @@ class ReportsPage extends Component
         $viewsDays = max(1, (int) $viewsFrom->diffInDays($viewsTo->endOfDay()) + 1);
 
         return view('livewire.seller.reports-page', [
-            'shop'        => $shop,
-            'orderStats'  => $this->orderStats,
-            'viewStats'   => $this->viewStats,
-            'sales'       => $sales,
-            'views'       => $views,
-            'viewsDays'   => $viewsDays,
+            'shop' => $shop,
+            'orderStats' => $this->orderStats,
+            'viewStats' => $this->viewStats,
+            'sales' => $sales,
+            'views' => $views,
+            'viewsDays' => $viewsDays,
             'topProducts' => $this->topProducts,
         ])->title('گزارش‌ها');
     }
@@ -220,9 +220,9 @@ class ReportsPage extends Component
     {
         if ($shopId === 0) {
             return [
-                'statuses'   => ['paid' => 0, 'pending' => 0, 'failed' => 0, 'canceled' => 0],
-                'revenue'    => 0,
-                'buyers'     => 0,
+                'statuses' => ['paid' => 0, 'pending' => 0, 'failed' => 0, 'canceled' => 0],
+                'revenue' => 0,
+                'buyers' => 0,
                 'lastPaidAt' => null,
             ];
         }
@@ -259,9 +259,9 @@ class ReportsPage extends Component
             ->max('paid_at');
 
         return [
-            'statuses'   => $byStatus,
-            'revenue'    => $revenue,
-            'buyers'     => $buyers,
+            'statuses' => $byStatus,
+            'revenue' => $revenue,
+            'buyers' => $buyers,
             'lastPaidAt' => $lastPaidAt ? JDate::dateTime(Carbon::parse($lastPaidAt)) : null,
         ];
     }
@@ -294,8 +294,8 @@ class ReportsPage extends Component
         return [
             'total' => (int) Product::query()->where('shop_id', $shopId)->sum('views'),
             'today' => $sumSince($today),
-            'd7'    => $sumSince($today->subDays(6)),
-            'd30'   => $sumSince($today->subDays(29)),
+            'd7' => $sumSince($today->subDays(6)),
+            'd30' => $sumSince($today->subDays(29)),
         ];
     }
 
@@ -328,8 +328,8 @@ class ReportsPage extends Component
     private function computeSalesChart(int $shopId, string $mode, CarbonImmutable $from, CarbonImmutable $to): array
     {
         $buckets = $this->periodBuckets($mode, $from, $to);
-        $total   = 0;
-        $orders  = 0;
+        $total = 0;
+        $orders = 0;
 
         if ($shopId !== 0) {
             $rows = OrderItem::query()
@@ -341,7 +341,7 @@ class ReportsPage extends Component
                 ->get();
 
             $orders = $rows->pluck('order_id')->unique()->count();
-            $total  = (int) $rows->sum(fn ($r) => (int) $r->unit_price * (int) $r->quantity);
+            $total = (int) $rows->sum(fn ($r) => (int) $r->unit_price * (int) $r->quantity);
 
             foreach ($rows as $row) {
                 if (! $row->paid_at) {
@@ -351,7 +351,7 @@ class ReportsPage extends Component
                 $key = $this->bucketKey($mode, CarbonImmutable::parse($row->paid_at));
 
                 if (isset($buckets[$key])) {
-                    $buckets[$key]['value'] += (int) $row->unit_price * (int) $row->quantity;
+                    $buckets[$key]['value'] = ($buckets[$key]['value'] ?? 0) + (int) $row->unit_price * (int) $row->quantity;
                 }
             }
         }
@@ -372,7 +372,7 @@ class ReportsPage extends Component
     private function computeViewsChart(int $shopId, string $mode, CarbonImmutable $from, CarbonImmutable $to): array
     {
         $buckets = $this->periodBuckets($mode, $from, $to);
-        $total   = 0;
+        $total = 0;
 
         if ($shopId !== 0) {
             $rows = ProductView::query()
@@ -387,7 +387,7 @@ class ReportsPage extends Component
                 $key = $this->bucketKey($mode, CarbonImmutable::parse($day.' 00:00:00'));
 
                 if (isset($buckets[$key])) {
-                    $buckets[$key]['value'] += (int) $v;
+                    $buckets[$key]['value'] = ($buckets[$key]['value'] ?? 0) + (int) $v;
                 }
             }
 
@@ -410,10 +410,10 @@ class ReportsPage extends Component
         $today = CarbonImmutable::today();
 
         return match ($mode) {
-            'weekly'  => [$today->subWeeks(11)->startOfWeek(Carbon::SATURDAY)->toDateString(), $today->toDateString()],
+            'weekly' => [$today->subWeeks(11)->startOfWeek(Carbon::SATURDAY)->toDateString(), $today->toDateString()],
             'monthly' => [$today->subMonths(11)->startOfMonth()->toDateString(), $today->toDateString()],
-            'yearly'  => [$today->subYears(4)->startOfYear()->toDateString(), $today->toDateString()],
-            default   => [$today->subDays(6)->toDateString(), $today->toDateString()],
+            'yearly' => [$today->subYears(4)->startOfYear()->toDateString(), $today->toDateString()],
+            default => [$today->subDays(6)->toDateString(), $today->toDateString()],
         };
     }
 
@@ -437,10 +437,10 @@ class ReportsPage extends Component
         $today = CarbonImmutable::today();
 
         $f = match ($mode) {
-            'daily'   => $f->max($today->subDays(91)->startOfDay()),
-            'weekly'  => $f->max($today->subDays(364)->startOfDay()),
+            'daily' => $f->max($today->subDays(91)->startOfDay()),
+            'weekly' => $f->max($today->subDays(364)->startOfDay()),
             'monthly' => $f->max($today->subYears(3)->startOfDay()),
-            default   => $f->max($today->subYears(9)->startOfDay()),
+            default => $f->max($today->subYears(9)->startOfDay()),
         };
 
         return [$f, $t->min($today->endOfDay())];
@@ -450,10 +450,10 @@ class ReportsPage extends Component
     private function bucketKey(string $mode, CarbonImmutable $date): string
     {
         return match ($mode) {
-            'weekly'  => $date->startOfWeek(Carbon::SATURDAY)->toDateString(),
-            'monthly' => $date->format('Y-m'),
-            'yearly'  => $date->format('Y'),
-            default   => $date->toDateString(),
+            'weekly' => $date->startOfWeek(Carbon::SATURDAY)->toDateString(),
+            'monthly' => JDate::monthKey($date),
+            'yearly' => JDate::yearKey($date),
+            default => $date->toDateString(),
         };
     }
 
@@ -461,18 +461,18 @@ class ReportsPage extends Component
     private function periodBuckets(string $mode, CarbonImmutable $from, CarbonImmutable $to): array
     {
         $buckets = [];
-        $today   = CarbonImmutable::today()->toDateString();
+        $today = CarbonImmutable::today()->toDateString();
 
         if ($mode === 'daily') {
             $cursor = $from->startOfDay();
-            $steps  = min((int) $from->diffInDays($to->endOfDay()) + 1, 92);
+            $steps = min((int) $from->diffInDays($to->endOfDay()) + 1, 92);
 
             for ($i = 0; $i < $steps; $i++) {
                 $key = $cursor->toDateString();
 
                 $buckets[$key] = [
                     'label' => $cursor->locale('fa')->minDayName.' '.Fmt::fa($cursor->day),
-                    'sort'  => $key,
+                    'sort' => $key,
                     'value' => 0,
                     'today' => $key === $today,
                 ];
@@ -480,50 +480,23 @@ class ReportsPage extends Component
             }
         } elseif ($mode === 'weekly') {
             $cursor = $from->startOfWeek(Carbon::SATURDAY)->startOfDay();
-            $steps  = min((int) $cursor->diffInWeeks($to->endOfDay()) + 1, 52);
+            $steps = min((int) $cursor->diffInWeeks($to->endOfDay()) + 1, 52);
 
             for ($i = 0; $i < $steps; $i++) {
                 $key = $cursor->toDateString();
 
                 $buckets[$key] = [
-                    'label' => Fmt::fa($cursor->day).' '.$cursor->locale('fa')->monthName,
-                    'sort'  => $key,
+                    'label' => JDate::short($cursor),
+                    'sort' => $key,
                     'value' => 0,
                     'today' => $key === $this->bucketKey('weekly', CarbonImmutable::today()),
                 ];
                 $cursor = $cursor->addWeeks(1);
             }
         } elseif ($mode === 'monthly') {
-            $cursor  = $from->startOfMonth();
-            $steps   = min((int) $cursor->diffInMonths($to->endOfDay()) + 1, 36);
-            $spanYrs = $cursor->diffInYears($to->endOfDay()) >= 1;
-
-            for ($i = 0; $i < $steps; $i++) {
-                $key = $cursor->format('Y-m');
-
-                $buckets[$key] = [
-                    'label' => $cursor->locale('fa')->monthName.($spanYrs ? ' '.Fmt::fa($cursor->year) : ''),
-                    'sort'  => $key,
-                    'value' => 0,
-                    'today' => $key === CarbonImmutable::today()->format('Y-m'),
-                ];
-                $cursor = $cursor->addMonths(1)->startOfMonth();
-            }
+            $buckets = JDate::monthBuckets($from, $to);
         } else {
-            $cursor = $from->startOfYear();
-            $steps  = min((int) $cursor->diffInYears($to->endOfDay()) + 1, 10);
-
-            for ($i = 0; $i < $steps; $i++) {
-                $key = $cursor->format('Y');
-
-                $buckets[$key] = [
-                    'label' => Fmt::fa($cursor->year),
-                    'sort'  => $key,
-                    'value' => 0,
-                    'today' => $key === CarbonImmutable::today()->format('Y'),
-                ];
-                $cursor = $cursor->addYears(1)->startOfYear();
-            }
+            $buckets = JDate::yearBuckets($from, $to);
         }
 
         return $buckets;
@@ -539,15 +512,15 @@ class ReportsPage extends Component
             ->sortBy('sort')
             ->map(fn ($b) => [
                 'label' => $b['label'],
-                'value' => (int) $b['value'],
+                'value' => (int) ($b['value'] ?? 0),
                 'today' => $b['today'],
             ])
             ->values();
 
         return array_merge([
             'series' => $series->all(),
-            'total'  => (int) $series->sum('value'),
-            'max'    => max($series->max('value'), 1),
+            'total' => (int) $series->sum('value'),
+            'max' => max($series->max('value'), 1),
         ], $extra);
     }
 }

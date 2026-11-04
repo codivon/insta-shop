@@ -3,9 +3,9 @@
 namespace InstaShop\Installer\Http\Controllers;
 
 use App\Models\Admin;
+use App\Models\Setting;
 use App\Support\Color;
 use App\Support\Theme;
-use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;

@@ -6,6 +6,8 @@ use App\Models\PushSubscription;
 use App\Models\Seller;
 use App\Models\SellerNotification;
 use App\Models\Setting;
+use App\Models\Shop;
+use Illuminate\Database\Eloquent\Model;
 use Throwable;
 
 /**
@@ -33,16 +35,16 @@ final class SellerNotifier
 {
     /** Registry shown in the admin settings tab: key => [label fa, icon]. */
     public const EVENTS = [
-        'order.new'       => ['سفارش جدید شامل محصولات شما', 'bag'],
-        'order.paid'      => ['پرداخت سفارش موفق شد', 'circle-check'],
-        'order.status'    => ['تغییر وضعیت سفارش', 'truck'],
-        'order.canceled'  => ['لغو سهم فروشگاه از سفارش', 'circle-x'],
-        'wallet.deposit'  => ['واریز به کیف پول', 'wallet'],
+        'order.new' => ['سفارش جدید شامل محصولات شما', 'bag'],
+        'order.paid' => ['پرداخت سفارش موفق شد', 'circle-check'],
+        'order.status' => ['تغییر وضعیت سفارش', 'truck'],
+        'order.canceled' => ['لغو سهم فروشگاه از سفارش', 'circle-x'],
+        'wallet.deposit' => ['واریز به کیف پول', 'wallet'],
         'wallet.withdraw' => ['وضعیت درخواست برداشت', 'wallet'],
-        'product.status'  => ['تغییر وضعیت محصول', 'package'],
-        'shop.status'     => ['وضعیت فروشگاه', 'store'],
-        'ticket.reply'    => ['پاسخ پشتیبانی به تیکت شما', 'headset'],
-        'system.misc'     => ['پیام سیستمی', 'bell'],
+        'product.status' => ['تغییر وضعیت محصول', 'package'],
+        'shop.status' => ['وضعیت فروشگاه', 'store'],
+        'ticket.reply' => ['پاسخ پشتیبانی به تیکت شما', 'headset'],
+        'system.misc' => ['پیام سیستمی', 'bell'],
     ];
 
     /**
@@ -75,15 +77,15 @@ final class SellerNotifier
             }
 
             $notification = SellerNotification::query()->create([
-                'seller_id'    => $sellerId,
-                'type'         => self::normalize($type),
-                'title'        => mb_substr($title, 0, 290),
-                'body'         => mb_substr($body, 0, 990),
-                'icon'         => $icon,
-                'link'         => $link,
-                'subject_type' => $subject instanceof \Illuminate\Database\Eloquent\Model ? $subject->getMorphClass() : null,
-                'subject_id'   => $subject instanceof \Illuminate\Database\Eloquent\Model ? $subject->getKey() : null,
-                'created_at'   => now(),
+                'seller_id' => $sellerId,
+                'type' => self::normalize($type),
+                'title' => mb_substr($title, 0, 290),
+                'body' => mb_substr($body, 0, 990),
+                'icon' => $icon,
+                'link' => $link,
+                'subject_type' => $subject instanceof Model ? $subject->getMorphClass() : null,
+                'subject_id' => $subject instanceof Model ? $subject->getKey() : null,
+                'created_at' => now(),
             ]);
 
             // Web Push — best effort, never blocks the request flow.
@@ -101,11 +103,11 @@ final class SellerNotifier
      * Fan a notification out to EVERY seller that owns a shop with items
      * in the given order (used for order.new / order.paid).
      *
-     * @param  array<int, int> $shopIds
+     * @param  array<int, int>  $shopIds
      */
     public static function toShops(array $shopIds, string $type, string $title, string $body = '', ?string $link = null, string $icon = 'bell', mixed $subject = null): void
     {
-        $sellerIds = \App\Models\Shop::query()
+        $sellerIds = Shop::query()
             ->whereIn('id', array_values(array_unique(array_map('intval', $shopIds))))
             ->whereNotNull('seller_id')
             ->pluck('seller_id')

@@ -20,9 +20,9 @@ class Phone
 
         return match (true) {
             str_starts_with($digits, '0098') => '98'.substr($digits, 4),
-            str_starts_with($digits, '98')   => $digits,
-            str_starts_with($digits, '0')    => '98'.substr($digits, 1),
-            default                          => '98'.$digits,
+            str_starts_with($digits, '98') => $digits,
+            str_starts_with($digits, '0') => '98'.substr($digits, 1),
+            default => '98'.$digits,
         };
     }
 

@@ -4,8 +4,8 @@ namespace App\Livewire\Admin\Notifications;
 
 use App\Models\AdminNotification;
 use App\Support\WebPusher;
-use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Component;
 
 /**
  * Admin — topbar NOTIFICATIONS BELL.

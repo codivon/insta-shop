@@ -37,10 +37,10 @@ class Seller extends Authenticatable
             return [$this->commission_type, (int) $this->commission_value];
         }
 
-        $type = (string) \App\Models\Setting::get('shops.commission_type', 'percent');
+        $type = (string) Setting::get('shops.commission_type', 'percent');
         $type = in_array($type, ['percent', 'fixed'], true) ? $type : 'percent';
 
-        return [$type, (int) \App\Models\Setting::get('shops.commission_value', 0)];
+        return [$type, (int) Setting::get('shops.commission_value', 0)];
     }
 
     /** Commission (تومان) due on a shop goods total — percent on the total, fixed as a flat cut. */
@@ -53,8 +53,8 @@ class Seller extends Authenticatable
         }
 
         return match ($type) {
-            'fixed'   => min(max(0, $value), $itemsTotal),
-            default   => min((int) floor($itemsTotal * max(0, min(100, $value)) / 100), $itemsTotal),
+            'fixed' => min(max(0, $value), $itemsTotal),
+            default => min((int) floor($itemsTotal * max(0, min(100, $value)) / 100), $itemsTotal),
         };
     }
 

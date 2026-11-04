@@ -13,8 +13,8 @@ class PaymentLog extends Model
     {
         return [
             'amount' => 'integer',
-            'ok'     => 'boolean',
-            'meta'   => 'array',
+            'ok' => 'boolean',
+            'meta' => 'array',
         ];
     }
 
@@ -36,14 +36,14 @@ class PaymentLog extends Model
     ): ?self {
         try {
             return static::query()->create([
-                'order_id'       => $order->id,
-                'gateway'        => $gateway,
-                'event'          => $event,
+                'order_id' => $order->id,
+                'gateway' => $gateway,
+                'event' => $event,
                 'transaction_id' => $transactionId,
-                'amount'         => $amount,
-                'ok'             => $ok,
-                'message'        => $message,
-                'meta'           => $meta,
+                'amount' => $amount,
+                'ok' => $ok,
+                'message' => $message,
+                'meta' => $meta,
             ]);
         } catch (\Throwable) {
             return null;

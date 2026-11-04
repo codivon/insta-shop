@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             SmsTemplateSeeder::class,
             ProvinceSeeder::class,
             CitySeeder::class,
+            CategorySeeder::class,
         ]);
     }
 }

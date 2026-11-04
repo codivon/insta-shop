@@ -2,6 +2,7 @@
 
 namespace App\Support\Sms\Drivers;
 
+use App\Models\Setting;
 use App\Support\Phone;
 use App\Support\Sms\Contracts\SmsDriver;
 use App\Support\Sms\SmsMessage;
@@ -31,15 +32,15 @@ class MelliPayamakDriver implements SmsDriver
         return [
             'username' => ['نام کاربری پنل', true],
             'password' => ['رمز عبور پنل', true],
-            'sender'   => ['خط ارسال (شماره خط)', true],
+            'sender' => ['خط ارسال (شماره خط)', true],
         ];
     }
 
     public function send(SmsMessage $message): SmsResult
     {
-        $username = (string) \App\Models\Setting::get('sms.mellipayamak.username', '');
-        $password = (string) \App\Models\Setting::get('sms.mellipayamak.password', '');
-        $sender   = (string) \App\Models\Setting::get('sms.mellipayamak.sender', '');
+        $username = (string) Setting::get('sms.mellipayamak.username', '');
+        $password = (string) Setting::get('sms.mellipayamak.password', '');
+        $sender = (string) Setting::get('sms.mellipayamak.sender', '');
 
         if ($username === '' || $password === '' || $sender === '') {
             return SmsResult::failure('تنظیمات ملی‌پیامک ناقص است.');
@@ -51,10 +52,10 @@ class MelliPayamakDriver implements SmsDriver
                 [
                     'username' => $username,
                     'password' => $password,
-                    'to'       => Phone::toLocal($message->to),
-                    'from'     => $sender,
-                    'text'     => $message->body(),
-                    'isFlash'  => 'false',
+                    'to' => Phone::toLocal($message->to),
+                    'from' => $sender,
+                    'text' => $message->body(),
+                    'isFlash' => 'false',
                 ],
             );
 
