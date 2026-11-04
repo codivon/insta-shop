@@ -454,14 +454,15 @@ body {
 }
 
 /* ── pull-to-refresh indicator (resources/js/pull-refresh.js) ──
-   Fixed under the status bar, centered on the shell; the JS module
-   drives transform + --ptr-rot while dragging. Touch-only. */
+   Pinned ~20px under the top edge (Chrome Android style): the spinner
+   NEVER travels down the page — it drops in at a fixed spot and only
+   grows/rotates in place while dragging. Touch-only. */
 #ip-ptr {
     position: fixed;
-    top: calc(10px + env(safe-area-inset-top, 0px));
+    top: calc(20px + env(safe-area-inset-top, 0px));
     left: 50%;
     z-index: 60;
-    transform: translate(-50%, -64px);
+    transform: translate(-50%, -72px);
     transition: transform .25s cubic-bezier(.2, .7, .3, 1.2);
     pointer-events: none;
 }
@@ -475,7 +476,7 @@ body {
     box-shadow: 0 4px 14px rgb(0 0 0 / .18);
     border: 2.5px solid var(--ip-primary, #d62976);
     border-top-color: transparent;
-    transform: rotate(var(--ptr-rot, 0deg));
+    transform: rotate(var(--ptr-rot, 0deg)) scale(var(--ptr-scale, .5));
     transition: transform .08s linear;
 }
 #ip-ptr.ip-ptr-armed .ip-ptr-spin { background: var(--ip-primary, #d62976); }

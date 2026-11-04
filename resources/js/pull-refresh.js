@@ -14,10 +14,6 @@
 // marked data-ptr-ignore (e.g. the story viewer overlay).
 
 const THRESHOLD = 72; // px of raw drag that arms the refresh
-const MAX_PULL = 96;  // px the indicator may travel
-const RESISTANCE = 0.45;
-
-const rubber = (dy) => Math.min(MAX_PULL, dy * RESISTANCE);
 
 const init = () => {
     // The scroller: the first <main> that actually scrolls (customer +
@@ -55,6 +51,7 @@ const init = () => {
         indicator.classList.remove('ip-ptr-armed', 'ip-ptr-loading');
         indicator.style.transform = '';
         indicator.style.setProperty('--ptr-rot', '0deg');
+        indicator.style.setProperty('--ptr-scale', '0.5');
     };
 
     scroller.addEventListener('touchstart', (e) => {
@@ -78,12 +75,16 @@ const init = () => {
             return;
         }
 
-        const drop = rubber(dy);
+        // Chrome-style: the spinner NEVER travels down the page — it stays
+        // pinned ~20px under the top edge and only grows/rotates in place
+        // while the pull progresses.
+        const p = Math.min(1, dy / THRESHOLD);
         armed = dy >= THRESHOLD;
 
         indicator.classList.toggle('ip-ptr-armed', armed);
-        indicator.style.transform = `translate(-50%, ${drop}px)`;
-        indicator.style.setProperty('--ptr-rot', `${Math.min(360, (dy / THRESHOLD) * 360)}deg`);
+        indicator.style.transform = 'translate(-50%, 0)';
+        indicator.style.setProperty('--ptr-rot', `${Math.round(p * 360)}deg`);
+        indicator.style.setProperty('--ptr-scale', (0.5 + 0.5 * p).toFixed(3));
     }, { passive: true });
 
     scroller.addEventListener('touchend', () => {
@@ -93,8 +94,9 @@ const init = () => {
             tracking = false;
             armed = false;
             indicator.classList.add('ip-ptr-loading');
-            indicator.style.transform = `translate(-50%, ${MAX_PULL * 0.55}px)`;
+            indicator.style.transform = 'translate(-50%, 0)';
             indicator.style.setProperty('--ptr-rot', '0deg');
+            indicator.style.setProperty('--ptr-scale', '1');
 
             // Chrome reloads the full document — do the same.
             setTimeout(() => window.location.reload(), 120);

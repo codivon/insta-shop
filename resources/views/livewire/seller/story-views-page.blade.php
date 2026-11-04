@@ -67,8 +67,11 @@
                     @foreach ($chart as $bar)
                         <div class="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1" title="{{ $bar['label'] }} — {{ \App\Support\Fmt::toFa($bar['value']) }} بازدید">
                             <span class="text-[8.5px] font-black text-slate-400">{{ $bar['value'] > 0 ? \App\Support\Fmt::toFa($bar['value']) : '' }}</span>
-                            <div class="w-full rounded-t-md bg-gradient-to-t from-primary-600 to-primary-400 transition-all group-hover:from-primary-700 group-hover:to-primary-500"
-                                 style="height: {{ max(4, (int) round($bar['value'] / $chartMax * 100)) }}%"></div>
+                            {{-- max-w keeps a single story from stretching into a full-width block --}}
+                            <div class="flex w-full flex-1 items-end justify-center">
+                                <div class="w-full max-w-9 rounded-t-md bg-gradient-to-t from-primary-600 to-primary-400 transition-all group-hover:from-primary-700 group-hover:to-primary-500"
+                                     style="height: {{ max(4, (int) round($bar['value'] / $chartMax * 100)) }}%"></div>
+                            </div>
                         </div>
                     @endforeach
                 </div>

@@ -272,11 +272,17 @@
                     <span class="text-[10px] font-bold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::fa($storyChartTotal) }} بازدید · ۱۰ استوری اخیر</span>
                 </div>
 
-                <div class="mt-4 flex h-24 items-end gap-1.5" role="img" aria-label="نمودار بازدید استوری‌ها">
+                <div class="mt-4 flex h-28 items-end gap-1.5" role="img" aria-label="نمودار بازدید استوری‌ها">
                     @foreach ($storyChart as $bar)
                         <div class="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1" title="{{ $bar['label'] }} — {{ \App\Support\Fmt::fa($bar['value']) }} بازدید ({{ $bar['date'] }})">
-                            <div class="w-full rounded-t-md bg-gradient-to-t from-primary-600 to-primary-400 transition-all group-hover:from-primary-700 group-hover:to-primary-500"
-                                 style="height: {{ max(4, (int) round($bar['value'] / max($storyChartMax, 1) * 100)) }}%"></div>
+                            @if ($bar['value'] > 0)
+                                <span class="text-[8px] font-black text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::fa($bar['value']) }}</span>
+                            @endif
+                            {{-- max-w keeps a single story from stretching into a full-width block --}}
+                            <div class="flex w-full flex-1 items-end justify-center">
+                                <div class="w-full max-w-9 rounded-t-md bg-gradient-to-t from-primary-600 to-primary-400 transition-all group-hover:from-primary-700 group-hover:to-primary-500"
+                                     style="height: {{ max(4, (int) round($bar['value'] / max($storyChartMax, 1) * 100)) }}%"></div>
+                            </div>
                         </div>
                     @endforeach
                 </div>

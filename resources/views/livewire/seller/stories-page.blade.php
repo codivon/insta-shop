@@ -1,6 +1,25 @@
-<div class="ip-fade-up space-y-4">
+<div class="ip-fade-up">
 
-    {{-- ── header — gradient hero card with live counter ── --}}
+    {{-- ───────── Sticky page header (matches other seller sub-pages) ───────── --}}
+    <div class="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/90">
+        <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2.5">
+                <a href="{{ route('seller.home') }}" wire:navigate
+                   class="grid size-10 shrink-0 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بازگشت به خانه">
+                    <x-icon name="arrow-right" class="size-5" />
+                </a>
+                <div>
+                    <div class="text-sm font-extrabold leading-5">استوری‌ها</div>
+                    <div class="text-[11px] text-slate-400">مثل اینستاگرام — تصویر یا ویدیو، محصول و لینک</div>
+                </div>
+            </div>
+            <x-seller-notif-bell />
+        </div>
+    </div>
+
+    <div class="space-y-4 px-4 pt-4 pb-8">
+
+    {{-- ── hero — gradient capacity card with live counter ── --}}
     <div class="relative overflow-hidden rounded-3xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-4 text-white shadow-xl shadow-primary-600/25">
         <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
             <div class="absolute -top-8 left-6 size-36 rounded-full bg-white/25 blur-2xl"></div>
@@ -12,7 +31,7 @@
                 </span>
                 <div>
                     <h1 class="text-sm font-black">استوری‌های فروشگاه</h1>
-                    <p class="mt-0.5 text-[10.5px] leading-4 text-primary-100">مثل اینستاگرام — تصویر یا ویدیو، محصول و لینک</p>
+                    <p class="mt-0.5 text-[10.5px] leading-4 text-primary-100">ظرفیت انتشار استوری فعال</p>
                 </div>
             </div>
             <div class="text-center">
@@ -354,4 +373,5 @@
             </div>
         </div>
     @endif
+    </div>{{-- /px-4 container --}}
 </div>
