@@ -43,7 +43,7 @@ return [
                 'admin.products' => 'محصولات',
                 'admin.discounts' => 'کدهای تخفیف',
                 'admin.stories' => 'استوری‌ها (تأیید و مدیریت استوری فروشگاه‌ها)',
-                'admin.banners' => 'بنرها و اسلایدهای صفحهٔ اصلی',
+                'admin.banners' => 'بنرها و اسلایدر صفحهٔ اصلی',
                 'admin.income' => 'درآمد و کمیسیون‌ها',
                 'admin.finance' => 'گزارش مالی',
                 'admin.settlements' => 'تسویه‌ها',

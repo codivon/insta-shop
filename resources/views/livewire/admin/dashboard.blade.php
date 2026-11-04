@@ -100,6 +100,50 @@
 
     <div class="grid gap-6 xl:grid-cols-5">
 
+        {{-- ── 14-day story views chart ── --}}
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3 dark:border-slate-800 dark:bg-slate-900" data-testid="story-chart-card">
+            <div class="flex items-center justify-between">
+                <h3 class="flex items-center gap-2 text-sm font-extrabold">
+                    <span class="grid size-8 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
+                        <x-icon name="zap" class="size-4" />
+                    </span>
+                    بازدید استوری‌ها — ۱۴ روز اخیر
+                </h3>
+                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                    مجموع: {{ \App\Support\Fmt::fa($storyChart->sum('views')) }}
+                </span>
+            </div>
+
+            <div class="mt-5 flex h-32 justify-between gap-1.5" dir="ltr">
+                @php $maxViews = max($storyChart->max('views'), 1); @endphp
+                @foreach ($storyChart as $bar)
+                    <div class="flex flex-1 flex-col items-center gap-1.5">
+                        <div class="flex w-full flex-1 items-end">
+                            <div class="w-full rounded-t-lg transition-all {{ $bar['today'] ? 'bg-gradient-to-t from-primary-600 to-primary-400 shadow-md shadow-primary-600/30' : 'bg-primary-200 dark:bg-primary-900' }}"
+                                 style="height: {{ max(6, (int) round($bar['views'] / $maxViews * 100)) }}%"
+                                 title="{{ $bar['label'] }}: {{ \App\Support\Fmt::fa($bar['views']) }} بازدید استوری"></div>
+                        </div>
+                        <span class="text-[9px] font-bold {{ $bar['today'] ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}">{{ $bar['label'] }}</span>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="mt-4 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+                <a href="{{ route('admin.stories') }}" wire:navigate class="rounded-2xl bg-slate-50 p-3 text-center transition hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800">
+                    <div class="text-lg font-extrabold">{{ \App\Support\Fmt::fa($storyStats['running']) }}</div>
+                    <div class="mt-0.5 text-[10px] text-slate-400">استوری در حال نمایش</div>
+                </a>
+                <div class="rounded-2xl bg-slate-50 p-3 text-center dark:bg-slate-800/60">
+                    <div class="text-lg font-extrabold">{{ \App\Support\Fmt::fa($storyStats['views']) }}</div>
+                    <div class="mt-0.5 text-[10px] text-slate-400">مجموع بازدید استوری‌ها</div>
+                </div>
+                <a href="{{ route('admin.slider') }}" wire:navigate class="rounded-2xl bg-slate-50 p-3 text-center transition hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800">
+                    <div class="text-lg font-extrabold">{{ \App\Support\Fmt::fa($banners) }}</div>
+                    <div class="mt-0.5 text-[10px] text-slate-400">اسلاید و بنر فعال</div>
+                </a>
+            </div>
+        </div>
+
         {{-- ── 7-day orders chart ── --}}
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2 dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center justify-between">

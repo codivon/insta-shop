@@ -484,3 +484,14 @@ body {
     transition: none;
 }
 @keyframes ip-ptr-spin { to { transform: rotate(360deg); } }
+
+/* ── story viewer media (Instagram-style) ──
+   Long-pressing the media must NEVER open the Google/system context
+   menu or a text-selection callout on touch devices. */
+.story-media {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+}

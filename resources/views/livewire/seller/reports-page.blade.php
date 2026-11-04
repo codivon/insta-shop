@@ -110,6 +110,19 @@
             </div>
         </div>
 
+        {{-- ───────── story views (separate page) ───────── --}}
+        <a href="{{ route('seller.reports.story-views') }}" wire:navigate
+           class="mt-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-primary-300 hover:shadow-md active:scale-[0.99] dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-700">
+            <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-md shadow-primary-600/25">
+                <x-icon name="zap" class="size-5" />
+            </span>
+            <span class="min-w-0 flex-1">
+                <span class="block text-xs font-extrabold">بازدید استوری‌ها</span>
+                <span class="mt-0.5 block text-[10px] font-semibold text-slate-400">آمار بازدید، لایک و نظر هر استوری در صفحهٔ جداگانه</span>
+            </span>
+            <x-icon name="chevron-left" class="size-4 shrink-0 text-slate-400" />
+        </a>
+
         {{-- ───────── نمودار بازدید ───────── --}}
         <div class="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900" data-testid="views-chart-card">
             <div class="flex items-center justify-between gap-2">

@@ -173,6 +173,12 @@ class Home extends Component
         return Banner::query()->homeHero()->get();
     }
 
+    /** Admin-managed banner cards row under the hero slider. */
+    public function getHomeBannersProperty(): Collection
+    {
+        return Banner::query()->homeBanners()->get();
+    }
+
     public function getShopsProperty(): Collection
     {
         return Shop::query()
@@ -210,6 +216,7 @@ class Home extends Component
             'favoriteIds' => $this->favoriteIds,
             'storyShops' => $this->storyShops,
             'banners' => $this->banners,
+            'homeBanners' => $this->homeBanners,
         ])->title('فروشگاه InstaShop');
     }
 

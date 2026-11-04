@@ -13,9 +13,10 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 /**
- * Admin — home hero banners (بنرها و اسلایدها): the slider on the customer
- * home page. Create / edit / reorder (sort) / activate / delete — the
- * slide order IS the slider order.
+ * Admin — home banner cards (بنرها): the small banner ROW on the customer
+ * home page (position=home_banner), managed SEPARATELY from the hero
+ * slider since v0.17.1. Create / edit / reorder (sort) / activate /
+ * delete — the order here IS the display order.
  */
 #[Layout('layouts.admin-slot')]
 class BannersPage extends Component
@@ -25,6 +26,13 @@ class BannersPage extends Component
     use WithFileUploads;
 
     protected static string $permission = 'admin.banners';
+
+    /** Which home slot this page manages (home_banner here, home_hero in SliderPage). */
+    protected string $position = Banner::POSITION_BANNER;
+
+    protected string $sectionTitle = 'بنرهای صفحهٔ اصلی';
+
+    protected string $breadcrumb = 'مدیریت کل — بنرها';
 
     /** null = create mode, otherwise the banner being edited. */
     public ?int $editingId = null;
@@ -78,7 +86,7 @@ class BannersPage extends Component
 
         ActivityLogger::log('banner.updated', 'بنر «'.($banner->title ?: '#'.$banner->id).'» '.($banner->is_active ? 'فعال' : 'غیرفعال').' شد', subject: $banner);
 
-        $this->dispatch('panel-toast', message: $banner->is_active ? 'بنر فعال شد. ✅' : 'بنر غیرفعال شد. ⛔', type: 'success');
+        $this->dispatch('panel-toast', message: $banner->is_active ? 'فعال شد. ✅' : 'غیرفعال شد. ⛔', type: 'success');
     }
 
     public function moveUp(int $bannerId): void
@@ -100,6 +108,7 @@ class BannersPage extends Component
             'link_url' => $this->linkUrl !== '' ? $this->linkUrl : null,
             'sort' => (int) $this->sort,
             'is_active' => $this->isActive,
+            'position' => $this->position,
         ];
 
         if ($this->editingId !== null) {
@@ -113,14 +122,14 @@ class BannersPage extends Component
             $banner->update($payload);
 
             ActivityLogger::log('banner.updated', 'بنر «'.($banner->title ?: '#'.$banner->id).'» ویرایش شد', subject: $banner);
-            $this->dispatch('panel-toast', message: 'بنر ویرایش شد. ✅', type: 'success');
+            $this->dispatch('panel-toast', message: 'ذخیره شد. ✅', type: 'success');
         } else {
             $payload['image_path'] = $this->image->store('banners', 'public');
 
             $banner = Banner::query()->create($payload);
 
             ActivityLogger::log('banner.created', 'بنر جدید «'.($banner->title ?: '#'.$banner->id).'» ساخته شد', subject: $banner);
-            $this->dispatch('panel-toast', message: 'بنر ساخته شد. ✅', type: 'success');
+            $this->dispatch('panel-toast', message: 'ساخته شد. ✅', type: 'success');
         }
 
         $this->cancelForm();
@@ -135,22 +144,28 @@ class BannersPage extends Component
 
         ActivityLogger::log('banner.deleted', 'بنر «'.($banner->title ?: '#'.$bannerId).'» حذف شد');
 
-        $this->dispatch('panel-toast', message: 'بنر حذف شد. 🗑️', type: 'success');
+        $this->dispatch('panel-toast', message: 'حذف شد. 🗑️', type: 'success');
     }
 
     // ── computed ─────────────────────────────────────────────────────
 
     public function getBannersProperty(): Collection
     {
-        return Banner::query()->orderBy('sort')->orderBy('id')->get();
+        return Banner::query()
+            ->where('position', $this->position)
+            ->orderBy('sort')
+            ->orderBy('id')
+            ->get();
     }
 
     public function render()
     {
         return view('livewire.admin.banners-page', [
             'banners' => $this->banners,
-        ])->title('بنرها و اسلایدها')
-            ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — بنرها و اسلایدها']);
+            'sectionTitle' => $this->sectionTitle,
+            'heroAspect' => false,
+        ])->title($this->sectionTitle)
+            ->layout('layouts.admin-slot', ['breadcrumb' => $this->breadcrumb]);
     }
 
     // ── helpers ──────────────────────────────────────────────────────
@@ -161,7 +176,7 @@ class BannersPage extends Component
         $this->image = null;
         $this->title = '';
         $this->linkUrl = '';
-        $this->sort = (string) ((int) Banner::query()->max('sort') + 1);
+        $this->sort = (string) ((int) Banner::query()->where('position', $this->position)->max('sort') + 1);
         $this->isActive = true;
     }
 
@@ -169,7 +184,7 @@ class BannersPage extends Component
     private function move(int $bannerId, string $direction): void
     {
         $ids = Banner::query()
-            ->where('position', 'home_hero')
+            ->where('position', $this->position)
             ->orderBy('sort')
             ->orderBy('id')
             ->pluck('id');
@@ -209,7 +224,7 @@ class BannersPage extends Component
     protected function messages(): array
     {
         return [
-            'image.required' => 'تصویر بنر را انتخاب کنید.',
+            'image.required' => 'تصویر را انتخاب کنید.',
             'image.image' => 'فایل باید تصویر باشد.',
             'image.mimes' => 'فرمت‌های مجاز: jpg، jpeg، png، webp.',
             'image.max' => 'حجم تصویر حداکثر ۵ مگابایت است.',

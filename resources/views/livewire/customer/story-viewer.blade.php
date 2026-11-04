@@ -1,10 +1,13 @@
 {{-- ═══════════════════════════════════════════════════════════════
   Instagram-style story viewer (nested on the customer home page).
-  • segmented progress bars — 5s per story, HOLD to pause
-  • tap right/left = next/prev · swipe down = close
+  • segmented progress bars — images 5s, videos follow real playback
+  • tap right/left = next/prev · swipe down = close · ESC closes
+  • STOP button (pause/resume) · video stories: MUTE toggle
+  • long-press/hold opens NO system/Google menu on the media
   • shop meta (avatar + name + «چند لحظه پیش»)
-  • caption · attached PRODUCT card · external LINK
-  • likes + comments (customers) · guests get a hint toast
+  • caption · attached PRODUCT card · external link WITH its title
+  • likes + comments per-story togglable (seller/admin) — customers
+    only; guests get a hint toast
   data-ptr-ignore keeps the pull-to-refresh module away from it.
   The outer <div> is the persistent Livewire single root (the overlay
   renders inside it only while a story is open).
@@ -13,16 +16,32 @@
 @if ($isOpen && $current)
 <div data-ptr-ignore
          x-data="{
-            p: 0, prev: -1, paused: false, y0: null,
+            p: 0, prev: -1, paused: false, stopped: false, muted: true, y0: null,
             tick() {
                 if ($wire.shopId === null) return;
-                if (this.prev !== $wire.index) { this.prev = $wire.index; this.p = 0; return; }
-                if (this.paused) return;
+                if (this.prev !== $wire.index) { this.prev = $wire.index; this.p = 0; this.stopped = false; this.resumeVideo(); return; }
+                if (this.paused || this.stopped) return;
+                if (this.$refs.storyVideo) return; // video drives p via timeupdate
                 this.p += 1;
                 if (this.p >= 100) { this.p = 100; $wire.next(); }
+            },
+            toggleStop() {
+                this.stopped = !this.stopped;
+                const v = this.$refs.storyVideo;
+                if (v) { this.stopped ? v.pause() : v.play().catch(() => {}); }
+            },
+            toggleMute() {
+                this.muted = !this.muted;
+                const v = this.$refs.storyVideo;
+                if (v) v.muted = this.muted;
+            },
+            resumeVideo() {
+                const v = this.$refs.storyVideo;
+                if (v) { v.muted = this.muted; v.play().catch(() => {}); }
             }
          }"
          x-init="setInterval(() => tick(), 50)"
+         x-effect="if ($refs.storyVideo) $refs.storyVideo.muted = muted"
          @keydown.escape.window="$wire.close()"
          x-on:touchstart.passive="y0 = $event.touches[0].clientY"
          x-on:touchmove.passive="if (y0 !== null && $event.touches[0].clientY - y0 > 90) { y0 = null; $wire.close(); }"
@@ -43,7 +62,7 @@
             @endforeach
         </div>
 
-        {{-- ── shop meta + close ── --}}
+        {{-- ── shop meta + stop/mute + close ── --}}
         <div class="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-2 px-3 pb-2 pt-8" style="padding-top: calc(28px + env(safe-area-inset-top, 0px));">
             <div class="flex min-w-0 items-center gap-2.5">
                 <span class="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-white/15 p-[2px]">
@@ -58,20 +77,49 @@
                     <span class="block text-[10px] text-white/70">{{ \App\Support\JDate::ago($current->starts_at) }}</span>
                 </span>
             </div>
-            <button type="button" wire:click="close" aria-label="بستن استوری"
-                    class="grid size-9 shrink-0 place-items-center rounded-full text-white/90 transition hover:bg-white/10 active:scale-90">
-                <x-icon name="x" class="size-5" />
-            </button>
+            <div class="flex shrink-0 items-center gap-1">
+                {{-- stop / resume (pause the story progression) --}}
+                <button type="button" x-on:click="toggleStop" aria-label="{{ 'توقف یا ادامهٔ استوری' }}"
+                        class="grid size-9 place-items-center rounded-full text-white/90 transition hover:bg-white/10 active:scale-90">
+                    <span x-show="!stopped"><x-icon name="pause" class="size-4.5" /></span>
+                    <span x-show="stopped" x-cloak><x-icon name="play" class="size-4.5" /></span>
+                </button>
+                {{-- mute toggle — video stories only --}}
+                @if ($current->type === \App\Models\Story::TYPE_VIDEO)
+                    <button type="button" x-on:click="toggleMute" aria-label="قطع یا وصل صدا"
+                            class="grid size-9 place-items-center rounded-full text-white/90 transition hover:bg-white/10 active:scale-90">
+                        <span x-show="muted"><x-icon name="volume-x" class="size-4.5" /></span>
+                        <span x-show="!muted" x-cloak><x-icon name="volume-2" class="size-4.5" /></span>
+                    </button>
+                @endif
+                <button type="button" wire:click="close" aria-label="بستن استوری"
+                        class="grid size-9 shrink-0 place-items-center rounded-full text-white/90 transition hover:bg-white/10 active:scale-90">
+                    <x-icon name="x" class="size-5" />
+                </button>
+            </div>
         </div>
 
-        {{-- ── media + tap zones (hold = pause) ── --}}
+        {{-- ── media + tap zones (hold = pause · NO context/long-press menu) ── --}}
         <div class="relative flex-1 overflow-hidden"
-             x-on:pointerdown="paused = true"
-             x-on:pointerup="paused = false"
-             x-on:pointerleave="paused = false">
-            <img src="{{ $current->mediaUrl() }}" alt="استوری {{ $current->shop->name }}"
-                 class="absolute inset-0 size-full object-contain" draggable="false"
-                 x-bind:class="paused ? 'opacity-95' : ''">
+             x-on:pointerdown="paused = true; const v = $refs.storyVideo; if (v) v.pause()"
+             x-on:pointerup="paused = false; const v = $refs.storyVideo; if (v && !stopped) v.play().catch(() => {})"
+             x-on:pointerleave="paused = false"
+             x-on:contextmenu.prevent
+             x-on:dragstart.prevent>
+            @if ($current->type === \App\Models\Story::TYPE_VIDEO && $current->videoUrl())
+                <video x-ref="storyVideo"
+                       src="{{ $current->videoUrl() }}"
+                       autoplay muted playsinline preload="auto"
+                       x-on:ended="$wire.next()"
+                       x-on:timeupdate="const v = $refs.storyVideo; if (v && v.duration > 0) p = Math.min(99, v.currentTime / v.duration * 100)"
+                       x-on:error="p = 100; setTimeout(() => $wire.next(), 700)"
+                       class="story-media absolute inset-0 size-full bg-black object-contain"
+                       draggable="false" aria-label="ویدیوی استوری {{ $current->shop->name }}"></video>
+            @else
+                <img src="{{ $current->mediaUrl() }}" alt="استوری {{ $current->shop->name }}"
+                     class="story-media absolute inset-0 size-full object-contain" draggable="false"
+                     x-bind:class="paused ? 'opacity-95' : ''">
+            @endif
 
             {{-- tap zones (upper ~55% only — bottom stays for caption/product/comments) --}}
             <button type="button" wire:click="prev" aria-label="استوری قبلی"
@@ -85,8 +133,10 @@
                 </div>
             @endif
 
-            <span x-show="paused"
+            <span x-show="paused && !stopped"
                   class="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/50 px-4 py-2 text-[10px] font-bold text-white">مکث — برای ادامه رها کنید</span>
+            <span x-show="stopped" x-cloak
+                  class="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/55 px-4 py-2 text-[10px] font-bold text-white">متوقف شد — دکمهٔ ▶ برای ادامه</span>
         </div>
 
         {{-- ── bottom sheet: product + link + likes + comments ── --}}
@@ -112,17 +162,17 @@
                 </a>
             @endif
 
-            {{-- external link --}}
+            {{-- external link — WITH its title (falls back to the generic label) --}}
             @if ($current->link_url)
                 <a href="{{ $current->link_url }}" target="_blank" rel="noopener"
                    class="flex items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-[11px] font-extrabold text-white backdrop-blur transition hover:bg-white/15">
-                    <x-icon name="external-link" class="size-4" />
-                    مشاهدهٔ لینک
+                    <x-icon name="external-link" class="size-4 shrink-0" />
+                    <span class="truncate">{{ $current->link_title !== '' && $current->link_title !== null ? $current->link_title : 'مشاهدهٔ لینک' }}</span>
                 </a>
             @endif
 
             {{-- comments list (collapsible) --}}
-            @if ($comments->isNotEmpty())
+            @if ($current->comments_enabled && $comments->isNotEmpty())
                 <div class="scroll-slim max-h-40 space-y-2 overflow-y-auto pe-1" aria-label="نظرات استوری">
                     @foreach ($comments as $comment)
                         <div wire:key="cmt-{{ $comment->id }}" class="flex items-start gap-2">
@@ -136,30 +186,36 @@
                 </div>
             @endif
 
-            {{-- like + comment composer --}}
-            <div class="flex items-center gap-2">
-                <button type="button" wire:click="toggleLike"
-                        class="flex shrink-0 items-center gap-1.5 rounded-2xl bg-white/10 px-3 py-2.5 backdrop-blur transition hover:bg-white/15 active:scale-95"
-                        aria-label="{{ $liked ? 'برگرداندن لایک' : 'لایک استوری' }}">
-                    <x-icon name="heart" class="size-4.5 {{ $liked ? 'fill-rose-500 text-rose-500' : 'text-white' }}" />
-                    <span class="text-[11px] font-extrabold {{ $liked ? 'text-rose-400' : 'text-white' }}">{{ \App\Support\Fmt::fa($current->likes_count) }}</span>
-                </button>
+            {{-- like + comment composer — per-story togglable --}}
+            @if ($current->likes_enabled || $current->comments_enabled)
+                <div class="flex items-center gap-2">
+                    @if ($current->likes_enabled)
+                        <button type="button" wire:click="toggleLike"
+                                class="flex shrink-0 items-center gap-1.5 rounded-2xl bg-white/10 px-3 py-2.5 backdrop-blur transition hover:bg-white/15 active:scale-95"
+                                aria-label="{{ $liked ? 'برگرداندن لایک' : 'لایک استوری' }}">
+                            <x-icon name="heart" class="size-4.5 {{ $liked ? 'fill-rose-500 text-rose-500' : 'text-white' }}" />
+                            <span class="text-[11px] font-extrabold {{ $liked ? 'text-rose-400' : 'text-white' }}">{{ \App\Support\Fmt::fa($current->likes_count) }}</span>
+                        </button>
+                    @endif
 
-                <div class="flex min-w-0 flex-1 items-center gap-1.5 rounded-2xl bg-white/10 px-3 py-1.5 backdrop-blur focus-within:bg-white/15">
-                    <input type="text" wire:model="commentBody" maxlength="300"
-                           @if (! auth('customer')->check()) disabled placeholder="برای نظر دادن وارد شوید…" @else placeholder="نظر بدهید…" @endif
-                           x-on:keydown.enter="$wire.addComment()"
-                           class="w-full bg-transparent text-[11px] text-white outline-none placeholder:text-white/45 disabled:cursor-not-allowed"
-                           aria-label="متن نظر">
-                    <button type="button" wire:click="addComment" wire:loading.attr="disabled" wire:target="addComment"
-                            @if (! auth('customer')->check()) disabled @endif
-                            class="grid size-8 shrink-0 place-items-center rounded-xl bg-white text-black transition active:scale-90 disabled:opacity-40"
-                            aria-label="ارسال نظر">
-                        <x-icon name="arrow-left" class="size-4" />
-                    </button>
+                    @if ($current->comments_enabled)
+                        <div class="flex min-w-0 flex-1 items-center gap-1.5 rounded-2xl bg-white/10 px-3 py-1.5 backdrop-blur focus-within:bg-white/15">
+                            <input type="text" wire:model="commentBody" maxlength="300"
+                                   @if (! auth('customer')->check()) disabled placeholder="برای نظر دادن وارد شوید…" @else placeholder="نظر بدهید…" @endif
+                                   x-on:keydown.enter="$wire.addComment()"
+                                   class="w-full bg-transparent text-[11px] text-white outline-none placeholder:text-white/45 disabled:cursor-not-allowed"
+                                   aria-label="متن نظر">
+                            <button type="button" wire:click="addComment" wire:loading.attr="disabled" wire:target="addComment"
+                                    @if (! auth('customer')->check()) disabled @endif
+                                    class="grid size-8 shrink-0 place-items-center rounded-xl bg-white text-black transition active:scale-90 disabled:opacity-40"
+                                    aria-label="ارسال نظر">
+                                <x-icon name="arrow-left" class="size-4" />
+                            </button>
+                        </div>
+                    @endif
                 </div>
-            </div>
-            @error('commentBody') <p class="text-[10px] font-bold text-rose-400">{{ $message }}</p> @enderror
+                @error('commentBody') <p class="text-[10px] font-bold text-rose-400">{{ $message }}</p> @enderror
+            @endif
         </div>
     </div>
 @endif

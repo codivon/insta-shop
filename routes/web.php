@@ -32,6 +32,7 @@ use App\Livewire\Admin\Settings\SettingsHub;
 use App\Livewire\Admin\Settings\SmsTemplatesCenter;
 use App\Livewire\Admin\SettlementsPage;
 use App\Livewire\Admin\ShopsIndex;
+use App\Livewire\Admin\SliderPage;
 use App\Livewire\Admin\StoriesPage;
 use App\Livewire\Admin\Support\TicketShow;
 use App\Livewire\Admin\Support\TicketsIndex;
@@ -73,6 +74,7 @@ use App\Livewire\Seller\ShippingPage;
 use App\Livewire\Seller\ShopEdit;
 use App\Livewire\Seller\ShopIndex;
 use App\Livewire\Seller\StoriesPage as SellerStoriesPage;
+use App\Livewire\Seller\StoryViewsPage;
 use App\Livewire\Seller\Support\TicketShowPage;
 use App\Livewire\Seller\Support\TicketsPage;
 use App\Livewire\Seller\WalletPage;
@@ -138,7 +140,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // ── Stories (استوری‌های فروشگاه‌ها — Instagram-style) ──
         Route::get('/stories', StoriesPage::class)->name('stories');
 
-        // ── Home banners (بنرها و اسلایدهای صفحهٔ اصلی مشتری) ──
+        // ── Home hero slider (اسلایدر صفحهٔ اصلی مشتری) ──
+        Route::get('/slider', SliderPage::class)->name('slider');
+
+        // ── Home banner cards (بنرهای ردیف زیر اسلایدر) ──
         Route::get('/banners', BannersPage::class)->name('banners');
 
         // ── Platform income (کمیسیون‌های دریافتی — batch 81) ──
@@ -256,6 +261,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         // ── Reports (orders & product-visit analytics) ──
         Route::get('/reports', ReportsPage::class)->name('reports');
         Route::get('/reports/product-views', ProductViewsPage::class)->name('reports.views');
+        Route::get('/reports/story-views', StoryViewsPage::class)->name('reports.story-views');
 
         // ── Seller notifications (فقط اعلان‌های خود فروشنده + پوش موبایل/سیستم) ──
         Route::get('/notifications', SellerNotificationsPage::class)->name('notifications');

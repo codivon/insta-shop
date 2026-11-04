@@ -254,6 +254,30 @@
             </div>
         </div>
 
+        {{-- ── story views chart (Instagram-style stories) ── --}}
+        @if ($storyChart->isNotEmpty())
+            <a href="{{ route('seller.reports.story-views') }}" wire:navigate
+               class="mt-4 block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-700" data-testid="story-chart-card">
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="flex items-center gap-2 text-xs font-extrabold">
+                        <span class="grid size-7 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400"><x-icon name="zap" class="size-3.5" /></span>
+                        بازدید استوری‌ها
+                    </h3>
+                    <span class="text-[10px] font-bold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::fa($storyChartTotal) }} بازدید · ۱۰ استوری اخیر</span>
+                </div>
+
+                <div class="mt-4 flex h-24 items-end gap-1.5" role="img" aria-label="نمودار بازدید استوری‌ها">
+                    @foreach ($storyChart as $bar)
+                        <div class="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1" title="{{ $bar['label'] }} — {{ \App\Support\Fmt::fa($bar['value']) }} بازدید ({{ $bar['date'] }})">
+                            <div class="w-full rounded-t-md bg-gradient-to-t from-primary-600 to-primary-400 transition-all group-hover:from-primary-700 group-hover:to-primary-500"
+                                 style="height: {{ max(4, (int) round($bar['value'] / max($storyChartMax, 1) * 100)) }}%"></div>
+                        </div>
+                    @endforeach
+                </div>
+                <p class="mt-2 text-center text-[9px] font-semibold text-slate-400">آمار کامل در صفحهٔ «بازدید استوری‌ها»</p>
+            </a>
+        @endif
+
         {{-- ── recent products ── --}}
         <div class="mt-6 flex items-center justify-between">
             <h3 class="text-sm font-extrabold">آخرین محصولات</h3>

@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\PushSubscription;
 use App\Models\Shop;
+use App\Models\Story;
 use App\Support\Fmt;
 use App\Support\JDate;
 use Carbon\CarbonImmutable;
@@ -75,6 +76,7 @@ class Home extends Component
         ];
 
         $chart = $this->salesChart($shop);
+        $storyChart = $this->storyChart($shop);
 
         return view('livewire.seller.home', [
             'shop' => $shop,
@@ -84,6 +86,9 @@ class Home extends Component
             'chartTotal' => $chart['total'],
             'chartOrders' => $chart['orders'],
             'chartMax' => $chart['max'],
+            'storyChart' => $storyChart['series'],
+            'storyChartMax' => $storyChart['max'],
+            'storyChartTotal' => $storyChart['total'],
             'recentProducts' => (clone $base)->with('mainImage')->latest()->take(4)->get(),
             'onboarding' => $this->onboarding($shop),
         ])->title('خانه فروشنده');
@@ -150,6 +155,28 @@ class Home extends Component
             'doneCount' => $doneCount,
             'total' => count($steps),
             'allDone' => $doneCount === count($steps),
+        ];
+    }
+
+    /** Views per story (recent 10) for the story-stats chart on the home page. */
+    private function storyChart(Shop $shop): array
+    {
+        $stories = Story::query()
+            ->where('shop_id', $shop->id)
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get(['id', 'caption', 'link_title', 'views', 'created_at']);
+
+        return [
+            'series' => $stories->map(fn (Story $story) => [
+                'value' => (int) $story->views,
+                'label' => $story->caption !== null && $story->caption !== ''
+                    ? mb_substr($story->caption, 0, 16)
+                    : ($story->link_title !== null && $story->link_title !== '' ? mb_substr($story->link_title, 0, 16) : 'استوری #'.Fmt::toFa($story->id)),
+                'date' => JDate::date($story->created_at),
+            ]),
+            'max' => max(1, (int) $stories->max('views')),
+            'total' => (int) $stories->sum('views'),
         ];
     }
 

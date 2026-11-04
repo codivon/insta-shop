@@ -4,11 +4,14 @@ namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Models\ActivityLog;
+use App\Models\Banner;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Seller;
 use App\Models\Shop;
+use App\Models\Story;
+use App\Models\StoryView;
 use App\Support\SchemaReady;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -192,6 +195,62 @@ class Dashboard extends Component
         }));
     }
 
+    /** Story views per day for the last 14 days (from story_views records).
+     *  Same JSON-cache discipline as the orders chart above. */
+    public function getStoryChartProperty(): Collection
+    {
+        return collect($this->cached('storyChart', function (): array {
+            if (! SchemaReady::check('story_views')) {
+                return [];
+            }
+
+            $from = Carbon::today()->subDays(13);
+
+            $rows = StoryView::query()
+                ->whereBetween('created_at', [$from->copy()->startOfDay(), Carbon::today()->endOfDay()])
+                ->selectRaw('date(created_at) as day, count(*) as views')
+                ->groupBy('day')
+                ->get()
+                ->keyBy(fn ($row) => (string) $row->day);
+
+            $out = [];
+
+            for ($i = 0; $i < 14; $i++) {
+                $day = $from->copy()->addDays($i);
+                $key = $day->toDateString();
+                $row = $rows[$key] ?? null;
+
+                $out[] = [
+                    'label' => $day->locale('fa')->dayName,
+                    'views' => (int) ($row->views ?? 0),
+                    'today' => $i === 13,
+                ];
+            }
+
+            return $out;
+        }));
+    }
+
+    public function getStoryStatsProperty(): array
+    {
+        return $this->cached('storyStats', function (): array {
+            if (! SchemaReady::check('stories')) {
+                return ['running' => 0, 'views' => 0];
+            }
+
+            return [
+                'running' => Story::query()->where('status', Story::STATUS_APPROVED)->running()->count(),
+                'views' => (int) Story::query()->sum('views'),
+            ];
+        });
+    }
+
+    /** Active home visuals (hero slides + banner cards) for the dashboard tile. */
+    public function getBannersProperty(): int
+    {
+        return (int) $this->cached('banners', fn (): int => (int) Banner::query()->where('is_active', true)->count());
+    }
+
     public function getRecentOrdersProperty(): Collection
     {
         return Order::query()
@@ -210,6 +269,9 @@ class Dashboard extends Component
             'products' => $this->products,
             'orderStats' => $this->orderStats,
             'chart' => $this->chart,
+            'storyChart' => $this->storyChart,
+            'storyStats' => $this->storyStats,
+            'banners' => $this->banners,
             'recentOrders' => $this->recentOrders,
             'recentActivities' => $this->recentActivities(),
         ])->title('داشبورد مدیریت')

@@ -22,9 +22,10 @@ use Livewire\WithFileUploads;
  * Admin — stories management (استوری‌ها): every shop story in one table
  * with status filter tabs, approve/reject of the pending queue (manual
  * moderation mode from the stories settings), delete, and FULL create
- * power — the admin can post a story for ANY shop with image, caption,
- * external link, attached product and a custom display window (default
- * 24h, like the seller panel).
+ * power — the admin can post a story for ANY shop: image OR video (video
+ * = direct link, never uploaded), caption, external link WITH TITLE,
+ * per-story likes/comments toggles, attached product (searchable) and a
+ * custom display window (default 24h, like the seller panel).
  */
 #[Layout('layouts.admin-slot')]
 class StoriesPage extends Component
@@ -48,16 +49,29 @@ class StoriesPage extends Component
     // ── create form ──────────────────────────────────────────────────
     public bool $creating = false;
 
-    /** @var mixed Livewire temporary upload (image) */
+    public string $type = Story::TYPE_IMAGE;
+
+    /** @var mixed Livewire temporary upload (image stories) */
     public $media;
+
+    public string $videoUrl = '';
 
     public string $shopId = '';
 
     public string $productId = '';
 
+    /** Search term of the attached-product picker. */
+    public string $productSearch = '';
+
     public string $caption = '';
 
     public string $linkUrl = '';
+
+    public string $linkTitle = '';
+
+    public bool $likesEnabled = true;
+
+    public bool $commentsEnabled = true;
 
     /** now | custom */
     public string $startMode = 'now';
@@ -108,6 +122,18 @@ class StoriesPage extends Component
     public function updatedShopId(): void
     {
         $this->productId = '';
+        $this->productSearch = '';
+    }
+
+    public function updatedType(): void
+    {
+        if ($this->type === Story::TYPE_VIDEO) {
+            $this->media = null;
+        } else {
+            $this->videoUrl = '';
+        }
+
+        $this->resetErrorBag(['media', 'videoUrl']);
     }
 
     public function updatedStartMode(): void
@@ -168,18 +194,23 @@ class StoriesPage extends Component
         return Shop::query()->orderBy('name')->get(['id', 'name']);
     }
 
-    /** Published products of the picked shop (attached-product picker). */
+    /** Published products of the picked shop, filtered by the picker search. */
     public function getProductOptionsProperty(): Collection
     {
         if ($this->shopId === '' || ! ctype_digit((string) $this->shopId)) {
             return collect();
         }
 
-        return Product::query()
+        $query = Product::query()
             ->where('shop_id', (int) $this->shopId)
             ->where('status', 'published')
-            ->orderBy('name')
-            ->get(['id', 'name']);
+            ->orderBy('name');
+
+        if (trim($this->productSearch) !== '') {
+            $query->where('name', 'like', '%'.trim($this->productSearch).'%');
+        }
+
+        return $query->limit(20)->get(['id', 'name']);
     }
 
     public function render()
@@ -249,7 +280,10 @@ class StoriesPage extends Component
     {
         $story = Story::query()->findOrFail($storyId);
 
-        Storage::disk('public')->delete($story->media_path);
+        if ($story->media_path) {
+            Storage::disk('public')->delete($story->media_path);
+        }
+
         $story->delete();
 
         ActivityLogger::log('story.deleted', 'استوری #'.$storyId.' فروشگاه «'.$story->shop->name.'» حذف شد');
@@ -277,15 +311,23 @@ class StoriesPage extends Component
             return;
         }
 
-        $path = $this->media->store("stories/{$this->shopId}", 'public');
+        $path = null;
+
+        if ($this->type === Story::TYPE_IMAGE) {
+            $path = $this->media->store("stories/{$this->shopId}", 'public');
+        }
 
         $story = Story::query()->create([
             'shop_id' => (int) $this->shopId,
             'product_id' => $this->productId !== '' ? (int) $this->productId : null,
-            'type' => Story::TYPE_IMAGE,
-            'media_path' => $path,
+            'type' => $this->type,
+            'media_path' => $this->type === Story::TYPE_IMAGE ? $path : null,
+            'video_url' => $this->type === Story::TYPE_VIDEO ? $this->videoUrl : null,
             'caption' => $this->caption !== '' ? $this->caption : null,
             'link_url' => $this->linkUrl !== '' ? $this->linkUrl : null,
+            'link_title' => $this->linkUrl !== '' && $this->linkTitle !== '' ? $this->linkTitle : null,
+            'likes_enabled' => $this->likesEnabled,
+            'comments_enabled' => $this->commentsEnabled,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
             // The admin IS the approver — admin-made stories go straight live.
@@ -308,11 +350,17 @@ class StoriesPage extends Component
 
     private function resetForm(): void
     {
+        $this->type = Story::TYPE_IMAGE;
         $this->media = null;
+        $this->videoUrl = '';
         $this->shopId = '';
         $this->productId = '';
+        $this->productSearch = '';
         $this->caption = '';
         $this->linkUrl = '';
+        $this->linkTitle = '';
+        $this->likesEnabled = true;
+        $this->commentsEnabled = true;
         $this->startMode = 'now';
         $this->duration = '24';
         $this->startDate = now()->toDateString();
@@ -340,11 +388,29 @@ class StoriesPage extends Component
 
     protected function rules(): array
     {
+        $isVideo = $this->type === Story::TYPE_VIDEO;
+
         return [
             'shopId' => ['required', 'integer', 'exists:shops,id'],
-            'media' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'type' => ['required', 'in:image,video'],
+            'media' => array_filter([
+                $isVideo ? 'nullable' : 'required',
+                $isVideo ? null : 'image',
+                $isVideo ? null : 'mimes:jpg,jpeg,png,webp',
+                $isVideo ? null : 'max:5120',
+            ]),
+            'videoUrl' => [$isVideo ? 'required' : 'nullable', 'url', 'max:500',
+                function (string $attribute, mixed $value, \Closure $fail) use ($isVideo): void {
+                    if ($isVideo && $value !== '' && ! Story::isDirectVideoUrl((string) $value)) {
+                        $fail('لینک ویدیو باید مستقیم به فایل ویدیو باشد (mp4، webm، ogg یا m3u8).');
+                    }
+                },
+            ],
             'caption' => ['nullable', 'string', 'max:500'],
             'linkUrl' => ['nullable', 'url', 'max:500'],
+            'linkTitle' => ['nullable', 'required_with:linkUrl', 'string', 'max:150'],
+            'likesEnabled' => ['boolean'],
+            'commentsEnabled' => ['boolean'],
             'productId' => ['nullable', 'integer'],
             'startMode' => ['required', 'in:now,custom'],
             'startDate' => ['required_if:startMode,custom', 'nullable', 'date'],
@@ -364,9 +430,14 @@ class StoriesPage extends Component
             'media.image' => 'فایل باید تصویر باشد.',
             'media.mimes' => 'فرمت‌های مجاز: jpg، jpeg، png، webp.',
             'media.max' => 'حجم تصویر حداکثر ۵ مگابایت است.',
+            'videoUrl.required' => 'لینک ویدیو را وارد کنید.',
+            'videoUrl.url' => 'لینک ویدیو باید یک آدرس اینترنتی معتبر باشد.',
+            'videoUrl.max' => 'لینک ویدیو حداکثر ۵۰۰ کاراکتر است.',
             'caption.max' => 'متن استوری حداکثر ۵۰۰ کاراکتر است.',
             'linkUrl.url' => 'لینک باید یک آدرس اینترنتی معتبر باشد (با https:// شروع شود).',
             'linkUrl.max' => 'لینک حداکثر ۵۰۰ کاراکتر است.',
+            'linkTitle.required_with' => 'برای لینک، یک عنوان وارد کنید (عنوان روی استوری نمایش داده می‌شود).',
+            'linkTitle.max' => 'عنوان لینک حداکثر ۱۵۰ کاراکتر است.',
             'productId.integer' => 'محصول انتخاب‌شده معتبر نیست.',
             'startDate.required_if' => 'تاریخ شروع را انتخاب کنید.',
             'startDate.date' => 'تاریخ شروع نامعتبر است.',

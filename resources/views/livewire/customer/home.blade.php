@@ -110,6 +110,31 @@
         </div>
         @endif
 
+        {{-- ── banner cards row (admin-managed, Basalam-style) ── --}}
+        @if ($homeBanners->isNotEmpty())
+            <div class="scroll-slim mt-3 flex gap-2.5 overflow-x-auto pb-1" aria-label="بنرها">
+                @foreach ($homeBanners as $homeBanner)
+                    @if ($homeBanner->link_url)
+                        <a href="{{ $homeBanner->link_url }}" wire:navigate class="group relative w-32 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md active:scale-95 dark:border-slate-800 dark:bg-slate-900">
+                            <img src="{{ $homeBanner->imageUrl() }}" alt="{{ $homeBanner->title ?: 'بنر' }}" loading="lazy"
+                                 class="aspect-[4/3] w-full object-cover">
+                            @if ($homeBanner->title)
+                                <span class="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-4 text-[9.5px] font-extrabold text-white">{{ $homeBanner->title }}</span>
+                            @endif
+                        </a>
+                    @else
+                        <div class="relative w-32 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <img src="{{ $homeBanner->imageUrl() }}" alt="{{ $homeBanner->title ?: 'بنر' }}" loading="lazy"
+                                 class="aspect-[4/3] w-full object-cover">
+                            @if ($homeBanner->title)
+                                <span class="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-4 text-[9.5px] font-extrabold text-white">{{ $homeBanner->title }}</span>
+                            @endif
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+        @endif
+
         {{-- ── public shops ── --}}
         <div id="shops" class="mt-6 flex items-center justify-between">
             <h3 class="text-sm font-extrabold">فروشگاه‌های فعال</h3>

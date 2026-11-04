@@ -36,13 +36,44 @@
 
                     <label class="block">
                         <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">محصول متصل (اختیاری)</span>
-                        <select wire:model="productId" @disabled($productOptions->isEmpty())
-                                class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold shadow-sm focus:border-primary-500 focus:outline-none disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800">
-                            <option value="">بدون محصول</option>
-                            @foreach ($productOptions as $productOption)
-                                <option value="{{ $productOption->id }}">{{ $productOption->name }}</option>
-                            @endforeach
-                        </select>
+                        @if ($productId !== '' && ctype_digit($productId))
+                            @php $adminPickedProduct = \App\Models\Product::query()->find((int) $productId); @endphp
+                            @if ($adminPickedProduct)
+                                <div class="mt-1.5 flex items-center justify-between gap-2 rounded-xl border border-primary-200 bg-primary-50/60 px-3 py-2.5 dark:border-primary-900 dark:bg-primary-950/30">
+                                    <span class="flex min-w-0 items-center gap-2 text-xs font-extrabold text-primary-700 dark:text-primary-300">
+                                        <x-icon name="package" class="size-3.5 shrink-0" />
+                                        <span class="truncate">{{ $adminPickedProduct->name }}</span>
+                                    </span>
+                                    <button type="button" wire:click="$set('productId', '')" aria-label="برداشتن محصول"
+                                            class="grid size-6 shrink-0 place-items-center rounded-lg text-primary-500 transition hover:bg-primary-100 active:scale-90 dark:hover:bg-primary-900/50">
+                                        <x-icon name="x" class="size-3.5" />
+                                    </button>
+                                </div>
+                            @endif
+                        @elseif ($shopId !== '')
+                            <div class="mt-1.5" x-data="{ open: false }" @click.outside="open = false">
+                                <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 shadow-sm focus-within:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                                    <x-icon name="search" class="size-3.5 shrink-0 text-slate-400" />
+                                    <input type="text" wire:model.live.debounce.300ms="productSearch" x-on:focus="open = true"
+                                           placeholder="جستجوی محصول…"
+                                           class="w-full bg-transparent text-xs outline-none placeholder:text-slate-400">
+                                </label>
+                                <div x-show="open" x-cloak x-transition.opacity
+                                     class="scroll-slim mt-1 max-h-44 space-y-0.5 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                                    @forelse ($productOptions as $productOption)
+                                        <button type="button" wire:click="$set('productId', {{ $productOption->id }})"
+                                                wire:key="apopt-{{ $productOption->id }}"
+                                                class="block w-full truncate rounded-lg px-2.5 py-2 text-start text-xs font-semibold text-slate-600 transition hover:bg-primary-50 hover:text-primary-700 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white">
+                                            {{ $productOption->name }}
+                                        </button>
+                                    @empty
+                                        <p class="px-2.5 py-2 text-[10px] font-bold text-slate-400">محصولی پیدا نشد.</p>
+                                    @endforelse
+                                </div>
+                            </div>
+                        @else
+                            <p class="mt-1.5 rounded-xl border border-dashed border-slate-200 px-3 py-2.5 text-[10px] font-bold text-slate-400 dark:border-slate-700">اول فروشگاه را انتخاب کنید.</p>
+                        @endif
                         @error('productId') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                     </label>
 
@@ -52,22 +83,66 @@
                                class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
                         @error('linkUrl') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                     </label>
+
+                    <label class="block">
+                        <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">عنوان لینک {{ $linkUrl !== '' ? '*' : '(اگر لینک دارید)' }} — روی استوری نمایش داده می‌شود</span>
+                        <input type="text" wire:model="linkTitle" maxlength="150" placeholder="مثلاً: تخفیف ویژهٔ امروز"
+                               class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                        @error('linkTitle') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                    </label>
                 </div>
 
                 {{-- media + caption + window --}}
                 <div class="space-y-3">
-                    <div class="flex items-start gap-3">
-                        <label class="flex-1">
-                            <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">تصویر استوری * (پیشنهادی: عمودی ۹:۱۶)</span>
-                            <input type="file" accept="image/jpeg,image/png,image/webp" wire:model.live="media"
-                                   class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs file:me-3 file:rounded-lg file:border-0 file:bg-primary-600 file:px-3 file:py-1.5 file:text-[10px] file:font-bold file:text-white shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
-                            @error('media') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-                            <span wire:loading wire:target="media" class="mt-1 block text-[10px] font-semibold text-primary-500">در حال بارگذاری…</span>
+                    {{-- type picker --}}
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border p-2.5 text-[11px] font-extrabold transition {{ $type === 'image'
+                            ? 'border-primary-500 bg-primary-50/70 ring-1 ring-primary-500/30 dark:border-primary-600 dark:bg-primary-950/30'
+                            : 'border-slate-200 dark:border-slate-700' }}">
+                            <input type="radio" wire:model.live="type" value="image" class="sr-only">
+                            <x-icon name="image" class="size-3.5" /> تصویر
                         </label>
-                        @if ($media)
-                            <img src="{{ $media->temporaryUrl() }}" alt="پیش‌نمایش استوری"
-                                 class="h-24 w-16 rounded-xl border border-slate-200 object-cover dark:border-slate-700">
-                        @endif
+                        <label class="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border p-2.5 text-[11px] font-extrabold transition {{ $type === 'video'
+                            ? 'border-primary-500 bg-primary-50/70 ring-1 ring-primary-500/30 dark:border-primary-600 dark:bg-primary-950/30'
+                            : 'border-slate-200 dark:border-slate-700' }}">
+                            <input type="radio" wire:model.live="type" value="video" class="sr-only">
+                            <x-icon name="play" class="size-3.5" /> ویدیو (از لینک)
+                        </label>
+                    </div>
+
+                    @if ($type === 'image')
+                        <div class="flex items-start gap-3">
+                            <label class="flex-1">
+                                <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">تصویر استوری * (پیشنهادی: عمودی ۹:۱۶)</span>
+                                <input type="file" accept="image/jpeg,image/png,image/webp" wire:model.live="media"
+                                       class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs file:me-3 file:rounded-lg file:border-0 file:bg-primary-600 file:px-3 file:py-1.5 file:text-[10px] file:font-bold file:text-white shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                                @error('media') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                                <span wire:loading wire:target="media" class="mt-1 block text-[10px] font-semibold text-primary-500">در حال بارگذاری…</span>
+                            </label>
+                            @if ($media)
+                                <img src="{{ $media->temporaryUrl() }}" alt="پیش‌نمایش استوری"
+                                     class="h-24 w-16 rounded-xl border border-slate-200 object-cover dark:border-slate-700">
+                            @endif
+                        </div>
+                    @else
+                        <label class="block">
+                            <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">لینک مستقیم ویدیو * (mp4، webm، ogg یا m3u8 — ویدیو آپلود نمی‌شود)</span>
+                            <input type="url" dir="ltr" wire:model="videoUrl" placeholder="https://example.com/story.mp4"
+                                   class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                            @error('videoUrl') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                        </label>
+                    @endif
+
+                    {{-- likes / comments toggles --}}
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-slate-200 px-3 py-2.5 dark:border-slate-700">
+                            <span class="text-[11px] font-extrabold text-slate-600 dark:text-slate-300">لایک</span>
+                            <input type="checkbox" wire:model="likesEnabled" class="size-4 accent-primary-600">
+                        </label>
+                        <label class="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-slate-200 px-3 py-2.5 dark:border-slate-700">
+                            <span class="text-[11px] font-extrabold text-slate-600 dark:text-slate-300">نظر</span>
+                            <input type="checkbox" wire:model="commentsEnabled" class="size-4 accent-primary-600">
+                        </label>
                     </div>
 
                     <label class="block">
@@ -169,9 +244,18 @@
         @forelse ($stories as $story)
             <div wire:key="story-{{ $story->id }}"
                  class="flex gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                <a href="{{ $story->mediaUrl() }}" target="_blank" rel="noopener"
+                <a href="{{ $story->type === \App\Models\Story::TYPE_VIDEO && $story->videoUrl() ? $story->videoUrl() : ($story->media_path ? $story->mediaUrl() : '#') }}" target="_blank" rel="noopener"
                    class="relative block h-32 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
-                    <img src="{{ $story->mediaUrl() }}" alt="استوری {{ $story->shop->name }}" loading="lazy" class="h-full w-full object-cover">
+                    @if ($story->type === \App\Models\Story::TYPE_VIDEO)
+                        <span class="grid size-full place-items-center bg-gradient-to-br from-slate-700 to-slate-900">
+                            <x-icon name="play" class="size-6 text-white/85" />
+                        </span>
+                        <span class="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-1.5 py-0.5 text-[8px] font-black text-white">ویدیو</span>
+                    @elseif ($story->media_path)
+                        <img src="{{ $story->mediaUrl() }}" alt="استوری {{ $story->shop->name }}" loading="lazy" class="h-full w-full object-cover">
+                    @else
+                        <span class="grid size-full place-items-center"><x-icon name="zap" class="size-5 text-slate-300 dark:text-slate-600" /></span>
+                    @endif
                 </a>
 
                 <div class="flex min-w-0 flex-1 flex-col">
@@ -195,7 +279,7 @@
                             <div class="flex items-center gap-1"><x-icon name="package" class="size-3" />محصول: {{ $story->product->name }}</div>
                         @endif
                         @if ($story->link_url)
-                            <a href="{{ $story->link_url }}" target="_blank" rel="noopener" class="block truncate text-primary-500 hover:underline" dir="ltr">{{ $story->link_url }}</a>
+                            <a href="{{ $story->link_url }}" target="_blank" rel="noopener" class="block truncate text-primary-500 hover:underline"><x-icon name="external-link" class="me-1 inline size-3" />{{ $story->link_title ?: $story->link_url }}</a>
                         @endif
                     </div>
 

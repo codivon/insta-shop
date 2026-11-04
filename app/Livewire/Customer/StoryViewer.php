@@ -95,6 +95,11 @@ class StoryViewer extends Component
             return;
         }
 
+        // The seller/admin may disable likes per story — respect it server-side.
+        if (! $story->likes_enabled) {
+            return;
+        }
+
         $existing = StoryLike::query()
             ->where('story_id', $story->id)
             ->where('customer_id', $customer->id)
@@ -120,6 +125,11 @@ class StoryViewer extends Component
         if ($customer === null || $story === null) {
             $this->dispatch('home-toast', message: 'برای ثبت نظر، ابتدا وارد حساب خود شوید.');
 
+            return;
+        }
+
+        // The seller/admin may disable comments per story — respect it server-side.
+        if (! $story->comments_enabled) {
             return;
         }
 

@@ -9,14 +9,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Instagram-style shop story: an image (video reserved for later) shown in
- * a full-screen viewer for a limited window (default 24h, customizable via
- * starts_at/ends_at). Visibility for customers = approved by the admin
- * (or auto-approved per the stories settings) AND inside the window.
+ * Instagram-style shop story: an image OR a video (video comes from a
+ * direct link — never uploaded) shown in a full-screen viewer for a
+ * limited window (default 24h, customizable via starts_at/ends_at).
+ * Visibility for customers = approved by the admin (or auto-approved per
+ * the stories settings) AND inside the window. Likes and comments are
+ * per-story togglable (defaults ON).
  */
 class Story extends Model
 {
     public const TYPE_IMAGE = 'image';
+
+    public const TYPE_VIDEO = 'video';
 
     public const STATUS_PENDING = 'pending';
 
@@ -25,7 +29,8 @@ class Story extends Model
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
-        'shop_id', 'product_id', 'type', 'media_path', 'caption', 'link_url',
+        'shop_id', 'product_id', 'type', 'media_path', 'video_url', 'caption',
+        'link_url', 'link_title', 'likes_enabled', 'comments_enabled',
         'starts_at', 'ends_at', 'status',
     ];
 
@@ -34,6 +39,8 @@ class Story extends Model
         return [
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
+            'likes_enabled' => 'boolean',
+            'comments_enabled' => 'boolean',
         ];
     }
 
@@ -134,7 +141,38 @@ class Story extends Model
 
     public function mediaUrl(): string
     {
-        return Storage::disk('public')->url($this->media_path);
+        return (string) Storage::disk('public')->url((string) $this->media_path);
+    }
+
+    /** Video stories play from the external link (direct file URL). */
+    public function videoUrl(): ?string
+    {
+        $url = trim((string) $this->video_url);
+
+        if ($url === '') {
+            return null;
+        }
+
+        return str_starts_with($url, 'http') ? $url : (string) Storage::disk('public')->url($url);
+    }
+
+    public function isVideo(): bool
+    {
+        return $this->type === self::TYPE_VIDEO;
+    }
+
+    /** Direct-video link guard: the viewer plays it inside a <video> tag. */
+    public static function isDirectVideoUrl(string $url): bool
+    {
+        $path = (string) (parse_url($url, PHP_URL_PATH) ?: '');
+
+        return (bool) preg_match('/\.(mp4|webm|ogg|ogv|mov|m4v|m3u8)(\?|$)/i', $path);
+    }
+
+    /** What the small cards/thumbnails render: poster image or a play chip. */
+    public function thumbUrl(): ?string
+    {
+        return $this->isVideo() ? null : $this->mediaUrl();
     }
 
     /** Whether the given customer already saw this story. */
