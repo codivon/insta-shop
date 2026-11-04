@@ -62,8 +62,7 @@ class ProductForm extends SellerProductForm
             'existingImages' => $this->existingImages,
             'existingFiles' => $this->existingFiles,
             'shopAttributes' => $this->attributesWithValues,
-            'categoryRoots' => $this->categoryRoots(),
-            'categoryOptions' => $this->categoryOptions(),
+            'categoryTreeJson' => $this->categoryTreeJson(),
             'selectedCategoryLabel' => $this->selectedCategoryLabel(),
             'specTemplates' => $this->specTemplates,
         ])->title($this->productId ? 'ویرایش محصول' : 'افزودن محصول')

@@ -114,17 +114,6 @@
             </div>
         </div>
 
-        {{-- ───────── دسته‌بندی‌های استفاده‌شده (سراسری، فقط نمایش) ───────── --}}
-        <div class="mt-3 flex items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-2.5 text-xs font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
-            <span class="flex items-center gap-2">
-                <x-icon name="tag" class="size-4" />
-                دسته‌بندی‌های فروشگاه شما
-            </span>
-            <span class="text-[11px] font-semibold">
-                {{ \App\Support\Fmt::fa($categories->count()) }} دسته
-            </span>
-        </div>
-
         {{-- ───────── Variation attributes entry ───────── --}}
         <a href="{{ route('seller.shop.attributes') }}" wire:navigate
            class="mt-2 flex items-center justify-between rounded-2xl border border-dashed border-fuchsia-300 bg-gradient-to-l from-fuchsia-50/70 to-orange-50/50 px-4 py-2.5 text-xs font-bold text-fuchsia-700 transition hover:border-fuchsia-400 active:scale-[.99] dark:border-fuchsia-800 dark:from-fuchsia-950/30 dark:to-orange-950/20 dark:text-fuchsia-300">

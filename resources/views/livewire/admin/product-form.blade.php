@@ -162,7 +162,6 @@
                 @error('productType') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
 
                 @include('livewire.partials.category-picker')
-                </div>
 
                 @if ($productType === 'physical')
                     <div class="mt-3 grid grid-cols-2 gap-3">

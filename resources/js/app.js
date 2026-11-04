@@ -189,6 +189,152 @@ window.addEventListener('cart-changed', (event) => {
 })();
 
 /* ═══════════════════════════════════════════════════════════════
+   Category picker (product forms) — Basalam-style bottom sheet.
+   One field opens a sheet with live client-side search over the
+   WHOLE admin-managed category tree (JSON rendered once into
+   <script type="application/json" x-ref="cat-tree">), expandable
+   branches with «N زیرشاخه» badges + dashed connectors, and a
+   single-pick (radio) selection confirmed by the «تایید» bar.
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('alpine:init', () => {
+    /* Persian search normalizer: Arabic ي/ك → Persian ی/ک, ZWNJ → space */
+    const normFa = (s) => (s || '')
+        .replace(/ي/g, 'ی')
+        .replace(/ك/g, 'ک')
+        .replace(/ۀ/g, 'ه\u200cی')
+        .replace(/\u200c/g, ' ')
+        .toLowerCase()
+        .trim();
+
+    /* ۱۲۳ → Persian digits (badges + counter, no Intl dependency) */
+    const faDigits = (n) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
+    Alpine.data('ipCatPicker', () => ({
+        open: false,
+        query: '',
+        picked: null,      // preview selection (id) — committed by «تایید»
+        expanded: {},      // branch id → true
+        tree: [],          // nested [{i, n, c}]
+        index: new Map(),  // id → { id, name, path, parentId, children }
+
+        init() {
+            try {
+                this.tree = JSON.parse(this.$refs['cat-tree']?.textContent || '[]');
+            } catch (e) {
+                this.tree = [];
+            }
+
+            const index = this.index;
+            const walk = (nodes, parentId, path, depth) => {
+                (nodes || []).forEach((node) => {
+                    const nodePath = path ? path + ' › ' + node.n : node.n;
+
+                    index.set(node.i, {
+                        id: node.i,
+                        name: node.n,
+                        path: nodePath,
+                        parentId,
+                        depth,
+                        children: node.c || [],
+                    });
+
+                    walk(node.c, node.i, nodePath, depth + 1);
+                });
+            };
+
+            walk(this.tree, null, '', 0);
+        },
+
+        faNum: (n) => faDigits(n),
+
+        toggle(id) {
+            this.expanded[id] = !this.expanded[id];
+        },
+
+        pick(id) {
+            this.picked = id;
+        },
+
+        /* open the ancestors of the picked node so it is visible at once */
+        expandPathTo(id) {
+            let current = this.index.get(id);
+
+            while (current && current.parentId !== null) {
+                this.expanded[current.parentId] = true;
+                current = this.index.get(current.parentId);
+            }
+        },
+
+        openPicker() {
+            this.query = '';
+            this.picked = this.$wire.categoryId > 0 ? this.$wire.categoryId : null;
+            this.expanded = {};
+            this.expandPathTo(this.picked);
+            this.open = true;
+        },
+
+        confirmPick() {
+            if (this.picked === null) {
+                return;
+            }
+
+            this.$wire.set('categoryId', this.picked);
+            this.open = false;
+        },
+
+        get searching() {
+            return this.query.trim() !== '';
+        },
+
+        /* flat match list (name or full path contains the query) */
+        get searchRows() {
+            const q = normFa(this.query);
+
+            if (q === '') {
+                return [];
+            }
+
+            const out = [];
+
+            for (const node of this.index.values()) {
+                if (normFa(node.name).includes(q) || normFa(node.path).includes(q)) {
+                    out.push({ id: node.id, name: node.name, path: node.path });
+
+                    if (out.length >= 80) {
+                        break;
+                    }
+                }
+            }
+
+            return out;
+        },
+
+        /* depth-first visible rows of the expanded tree */
+        get treeRows() {
+            const rows = [];
+            const walk = (nodes, depth) => {
+                (nodes || []).forEach((node) => {
+                    rows.push({
+                        id: node.i,
+                        name: node.n,
+                        depth,
+                        childCount: (node.c || []).length,
+                    });
+
+                    if (this.expanded[node.i] && (node.c || []).length) {
+                        walk(node.c, depth + 1);
+                    }
+                });
+            };
+
+            walk(this.tree, 0);
+
+            return rows;
+        },
+    }));
+});
+
+/* ═══════════════════════════════════════════════════════════════
    Instant filter-pick feedback — delegated optimistic toggle.
    Any element carrying [data-ip-pick] (storefront filter chips,
    attribute picks, seller product-list chips, …) flips to its

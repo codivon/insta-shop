@@ -248,7 +248,7 @@ class StorefrontShow extends Component
             ->withCount(['variants as variants_count' => fn (Builder $q) => $q->where('status', 'active')]);
     }
 
-    /** Global categories with published products in this shop (chips). */
+    /** Global categories with published products in this shop (?cat= deep links). */
     public function getCategoriesProperty(): Collection
     {
         return $this->shop->usedCategories()
@@ -265,7 +265,6 @@ class StorefrontShow extends Component
         return [
             'products' => $this->baseQuery()->count(),
             'views' => (int) $this->baseQuery()->sum('views'),
-            'categories' => $this->categories->count(),
         ];
     }
 

@@ -45,9 +45,6 @@ class ProductForm extends Component
 
     public int $categoryId = 0;
 
-    /** Selected main category (root) — sub-category picks come after it. */
-    public int $categoryRootId = 0;
-
     public string $productType = Product::TYPE_PHYSICAL;
 
     public string $weight = '';
@@ -105,7 +102,6 @@ class ProductForm extends Component
             $this->slug = (string) ($product->slug ?? '');
             $this->description = (string) $product->description;
             $this->categoryId = (int) $product->category_id;
-            $this->categoryRootId = $this->categoryRootAncestorId($product->category);
             $this->productType = $product->type ?: Product::TYPE_PHYSICAL;
             $this->weight = $product->weight_grams ? (string) $product->weight_grams : '';
             $this->unit = (string) ($product->unit ?: 'تعداد');
@@ -729,31 +725,12 @@ class ProductForm extends Component
             : 0;
 
         // دسته‌بندی الزامی است — هر محصول به یکی از دسته‌های سراسری
-        // (سطح اول یا زیر‌دستهٔ همان شاخه) وصل می‌شود.
+        // (هر سطحی: شاخهٔ اصلی یا هر زیر‌دسته‌ای) وصل می‌شود.
         $this->validate([
             'name' => ['required', 'string', 'min:2', 'max:150'],
             'slug' => ['nullable', 'string', 'max:190', 'regex:/^[a-z0-9\x{0600}-\x{06FF}]+(?:-[a-z0-9\x{0600}-\x{06FF}]+)*$/u'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'categoryRootId' => ['required', 'integer', 'exists:categories,id'],
-            'categoryId' => ['required', 'integer', function ($attribute, $value, $fail) {
-                if ((int) $value < 1) {
-                    $fail('دسته‌بندی محصول را انتخاب کنید.');
-
-                    return;
-                }
-
-                $category = Category::query()->find((int) $value);
-
-                if (! $category) {
-                    $fail('دستهٔ انتخابی معتبر نیست.');
-
-                    return;
-                }
-
-                if ($this->categoryRootAncestorId($category) !== (int) $this->categoryRootId) {
-                    $fail('زیر‌دستهٔ انتخابی با دستهٔ اصلی هم‌خوانی ندارد.');
-                }
-            }],
+            'categoryId' => ['required', 'integer', 'exists:categories,id'],
             'productType' => ['required', 'in:'.Product::TYPE_PHYSICAL.','.Product::TYPE_DOWNLOADABLE],
             // کالای فیزیکی بدون وزن پذیرفته نمی‌شود (حمل‌ونقل بر اساس وزن)
             'weight' => ['exclude_unless:productType,'.Product::TYPE_PHYSICAL, 'required', 'numeric', 'min:1', 'max:10000000'],
@@ -1046,8 +1023,7 @@ class ProductForm extends Component
             'existingImages' => $this->existingImages,
             'existingFiles' => $this->existingFiles,
             'shopAttributes' => $this->attributesWithValues,
-            'categoryRoots' => $this->categoryRoots(),
-            'categoryOptions' => $this->categoryOptions(),
+            'categoryTreeJson' => $this->categoryTreeJson(),
             'selectedCategoryLabel' => $this->selectedCategoryLabel(),
             'specTemplates' => $this->specTemplates,
         ])->title($this->productId ? 'ویرایش محصول' : 'افزودن محصول');
@@ -1055,50 +1031,32 @@ class ProductForm extends Component
 
     /** Category hooks ─ global tree helpers shared with the admin form. */
 
-    /** Walk up to the root ancestor of a category (itself if root). */
-    protected function categoryRootAncestorId(?Category $category): int
+    /**
+     * Whole platform category tree as compact nested JSON for the
+     * Basalam-style client-side picker ({i: id, n: name, c: children}).
+     */
+    protected function categoryTreeJson(): string
     {
-        $node = $category;
-
-        while ($node !== null && $node->parent_id !== null) {
-            $node = $node->parent;
-        }
-
-        return (int) ($node->id ?? 0);
-    }
-
-    /** Main (root) categories for the first dropdown. */
-    protected function categoryRoots(): Collection
-    {
-        return Category::query()
-            ->whereNull('parent_id')
+        $nodes = Category::query()
             ->orderBy('sort')
             ->orderBy('id')
-            ->get(['id', 'name']);
-    }
+            ->get(['id', 'parent_id', 'name']);
 
-    /** Flattened, path-labelled options of the selected root's subtree. */
-    protected function categoryOptions(): Collection
-    {
-        if ($this->categoryRootId <= 0) {
-            return collect();
-        }
+        $byParent = $nodes->groupBy(fn ($node) => $node->parent_id === null ? 0 : (int) $node->parent_id);
 
-        $nodes = Category::query()->orderBy('sort')->orderBy('id')->get(['id', 'parent_id', 'name']);
-        $byParent = $nodes->groupBy('parent_id');
-        $options = collect();
-
-        $walk = function (int $parentId, string $prefix) use (&$walk, $byParent, $options): void {
-            foreach ($byParent->get($parentId, collect()) as $node) {
-                $path = $prefix === '' ? $node->name : $prefix.' › '.$node->name;
-                $options->push(['id' => $node->id, 'name' => $node->name, 'path' => $path]);
-                $walk((int) $node->id, $path);
-            }
+        $build = function (int $parentId) use (&$build, $byParent): array {
+            return $byParent
+                ->get($parentId, collect())
+                ->map(fn ($node) => [
+                    'i' => (int) $node->id,
+                    'n' => $node->name,
+                    'c' => $build((int) $node->id),
+                ])
+                ->values()
+                ->all();
         };
 
-        $walk($this->categoryRootId, '');
-
-        return $options;
+        return (string) json_encode($build(0), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     /** Path label of the currently picked category (for the closed combobox). */
@@ -1111,12 +1069,6 @@ class ProductForm extends Component
         $category = Category::query()->with('parent')->find($this->categoryId);
 
         return $category ? $category->pathLabel() : '';
-    }
-
-    /** Picking a new main category invalidates the sub-category pick. */
-    public function updatedCategoryRootId(): void
-    {
-        $this->categoryId = 0;
     }
 
     /** Saved spec-type library of this shop (for the نوع مشخصات selector). */

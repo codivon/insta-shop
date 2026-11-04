@@ -138,7 +138,7 @@
                 </div>
 
                 {{-- stats --}}
-                <div class="mt-5 grid w-full max-w-xl grid-cols-3 divide-x divide-x-reverse divide-slate-200 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+                <div class="mt-5 grid w-full max-w-md grid-cols-2 divide-x divide-x-reverse divide-slate-200 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
                     <div class="flex flex-col items-center gap-0.5 p-3 sm:p-4">
                         <span class="flex items-center gap-1 text-base font-black text-primary-600 sm:text-xl dark:text-primary-400">
                             <x-icon name="package" class="size-4 text-slate-300 dark:text-slate-600" />
@@ -153,48 +153,10 @@
                         </span>
                         <span class="text-[9px] font-bold text-slate-400 sm:text-[10px]">بازدید</span>
                     </div>
-                    <div class="flex flex-col items-center gap-0.5 p-3 sm:p-4">
-                        <span class="flex items-center gap-1 text-base font-black text-primary-600 sm:text-xl dark:text-primary-400">
-                            <x-icon name="tag" class="size-4 text-slate-300 dark:text-slate-600" />
-                            {{ \App\Support\Fmt::toFa($stats['categories']) }}
-                        </span>
-                        <span class="text-[9px] font-bold text-slate-400 sm:text-[10px]">دسته‌بندی</span>
-                    </div>
                 </div>
             </div>
         </div>
     </section>
-
-    {{-- ═══════════════ CATEGORY CHIPS ═══════════════ --}}
-    @if ($categories->isNotEmpty())
-        <section class="mx-auto max-w-6xl px-4 pt-7 sm:px-6" aria-label="دسته‌بندی‌های فروشگاه">
-            <div class="flex items-center gap-2 pb-3">
-                <span class="grid size-7 place-items-center rounded-lg bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
-                    <x-icon name="tag" class="size-3.5" />
-                </span>
-                <h2 class="text-sm font-extrabold sm:text-base">خرید بر اساس دسته‌بندی</h2>
-            </div>
-
-            <div class="scrollbar-hide -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-                <button type="button" wire:key="chip-all"
-                        wire:click="$set('catId', 0)"
-                        @click="document.getElementById('sf-products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
-                        class="flex shrink-0 items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-[11px] font-extrabold transition active:scale-95 {{ $catId === 0 ? 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-600/30' : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300 hover:text-primary-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300' }}">
-                    <x-icon name="layers" class="size-3.5" />
-                    همه محصولات
-                </button>
-                @foreach ($categories as $category)
-                    <button type="button" wire:key="chip-{{ $category->id }}"
-                            wire:click="$set('catId', {{ $category->id }})"
-                            @click="document.getElementById('sf-products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
-                            class="flex shrink-0 items-center gap-1.5 rounded-2xl border px-4 py-2.5 text-[11px] font-extrabold transition active:scale-95 {{ $catId === $category->id ? 'border-primary-600 bg-primary-600 text-white shadow-lg shadow-primary-600/30' : 'border-slate-200 bg-white text-slate-600 hover:border-primary-300 hover:text-primary-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300' }}">
-                        {{ $category->name }}
-                        <span class="rounded-full px-1.5 py-0.5 text-[8.5px] font-black {{ $catId === $category->id ? 'bg-white/25' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' }}">{{ \App\Support\Fmt::toFa($category->products_count) }}</span>
-                    </button>
-                @endforeach
-            </div>
-        </section>
-    @endif
 
     {{-- ═══════════════ فروش ویژه — SPECIAL SALE (dedicated, with live countdown) ═══════════════ --}}
     @if ($special->isNotEmpty() && ! $filtersActive)
