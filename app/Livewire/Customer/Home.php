@@ -2,11 +2,14 @@
 
 namespace App\Livewire\Customer;
 
+use App\Models\Banner;
 use App\Models\Cart;
 use App\Models\Customer;
 use App\Models\Favorite;
 use App\Models\Product;
 use App\Models\Shop;
+use App\Models\Story;
+use App\Models\StoryView;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -49,6 +52,12 @@ class Home extends Component
 
         $this->lastLoadAt = $now;
         $this->perPage += 6;
+    }
+
+    /** Story ring tap → tell the StoryViewer component to open this shop. */
+    public function openStories(int $shopId): void
+    {
+        $this->dispatch('open-stories', shopId: $shopId);
     }
 
     /** Toggle the heart on a product card. */
@@ -118,6 +127,52 @@ class Home extends Component
 
     // ── Computed data ────────────────────────────────────────────────
 
+    /**
+     * Instagram-style story rings: every shop that has at least one
+     * visible story becomes ONE ring holding all of its running stories
+     * (oldest → newest inside the viewer). The ring is “fresh” (gradient)
+     * until the logged-in customer has seen every story in it.
+     */
+    public function getStoryShopsProperty(): Collection
+    {
+        $stories = Story::query()
+            ->visible()
+            ->ofPublicShops()
+            ->with(['shop:id,name,logo_path,instagram_username', 'product.mainImage'])
+            ->orderBy('id')
+            ->get();
+
+        if ($stories->isEmpty()) {
+            return collect();
+        }
+
+        $customer = $this->customer();
+
+        $seenIds = $customer
+            ? StoryView::query()
+                ->where('customer_id', $customer->id)
+                ->whereIn('story_id', $stories->pluck('id'))
+                ->pluck('story_id')
+                ->all()
+            : [];
+
+        return $stories
+            ->groupBy('shop_id')
+            ->values()
+            ->map(fn ($group) => [
+                'shop' => $group->first()->shop,
+                'stories' => $group->values(),
+                'count' => $group->count(),
+                'hasUnseen' => $group->contains(fn (Story $s) => ! in_array($s->id, $seenIds, true)),
+            ]);
+    }
+
+    /** Admin-managed hero slides (falls back to the static promo card). */
+    public function getBannersProperty(): Collection
+    {
+        return Banner::query()->homeHero()->get();
+    }
+
     public function getShopsProperty(): Collection
     {
         return Shop::query()
@@ -153,6 +208,8 @@ class Home extends Component
             'shops' => $this->shops,
             'products' => $this->products,
             'favoriteIds' => $this->favoriteIds,
+            'storyShops' => $this->storyShops,
+            'banners' => $this->banners,
         ])->title('فروشگاه InstaShop');
     }
 

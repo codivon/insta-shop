@@ -36,6 +36,7 @@ final class AdminNotifier
         'order.shipment' => ['به‌روزرسانی وضعیت ارسال', 'truck'],
         'seller.new' => ['ثبت‌نام فروشنده جدید', 'store'],
         'seller.approved' => ['تایید فروشنده', 'check'],
+        'story.pending' => ['استوری در انتظار تأیید', 'zap'],
         'seller.suspended' => ['تعلیق فروشنده', 'circle-slash'],
         'customer.new' => ['ثبت‌نام مشتری جدید', 'user'],
         'product.new' => ['محصول جدید', 'package'],

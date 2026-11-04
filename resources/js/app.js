@@ -12,6 +12,9 @@ import './countdown';
 // Touch-swipe product gallery + fullscreen zoom modal (window.productGallery)
 import './product-gallery';
 
+// Chrome-style pull-to-refresh on the mobile shells (drag down at the top)
+import './pull-refresh';
+
 // ── Theme mode toggle (dark / light) ─────────────────────────────────
 document.addEventListener('click', (event) => {
     const btn = event.target.closest('[data-theme-toggle]');

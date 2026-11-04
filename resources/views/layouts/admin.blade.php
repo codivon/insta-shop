@@ -61,6 +61,7 @@
                 $pendingOrders  = \App\Models\Order::query()->where('status', 'pending')->count();
                 $pendingWithdrawals = \App\Models\WalletTransaction::query()->where('type', 'withdrawal')->where('status', 'pending')->count();
                 $openTickets = \App\Models\SupportTicket::query()->where('status', 'open')->count();
+                $pendingStories = \App\Models\Story::query()->where('status', 'pending')->count();
 
                 // Permission-aware menu: items the current admin cannot open
                 // are hidden (super admins always pass).
@@ -75,6 +76,8 @@
                     ['route' => 'admin.categories',          'icon' => 'layers',      'label' => 'دسته‌بندی‌ها', 'match' => 'admin.categories',   'badge' => null],
                     ['route' => 'admin.products',            'icon' => 'package',     'label' => 'محصولات',    'match' => 'admin.products',      'badge' => null],
                     ['route' => 'admin.discounts',           'icon' => 'tag',         'label' => 'کدهای تخفیف','match' => 'admin.discounts',     'badge' => null],
+                    ['route' => 'admin.stories',             'icon' => 'zap',         'label' => 'استوری‌ها',  'match' => 'admin.stories',       'badge' => $pendingStories],
+                    ['route' => 'admin.banners',             'icon' => 'image',       'label' => 'بنرها و اسلایدها', 'match' => 'admin.banners', 'badge' => null],
                     ['route' => 'admin.income',              'icon' => 'coins',       'label' => 'درآمد',      'match' => 'admin.income',        'badge' => null],
                     ['route' => 'admin.finance',             'icon' => 'file-text',   'label' => 'گزارش مالی', 'match' => 'admin.finance',       'badge' => null],
                     ['route' => 'admin.settlements',         'icon' => 'trending-up', 'label' => 'تسویه‌ها',   'match' => 'admin.settlements',   'badge' => null],
@@ -99,6 +102,7 @@
                     || $can('admin.settings.appearance')
                     || $can('admin.settings.sms')
                     || $can('admin.settings.payment')
+                    || $can('admin.settings.stories')
                     || $can('admin.settings.backups');
 
                 // ── برنامه‌نویس: super admin (سازنده) ONLY — never in roles ──

@@ -452,3 +452,35 @@ body {
     .ip-float, .ip-float-slow, .ip-marquee-track { animation: none; }
     .js .ip-reveal { opacity: 1; transform: none; transition: none; }
 }
+
+/* ── pull-to-refresh indicator (resources/js/pull-refresh.js) ──
+   Fixed under the status bar, centered on the shell; the JS module
+   drives transform + --ptr-rot while dragging. Touch-only. */
+#ip-ptr {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    z-index: 60;
+    transform: translate(-50%, -64px);
+    transition: transform .25s cubic-bezier(.2, .7, .3, 1.2);
+    pointer-events: none;
+}
+#ip-ptr.ip-ptr-back { transition: transform .3s ease-out; }
+#ip-ptr .ip-ptr-spin {
+    display: block;
+    width: 30px;
+    height: 30px;
+    border-radius: 9999px;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgb(0 0 0 / .18);
+    border: 2.5px solid var(--ip-primary, #d62976);
+    border-top-color: transparent;
+    transform: rotate(var(--ptr-rot, 0deg));
+    transition: transform .08s linear;
+}
+#ip-ptr.ip-ptr-armed .ip-ptr-spin { background: var(--ip-primary, #d62976); }
+#ip-ptr.ip-ptr-loading .ip-ptr-spin {
+    animation: ip-ptr-spin .7s linear infinite;
+    transition: none;
+}
+@keyframes ip-ptr-spin { to { transform: rotate(360deg); } }

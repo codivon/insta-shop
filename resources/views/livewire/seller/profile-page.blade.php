@@ -197,6 +197,19 @@
                     <x-icon name="chevron-left" class="size-3.5" />
                 </span>
             </a>
+            <a href="{{ route('seller.stories') }}" wire:navigate
+               class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <span class="flex items-center gap-2.5 text-xs font-bold">
+                    <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 text-orange-600 dark:from-amber-950/50 dark:to-orange-950/50 dark:text-orange-400">
+                        <x-icon name="zap" class="size-4.5" />
+                    </span>
+                    استوری‌ها
+                </span>
+                <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                    استوری گذاشتن مثل اینستاگرام
+                    <x-icon name="chevron-left" class="size-3.5" />
+                </span>
+            </a>
             <a href="{{ route('seller.support') }}" wire:navigate
                class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <span class="flex items-center gap-2.5 text-xs font-bold">

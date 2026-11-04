@@ -43,6 +43,7 @@ final class SellerNotifier
         'wallet.withdraw' => ['وضعیت درخواست برداشت', 'wallet'],
         'product.status' => ['تغییر وضعیت محصول', 'package'],
         'shop.status' => ['وضعیت فروشگاه', 'store'],
+        'story.status' => ['وضعیت استوری فروشگاه', 'zap'],
         'ticket.reply' => ['پاسخ پشتیبانی به تیکت شما', 'headset'],
         'system.misc' => ['پیام سیستمی', 'bell'],
     ];

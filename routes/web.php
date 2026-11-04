@@ -13,6 +13,7 @@ use App\Livewire\Admin\Access\RolesIndex;
 use App\Livewire\Admin\ActivityPage;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Admin\BackupsPage;
+use App\Livewire\Admin\BannersPage;
 use App\Livewire\Admin\CategoriesPage as AdminCategoriesPage;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\Developer\DeveloperSettings;
@@ -31,6 +32,7 @@ use App\Livewire\Admin\Settings\SettingsHub;
 use App\Livewire\Admin\Settings\SmsTemplatesCenter;
 use App\Livewire\Admin\SettlementsPage;
 use App\Livewire\Admin\ShopsIndex;
+use App\Livewire\Admin\StoriesPage;
 use App\Livewire\Admin\Support\TicketShow;
 use App\Livewire\Admin\Support\TicketsIndex;
 use App\Livewire\Admin\Users\CustomerShow;
@@ -70,6 +72,7 @@ use App\Livewire\Seller\ReportsPage;
 use App\Livewire\Seller\ShippingPage;
 use App\Livewire\Seller\ShopEdit;
 use App\Livewire\Seller\ShopIndex;
+use App\Livewire\Seller\StoriesPage as SellerStoriesPage;
 use App\Livewire\Seller\Support\TicketShowPage;
 use App\Livewire\Seller\Support\TicketsPage;
 use App\Livewire\Seller\WalletPage;
@@ -132,6 +135,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/products/{product}/edit', AdminProductForm::class)->name('products.edit');
         Route::get('/discounts', DiscountsIndex::class)->name('discounts');
 
+        // ── Stories (استوری‌های فروشگاه‌ها — Instagram-style) ──
+        Route::get('/stories', StoriesPage::class)->name('stories');
+
+        // ── Home banners (بنرها و اسلایدهای صفحهٔ اصلی مشتری) ──
+        Route::get('/banners', BannersPage::class)->name('banners');
+
         // ── Platform income (کمیسیون‌های دریافتی — batch 81) ──
         Route::get('/income', IncomePage::class)->name('income');
 
@@ -177,6 +186,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/settings/sms/templates', SmsTemplatesCenter::class)->name('settings.sms.templates');
         Route::get('/settings/payment', fn () => redirect()->route('admin.settings', ['tab' => 'payment']))
             ->name('settings.payment');
+        Route::get('/settings/stories', fn () => redirect()->route('admin.settings', ['tab' => 'stories']))
+            ->name('settings.stories');
 
         // ── Managers: admins list (and roles live under access.roles) ──
         Route::get('/admins', AdminsIndex::class)->name('admins');
@@ -238,6 +249,9 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/discounts', DiscountIndex::class)->name('discounts');
         Route::get('/discounts/create', DiscountForm::class)->name('discounts.create');
         Route::get('/discounts/{discount}/edit', DiscountForm::class)->name('discounts.edit');
+
+        // ── Stories (استوری‌های فروشگاه — Instagram-style) ──
+        Route::get('/stories', SellerStoriesPage::class)->name('stories');
 
         // ── Reports (orders & product-visit analytics) ──
         Route::get('/reports', ReportsPage::class)->name('reports');

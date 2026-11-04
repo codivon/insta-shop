@@ -34,7 +34,67 @@
     </div>
 
     <div class="px-4 pt-4">
-        {{-- ── banner ── --}}
+        {{-- ── story rings (Instagram-style, one ring per shop) ── --}}
+        @if ($storyShops->isNotEmpty())
+            <div class="scroll-slim -mx-1 mb-5 flex gap-3 overflow-x-auto px-1 pb-2" aria-label="استوری فروشگاه‌ها">
+                @foreach ($storyShops as $ring)
+                    <button type="button" wire:click="openStories({{ $ring['shop']->id }})"
+                            wire:key="sring-{{ $ring['shop']->id }}"
+                            class="group w-[4.25rem] shrink-0 text-center transition active:scale-95"
+                            aria-label="نمایش استوری‌های {{ $ring['shop']->name }}">
+                        <span class="relative inline-grid place-items-center rounded-full p-[2.5px] {{ $ring['hasUnseen'] ? 'bg-gradient-to-tr from-amber-400 via-rose-500 to-primary-600' : 'bg-slate-300 dark:bg-slate-700' }}">
+                            <span class="grid size-14 place-items-center overflow-hidden rounded-full bg-white p-[2.5px] dark:bg-slate-950">
+                                @if ($ring['shop']->logo_path)
+                                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($ring['shop']->logo_path) }}"
+                                         alt="{{ $ring['shop']->name }}" loading="lazy" class="size-full rounded-full object-cover">
+                                @else
+                                    <span class="grid size-full place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-black text-white">{{ mb_substr($ring['shop']->name, 0, 1) }}</span>
+                                @endif
+                            </span>
+                            @if ($ring['count'] > 1)
+                                <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-slate-900/85 px-1.5 text-[8.5px] font-black text-white">{{ \App\Support\Fmt::fa($ring['count']) }}</span>
+                            @endif
+                        </span>
+                        <span class="mt-1.5 block truncate text-[10px] font-bold text-slate-600 dark:text-slate-300">{{ $ring['shop']->name }}</span>
+                    </button>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- ── hero banner slider (admin-managed) or default promo ── --}}
+        @if ($banners->isNotEmpty())
+            <div x-data="{ slide: 0, n: {{ $banners->count() }}, go(i) { this.slide = (i + this.n) % this.n } }"
+                 x-init="{{ $banners->count() > 1 ? 'setInterval(() => go(slide + 1), 5000)' : '' }}"
+                 class="relative overflow-hidden rounded-2xl shadow-xl" aria-label="اسلایدر بنر">
+                {{-- track is LTR so translateX(-N*100%) is the classic carousel —
+                     slide CONTENT itself is directionless images --}}
+                <div dir="ltr" class="flex transition-transform duration-500 ease-out" :style="'transform: translateX(-' + (slide * 100) + '%)'">
+                    @foreach ($banners as $banner)
+                        <div wire:key="banner-slide-{{ $banner->id }}" class="w-full shrink-0">
+                            @if ($banner->link_url)
+                                <a href="{{ $banner->link_url }}" class="block">
+                                    <img src="{{ $banner->imageUrl() }}" alt="{{ $banner->title ?: 'بنر' }}" loading="lazy"
+                                         class="aspect-[12/5] w-full object-cover">
+                                </a>
+                            @else
+                                <img src="{{ $banner->imageUrl() }}" alt="{{ $banner->title ?: 'بنر' }}" loading="lazy"
+                                     class="aspect-[12/5] w-full object-cover">
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+                @if ($banners->count() > 1)
+                    <div class="absolute inset-x-0 bottom-2.5 flex items-center justify-center gap-1.5">
+                        @foreach ($banners as $dot)
+                            <button type="button" x-on:click="go({{ $loop->index }})"
+                                    class="h-1.5 rounded-full transition-all"
+                                    x-bind:class="slide === {{ $loop->index }} ? 'w-4 bg-white' : 'w-1.5 bg-white/50'"
+                                    aria-label="اسلاید {{ \App\Support\Fmt::fa($loop->index + 1) }}"></button>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @else
         <div class="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-4 text-white shadow-xl shadow-primary-600/25">
             <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
                 <div class="absolute -top-6 left-4 size-32 rounded-full bg-white/30 blur-2xl"></div>
@@ -48,6 +108,7 @@
                 <x-icon name="bag" class="size-20 text-white/25" />
             </div>
         </div>
+        @endif
 
         {{-- ── public shops ── --}}
         <div id="shops" class="mt-6 flex items-center justify-between">
@@ -185,6 +246,9 @@
 
         <div class="pb-2"></div>
     </div>
+
+    {{-- ── Instagram-style story viewer (opens from the rings above) ── --}}
+    @livewire('customer.story-viewer')
 
     {{-- toast --}}
     <div x-data="{ show: false, msg: '' }"
