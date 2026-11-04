@@ -17,7 +17,9 @@ use Livewire\Component;
  * (paid-order quantity, newest as tiebreak) and «جدیدترین‌ها» — and finally
  * the whole branch feed «همهٔ محصولات» with infinite scroll. The showcases
  * only appear when the branch holds more than one page (8) of products,
- * otherwise they would just repeat the feed below them.
+ * otherwise they would just repeat the feed below them. A live search box
+ * filters the branch by product name and replaces the showcases while
+ * active.
  */
 #[Layout('layouts.customer-slot')]
 class CategoryShowPage extends Component
@@ -26,6 +28,9 @@ class CategoryShowPage extends Component
     private const SHOWCASE_SIZE = 8;
 
     public Category $category;
+
+    /** In-branch product search («جستجو در این دسته‌بندی»). */
+    public string $search = '';
 
     /** Lazy load (infinite scroll) */
     public int $perPage = 8;
@@ -37,6 +42,15 @@ class CategoryShowPage extends Component
     public function mount(Category $category): void
     {
         $this->category = $category;
+    }
+
+    /** A new search term → back to the first page of the feed. */
+    public function updating(string $property): void
+    {
+        if ($property === 'search') {
+            $this->perPage = self::SHOWCASE_SIZE;
+            $this->hasMore = true;
+        }
     }
 
     #[On('categories-load-more')]
@@ -148,14 +162,23 @@ class CategoryShowPage extends Component
         return $customer ? $customer->favoriteProductIds() : [];
     }
 
+    /** True while the visitor is filtering the branch by a search term. */
+    public function getSearchingProperty(): bool
+    {
+        return filled($this->search);
+    }
+
     public function render()
     {
+        $searching = $this->searching;
+
         return view('livewire.customer.category-show-page', [
             'children' => $this->children,
             'trail' => $this->trail,
             'total' => $this->total,
-            'bestSellers' => $this->bestSellers,
-            'newest' => $this->newest,
+            // Showcases are pointless (and wrong-scoped) while searching.
+            'bestSellers' => $searching ? collect() : $this->bestSellers,
+            'newest' => $searching ? collect() : $this->newest,
             'products' => $this->products,
             'favoriteIds' => $this->favoriteIds,
         ])->title($this->category->name);
@@ -166,10 +189,16 @@ class CategoryShowPage extends Component
     /** Published products of public shops inside this branch (incl. self). */
     private function productQuery(): Builder
     {
-        return Product::query()
+        $query = Product::query()
             ->where('status', 'published')
             ->whereHas('shop', fn ($q) => $q->publiclyVisible())
             ->whereIn('category_id', Category::subtreeIds($this->category->id));
+
+        if (filled($this->search)) {
+            $query->where('name', 'like', '%'.trim($this->search).'%');
+        }
+
+        return $query;
     }
 
     /**

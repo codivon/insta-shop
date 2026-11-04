@@ -12,6 +12,18 @@
                 <div class="text-[11px] text-slate-400">{{ $category->pathLabel() }}</div>
             </div>
         </div>
+        <label class="mt-2.5 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-sm focus-within:border-primary-400 dark:border-slate-800 dark:bg-slate-900">
+            <x-icon name="search" class="size-4 shrink-0 text-slate-400" />
+            <input type="search" wire:model.live.debounce.400ms="search" placeholder="جستجو در {{ $category->name }}…"
+                   class="w-full bg-transparent text-xs outline-none placeholder:text-slate-400"
+                   aria-label="جستجوی محصول در این دسته‌بندی">
+            @if (filled($search))
+                <button type="button" wire:click="$set('search', '')" aria-label="پاک کردن جستجو"
+                        class="shrink-0 text-slate-400 transition hover:text-rose-500">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            @endif
+        </label>
     </div>
 
     <div class="px-4 pb-6 pt-3">
@@ -44,7 +56,38 @@
             </div>
         @endif
 
-        @if ($total > 8)
+        @if (filled($search))
+            {{-- ───────── Search results replace the showcases ───────── --}}
+            <div class="mt-5 flex items-center justify-between">
+                <h2 class="flex items-center gap-1.5 text-sm font-extrabold">
+                    <x-icon name="search" class="size-4 text-primary-600 dark:text-primary-400" />
+                    نتایج جستجو
+                </h2>
+                <span class="text-[11px] font-semibold text-slate-400">{{ \App\Support\Fmt::toFa($total) }} محصول</span>
+            </div>
+
+            @if ($total > 0)
+                <div class="mt-3 grid grid-cols-2 gap-3">
+                    @foreach ($products as $product)
+                        @include('livewire.partials.product-mini-card', ['key' => 'found-'.$product->id])
+                    @endforeach
+                </div>
+
+                @if ($hasMore && $products->isNotEmpty())
+                    <div x-data
+                         x-init="new IntersectionObserver((entries) => { if (entries[0].isIntersecting) $wire.call('loadMore') }, { rootMargin: '260px' }).observe($el)"
+                         class="mt-6 grid place-items-center py-2"
+                         wire:loading.delay.class="opacity-0" wire:loading.delay.remove.class="opacity-100" wire:target="loadMore">
+                        <span class="inline-block size-6 animate-spin rounded-full border-2 border-primary-600 border-t-transparent"></span>
+                    </div>
+                @endif
+            @else
+                <div class="mt-3 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+                    <x-icon name="search" class="mx-auto size-8 text-slate-300 dark:text-slate-600" />
+                    <p class="mt-3 text-xs font-bold text-slate-500 dark:text-slate-400">چیزی مطابق «{{ trim($search) }}» در این دسته‌بندی پیدا نشد.</p>
+                </div>
+            @endif
+        @elseif ($total > 8)
             {{-- ───────── Showcase ۱: best-sellers of the branch ───────── --}}
             <div class="mt-5 flex items-center justify-between">
                 <h2 class="flex items-center gap-1.5 text-sm font-extrabold">
