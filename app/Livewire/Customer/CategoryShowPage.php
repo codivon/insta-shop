@@ -107,7 +107,10 @@ class CategoryShowPage extends Component
 
         $rows = $base
             ->with(['mainImage', 'category', 'shop.seller:id,instagram_username'])
-            ->withSum(['orderItems as paidSales' => fn ($q) => $q->whereHas('order', fn ($w) => $w->where('status', 'paid'))], 'quantity')
+            // Alias must be exactly `paid_sales`: MySQL resolves ORDER BY/backtick
+            // identifiers strictly against it (sqlite would silently treat a
+            // mismatched "paid_sales" as a constant string and skip the sort).
+            ->withSum(['orderItems as paid_sales' => fn ($q) => $q->whereHas('order', fn ($w) => $w->where('status', 'paid'))], 'quantity')
             ->orderByDesc('paid_sales')
             ->orderByDesc('id')
             ->limit($this->perPage)
