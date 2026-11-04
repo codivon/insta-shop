@@ -1,18 +1,30 @@
 <div class="ip-fade-up space-y-4">
 
-    {{-- ── header ── --}}
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-            <h1 class="text-base font-black">استوری‌های فروشگاه</h1>
-            <p class="mt-0.5 text-xs text-slate-400">
-                مثل اینستاگرام — تصویر یا ویدیو، محصول متصل، لینک با عنوان و زمان نمایش دلخواه
-                <span class="mx-1 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500 dark:bg-slate-800 dark:text-slate-300">
-                    {{ \App\Support\Fmt::fa($runningCount) }}/{{ \App\Support\Fmt::fa($activeLimit) }} فعال
+    {{-- ── header — gradient hero card with live counter ── --}}
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-4 text-white shadow-xl shadow-primary-600/25">
+        <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
+            <div class="absolute -top-8 left-6 size-36 rounded-full bg-white/25 blur-2xl"></div>
+        </div>
+        <div class="relative flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/30 backdrop-blur">
+                    <x-icon name="zap" class="size-5" />
                 </span>
-            </p>
+                <div>
+                    <h1 class="text-sm font-black">استوری‌های فروشگاه</h1>
+                    <p class="mt-0.5 text-[10.5px] leading-4 text-primary-100">مثل اینستاگرام — تصویر یا ویدیو، محصول و لینک</p>
+                </div>
+            </div>
+            <div class="text-center">
+                <div class="text-lg font-black leading-6">{{ \App\Support\Fmt::fa($runningCount) }}<span class="text-xs font-bold text-primary-200">/{{ \App\Support\Fmt::fa($activeLimit) }}</span></div>
+                <div class="text-[9px] font-bold text-primary-200">استوری فعال</div>
+            </div>
+        </div>
+        <div class="relative mt-3 h-1.5 overflow-hidden rounded-full bg-white/20" role="progressbar" aria-valuemin="0" aria-valuemax="{{ $activeLimit }}" aria-valuenow="{{ $runningCount }}">
+            <div class="h-full rounded-full bg-white transition-all" style="width: {{ min(100, (int) ($runningCount / max(1, $activeLimit) * 100)) }}%"></div>
         </div>
         <button type="button" wire:click="openCreate"
-                class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95">
+                class="relative mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-primary-700 shadow-md transition hover:bg-primary-50 active:scale-[0.98]">
             <x-icon name="plus" class="size-4" />
             استوری جدید
         </button>
@@ -28,74 +40,107 @@
 
     {{-- ── my stories ── --}}
     <div>
-        <h2 class="text-sm font-extrabold">استوری‌های من</h2>
-        <p class="mt-1 text-[11px] text-slate-400">
-            @if ($moderation === 'manual')
-                استوری جدید بعد از تایید مدیر منتشر می‌شود.
-            @else
-                استوری بلافاصله بعد از ثبت منتشر می‌شود.
-            @endif
-        </p>
+        <div class="flex items-center justify-between gap-2">
+            <h2 class="text-sm font-extrabold">استوری‌های من</h2>
+            <span class="text-[10px] font-semibold text-slate-400">
+                @if ($moderation === 'manual')
+                    انتشار پس از تایید مدیر
+                @else
+                    انتشار خودکار
+                @endif
+            </span>
+        </div>
 
-        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+        <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             @forelse ($stories as $story)
-                <div wire:key="story-{{ $story->id }}"
-                     class="flex gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                    <div class="relative block h-36 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
+                <article wire:key="story-{{ $story->id }}"
+                         class="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-lg dark:border-slate-800 dark:bg-slate-900">
+                    {{-- media — Instagram 4:5 preview with overlays --}}
+                    <div class="relative aspect-[4/5] overflow-hidden bg-slate-100 dark:bg-slate-800">
                         @if ($story->type === \App\Models\Story::TYPE_VIDEO)
                             <span class="grid size-full place-items-center bg-gradient-to-br from-slate-700 to-slate-900">
-                                <x-icon name="play" class="size-7 text-white/85" />
+                                <span class="grid size-12 place-items-center rounded-full bg-white/15 ring-1 ring-white/30 backdrop-blur">
+                                    <x-icon name="play" class="size-6 text-white/90" />
+                                </span>
                             </span>
-                            <span class="absolute bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-2 py-0.5 text-[8.5px] font-black text-white">ویدیو</span>
                         @elseif ($story->media_path)
-                            <img src="{{ $story->mediaUrl() }}" alt="استوری من" loading="lazy" class="h-full w-full object-cover">
+                            <img src="{{ $story->mediaUrl() }}" alt="استوری من" loading="lazy"
+                                 class="size-full object-cover transition duration-300 group-hover:scale-[1.04]">
                         @else
-                            <span class="grid size-full place-items-center"><x-icon name="zap" class="size-6 text-slate-300 dark:text-slate-600" /></span>
+                            <span class="grid size-full place-items-center"><x-icon name="zap" class="size-7 text-slate-300 dark:text-slate-600" /></span>
                         @endif
+
+                        {{-- status + age — glass pills over media --}}
+                        <span class="absolute start-2 top-2 rounded-full px-2 py-0.5 text-[8.5px] font-black shadow {{ $story->stateClass() }}">{{ $story->stateLabel() }}</span>
+                        <span class="absolute end-2 top-2 rounded-full bg-slate-950/55 px-2 py-0.5 text-[8px] font-bold text-white backdrop-blur-sm">{{ \App\Support\JDate::ago($story->created_at) }}</span>
+
+                        @if ($story->type === \App\Models\Story::TYPE_VIDEO)
+                            <span class="absolute bottom-2 end-2 rounded-full bg-slate-950/55 px-1.5 py-0.5 text-[8px] font-black text-white backdrop-blur-sm">ویدیو</span>
+                        @endif
+
+                        {{-- stats bar on media bottom --}}
+                        <div class="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-slate-950/75 via-slate-950/35 to-transparent px-2.5 pb-2 pt-8">
+                            <span class="inline-flex items-center gap-0.5 rounded-full bg-white/15 px-1.5 py-0.5 text-[8.5px] font-bold text-white backdrop-blur-sm" title="بازدید">
+                                <x-icon name="eye" class="size-2.5" />{{ \App\Support\Fmt::fa($story->views) }}
+                            </span>
+                            <span class="inline-flex items-center gap-0.5 rounded-full bg-white/15 px-1.5 py-0.5 text-[8.5px] font-bold text-white backdrop-blur-sm" title="لایک">
+                                <x-icon name="heart" class="size-2.5" />{{ \App\Support\Fmt::fa($story->likes_count) }}
+                            </span>
+                            <span class="inline-flex items-center gap-0.5 rounded-full bg-white/15 px-1.5 py-0.5 text-[8.5px] font-bold text-white backdrop-blur-sm" title="نظر">
+                                <x-icon name="message" class="size-2.5" />{{ \App\Support\Fmt::fa($story->comments_count) }}
+                            </span>
+                            @if (! $story->likes_enabled || ! $story->comments_enabled)
+                                <span class="ms-auto rounded-full bg-white/15 px-1.5 py-0.5 text-[8px] font-black text-white/90 backdrop-blur-sm">
+                                    {{ trim((! $story->likes_enabled ? 'بدون لایک' : '').' '.(! $story->likes_enabled && ! $story->comments_enabled ? '·' : '').' '.(! $story->comments_enabled ? 'بدون نظر' : '')) }}
+                                </span>
+                            @endif
+                        </div>
                     </div>
 
-                    <div class="flex min-w-0 flex-1 flex-col">
-                        <div class="flex items-center justify-between gap-2">
-                            <span class="rounded-full px-2 py-0.5 text-[9px] font-black {{ $story->stateClass() }}">{{ $story->stateLabel() }}</span>
-                            <span class="text-[9.5px] font-semibold text-slate-400">{{ \App\Support\JDate::ago($story->created_at) }}</span>
-                        </div>
-
-                        <div class="mt-2 space-y-1 text-[10px] font-semibold text-slate-400">
-                            <div class="flex items-center gap-1"><x-icon name="clock" class="size-3" />{{ \App\Support\JDate::dateTime($story->starts_at) }} ← {{ \App\Support\JDate::dateTime($story->ends_at) }}</div>
-                            <div class="flex items-center gap-3">
-                                <span class="flex items-center gap-1"><x-icon name="eye" class="size-3" />{{ \App\Support\Fmt::fa($story->views) }} بازدید</span>
-                                <span class="flex items-center gap-1"><x-icon name="heart" class="size-3" />{{ \App\Support\Fmt::fa($story->likes_count) }}</span>
-                                <span class="flex items-center gap-1"><x-icon name="message" class="size-3" />{{ \App\Support\Fmt::fa($story->comments_count) }}</span>
-                                @if (! $story->likes_enabled || ! $story->comments_enabled)
-                                    <span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[8.5px] font-black text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                        {{ ! $story->likes_enabled ? 'بدون لایک' : '' }}{{ ! $story->likes_enabled && ! $story->comments_enabled ? ' · ' : '' }}{{ ! $story->comments_enabled ? 'بدون نظر' : '' }}
-                                    </span>
-                                @endif
-                            </div>
-                            @if ($story->product)
-                                <div class="flex items-center gap-1"><x-icon name="package" class="size-3" />{{ $story->product->name }}</div>
-                            @endif
-                            @if ($story->link_url)
-                                <div class="flex items-center gap-1"><x-icon name="external-link" class="size-3" />{{ $story->link_title ?: $story->link_url }}</div>
-                            @endif
-                        </div>
-
-                        <div class="mt-auto flex items-center gap-1.5">
+                    {{-- body: attachment chips + window + actions --}}
+                    <div class="space-y-2 p-2.5">
+                        @if ($story->caption)
+                            <p class="line-clamp-1 text-[10px] font-bold text-slate-600 dark:text-slate-300" title="{{ $story->caption }}">{{ $story->caption }}</p>
+                        @endif
+                        @if ($story->product)
+                            <span class="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[9px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300" title="{{ $story->product->name }}">
+                                <x-icon name="package" class="size-3 shrink-0 text-primary-500" /><span class="truncate">{{ $story->product->name }}</span>
+                            </span>
+                        @endif
+                        @if ($story->link_url)
+                            <span class="flex items-center gap-1 rounded-lg bg-primary-50 px-2 py-1 text-[9px] font-bold text-primary-600 dark:bg-primary-950/40 dark:text-primary-300" title="{{ $story->link_title ?: $story->link_url }}">
+                                <x-icon name="external-link" class="size-3 shrink-0" /><span class="truncate">{{ $story->link_title ?: $story->link_url }}</span>
+                            </span>
+                        @endif
+                        <span class="flex items-center gap-1 text-[8.5px] font-semibold text-slate-400">
+                            <x-icon name="clock" class="size-3 shrink-0" />
+                            <span class="truncate">{{ \App\Support\JDate::dateTime($story->starts_at) }} ← {{ \App\Support\JDate::dateTime($story->ends_at) }}</span>
+                        </span>
+                        <div class="flex items-center gap-1.5 pt-0.5">
                             <button type="button" wire:click="openEdit({{ $story->id }})"
-                                    class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-extrabold text-slate-600 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                                    class="inline-flex flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 py-1.5 text-[10px] font-extrabold text-slate-600 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
                                 <x-icon name="edit" class="size-3" /> ویرایش
                             </button>
                             <button type="button" wire:click="destroy({{ $story->id }})" wire:confirm="این استوری حذف شود؟"
-                                    class="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[10px] font-extrabold text-rose-600 transition hover:bg-rose-50 active:scale-95 dark:border-rose-900 dark:hover:bg-rose-950/40">
-                                <x-icon name="trash" class="size-3" /> حذف
+                                    class="grid size-7 place-items-center rounded-xl border border-rose-200 text-rose-500 transition hover:bg-rose-50 active:scale-95 dark:border-rose-900 dark:hover:bg-rose-950/40"
+                                    aria-label="حذف استوری">
+                                <x-icon name="trash" class="size-3.5" />
                             </button>
                         </div>
                     </div>
-                </div>
+                </article>
             @empty
-                <div class="col-span-full rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
-                    <x-icon name="zap" class="mx-auto size-8 text-slate-300 dark:text-slate-600" />
-                    <p class="mt-3 text-xs font-bold text-slate-500 dark:text-slate-400">هنوز استوری‌ای ندارید — اولین استوری فروشگاه‌تان را منتشر کنید.</p>
+                <div class="col-span-full rounded-3xl border-2 border-dashed border-slate-200 bg-gradient-to-b from-slate-50 to-white p-8 text-center dark:border-slate-700 dark:from-slate-900 dark:to-slate-950">
+                    <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-lg shadow-primary-600/30">
+                        <x-icon name="zap" class="size-6" />
+                    </span>
+                    <p class="mt-4 text-xs font-extrabold text-slate-600 dark:text-slate-300">هنوز استوری‌ای ندارید</p>
+                    <p class="mt-1 text-[10.5px] font-semibold text-slate-400">اولین استوری فروشگاه‌تان را منتشر کنید و فروش بیشتری ببینید.</p>
+                    <button type="button" wire:click="openCreate"
+                            class="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-[11px] font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95">
+                        <x-icon name="plus" class="size-3.5" />
+                        انتشار اولین استوری
+                    </button>
                 </div>
             @endforelse
         </div>

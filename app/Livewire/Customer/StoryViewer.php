@@ -227,7 +227,12 @@ class StoryViewer extends Component
             ->all();
     }
 
-    /** Bump the view counter once per session + record the «seen» mark. */
+    /**
+     * Bump the view counter once per session + record the «seen» mark.
+     * Logged-in customers are keyed by customer_id (drives the ring
+     * seen-state too); guests get an anonymous visitor token so the
+     * analytics cover every viewer, not only logged-in ones.
+     */
     private function markViewed(): void
     {
         $story = $this->current;
@@ -248,7 +253,34 @@ class StoryViewer extends Component
                 'story_id' => $story->id,
                 'customer_id' => $customer->id,
             ]);
+
+            return;
         }
+
+        $token = $this->visitorToken();
+
+        if ($token !== null) {
+            StoryView::query()->firstOrCreate([
+                'story_id' => $story->id,
+                'visitor_token' => $token,
+            ]);
+        }
+    }
+
+    /** Stable anonymous id for guest viewers (persisted in the session). */
+    private function visitorToken(): ?string
+    {
+        $session = session();
+
+        if (! $session->isStarted()) {
+            return null;
+        }
+
+        if (! $session->has('story_visitor_token')) {
+            $session->put('story_visitor_token', 'v_'.bin2hex(random_bytes(16)));
+        }
+
+        return (string) $session->get('story_visitor_token');
     }
 
     private function customer(): ?Customer

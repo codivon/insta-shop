@@ -4,6 +4,7 @@ namespace App\Livewire\Customer;
 
 use App\Models\Banner;
 use App\Models\Cart;
+use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Favorite;
 use App\Models\Product;
@@ -179,6 +180,51 @@ class Home extends Component
         return Banner::query()->homeBanners()->get();
     }
 
+    /** Basalam-style «خرید بر اساس دسته‌بندی» grid — first 7 root categories. */
+    public function getTopCategoriesProperty(): Collection
+    {
+        return Category::query()
+            ->whereNull('parent_id')
+            ->orderBy('sort')
+            ->orderBy('id')
+            ->limit(7)
+            ->get(['id', 'name', 'image']);
+    }
+
+    /** «پیشنهاد شگفت‌انگیز» — published products with a real compare-at discount. */
+    public function getFlashProductsProperty(): Collection
+    {
+        return $this->publicProductQuery()
+            ->where('compare_at_price', '>', 0)
+            ->whereColumn('compare_at_price', '>', 'price')
+            ->with('mainImage')
+            ->latest('updated_at')
+            ->limit(10)
+            ->get();
+    }
+
+    /** Basalam-style «پیشنهادهای امروز بازار» — active shops + 3 products each. */
+    public function getSpotlightShopsProperty(): Collection
+    {
+        $shops = Shop::query()
+            ->publiclyVisible()
+            ->whereHas('publishedProducts')
+            ->withCount(['publishedProducts as products_count'])
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        return $shops->map(function (Shop $shop) {
+            $shop->spotlight_products = $shop->publishedProducts()
+                ->with('mainImage')
+                ->latest()
+                ->limit(3)
+                ->get(['id', 'shop_id', 'name', 'price', 'compare_at_price', 'type', 'stock']);
+
+            return $shop;
+        })->filter(fn (Shop $shop) => $shop->spotlight_products->isNotEmpty())->values();
+    }
+
     public function getShopsProperty(): Collection
     {
         return Shop::query()
@@ -217,6 +263,9 @@ class Home extends Component
             'storyShops' => $this->storyShops,
             'banners' => $this->banners,
             'homeBanners' => $this->homeBanners,
+            'topCategories' => $this->topCategories,
+            'flashProducts' => $this->flashProducts,
+            'spotlightShops' => $this->spotlightShops,
         ])->title('فروشگاه InstaShop');
     }
 

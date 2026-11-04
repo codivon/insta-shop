@@ -1,186 +1,272 @@
-<div class="ip-fade-up">
-    {{-- ───────── Sticky in-feed header ───────── --}}
-    <div class="sticky top-0 z-20 border-b border-slate-200/80 bg-slate-50/95 px-4 py-3 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/95">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-                <span class="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-lg shadow-primary-600/30">
-                    <x-icon name="store" class="size-5" />
+<div class="ip-fade-up" x-data="{
+        flashLeft: {{ (int) max(0, now()->diffInSeconds(now()->endOfDay())) }},
+        faNum(n) { return String(Math.max(0, n)).padStart(2, '0').replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]) }
+     }"
+     x-init="setInterval(() => { if (flashLeft > 0) flashLeft-- }, 1000)">
+    {{-- ───────── Sticky in-feed header — Basalam-style search pill ───────── --}}
+    <div class="sticky top-0 z-20 border-b border-slate-200/80 bg-slate-50/95 px-4 py-2.5 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-950/95">
+        <div class="flex items-center gap-2">
+            <label class="flex flex-1 items-center gap-2.5 rounded-full border border-slate-200 bg-white py-2 pe-2 ps-2 shadow-md shadow-slate-200/60 focus-within:border-primary-400 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+                <span class="grid size-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-md shadow-primary-600/30">
+                    <x-icon name="bag" class="size-4" />
                 </span>
-                <div>
-                    <div class="text-sm font-extrabold leading-5">InstaShop</div>
-                    <div class="text-[11px] text-slate-400">{{ \App\Support\Fmt::toFa($shops->count()) }} فروشگاه فعال اینستاگرامی</div>
-                </div>
-            </div>
-            <x-theme-toggle class="size-10 text-slate-500" />
-        </div>
-
-        {{-- search + sort --}}
-        <div class="mt-3 flex items-center gap-2">
-            <label class="flex flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-sm focus-within:border-primary-400 dark:border-slate-800 dark:bg-slate-900">
-                <x-icon name="search" class="size-4 shrink-0 text-slate-400" />
-                <input type="search" wire:model.live.debounce.400ms="search" placeholder="جستجوی محصول…"
-                       class="w-full bg-transparent text-xs outline-none placeholder:text-slate-400">
-                <button type="button" wire:click="$set('search', '')" wire:loading.delay wire:target="search"
-                        class="hidden text-slate-400" aria-hidden="true"></button>
+                <input type="search" wire:model.live.debounce.400ms="search" placeholder="جستجو در اینستاشاپ…"
+                       class="w-full bg-transparent text-xs font-semibold outline-none placeholder:text-slate-400">
+                <x-theme-toggle class="size-8 shrink-0 rounded-full text-slate-400" />
             </label>
-            <select wire:model.live="sort" aria-label="مرتب‌سازی"
-                    class="rounded-2xl border border-slate-200 bg-white px-2.5 py-2.5 text-[11px] font-semibold text-slate-600 shadow-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                <option value="newest">جدیدترین</option>
-                <option value="popular">پربازدید</option>
-                <option value="cheap">ارزان‌ترین</option>
-                <option value="expensive">گران‌ترین</option>
-            </select>
         </div>
     </div>
 
-    <div class="px-4 pt-4">
-        {{-- ── story rings (Instagram-style, one ring per shop) ── --}}
-        @if ($storyShops->isNotEmpty())
-            <div class="scroll-slim -mx-1 mb-5 flex gap-3 overflow-x-auto px-1 pb-2" aria-label="استوری فروشگاه‌ها">
-                @foreach ($storyShops as $ring)
-                    <button type="button" wire:click="openStories({{ $ring['shop']->id }})"
-                            wire:key="sring-{{ $ring['shop']->id }}"
-                            class="group w-[4.25rem] shrink-0 text-center transition active:scale-95"
-                            aria-label="نمایش استوری‌های {{ $ring['shop']->name }}">
-                        <span class="relative inline-grid place-items-center rounded-full p-[2.5px] {{ $ring['hasUnseen'] ? 'bg-gradient-to-tr from-amber-400 via-rose-500 to-primary-600' : 'bg-slate-300 dark:bg-slate-700' }}">
-                            <span class="grid size-14 place-items-center overflow-hidden rounded-full bg-white p-[2.5px] dark:bg-slate-950">
-                                @if ($ring['shop']->logo_path)
-                                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($ring['shop']->logo_path) }}"
-                                         alt="{{ $ring['shop']->name }}" loading="lazy" class="size-full rounded-full object-cover">
-                                @else
-                                    <span class="grid size-full place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-black text-white">{{ mb_substr($ring['shop']->name, 0, 1) }}</span>
+    <div class="px-4 pt-3">
+        @if ($search === '')
+            {{-- ── Basalam-style orange promo strip ── --}}
+            <a href="{{ route('shop.categories') }}" wire:navigate
+               class="mb-4 flex items-center justify-between rounded-2xl bg-gradient-to-l from-orange-600 via-orange-500 to-amber-500 px-3.5 py-2.5 text-white shadow-lg shadow-orange-500/25 transition active:scale-[0.98]">
+                <span class="text-[11px] font-extrabold">🛍️ خرید مستقیم از فروشگاه‌های اینستاگرامی — بدون واسطه</span>
+                <x-icon name="chevron-left" class="size-4 shrink-0 opacity-90" />
+            </a>
+
+            {{-- ── story rings (Instagram-style, one ring per shop) ── --}}
+            @if ($storyShops->isNotEmpty())
+                <div class="scroll-slim -mx-1 mb-4 flex gap-3 overflow-x-auto px-1 pb-2" aria-label="استوری فروشگاه‌ها">
+                    @foreach ($storyShops as $ring)
+                        <button type="button" wire:click="openStories({{ $ring['shop']->id }})"
+                                wire:key="sring-{{ $ring['shop']->id }}"
+                                class="group relative w-[4.25rem] shrink-0 text-center transition active:scale-95"
+                                aria-label="نمایش استوری‌های {{ $ring['shop']->name }}">
+                            @if ($ring['hasUnseen'])
+                                <span class="absolute -top-1 start-0 z-10 rounded-full bg-gradient-to-l from-orange-500 to-amber-500 px-1.5 py-px text-[8px] font-black text-white shadow">جدید</span>
+                            @endif
+                            <span class="relative inline-grid place-items-center rounded-full p-[2.5px] {{ $ring['hasUnseen'] ? 'bg-gradient-to-tr from-amber-400 via-rose-500 to-primary-600' : 'bg-slate-300 dark:bg-slate-700' }}">
+                                <span class="grid size-14 place-items-center overflow-hidden rounded-full bg-white p-[2.5px] dark:bg-slate-950">
+                                    @if ($ring['shop']->logo_path)
+                                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($ring['shop']->logo_path) }}"
+                                             alt="{{ $ring['shop']->name }}" loading="lazy" class="size-full rounded-full object-cover">
+                                    @else
+                                        <span class="grid size-full place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-black text-white">{{ mb_substr($ring['shop']->name, 0, 1) }}</span>
+                                    @endif
+                                </span>
+                                @if ($ring['count'] > 1)
+                                    <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-slate-900/85 px-1.5 text-[8.5px] font-black text-white">{{ \App\Support\Fmt::fa($ring['count']) }}</span>
                                 @endif
                             </span>
-                            @if ($ring['count'] > 1)
-                                <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-slate-900/85 px-1.5 text-[8.5px] font-black text-white">{{ \App\Support\Fmt::fa($ring['count']) }}</span>
-                            @endif
-                        </span>
-                        <span class="mt-1.5 block truncate text-[10px] font-bold text-slate-600 dark:text-slate-300">{{ $ring['shop']->name }}</span>
-                    </button>
-                @endforeach
-            </div>
-        @endif
-
-        {{-- ── hero banner slider (admin-managed) or default promo ── --}}
-        @if ($banners->isNotEmpty())
-            <div x-data="{ slide: 0, n: {{ $banners->count() }}, go(i) { this.slide = (i + this.n) % this.n } }"
-                 x-init="{{ $banners->count() > 1 ? 'setInterval(() => go(slide + 1), 5000)' : '' }}"
-                 class="relative overflow-hidden rounded-2xl shadow-xl" aria-label="اسلایدر بنر">
-                {{-- track is LTR so translateX(-N*100%) is the classic carousel —
-                     slide CONTENT itself is directionless images --}}
-                <div dir="ltr" class="flex transition-transform duration-500 ease-out" :style="'transform: translateX(-' + (slide * 100) + '%)'">
-                    @foreach ($banners as $banner)
-                        <div wire:key="banner-slide-{{ $banner->id }}" class="w-full shrink-0">
-                            @if ($banner->link_url)
-                                <a href="{{ $banner->link_url }}" class="block">
-                                    <img src="{{ $banner->imageUrl() }}" alt="{{ $banner->title ?: 'بنر' }}" loading="lazy"
-                                         class="aspect-[12/5] w-full object-cover">
-                                </a>
-                            @else
-                                <img src="{{ $banner->imageUrl() }}" alt="{{ $banner->title ?: 'بنر' }}" loading="lazy"
-                                     class="aspect-[12/5] w-full object-cover">
-                            @endif
-                        </div>
+                            <span class="mt-1.5 block truncate text-[10px] font-bold text-slate-600 dark:text-slate-300">{{ $ring['shop']->name }}</span>
+                        </button>
                     @endforeach
                 </div>
-                @if ($banners->count() > 1)
-                    <div class="absolute inset-x-0 bottom-2.5 flex items-center justify-center gap-1.5">
-                        @foreach ($banners as $dot)
-                            <button type="button" x-on:click="go({{ $loop->index }})"
-                                    class="h-1.5 rounded-full transition-all"
-                                    x-bind:class="slide === {{ $loop->index }} ? 'w-4 bg-white' : 'w-1.5 bg-white/50'"
-                                    aria-label="اسلاید {{ \App\Support\Fmt::fa($loop->index + 1) }}"></button>
+            @endif
+
+            {{-- ── hero banner slider (admin-managed) or default promo ── --}}
+            @if ($banners->isNotEmpty())
+                <div x-data="{ slide: 0, n: {{ $banners->count() }}, go(i) { this.slide = (i + this.n) % this.n } }"
+                     x-init="{{ $banners->count() > 1 ? 'setInterval(() => go(slide + 1), 5000)' : '' }}"
+                     class="relative overflow-hidden rounded-2xl shadow-xl" aria-label="اسلایدر بنر">
+                    {{-- track is LTR so translateX(-N*100%) is the classic carousel —
+                         slide CONTENT itself is directionless images --}}
+                    <div dir="ltr" class="flex transition-transform duration-500 ease-out" :style="'transform: translateX(-' + (slide * 100) + '%)'">
+                        @foreach ($banners as $banner)
+                            <div wire:key="banner-slide-{{ $banner->id }}" class="w-full shrink-0">
+                                @if ($banner->link_url)
+                                    <a href="{{ $banner->link_url }}" class="block">
+                                        <img src="{{ $banner->imageUrl() }}" alt="{{ $banner->title ?: 'بنر' }}" loading="lazy"
+                                             class="aspect-[12/5] w-full object-cover">
+                                    </a>
+                                @else
+                                    <img src="{{ $banner->imageUrl() }}" alt="{{ $banner->title ?: 'بنر' }}" loading="lazy"
+                                         class="aspect-[12/5] w-full object-cover">
+                                @endif
+                            </div>
                         @endforeach
                     </div>
-                @endif
-            </div>
-        @else
-        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-4 text-white shadow-xl shadow-primary-600/25">
-            <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
-                <div class="absolute -top-6 left-4 size-32 rounded-full bg-white/30 blur-2xl"></div>
-            </div>
-            <p class="relative text-[11px] text-primary-100">🛍️ خرید مستقیم از فروشگاه‌های اینستاگرامی</p>
-            <h2 class="relative mt-1 text-base font-extrabold leading-7">محصولات فروشنده‌های<br>تأییدشده را همین‌جا بخر</h2>
-            <a href="#shops" class="relative mt-3 inline-block rounded-xl bg-white px-4 py-2 text-[11px] font-bold text-primary-700 shadow-md transition active:scale-95">
-                دیدن فروشگاه‌ها
-            </a>
-            <div class="absolute -left-4 bottom-0 grid size-24 place-items-center opacity-90" aria-hidden="true">
-                <x-icon name="bag" class="size-20 text-white/25" />
-            </div>
-        </div>
-        @endif
-
-        {{-- ── banner cards row (admin-managed, Basalam-style) ── --}}
-        @if ($homeBanners->isNotEmpty())
-            <div class="scroll-slim mt-3 flex gap-2.5 overflow-x-auto pb-1" aria-label="بنرها">
-                @foreach ($homeBanners as $homeBanner)
-                    @if ($homeBanner->link_url)
-                        <a href="{{ $homeBanner->link_url }}" wire:navigate class="group relative w-32 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md active:scale-95 dark:border-slate-800 dark:bg-slate-900">
-                            <img src="{{ $homeBanner->imageUrl() }}" alt="{{ $homeBanner->title ?: 'بنر' }}" loading="lazy"
-                                 class="aspect-[4/3] w-full object-cover">
-                            @if ($homeBanner->title)
-                                <span class="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-4 text-[9.5px] font-extrabold text-white">{{ $homeBanner->title }}</span>
-                            @endif
-                        </a>
-                    @else
-                        <div class="relative w-32 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                            <img src="{{ $homeBanner->imageUrl() }}" alt="{{ $homeBanner->title ?: 'بنر' }}" loading="lazy"
-                                 class="aspect-[4/3] w-full object-cover">
-                            @if ($homeBanner->title)
-                                <span class="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-4 text-[9.5px] font-extrabold text-white">{{ $homeBanner->title }}</span>
-                            @endif
+                    @if ($banners->count() > 1)
+                        <div class="absolute inset-x-0 bottom-2.5 flex items-center justify-center gap-1.5">
+                            @foreach ($banners as $dot)
+                                <button type="button" x-on:click="go({{ $loop->index }})"
+                                        class="h-1.5 rounded-full transition-all"
+                                        x-bind:class="slide === {{ $loop->index }} ? 'w-4 bg-white' : 'w-1.5 bg-white/50'"
+                                        aria-label="اسلاید {{ \App\Support\Fmt::fa($loop->index + 1) }}"></button>
+                            @endforeach
                         </div>
                     @endif
-                @endforeach
+                </div>
+            @else
+                <div class="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-4 text-white shadow-xl shadow-primary-600/25">
+                    <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
+                        <div class="absolute -top-6 left-4 size-32 rounded-full bg-white/30 blur-2xl"></div>
+                    </div>
+                    <p class="relative text-[11px] text-primary-100">🛍️ خرید مستقیم از فروشگاه‌های اینستاگرامی</p>
+                    <h2 class="relative mt-1 text-base font-extrabold leading-7">محصولات فروشنده‌های<br>تأییدشده را همین‌جا بخر</h2>
+                    <a href="#shops" class="relative mt-3 inline-block rounded-xl bg-white px-4 py-2 text-[11px] font-bold text-primary-700 shadow-md transition active:scale-95">
+                        دیدن فروشگاه‌ها
+                    </a>
+                    <div class="absolute -left-4 bottom-0 grid size-24 place-items-center opacity-90" aria-hidden="true">
+                        <x-icon name="bag" class="size-20 text-white/25" />
+                    </div>
+                </div>
+            @endif
+
+            {{-- ── Basalam-style category grid (۷ دستهٔ اصلی + همه) ── --}}
+            @if ($topCategories->isNotEmpty())
+                <div class="mt-5">
+                    <h3 class="text-sm font-extrabold">خرید بر اساس دسته‌بندی</h3>
+                    <div class="mt-3 grid grid-cols-4 gap-2">
+                        @foreach ($topCategories as $topCategory)
+                            <a href="{{ route('shop.categories.show', $topCategory->id) }}" wire:navigate wire:key="cat-{{ $topCategory->id }}"
+                               class="flex flex-col items-center gap-1.5 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm transition hover:shadow-md active:scale-95 dark:border-slate-800 dark:bg-slate-900">
+                                <span class="grid size-12 place-items-center overflow-hidden rounded-full bg-slate-50 dark:bg-slate-800">
+                                    @if (filled($topCategory->image))
+                                        <img src="{{ $topCategory->image }}" alt="{{ $topCategory->name }}" loading="lazy" class="size-9 object-contain">
+                                    @else
+                                        <x-icon name="layout-grid" class="size-5 text-slate-400" />
+                                    @endif
+                                </span>
+                                <span class="w-full truncate text-center text-[9.5px] font-bold leading-3.5 text-slate-600 dark:text-slate-300">{{ $topCategory->name }}</span>
+                            </a>
+                        @endforeach
+                        <a href="{{ route('shop.categories') }}" wire:navigate
+                           class="flex flex-col items-center gap-1.5 rounded-2xl border border-primary-200 bg-primary-50/60 p-2.5 shadow-sm transition hover:shadow-md active:scale-95 dark:border-primary-900 dark:bg-primary-950/30">
+                            <span class="grid size-12 place-items-center rounded-full bg-primary-100 text-primary-600 dark:bg-primary-900/60 dark:text-primary-300">
+                                <x-icon name="layout-grid" class="size-5" />
+                            </span>
+                            <span class="w-full truncate text-center text-[9.5px] font-bold leading-3.5 text-primary-700 dark:text-primary-300">همهٔ دسته‌ها</span>
+                        </a>
+                    </div>
+                </div>
+            @endif
+
+            {{-- ── Basalam-style flash sale strip + countdown + discounted scroller ── --}}
+            @if ($flashProducts->isNotEmpty())
+                <div class="mt-5" aria-label="پیشنهاد شگفت‌انگیز">
+                    <div class="flex items-center justify-between rounded-2xl bg-gradient-to-l from-rose-600 via-orange-500 to-amber-500 px-3.5 py-2.5 shadow-lg shadow-orange-500/20">
+                        <span class="flex items-center gap-1.5 text-xs font-black text-white">
+                            <x-icon name="zap" class="size-4" />
+                            پیشنهاد شگفت‌انگیز
+                        </span>
+                        <span class="flex items-center gap-1 text-rose-600" dir="ltr" role="timer" aria-label="زمان باقی‌مانده امروز">
+                            <span class="rounded-lg bg-white/95 px-1.5 py-0.5 text-[11px] font-black tabular-nums" x-text="faNum(Math.floor(flashLeft / 3600))">…</span>
+                            <span class="text-[11px] font-black text-white/90">:</span>
+                            <span class="rounded-lg bg-white/95 px-1.5 py-0.5 text-[11px] font-black tabular-nums" x-text="faNum(Math.floor(flashLeft / 60) % 60)">…</span>
+                            <span class="text-[11px] font-black text-white/90">:</span>
+                            <span class="rounded-lg bg-white/95 px-1.5 py-0.5 text-[11px] font-black tabular-nums" x-text="faNum(flashLeft % 60)">…</span>
+                        </span>
+                    </div>
+
+                    <div class="scroll-slim mt-3 flex gap-2.5 overflow-x-auto pb-1">
+                        @foreach ($flashProducts as $flashProduct)
+                            @php
+                                $flashDiscount = $flashProduct->compare_at_price > 0 && $flashProduct->compare_at_price > $flashProduct->price
+                                    ? (int) round(100 - ($flashProduct->price / $flashProduct->compare_at_price * 100))
+                                    : 0;
+                            @endphp
+                            <a href="{{ $flashProduct->publicUrl() }}" wire:navigate wire:key="flash-{{ $flashProduct->id }}"
+                               class="group w-28 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-sm transition hover:shadow-md active:scale-95 dark:border-slate-800 dark:bg-slate-900">
+                                <div class="relative grid aspect-square place-items-center overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
+                                    @if ($flashProduct->mainImage)
+                                        <img src="{{ $flashProduct->mainImage->url() }}" alt="{{ $flashProduct->name }}" loading="lazy" class="size-full object-cover transition duration-300 group-hover:scale-105">
+                                    @else
+                                        <x-icon name="package" class="size-8 text-slate-300 dark:text-slate-600" />
+                                    @endif
+                                    @if ($flashDiscount > 0)
+                                        <span class="absolute start-1.5 top-1.5 rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-black text-white shadow">٪{{ \App\Support\Fmt::toFa($flashDiscount) }}</span>
+                                    @endif
+                                </div>
+                                <p class="mt-1.5 line-clamp-1 text-[10px] font-bold text-slate-600 dark:text-slate-300">{{ $flashProduct->name }}</p>
+                                <div class="mt-0.5 flex items-baseline gap-1.5">
+                                    <span class="text-[11px] font-black text-rose-600 dark:text-rose-400">{{ \App\Support\Fmt::moneyShort($flashProduct->price) }}</span>
+                                    <span class="text-[8.5px] font-bold text-slate-400">تومان</span>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            {{-- ── banner cards 2×2 grid (admin-managed) ── --}}
+            @if ($homeBanners->isNotEmpty())
+                <div class="mt-5 grid grid-cols-2 gap-2.5" aria-label="بنرها">
+                    @foreach ($homeBanners as $homeBanner)
+                        <a href="{{ $homeBanner->link_url ?? '#' }}" @if ($homeBanner->link_url) wire:navigate @endif wire:key="hbanner-{{ $homeBanner->id }}"
+                           class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md active:scale-95 dark:border-slate-800 dark:bg-slate-900">
+                            <img src="{{ $homeBanner->imageUrl() }}" alt="{{ $homeBanner->title ?: 'بنر' }}" loading="lazy"
+                                 class="aspect-[4/3] w-full object-cover transition duration-300 group-hover:scale-[1.03]">
+                            @if ($homeBanner->title)
+                                <span class="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-6 text-[10px] font-extrabold text-white">{{ $homeBanner->title }}</span>
+                            @endif
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+
+            {{-- ── Basalam-style shop spotlight («پیشنهادهای امروز بازار») ── --}}
+            <div id="shops" class="mt-6 flex items-center justify-between">
+                <h3 class="text-sm font-extrabold">فروشگاه‌های فعال</h3>
+                <span class="text-[11px] font-semibold text-slate-400">{{ \App\Support\Fmt::toFa($shops->count()) }} فروشگاه</span>
+            </div>
+
+            <div class="scroll-slim mt-3 flex gap-3 overflow-x-auto pb-1">
+                @forelse ($spotlightShops as $shop)
+                    @php $storeUrl = $shop->storefrontHandle() ? $shop->storefrontUrl() : null; @endphp
+                    <a href="{{ $storeUrl ?? '#' }}" @if ($storeUrl) wire:navigate @else aria-disabled="true" @endif wire:key="spot-{{ $shop->id }}"
+                       class="w-60 shrink-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900 {{ $storeUrl ? 'active:scale-[0.98]' : 'pointer-events-none opacity-60' }}">
+                        <div class="flex items-center gap-2.5">
+                            @if ($shop->logo_path)
+                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($shop->logo_path) }}" alt="لوگوی {{ $shop->name }}" loading="lazy" class="size-10 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800">
+                            @else
+                                <span class="grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-black text-white">{{ mb_substr($shop->name, 0, 1) }}</span>
+                            @endif
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-xs font-extrabold">{{ $shop->name }}</span>
+                                <span class="mt-0.5 flex items-center gap-1 text-[9.5px] text-slate-400">
+                                    @if ($shop->instagram_username)
+                                        <x-icon name="instagram" class="size-3" />{{ $shop->instagram_username }}
+                                    @else
+                                        {{ \App\Support\Fmt::toFa($shop->products_count) }} محصول فعال
+                                    @endif
+                                </span>
+                            </span>
+                            <x-icon name="chevron-left" class="size-4 shrink-0 text-slate-300" />
+                        </div>
+                        <div class="mt-2.5 flex gap-1.5">
+                            @foreach ($shop->spotlight_products as $spotProduct)
+                                <span class="relative grid flex-1 place-items-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800" title="{{ $spotProduct->name }}">
+                                    @if ($spotProduct->mainImage)
+                                        <img src="{{ $spotProduct->mainImage->url() }}" alt="{{ $spotProduct->name }}" loading="lazy" class="aspect-square size-full object-cover">
+                                    @else
+                                        <x-icon name="package" class="size-5 text-slate-300 dark:text-slate-600" />
+                                    @endif
+                                </span>
+                            @endforeach
+                        </div>
+                        <div class="mt-2.5 flex items-center justify-between text-[10px]">
+                            <span class="font-bold text-slate-400">{{ \App\Support\Fmt::toFa($shop->products_count) }} محصول</span>
+                            <span class="inline-flex items-center gap-0.5 font-extrabold text-primary-600 dark:text-primary-400">مشاهدهٔ فروشگاه</span>
+                        </div>
+                    </a>
+                @empty
+                    <div class="w-full rounded-2xl border border-dashed border-slate-300 p-6 text-center text-xs text-slate-400 dark:border-slate-700">
+                        فعلاً فروشگاه فعالی وجود ندارد.
+                    </div>
+                @endforelse
             </div>
         @endif
 
-        {{-- ── public shops ── --}}
-        <div id="shops" class="mt-6 flex items-center justify-between">
-            <h3 class="text-sm font-extrabold">فروشگاه‌های فعال</h3>
-        </div>
-
-        <div class="scroll-slim mt-3 flex gap-3 overflow-x-auto pb-1">
-            @forelse ($shops as $shop)
-                @php $storeUrl = $shop->storefrontHandle() ? $shop->storefrontUrl() : null; @endphp
-                <a href="{{ $storeUrl ?? '#' }}" @if ($storeUrl) wire:navigate @else aria-disabled="true" @endif
-                   class="group w-36 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900 {{ $storeUrl ? '' : 'pointer-events-none opacity-60' }}">
-                    <div class="grid h-16 place-items-center overflow-hidden bg-slate-100 dark:bg-slate-800">
-                        @if ($shop->banner_path)
-                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($shop->banner_path) }}" alt="بنر {{ $shop->name }}" loading="lazy" class="h-full w-full object-cover">
-                        @elseif ($shop->logo_path)
-                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($shop->logo_path) }}" alt="لوگوی {{ $shop->name }}" loading="lazy" class="size-10 rounded-xl object-cover">
-                        @else
-                            <span class="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-extrabold text-white">
-                                {{ mb_substr($shop->name, 0, 1) }}
-                            </span>
-                        @endif
-                    </div>
-                    <div class="p-2.5">
-                        <div class="truncate text-xs font-extrabold">{{ $shop->name }}</div>
-                        <div class="mt-1 flex items-center justify-between text-[10px] text-slate-400">
-                            <span>{{ \App\Support\Fmt::toFa($shop->products_count) }} محصول</span>
-                            @if ($shop->instagram_username)
-                                <span class="inline-flex items-center gap-0.5"><x-icon name="instagram" class="size-3" />{{ $shop->instagram_username }}</span>
-                            @endif
-                        </div>
-                    </div>
-                </a>
-            @empty
-                <div class="w-full rounded-2xl border border-dashed border-slate-300 p-6 text-center text-xs text-slate-400 dark:border-slate-700">
-                    فعلاً فروشگاه فعالی وجود ندارد.
-                </div>
-            @endforelse
-        </div>
-
-        {{-- ── product feed ── --}}
-        <div class="mt-6 flex items-center justify-between">
+        {{-- ── product feed (search results replace everything above) ── --}}
+        <div class="mt-6 flex items-center justify-between gap-2">
             <h3 class="text-sm font-extrabold">
                 {{ $search !== '' ? 'نتیجه جستجو' : 'محصولات' }}
             </h3>
-            <span class="text-[11px] font-semibold text-slate-400">
-                {{ \App\Support\Fmt::toFa($products->count()) }} محصول
-            </span>
+            <div class="flex items-center gap-2">
+                <span class="text-[11px] font-semibold text-slate-400">
+                    {{ \App\Support\Fmt::toFa($products->count()) }} محصول
+                </span>
+                <select wire:model.live="sort" aria-label="مرتب‌سازی"
+                        class="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-slate-600 shadow-sm outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                    <option value="newest">جدیدترین</option>
+                    <option value="popular">پربازدید</option>
+                    <option value="cheap">ارزان‌ترین</option>
+                    <option value="expensive">گران‌ترین</option>
+                </select>
+            </div>
         </div>
 
         <div class="mt-3 grid grid-cols-2 gap-3">

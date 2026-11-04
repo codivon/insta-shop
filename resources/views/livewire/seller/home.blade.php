@@ -185,6 +185,12 @@
                 </span>
                 <span class="text-center text-[10px] font-semibold leading-3 text-slate-600 dark:text-slate-300">ویرایش فروشگاه</span>
             </a>
+            <a href="{{ route('seller.stories') }}" wire:navigate class="flex flex-col items-center gap-1.5 rounded-2xl p-2 transition active:scale-95">
+                <span class="grid size-12 w-full place-items-center rounded-2xl bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-600 text-white shadow-lg shadow-rose-500/30">
+                    <x-icon name="zap" class="size-5" />
+                </span>
+                <span class="text-center text-[10px] font-semibold leading-3 text-slate-600 dark:text-slate-300">استوری</span>
+            </a>
         </div>
 
         {{-- ── نمودار فروش با فیلتر روزانه/ماهانه/سالانه + بازه تاریخی شمسی ── --}}
