@@ -16,8 +16,16 @@
 
   Shown only for real app-opens: start_url carries ?source=pwa, or
   the page runs in standalone display-mode. Plain browser visits
-  never see it. Include right after <body> in the seller/customer
-  layouts with the panel role.
+  never see it.
+
+  AND only ONCE per app session — the first document of the window.
+  Section navigation (wire:navigate re-runs body scripts) and full
+  reloads inside the running app must never re-show it: client —
+  «این لودینگ فقط صفحهٔ ورود به اپ باشه، نه بقیهٔ بخش‌ها».
+  sessionStorage lives exactly as long as the app window's session
+  and is wiped on a cold re-open → next launch gets its splash back.
+  Include right after <body> in the seller/customer layouts with
+  the panel role.
 ═══════════════════════════════════════════════════════════ --}}
 @php
     $bootRole = $role ?? (\App\Support\PanelContext::current()->key() === 'seller' ? 'seller' : 'customer');
@@ -72,6 +80,12 @@
     var el = document.getElementById('ip-boot');
     if (!el) return;
 
+    // already inside the app session? → this is a section navigation /
+    // reload, NOT the app entry — kill the cover before it can paint
+    var seen = false;
+    try { seen = sessionStorage.getItem('ipBootShown') === '1'; } catch (e) {}
+    if (seen) { el.remove(); return; }
+
     // standalone display-mode (installed app / opened from the home
     // screen) also counts as a real app-open, even when a redirect
     // stripped ?source=pwa on the way to the panel
@@ -79,6 +93,10 @@
     if (el.hasAttribute('hidden')) {
         if (standalone) { el.removeAttribute('hidden'); } else { el.remove(); return; }
     }
+
+    // the splash is showing → this window is now "inside the app";
+    // every later document of this session skips the cover
+    try { sessionStorage.setItem('ipBootShown', '1'); } catch (e) {}
 
     var t0 = Date.now();
     var done = false;
