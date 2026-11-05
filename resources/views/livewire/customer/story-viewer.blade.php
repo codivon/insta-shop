@@ -1,7 +1,8 @@
 {{-- ═══════════════════════════════════════════════════════════════
   Instagram-style story viewer (nested on the customer home page).
   • segmented progress bars — images 5s, videos follow real playback
-  • tap right/left = next/prev · swipe down = close · ESC closes
+  • tap LEFT = next · tap RIGHT = prev (RTL, client v0.17.7) ·
+    swipe down = close · ESC closes
   • STOP button (pause/resume) · video stories: MUTE toggle
   • long-press/hold opens NO system/Google menu on the media
   • shop meta (avatar + name + «چند لحظه پیش»)
@@ -121,15 +122,23 @@
                      x-bind:class="paused ? 'opacity-95' : ''">
             @endif
 
-            {{-- tap zones (upper ~55% only — bottom stays for caption/product/comments) --}}
+            {{-- tap zones — RTL: RIGHT third = previous, LEFT third = next.
+                 Full media height (client v0.17.7: the old upper-55% cap left
+                 the mid/lower screen dead — taps there did nothing). The
+                 middle third stays free for hold-to-pause. The header/meta
+                 bar (z-20) and bottom sheet sit above/below these. --}}
             <button type="button" wire:click="prev" aria-label="استوری قبلی"
-                    class="absolute inset-y-0 start-0 z-10 w-1/3" style="max-height: 55%;"></button>
+                    class="absolute inset-y-0 start-0 z-10 w-1/3"></button>
             <button type="button" wire:click="next" aria-label="استوری بعدی"
-                    class="absolute inset-y-0 end-0 z-10 w-1/3" style="max-height: 55%;"></button>
+                    class="absolute inset-y-0 end-0 z-10 w-1/3"></button>
 
             @if ($current->caption)
+                {{-- caption — clamped to 2 lines (client v0.17.7:
+                     «نمایش عنوان استوری‌ها طولانی نباشه»).
+                     w-fit + mx-auto instead of inline-block — inline-block
+                     would override the clamp's -webkit-box display. --}}
                 <div class="pointer-events-none absolute inset-x-4 top-[30%] z-[5] text-center">
-                    <span class="inline-block max-w-full rounded-2xl bg-black/45 px-4 py-2.5 text-sm font-extrabold leading-6 text-white backdrop-blur-sm">{{ $current->caption }}</span>
+                    <span class="line-clamp-2 mx-auto w-fit max-w-full rounded-2xl bg-black/45 px-4 py-2.5 text-sm font-extrabold leading-6 text-white backdrop-blur-sm">{{ $current->caption }}</span>
                 </div>
             @endif
 

@@ -17,9 +17,18 @@
 // theme toggles — anything), and the spinner z-index sits above every
 // overlay in the app.
 //
-// Touch-only (a mouse can never trigger it), and disabled on focused
-// pages (chat/product) whose <main> does not scroll, and inside elements
-// marked data-ptr-ignore (e.g. the story viewer overlay).
+// Touch-only (a mouse can never trigger it), and inert inside elements
+// marked data-ptr-ignore (e.g. the story viewer overlay). Focused shells
+// (chat/product) whose <main> does not scroll bind the DOCUMENT scroller
+// instead (v0.17.7) — the top-strip rule still keeps the gesture
+// deliberate there.
+//
+// v0.17.7: client «رفرش دستی را در سمت اپ مشتری هم بزار» — the public
+// storefront layout (/shop/{instagram}, where the stories live) has NO
+// scrollable <main>: the page scrolls on the document itself, so the old
+// main-only lookup never bound there and the gesture was dead. Now, when
+// no scrollable <main> exists, the module binds the DOCUMENT scroller
+// (document.scrollingElement) — the top-strip rule keeps it deliberate.
 //
 
 const THRESHOLD = 72;      // px of downward drag that arms the refresh
@@ -36,6 +45,10 @@ const init = () => {
         const oy = getComputedStyle(el).overflowY;
         if (oy === 'auto' || oy === 'scroll') scroller = el;
     });
+
+    // Storefront-style pages scroll on the document, not on a <main> —
+    // fall back to the root scroller so the gesture exists there too.
+    if (!scroller) scroller = document.scrollingElement;
 
     if (!scroller || scroller.dataset.ptrBound === '1') return;
     scroller.dataset.ptrBound = '1';
