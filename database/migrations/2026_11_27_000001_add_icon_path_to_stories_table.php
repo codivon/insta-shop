@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,11 +16,12 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
-        Schema::table('stories', function (Blueprint $table): void {
-            $table->string('icon_path')->nullable()->after('media_path');
-        });
+        self::columnIfMissing('stories', 'icon_path',
+            fn (Blueprint $table): mixed => $table->string('icon_path')->nullable()->after('media_path'));
     }
 
     public function down(): void

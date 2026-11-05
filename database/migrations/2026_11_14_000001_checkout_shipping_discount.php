@@ -1,11 +1,14 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     /**
      * Checkout upgrade — per-shop carriers with a real price, seller
      * discount codes and the order snapshot that keeps them:
@@ -18,20 +21,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('carriers', function (Blueprint $table) {
-            $table->unsignedBigInteger('base_price')->default(0)->after('carriage_forward')
-                ->comment('هزینهٔ ارسال پایه (تومان) — پس‌کرایه آن را نادیده می‌گیرد');
-        });
+        self::columnIfMissing('carriers', 'base_price',
+            fn (Blueprint $table) => $table->unsignedBigInteger('base_price')->default(0)->after('carriage_forward')
+                ->comment('هزینهٔ ارسال پایه (تومان) — پس‌کرایه آن را نادیده می‌گیرد'));
 
-        Schema::table('orders', function (Blueprint $table) {
-            $table->unsignedBigInteger('shipping_cost')->default(0)->after('total_amount');
-            $table->unsignedBigInteger('discount_amount')->default(0)->after('shipping_cost');
-            $table->string('discount_code', 60)->nullable()->after('discount_amount');
-            $table->json('shipments')->nullable()->after('discount_code')
-                ->comment('snapshot: [{shop_id, carrier_id, carrier_title, cost}]');
-        });
+        self::columnIfMissing('orders', 'shipping_cost',
+            fn (Blueprint $table) => $table->unsignedBigInteger('shipping_cost')->default(0)->after('total_amount'));
+        self::columnIfMissing('orders', 'discount_amount',
+            fn (Blueprint $table) => $table->unsignedBigInteger('discount_amount')->default(0)->after('shipping_cost'));
+        self::columnIfMissing('orders', 'discount_code',
+            fn (Blueprint $table) => $table->string('discount_code', 60)->nullable()->after('discount_amount'));
+        self::columnIfMissing('orders', 'shipments',
+            fn (Blueprint $table) => $table->json('shipments')->nullable()->after('discount_code')
+                ->comment('snapshot: [{shop_id, carrier_id, carrier_title, cost}]'));
 
-        Schema::dropIfExists('discounts');
+        self::recreate('discounts');
 
         Schema::create('discounts', function (Blueprint $table) {
             $table->id();

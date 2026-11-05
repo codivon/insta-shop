@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -18,13 +19,21 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
-        Schema::table('story_views', function (Blueprint $table) {
-            $table->foreignId('customer_id')->nullable()->change();
-            $table->string('visitor_token', 128)->nullable()->after('customer_id')->index();
-            $table->unique(['story_id', 'visitor_token']);
-        });
+        self::columnIfMissing('story_views', 'visitor_token',
+            fn (Blueprint $table) => $table->string('visitor_token', 128)->nullable()->after('customer_id')->index());
+
+        self::indexIfMissing('story_views', 'story_views_story_id_visitor_token_unique',
+            fn (Blueprint $table) => $table->unique(['story_id', 'visitor_token']), 'unique');
+
+        if (! self::columnIsNullable('story_views', 'customer_id')) {
+            Schema::table('story_views', function (Blueprint $table) {
+                $table->foreignId('customer_id')->nullable()->change();
+            });
+        }
     }
 
     public function down(): void

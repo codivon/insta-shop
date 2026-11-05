@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,11 +14,12 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
-        Schema::table('shop_categories', function (Blueprint $table) {
-            $table->boolean('show_on_storefront')->default(true)->after('sort');
-        });
+        self::columnIfMissing('shop_categories', 'show_on_storefront',
+            fn (Blueprint $table) => $table->boolean('show_on_storefront')->default(true)->after('sort'));
     }
 
     public function down(): void

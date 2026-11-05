@@ -1,11 +1,14 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     /**
      * Guest-ready carts:
      *  - carts.customer_id becomes nullable;
@@ -19,17 +22,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('carts', function (Blueprint $table) {
-            $table->dropForeign(['customer_id']);
-            $table->dropUnique(['customer_id']);
+        // One ALTER on MySQL (atomic) — guarded as a block: if guest_token
+        // exists, a previous run already applied the whole transformation.
+        if (! Schema::hasColumn('carts', 'guest_token')) {
+            Schema::table('carts', function (Blueprint $table) {
+                $table->dropForeign(['customer_id']);
+                $table->dropUnique(['customer_id']);
 
-            $table->string('guest_token', 64)->nullable()->unique()->after('id');
-            $table->foreignId('customer_id')->nullable()->change();
+                $table->string('guest_token', 64)->nullable()->unique()->after('id');
+                $table->foreignId('customer_id')->nullable()->change();
 
-            $table->foreign('customer_id')
-                ->references('id')->on('customers')
-                ->cascadeOnDelete();
-        });
+                $table->foreign('customer_id')
+                    ->references('id')->on('customers')
+                    ->cascadeOnDelete();
+            });
+        }
     }
 
     public function down(): void

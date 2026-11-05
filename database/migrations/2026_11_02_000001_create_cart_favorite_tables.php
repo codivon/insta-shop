@@ -1,20 +1,21 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     /**
      * Phase 4 — customer app data layer:
      * carts (one per customer), cart_items, favorites (per customer+product).
      */
     public function up(): void
     {
-        Schema::dropIfExists('favorites');
-        Schema::dropIfExists('cart_items');
-        Schema::dropIfExists('carts');
+        self::recreate('favorites', 'cart_items', 'carts');
 
         Schema::create('carts', function (Blueprint $table) {
             $table->id();

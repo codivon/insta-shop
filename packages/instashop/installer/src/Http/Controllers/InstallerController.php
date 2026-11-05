@@ -215,13 +215,26 @@ class InstallerController extends Controller
     }
 
     /**
-     * Migrate one file, retrying ONCE on transient MySQL DDL errors.
+     * Migrate one file, retrying on the transient/partial-state MySQL
+     * errors this shared host is known for.
      *
-     * A shared-host MySQL occasionally rejects the very first statement that
-     * touches a freshly created table (SQLSTATE 42S02 / driver 1146 «table
-     * doesn't exist» — see the settings-table incident) or loses it to a
-     * lock (1205/1213). Every migration re-drops its own tables first, so a
-     * clean second run of the SAME file is always safe.
+     * A shared-host MySQL occasionally rejects the very first statement
+     * that touches a freshly created table (SQLSTATE 42S02 / driver 1146
+     * «table doesn't exist» — see the settings-table incident) or loses a
+     * statement to a lock (1205/1213). Because MySQL DDL commits per
+     * statement, a crashed run leaves the EARLY statements of the file
+     * applied (stories-table incident of v0.17.12: CREATE stories
+     * succeeded, a later statement died, the retry hit 42S01/1050 «table
+     * already exists»):
+     *
+     *   1050 «table already exists»   → leftover of a partial run
+     *   1060 «duplicate column name»  → leftover of a partial ALTER
+     *   1061 «duplicate key name»     → leftover of a partial index add
+     *
+     * Every migration is idempotent (DefensiveMigration: create-migrations
+     * re-drop their own tables first, ALTER-migrations check the current
+     * schema per step), so a re-run of the SAME file always converges —
+     * the retry just needs to be allowed to happen.
      */
     protected function migrateWithRetry(string $path): void
     {
@@ -231,17 +244,24 @@ class InstallerController extends Controller
             '--no-interaction' => true,
         ]);
 
-        try {
-            $call();
-        } catch (Throwable $e) {
-            $code = (int) ($e instanceof QueryException ? ($e->errorInfo[1] ?? 0) : 0);
+        $attempts = 0;
 
-            if (! in_array($code, [1146, 1205, 1213], true)) {
-                throw $e;
+        while (true) {
+            try {
+                $call();
+
+                return;
+            } catch (Throwable $e) {
+                $code = (int) ($e instanceof QueryException ? ($e->errorInfo[1] ?? 0) : 0);
+
+                $retryable = in_array($code, [1050, 1060, 1061, 1146, 1205, 1213], true);
+
+                if (! $retryable || ++$attempts > 2) {
+                    throw $e;
+                }
+
+                usleep($attempts === 1 ? 500_000 : 1_000_000);
             }
-
-            usleep(500_000);
-            $call();
         }
     }
 

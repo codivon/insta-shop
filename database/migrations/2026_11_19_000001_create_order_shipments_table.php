@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Carrier;
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -24,9 +25,11 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
-        Schema::dropIfExists('order_shipments');
+        self::recreate('order_shipments');
 
         Schema::create('order_shipments', function (Blueprint $table): void {
             $table->id();

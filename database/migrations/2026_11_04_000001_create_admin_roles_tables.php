@@ -1,13 +1,18 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
+        self::recreate('admin_role', 'admin_roles');
+
         // ── Roles: named bundles of admin-panel permissions ──
         Schema::create('admin_roles', function (Blueprint $table) {
             $table->id();

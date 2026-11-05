@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,8 +16,12 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
+        self::recreate('specification_templates');
+
         Schema::create('specification_templates', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('shop_id');
@@ -28,9 +33,8 @@ return new class extends Migration
             $table->foreign('shop_id')->references('id')->on('shops')->cascadeOnDelete();
         });
 
-        Schema::table('products', function (Blueprint $table) {
-            $table->string('spec_type', 120)->nullable()->after('specifications');
-        });
+        self::columnIfMissing('products', 'spec_type',
+            fn (Blueprint $table) => $table->string('spec_type', 120)->nullable()->after('specifications'));
     }
 
     public function down(): void

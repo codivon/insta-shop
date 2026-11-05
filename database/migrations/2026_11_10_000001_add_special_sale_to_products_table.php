@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,15 +14,18 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
-        Schema::table('products', function (Blueprint $table) {
-            $table->boolean('is_special')->default(false)->after('status');
-            $table->dateTime('special_ends_at')->nullable()->after('is_special');
+        self::columnIfMissing('products', 'is_special',
+            fn (Blueprint $table) => $table->boolean('is_special')->default(false)->after('status'));
+        self::columnIfMissing('products', 'special_ends_at',
+            fn (Blueprint $table) => $table->dateTime('special_ends_at')->nullable()->after('is_special'));
 
-            // storefront hot path: this shop's active special products
-            $table->index(['shop_id', 'is_special']);
-        });
+        // storefront hot path: this shop's active special products
+        self::indexIfMissing('products', 'products_shop_id_is_special_index',
+            fn (Blueprint $table) => $table->index(['shop_id', 'is_special']));
     }
 
     public function down(): void

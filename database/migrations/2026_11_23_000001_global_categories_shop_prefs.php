@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -20,9 +21,13 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
-        Schema::dropIfExists('categories');
+        // FK checks off: a partial previous run may already have added
+        // products.category_id → categories; the drop must never be blocked.
+        self::recreate('categories', 'shop_categories');
 
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
@@ -38,18 +43,24 @@ return new class extends Migration
         });
 
         if (Schema::hasTable('products')) {
-            Schema::table('products', function (Blueprint $table) {
-                $table->foreignId('category_id')->nullable()->after('shop_id')->constrained('categories')->nullOnDelete();
-                $table->index('category_id');
-            });
+            self::columnIfMissing('products', 'category_id',
+                fn (Blueprint $table) => $table->foreignId('category_id')->nullable()->after('shop_id')->constrained('categories')->nullOnDelete());
+            self::indexIfMissing('products', 'products_category_id_index',
+                fn (Blueprint $table) => $table->index('category_id'));
 
             if (Schema::hasColumn('products', 'shop_category_id')) {
                 // SQLite refuses to drop a column that participates in an
                 // index or a foreign key — clear both before the drop.
-                Schema::table('products', function (Blueprint $table) {
-                    $table->dropIndex(['shop_id', 'shop_category_id']);
-                    $table->dropForeign(['shop_category_id']);
-                });
+                // try/catch: a partial previous run may have removed the
+                // index/FK but crashed before the dropColumn itself.
+                try {
+                    Schema::table('products', function (Blueprint $table) {
+                        $table->dropIndex(['shop_id', 'shop_category_id']);
+                        $table->dropForeign(['shop_category_id']);
+                    });
+                } catch (Throwable) {
+                    // index/FK already gone — nothing left to do
+                }
 
                 Schema::table('products', function (Blueprint $table) {
                     $table->dropColumn('shop_category_id');
@@ -58,12 +69,9 @@ return new class extends Migration
         }
 
         if (Schema::hasTable('shops')) {
-            Schema::table('shops', function (Blueprint $table) {
-                $table->boolean('show_stock')->default(false)->after('status');
-            });
+            self::columnIfMissing('shops', 'show_stock',
+                fn (Blueprint $table) => $table->boolean('show_stock')->default(false)->after('status'));
         }
-
-        Schema::dropIfExists('shop_categories');
     }
 
     public function down(): void

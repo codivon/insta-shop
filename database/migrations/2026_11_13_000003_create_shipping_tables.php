@@ -1,11 +1,14 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     /**
      * Seller shipping methods (روش‌های ارسال) — one shop owns many carriers.
      *
@@ -17,8 +20,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::dropIfExists('carrier_city');
-        Schema::dropIfExists('carriers');
+        self::recreate('carrier_city', 'carriers');
 
         Schema::create('carriers', function (Blueprint $table) {
             $table->id();

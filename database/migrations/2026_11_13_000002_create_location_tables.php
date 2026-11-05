@@ -1,11 +1,14 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     /**
      * Iran location tree (استان‌ها / شهرها) — seeded from the bundled
      * ProvinceSeeder / CitySeeder, managed (add/remove) ONLY from the
@@ -13,8 +16,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::dropIfExists('cities');
-        Schema::dropIfExists('provinces');
+        self::recreate('cities', 'provinces');
 
         Schema::create('provinces', function (Blueprint $table) {
             $table->id();

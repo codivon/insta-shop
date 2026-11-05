@@ -1,11 +1,14 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     /**
      * Phase 3 — seller catalog data layer:
      * shops (one per seller), shop_categories (seller-defined),
@@ -13,10 +16,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::dropIfExists('product_images');
-        Schema::dropIfExists('products');
-        Schema::dropIfExists('shop_categories');
-        Schema::dropIfExists('shops');
+        self::recreate('product_images', 'products', 'shop_categories', 'shops');
 
         Schema::create('shops', function (Blueprint $table) {
             $table->id();

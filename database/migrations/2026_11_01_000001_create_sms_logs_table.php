@@ -1,14 +1,17 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
-        Schema::dropIfExists('sms_logs');
+        self::recreate('sms_logs');
 
         // ── Audit trail of every SMS the system sends ──
         Schema::create('sms_logs', function (Blueprint $table) {

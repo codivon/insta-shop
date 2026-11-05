@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -21,18 +22,24 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
-        Schema::table('stories', function (Blueprint $table) {
-            $table->string('link_title', 150)->nullable()->after('link_url');
-            $table->string('video_url', 500)->nullable()->after('media_path');
-            $table->boolean('likes_enabled')->default(true)->after('caption');
-            $table->boolean('comments_enabled')->default(true)->after('likes_enabled');
-        });
+        self::columnIfMissing('stories', 'link_title',
+            fn (Blueprint $table) => $table->string('link_title', 150)->nullable()->after('link_url'));
+        self::columnIfMissing('stories', 'video_url',
+            fn (Blueprint $table) => $table->string('video_url', 500)->nullable()->after('media_path'));
+        self::columnIfMissing('stories', 'likes_enabled',
+            fn (Blueprint $table) => $table->boolean('likes_enabled')->default(true)->after('caption'));
+        self::columnIfMissing('stories', 'comments_enabled',
+            fn (Blueprint $table) => $table->boolean('comments_enabled')->default(true)->after('likes_enabled'));
 
-        Schema::table('stories', function (Blueprint $table) {
-            $table->string('media_path', 400)->nullable()->change();
-        });
+        if (! self::columnIsNullable('stories', 'media_path')) {
+            Schema::table('stories', function (Blueprint $table) {
+                $table->string('media_path', 400)->nullable()->change();
+            });
+        }
     }
 
     public function down(): void

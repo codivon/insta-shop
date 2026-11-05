@@ -1,16 +1,17 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
-        Schema::dropIfExists('customers');
-        Schema::dropIfExists('sellers');
-        Schema::dropIfExists('admins');
+        self::recreate('customers', 'sellers', 'admins');
 
         // ── Admins (back-office users, email + password) ──
         Schema::create('admins', function (Blueprint $table) {

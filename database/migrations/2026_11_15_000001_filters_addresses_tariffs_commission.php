@@ -1,11 +1,14 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     /**
      * Batch 72-74 + 79-80 data layer:
      *
@@ -18,6 +21,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        self::recreate('carrier_tariffs', 'customer_addresses', 'shop_filter_items', 'shop_filters');
+
         /* ── 72 — فیلترهای فروشگاه ── */
         Schema::create('shop_filters', function (Blueprint $table) {
             $table->id();
@@ -74,21 +79,19 @@ return new class extends Migration
         });
 
         /* ── 79 — کمیسیون اختصاصی فروشنده (خالی = پیش‌فرض سراسری) ── */
-        Schema::table('sellers', function (Blueprint $table) {
-            $table->string('commission_type', 10)->nullable()->after('status'); // null | percent | fixed
-            $table->unsignedBigInteger('commission_value')->nullable()->after('commission_type');
-        });
+        self::columnIfMissing('sellers', 'commission_type',
+            fn (Blueprint $table) => $table->string('commission_type', 10)->nullable()->after('status')); // null | percent | fixed
+        self::columnIfMissing('sellers', 'commission_value',
+            fn (Blueprint $table) => $table->unsignedBigInteger('commission_value')->nullable()->after('commission_type'));
 
         /* ── 80 — کمیسیون در دفتر واریز + snapshot تسویه سفارش ── */
-        Schema::table('wallet_transactions', function (Blueprint $table) {
-            $table->unsignedBigInteger('commission')->default(0)->after('amount')
-                ->comment('کمیسیون کسرشده از این واریز (تومان)');
-        });
+        self::columnIfMissing('wallet_transactions', 'commission',
+            fn (Blueprint $table) => $table->unsignedBigInteger('commission')->default(0)->after('amount')
+                ->comment('کمیسیون کسرشده از این واریز (تومان)'));
 
-        Schema::table('orders', function (Blueprint $table) {
-            $table->json('commissions')->nullable()->after('shipments')
-                ->comment('[{shop_id, shop_name, items_total, commission_type, commission_value, commission_amount, payout}]');
-        });
+        self::columnIfMissing('orders', 'commissions',
+            fn (Blueprint $table) => $table->json('commissions')->nullable()->after('shipments')
+                ->comment('[{shop_id, shop_name, items_total, commission_type, commission_value, commission_amount, payout}]'));
     }
 
     public function down(): void

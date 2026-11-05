@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -23,8 +24,16 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
+        // Installer resilience: a previous partial run may have created
+        // «stories» before dying on a later statement (flaky shared-host
+        // DDL) — the retry re-runs this file and must never hit
+        // «SQLSTATE[42S01] Table 'stories' already exists» (v0.17.12 bug).
+        self::recreate('stories', 'story_likes', 'story_comments', 'story_views', 'banners');
+
         Schema::create('stories', function (Blueprint $table) {
             $table->id();
             $table->foreignId('shop_id')->constrained('shops')->cascadeOnDelete();

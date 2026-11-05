@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,17 +16,21 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table): void {
-            $table->string('shipment_status', 20)->default('none')->after('status')
-                ->comment('none|processing|shipped|delivered');
-            $table->string('tracking_code', 60)->nullable()->after('shipment_status')
-                ->comment('کد رهگیری پستی');
-            $table->timestamp('shipment_status_at')->nullable()->after('tracking_code');
+        self::columnIfMissing('orders', 'shipment_status',
+            fn (Blueprint $table): mixed => $table->string('shipment_status', 20)->default('none')->after('status')
+                ->comment('none|processing|shipped|delivered'));
+        self::columnIfMissing('orders', 'tracking_code',
+            fn (Blueprint $table): mixed => $table->string('tracking_code', 60)->nullable()->after('shipment_status')
+                ->comment('کد رهگیری پستی'));
+        self::columnIfMissing('orders', 'shipment_status_at',
+            fn (Blueprint $table): mixed => $table->timestamp('shipment_status_at')->nullable()->after('tracking_code'));
 
-            $table->index('shipment_status');
-        });
+        self::indexIfMissing('orders', 'orders_shipment_status_index',
+            fn (Blueprint $table) => $table->index('shipment_status'));
     }
 
     public function down(): void

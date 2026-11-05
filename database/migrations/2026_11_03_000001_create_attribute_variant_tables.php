@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\Concerns\DefensiveMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -7,6 +8,8 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    use DefensiveMigration;
+
     /**
      * Phase 6 — dynamic product variations:
      *  - shop_attributes / shop_attribute_values : per-shop attribute fields
@@ -20,12 +23,15 @@ return new class extends Migration
      */
     public function up(): void
     {
+        self::recreate('product_files', 'product_variant_values', 'product_variants', 'shop_attribute_values', 'shop_attributes');
+
         /* ── products: physical/downloadable + weight + unit ── */
-        Schema::table('products', function (Blueprint $table) {
-            $table->string('type', 20)->default('physical')->after('shop_category_id');   // physical|downloadable
-            $table->unsignedInteger('weight_grams')->nullable()->after('stock');          // physical only
-            $table->string('unit', 20)->nullable()->default('تعداد')->after('weight_grams'); // تعداد/کیلوگرم/... (null for downloadable)
-        });
+        self::columnIfMissing('products', 'type',
+            fn (Blueprint $table) => $table->string('type', 20)->default('physical')->after('shop_category_id'));   // physical|downloadable
+        self::columnIfMissing('products', 'weight_grams',
+            fn (Blueprint $table) => $table->unsignedInteger('weight_grams')->nullable()->after('stock'));          // physical only
+        self::columnIfMissing('products', 'unit',
+            fn (Blueprint $table) => $table->string('unit', 20)->nullable()->default('تعداد')->after('weight_grams')); // تعداد/کیلوگرم/... (null for downloadable)
 
         /* ── shops.instagram_username: dedupe then unique (safety net) ──
          * Keeps NULL handles untouched and resolves duplicate handles
@@ -58,9 +64,8 @@ return new class extends Migration
             $seen[$handle] = true;
         }
 
-        Schema::table('shops', function (Blueprint $table) {
-            $table->unique('instagram_username', 'shops_instagram_username_unique');
-        });
+        self::indexIfMissing('shops', 'shops_instagram_username_unique',
+            fn (Blueprint $table) => $table->unique('instagram_username', 'shops_instagram_username_unique'), 'unique');
 
         /* ── attribute fields defined per shop ── */
         Schema::create('shop_attributes', function (Blueprint $table) {
