@@ -5,8 +5,11 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\ProductVariant;
 use App\Models\Seller;
 use App\Models\Shop;
+use App\Models\ShopAttribute;
+use App\Models\ShopAttributeValue;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
@@ -22,6 +25,13 @@ use Illuminate\Support\Facades\Storage;
  *      قطعی (deterministic) از پروفایل همان دستهٔ اصلی (برند/بازهٔ قیمت/
  *      رنگ/گارانتی/واحد) پر می‌شود و گالری آن‌ها به تصاویر عمومیِ همان
  *      خانواده اشاره می‌کند (کپی فایل جدیدی روی دیسک نمی‌شود).
+ *   ③ تنوع‌ها (v0.17.12): هر محصولِ دمو حداقل ۲ تنوع قابل‌فروش می‌گیرد —
+ *      ۴۳ محصول پرچمدار با ماتریس دست‌نویسِ مخصوص به خودشان
+ *      (data/demo-product-variants.php: تیتانیوم برای گوشی، سایز کفش،
+ *      حجم عطر، جلد کتاب، وزن خشکبار، طعم پروتئین، سال ضرب سکه و…)
+ *      و محصولات تکمیلی با تنوع‌های قطعیِ هم‌خانواده (رنگ/گارانتی/سایز).
+ *      قیمت تنوع اول = قیمت پایهٔ محصول (min تنوع‌ها) تا قیمت کارت‌ها
+ *      ثابت بماند و موجودی = مجموع تنوع‌ها (syncAggregates).
  *
  * Images for the flagship rows ship inside the repo
  * (database/seeders/data/demo/products) and are copied into the public
@@ -39,7 +49,7 @@ class DemoProductSeeder extends Seeder
     use WithoutModelEvents;
 
     /** The fixed demo seller identity (also used by demo:remove). */
-    private const SELLER_PHONE = '09120000000';
+    private const SELLER_PHONE = '989120000000'; // normalized (E.164 without +) — matches Phone::normalize()
 
     private const SELLER_HANDLE = 'demo_store';
 
@@ -96,7 +106,10 @@ class DemoProductSeeder extends Seeder
             $this->command?->line("  <fg=green>✓</> {$generated} محصول تکمیلی برای زیر‌دسته‌های کم‌محصول ساخته شد.");
         }
 
+        $variants = $this->seedVariants($shop);
+
         $this->command?->line("  <fg=green>✓</> فروشگاه نمونه با {$created} محصول پرچمدار در دسته‌بندی‌ها ساخته شد.");
+        $this->command?->line("  <fg=green>✓</> {$variants} تنوع قابل‌فروش روی محصولات نمونه ثبت شد (هر محصول ≥ ۲ تنوع).");
     }
 
     // ── helpers ──────────────────────────────────────────────────────
@@ -160,6 +173,341 @@ class DemoProductSeeder extends Seeder
             ->where('name', $rootName)
             ->whereNull('parent_id')
             ->first();
+    }
+
+    // ── v0.17.12: variations (تنوع‌های قابل‌فروش هر محصول دمو) ──────────
+
+    /** Extra select attributes the demo shop needs beyond the 3 defaults. */
+    private const EXTRA_ATTRIBUTES = [
+        'حافظه داخلی' => ['۳۲ گیگابایت', '۶۴ گیگابایت', '۲۵۶ گیگابایت', '۵۱۲ گیگابایت', '۱ ترابایت'],
+        'حجم' => ['۶۰ میلی‌لیتر', '۱۰۰ میلی‌لیتر', '۲۰۰ میلی‌لیتر'],
+        'وزن' => ['۱ گرم', '۲.۵ گرم', '۵ گرم', '۵۰۰ گرم', '۹۰۰ گرم', '۱ کیلوگرم', '۱.۸ کیلوگرم', '۲۰ کیلوگرم', '۳۰ کیلوگرم', '۴۰ کیلوگرم'],
+        'جلد' => ['شومیز', 'سخت', 'گالنگان'],
+        'تعداد قطعه' => ['۲۴ عددی', '۳۶ عددی', '۴۸ عددی', '۴۸۰ عددی', '۵۰۰ عددی', '۹۰۰ عددی', '۱۰۰۰ عددی'],
+        'قطر' => ['۳۰ سانتی‌متر', '۳۵ سانتی‌متر', '۴۰ سانتی‌متر'],
+        'طعم' => ['شکلاتی', 'وانیلی', 'توت‌فرنگی'],
+        'سال ضرب' => ['۱۴۰۳', '۱۴۰۴'],
+    ];
+
+    /** Extra رنگ swatches (flagship names + generated profile colors) with hex. */
+    private const EXTRA_COLORS = [
+        'کرم' => '#F5E7C6', 'سرمه‌ای' => '#1F3A5F', 'زیتونی' => '#708238',
+        'استیل' => '#B7BDC3', 'طوسی' => '#8A8D91', 'زرد' => '#FACC15',
+        'مسی' => '#B87333', 'فیروزه‌ای' => '#2DD4BF', 'چوبی' => '#8B5E3C',
+        'رزگلد' => '#E8B4B8', 'نارنجی' => '#F97316',
+        'تیتانیوم طبیعی' => '#C2BBB1', 'تیتانیوم آبی' => '#546A7B',
+        'تیتانیوم مشکی' => '#2F2F31', 'تیتانیوم خاکستری' => '#6E7A85',
+        'تیتانیوم بنفش' => '#8E7C9C',
+    ];
+
+    /** Shoe sizes appended to the default سایز field (letter sizes XS..XXL). */
+    private const SHOE_SIZES = ['۳۹', '۴۰', '۴۱', '۴۲', '۴۳', '۴۴', '۴۵'];
+
+    /** Option pools for the deterministic generated variants. */
+    private const WARRANTY_POOL = ['۱۲ ماه گارانتی', '۱۸ ماه گارانتی'];
+
+    private const SIZE_POOL = ['M', 'L', 'XL'];
+
+    private const VOLUME_POOL = ['۶۰ میلی‌لیتر', '۱۰۰ میلی‌لیتر', '۲۰۰ میلی‌لیتر'];
+
+    private const WEIGHT_POOL = ['۵۰۰ گرم', '۹۰۰ گرم', '۱ کیلوگرم'];
+
+    private const COVER_POOL = ['شومیز', 'سخت'];
+
+    /** Per-root variation plan for generated products (pool + take per dimension). */
+    private const VAR_DIMS = [
+        'کالای دیجیتال' => [['colors', 2], ['warranty', 1]],
+        'مد و پوشاک' => [['colors', 2], ['size', 2]],
+        'آرایشی و بهداشتی' => [['volume', 2]],
+        'خانه و آشپزخانه' => [['colors', 3]],
+        'لوازم خانگی برقی' => [['colors', 2], ['warranty', 1]],
+        'مواد غذایی و سوپر مارکت' => [['weight', 2]],
+        'ورزش و سفر' => [['colors', 3]],
+        'ابزارآلات و تجهیزات' => [['warranty', 2]],
+        'کتاب' => [['cover', 2]],
+        'فرهنگی هنری' => [['colors', 2]],
+        'کودک و نوزاد و اسباب بازی' => [['colors', 2]],
+        'سلامت و پزشکی' => [['colors', 2]],
+        'خودرو و موتورسیکلت' => [['colors', 2]],
+        'طلا و جواهرات' => [['colors', 2]],
+    ];
+
+    /**
+     * Give EVERY demo product at least 2 sellable variants.
+     * Flagships use the hand-written matrix (data/demo-product-variants.php),
+     * generated rows get deterministic combos from the same root profile.
+     * Returns the number of variant rows in place afterwards.
+     */
+    private function seedVariants(Shop $shop): int
+    {
+        $index = $this->ensureVariationAttributes($shop);
+
+        $flagship = require database_path('seeders/data/demo-product-variants.php');
+
+        $products = Product::query()
+            ->where('shop_id', $shop->id)
+            ->where('type', Product::TYPE_PHYSICAL)
+            ->with('category.parent')
+            ->get();
+
+        $count = 0;
+
+        foreach ($products as $product) {
+            $specs = $flagship[$product->slug] ?? $this->generateVariantSpecs($product);
+
+            if ($specs === []) {
+                continue; // unknown profile — leave the plain product alone
+            }
+
+            $count += $this->syncProductVariants($product, $specs, $index);
+        }
+
+        return $count;
+    }
+
+    /**
+     * Defaults (رنگ/سایز/گارانتی — WithoutModelEvents silences the created
+     * hook so re-seeding must call this explicitly) + the extra fields,
+     * color swatches and shoe sizes. Returns name → model/id lookup.
+     *
+     * @return array{attrs: array<string, ShopAttribute>, values: array<string, array<string, int>>}
+     */
+    private function ensureVariationAttributes(Shop $shop): array
+    {
+        ShopAttribute::seedDefaultsFor($shop);
+
+        $sort = (int) ($shop->attributes()->max('sort') ?? 0);
+
+        foreach (self::EXTRA_ATTRIBUTES as $name => $values) {
+            $attribute = ShopAttribute::query()->updateOrCreate(
+                ['shop_id' => $shop->id, 'name' => $name],
+                ['type' => 'select', 'is_default' => false, 'sort' => ++$sort],
+            );
+
+            foreach ($values as $i => $value) {
+                ShopAttributeValue::query()->updateOrCreate(
+                    ['shop_attribute_id' => $attribute->id, 'value' => $value],
+                    ['sort' => $i],
+                );
+            }
+        }
+
+        $attributes = $shop->attributes()->with('values')->get()->keyBy('name');
+
+        $addValues = function (ShopAttribute $attribute, array $values): void {
+            foreach ($values as $i => [$value, $hex]) {
+                ShopAttributeValue::query()->updateOrCreate(
+                    ['shop_attribute_id' => $attribute->id, 'value' => $value],
+                    ['color_hex' => $hex, 'sort' => 100 + $i],
+                );
+            }
+        };
+
+        if (($colors = $attributes->get('رنگ')) !== null) {
+            $addValues($colors, array_map(
+                fn ($name, $hex) => [$name, $hex],
+                array_keys(self::EXTRA_COLORS),
+                self::EXTRA_COLORS,
+            ));
+        }
+
+        if (($sizes = $attributes->get('سایز')) !== null) {
+            $addValues($sizes, array_map(fn ($size) => [$size, null], self::SHOE_SIZES));
+        }
+
+        // Re-fetch so the index carries every freshly added option value.
+        $attributes = $shop->attributes()->with('values')->get()->keyBy('name');
+
+        $values = [];
+
+        foreach ($attributes as $name => $attribute) {
+            $values[$name] = $attribute->values->pluck('id', 'value')->all();
+        }
+
+        return ['attrs' => $attributes->all(), 'values' => $values];
+    }
+
+    /**
+     * Idempotent variant sync for ONE product — existing rows are matched
+     * on their attribute-pick signature (kept when identical → cart ids
+     * survive re-seeding), new combinations are created, leftovers deleted.
+     * Ends with syncAggregates() so price = min(variants), stock = Σ.
+     */
+    private function syncProductVariants(Product $product, array $specs, array $index): int
+    {
+        $desired = [];
+
+        foreach (array_values($specs) as $i => $spec) {
+            $picks = [];
+
+            foreach ($spec['picks'] ?? [] as $attrName => $valueName) {
+                $attribute = $index['attrs'][$attrName] ?? null;
+                $valueId = $index['values'][$attrName][$valueName] ?? null;
+
+                if ($attribute === null || $valueId === null) {
+                    $this->command?->warn("  ویژگی «{$attrName}: {$valueName}» برای {$product->slug} پیدا نشد — پرش از این تنوع.");
+
+                    continue 2;
+                }
+
+                $picks[$attribute->id] = $valueId;
+            }
+
+            if ($picks === []) {
+                continue;
+            }
+
+            ksort($picks);
+
+            $signature = collect($picks)->map(fn ($valueId, $attrId) => $attrId.':'.$valueId)->implode('|');
+
+            $desired[$signature] = [
+                'picks' => $picks,
+                'price' => (int) $spec['price'],
+                'stock' => (int) ($spec['stock'] ?? 3),
+                'discount' => (int) ($spec['discount'] ?? 0),
+                'sort' => count($desired),
+            ];
+        }
+
+        if (count($desired) < 2) {
+            return 0; // a sellable variation matrix needs at least two rows
+        }
+
+        $existing = $product->variants()->with('values')->get()
+            ->keyBy(fn (ProductVariant $variant) => $variant->values
+                ->sortBy('shop_attribute_id')
+                ->map(fn ($value) => $value->shop_attribute_id.':'.$value->shop_attribute_value_id)
+                ->implode('|'));
+
+        $kept = [];
+
+        foreach ($desired as $signature => $row) {
+            $variant = $existing->get($signature);
+
+            $payload = [
+                'price' => $row['price'],
+                'stock' => $row['stock'],
+                'discount_percent' => $row['discount'],
+                'discount_expires_at' => $row['discount'] > 0 ? now()->addDays(3 + ($row['sort'] % 4))->endOfDay() : null,
+                'status' => 'active',
+                'sort' => $row['sort'],
+            ];
+
+            if ($variant === null) {
+                $variant = $product->variants()->create($payload);
+
+                foreach ($row['picks'] as $attrId => $valueId) {
+                    $variant->values()->create([
+                        'shop_attribute_id' => $attrId,
+                        'shop_attribute_value_id' => $valueId,
+                    ]);
+                }
+            } else {
+                $variant->fill($payload)->save();
+            }
+
+            $kept[] = $signature;
+        }
+
+        foreach ($existing as $signature => $variant) {
+            if (! in_array($signature, $kept, true)) {
+                $variant->delete(); // stale combination no longer in the spec
+            }
+        }
+
+        $product->syncAggregates();
+
+        return count($desired);
+    }
+
+    /** Deterministic 2-4 variant specs for a generated (filler) product. */
+    private function generateVariantSpecs(Product $product): array
+    {
+        $rootName = $product->category?->parent?->name ?? '';
+        $profile = self::ROOT_PROFILES[$rootName] ?? null;
+        $plan = self::VAR_DIMS[$rootName] ?? null;
+
+        if ($profile === null || $plan === null) {
+            return [];
+        }
+
+        $seed = crc32($product->slug);
+
+        $pools = [
+            'colors' => $profile['colors'],
+            'warranty' => self::WARRANTY_POOL,
+            'size' => self::SIZE_POOL,
+            'volume' => self::VOLUME_POOL,
+            'weight' => self::WEIGHT_POOL,
+            'cover' => self::COVER_POOL,
+        ];
+
+        $attrNameOf = [
+            'colors' => 'رنگ', 'warranty' => 'گارانتی', 'size' => 'سایز',
+            'volume' => 'حجم', 'weight' => 'وزن', 'cover' => 'جلد',
+        ];
+
+        $dimensions = [];
+
+        foreach ($plan as $i => [$pool, $take]) {
+            $values = $pools[$pool] ?? [];
+
+            if ($values === []) {
+                continue;
+            }
+
+            $count = min(count($values), $take + (($seed >> (11 + $i)) % 2));
+            $offset = ($seed >> (13 + $i)) % count($values);
+
+            $picked = [];
+
+            for ($n = 0; $n < $count; $n++) {
+                $picked[] = $values[($offset + $n) % count($values)];
+            }
+
+            $dimensions[$attrNameOf[$pool]] = $picked;
+        }
+
+        if ($dimensions === []) {
+            return [];
+        }
+
+        // Cartesian product (attribute name → pick), capped at 4 combos.
+        $combos = [[]];
+
+        foreach ($dimensions as $attrName => $dimension) {
+            $next = [];
+
+            foreach ($combos as $combo) {
+                foreach ($dimension as $value) {
+                    $next[] = $combo + [$attrName => $value];
+                }
+            }
+
+            $combos = array_slice($next, 0, 4);
+        }
+
+        $specs = [];
+
+        foreach ($combos as $i => $picks) {
+            $price = $i === 0
+                ? (int) $product->price
+                : (int) (round($product->price * (1.01 + (($seed >> (2 + $i)) % 8) / 100) / 1000) * 1000);
+
+            $discount = $i > 0 && (($seed >> (5 + $i)) % 6) === 0
+                ? 5 + (($seed >> (7 + $i)) % 8)
+                : 0;
+
+            $specs[] = [
+                'picks' => $picks,
+                'price' => $price,
+                'stock' => 1 + (($seed >> (3 + $i)) % 6),
+                'discount' => $discount,
+            ];
+        }
+
+        return $specs;
     }
 
     // ── v0.17.11: child-category fill (≥۳ محصول برای هر زیر‌دستهٔ سطح-۲) ──

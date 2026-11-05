@@ -42,7 +42,7 @@ class DemoShopSetupSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    private const SELLER_PHONE = '09120000000';
+    private const SELLER_PHONE = '989120000000'; // normalized (E.164 without +) — matches Phone::normalize()
 
     private const STORY_DIR = 'stories/demo-store';
 

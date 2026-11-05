@@ -97,7 +97,7 @@
                             <div class="flex w-full flex-1 items-end">
                                 <div class="w-full rounded-t-lg transition-all duration-300 {{ $bar['today'] ? 'bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-md shadow-emerald-600/30' : 'bg-emerald-200/80 dark:bg-emerald-900' }}"
                                      style="height: {{ max(6, (int) round($bar['value'] / max($sales['max'], 1) * 100)) }}%"
-                                     title="{{ $bar['label'] }}: {{ \App\Support\Fmt::money($bar['value']) }} تومان"></div>
+                                     title="{{ $bar['label'] }}: {{ \App\Support\Fmt::money($bar['value']) }}"></div>
                             </div>
                             <span class="whitespace-nowrap text-[8.5px] font-bold {{ $bar['today'] ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400' }}">{{ $bar['label'] }}</span>
                         </div>

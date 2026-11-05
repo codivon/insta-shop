@@ -136,7 +136,7 @@
                             <input id="df-price" type="text" inputmode="numeric" dir="ltr" wire:model="price" placeholder="100000"
                                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-xs font-extrabold outline-none transition placeholder:text-slate-400 focus:border-primary-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800">
                             @if (is_numeric($price) && (int) $price > 0)
-                                <p class="mt-1 text-[9px] font-bold text-primary-500">{{ \App\Support\Fmt::money((int) $price) }} تومان</p>
+                                <p class="mt-1 text-[9px] font-bold text-primary-500">{{ \App\Support\Fmt::money((int) $price) }}</p>
                             @endif
                             @error('price') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                         </div>

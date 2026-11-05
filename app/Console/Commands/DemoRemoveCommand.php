@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
  * the public disk.
  *
  * The demo rows are found by fixed conventions (not a registry file):
- *   - seller phone 09120000000 → its shop cascades products / carriers /
+ *   - seller phone 989120000000 (normalized) → its shop cascades products / carriers /
  *     tariffs / filter rows / stories / story views / bank card
  *   - product gallery files under products/demo/
  *   - story media under stories/demo-store/
@@ -31,7 +31,7 @@ class DemoRemoveCommand extends Command
 
     protected $description = 'حذف کامل محتوای نمونه (فروشگاه، محصولات، حمل‌ونقل، فیلترها، استوری‌ها، بنرها و تصاویر سیدر دمو)';
 
-    private const SELLER_PHONE = '09120000000';
+    private const SELLER_PHONE = '989120000000'; // normalized (E.164 without +) — matches Phone::normalize()
 
     public function handle(): int
     {

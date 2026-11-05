@@ -467,7 +467,7 @@
                                         @endif
                                     </div>
                                     <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                        <span class="text-primary-600 dark:text-primary-400">{{ is_numeric($variant['price']) && $variant['price'] !== '' ? \App\Support\Fmt::money((int) $variant['price']).' تومان' : 'قیمت ثبت نشده' }}</span>
+                                        <span class="text-primary-600 dark:text-primary-400">{{ is_numeric($variant['price']) && $variant['price'] !== '' ? \App\Support\Fmt::money((int) $variant['price']) : 'قیمت ثبت نشده' }}</span>
                                         <span>·</span>
                                         <span>موجودی: {{ $variant['stock'] !== '' ? \App\Support\Fmt::fa((int) $variant['stock']) : '—' }}</span>
                                         @if ((int) ($variant['min_purchase'] ?? 0) > 0 || (int) ($variant['max_purchase'] ?? 0) > 0)
@@ -517,7 +517,7 @@
                             <div class="min-w-0 flex-1">
                                 <div class="truncate text-[11px] font-extrabold">{{ $existingFile->title }}</div>
                                 <div class="text-[9px] font-semibold text-slate-400">
-                                    {{ \App\Support\Fmt::money($existingFile->finalPrice()) }} تومان
+                                    {{ \App\Support\Fmt::money($existingFile->finalPrice()) }}
                                     @if ($existingFile->discount_percent > 0)
                                         <span class="mr-1 rounded-full bg-rose-100 px-1.5 py-0.5 text-[8px] font-black text-rose-600 dark:bg-rose-950 dark:text-rose-400">{{ \App\Support\Fmt::fa($existingFile->discount_percent) }}٪ تخفیف</span>
                                     @endif

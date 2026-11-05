@@ -30,7 +30,7 @@
                             <div class="flex flex-wrap items-center gap-1.5 text-xs font-extrabold">
                                 {{ $tx->wallet->seller?->full_name ?? 'فروشنده #'.$tx->wallet->seller_id }}
                                 <span class="rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-black text-amber-600 dark:bg-slate-800 dark:text-amber-300" dir="ltr">
-                                    {{ \App\Support\Fmt::money($tx->amount) }} تومان
+                                    {{ \App\Support\Fmt::money($tx->amount) }}
                                 </span>
                             </div>
                             <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] font-semibold text-slate-400" dir="auto">

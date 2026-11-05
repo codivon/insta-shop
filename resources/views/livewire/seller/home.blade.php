@@ -216,7 +216,7 @@
             <div class="mt-3 grid grid-cols-2 gap-2">
                 <div class="rounded-2xl bg-gradient-to-l from-primary-600/10 to-primary-500/5 p-3 dark:from-primary-600/20 dark:to-primary-500/10">
                     <p class="text-[9.5px] font-bold text-slate-400">فروش بازه انتخابی</p>
-                    <p class="mt-0.5 text-sm font-black text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($chartTotal) }} <span class="text-[9px] font-bold text-slate-400">تومان</span></p>
+                    <p class="mt-0.5 text-sm font-black text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::money($chartTotal) }}</p>
                 </div>
                 <div class="rounded-2xl bg-emerald-50 p-3 dark:bg-emerald-950/30">
                     <p class="text-[9.5px] font-bold text-slate-400">سفارش‌های پرداخت‌شده</p>
@@ -247,7 +247,7 @@
                             <div class="flex w-full flex-1 items-end">
                                 <div class="w-full rounded-t-lg transition-all duration-300 {{ $bar['today'] ? 'bg-gradient-to-t from-primary-600 to-primary-400 shadow-md shadow-primary-600/30' : 'bg-primary-200/80 dark:bg-primary-900' }}"
                                      style="height: {{ max(6, (int) round($bar['value'] / max($chartMax, 1) * 100)) }}%"
-                                     title="{{ $bar['label'] }}: {{ \App\Support\Fmt::money($bar['value']) }} تومان"></div>
+                                     title="{{ $bar['label'] }}: {{ \App\Support\Fmt::money($bar['value']) }}"></div>
                             </div>
                             <span class="whitespace-nowrap text-[8.5px] font-bold {{ $bar['today'] ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}">{{ $bar['label'] }}</span>
                         </div>
