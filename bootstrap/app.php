@@ -6,6 +6,7 @@ use App\Http\Middleware\CheckMaintenanceMode;
 use App\Http\Middleware\EnsureAdminPermission;
 use App\Http\Middleware\MergeGuestCart;
 use App\Http\Middleware\RedirectIfPanelAuthenticated;
+use App\Http\Middleware\RefreshDeploymentCache;
 use App\Http\Middleware\ResolvePanel;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -43,7 +44,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // admin-panel IP allow-list and security response headers.
         // MergeGuestCart runs last in the group: hands the guest cart (shared
         // cookie) over to the customer as soon as they are logged in.
+        // RefreshDeploymentCache must stay FIRST: right after a git pull on
+        // the shared host it clears stale Laravel caches + OPcache before
+        // anything else reads them (self-healing deploy — see its docblock).
         $middleware->appendToGroup('web', [
+            RefreshDeploymentCache::class,
             CheckMaintenanceMode::class,
             ApplySecuritySettings::class,
             MergeGuestCart::class,

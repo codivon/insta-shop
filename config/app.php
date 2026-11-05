@@ -17,6 +17,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Version (deploy marker)
+    |--------------------------------------------------------------------------
+    |
+    | Bumped with every release tag. The RefreshDeploymentCache middleware
+    | compares this value with storage/framework/deployed-version — after a
+    | plain "git pull" on the shared host, the FIRST web request clears every
+    | Laravel cache (view/config/route/compiled) and resets OPcache for the
+    | web SAPI, so a pull alone is enough to activate new code. The value is
+    | rendered in the admin footer and the settings hub as «نسخهٔ دیپلوی» —
+    | an older number there means the host is still serving stale code/caches.
+    |
+    */
+
+    'version' => '0.17.17',
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |
