@@ -228,6 +228,41 @@
                     </label>
                 @endif
 
+                {{-- ring icon — the story's face on the PUBLIC storefront,
+                     where every story shows as its own story ring --}}
+                <div class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+                    <div class="shrink-0">
+                        <span class="relative inline-grid size-16 place-items-center rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-primary-600 p-[2.5px] shadow-md shadow-rose-500/20">
+                            <span class="grid size-full place-items-center overflow-hidden rounded-full bg-white p-[2px] dark:bg-slate-950">
+                                @if ($icon)
+                                    <img src="{{ $icon->temporaryUrl() }}" alt="پیش‌نمایش آیکون استوری" class="size-full rounded-full object-cover">
+                                @elseif ($editingStory?->iconUrl())
+                                    <img src="{{ $editingStory->iconUrl() }}" alt="آیکون فعلی استوری" class="size-full rounded-full object-cover">
+                                @elseif ($editingStory !== null && ! $editingStory->isVideo() && $editingStory->media_path)
+                                    <img src="{{ $editingStory->mediaUrl() }}" alt="آیکون فعلی استوری" class="size-full rounded-full object-cover">
+                                @else
+                                    <span class="grid size-full place-items-center bg-gradient-to-br from-primary-500 to-primary-700 text-white">
+                                        <x-icon name="store" class="size-5" />
+                                    </span>
+                                @endif
+                            </span>
+                        </span>
+                    </div>
+                    <label class="min-w-0 flex-1">
+                        <span class="block text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                            تصویر آیکون استوری
+                            <span class="font-semibold text-slate-400">(اختیاری — مربعی، ترجیحاً ۵۰۰×۵۰۰)</span>
+                        </span>
+                        <input type="file" accept="image/jpeg,image/png,image/webp" wire:model.live="icon"
+                               class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs file:me-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-[10px] file:font-bold file:text-white shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900">
+                        @error('icon') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                        <span wire:loading wire:target="icon" class="mt-1 block text-[10px] font-semibold text-primary-500">در حال بارگذاری…</span>
+                        <span class="mt-1 block text-[10px] leading-5 font-semibold text-slate-400">
+                            در صفحهٔ فروشگاه شما هر استوری با این آیکون مثل یک اکانت استوری جدا دیده می‌شود. اگر خالی بماند: استوری تصویری از خودِ تصویر، و ویدیو از لوگوی فروشگاه استفاده می‌کند.
+                        </span>
+                    </label>
+                </div>
+
                 {{-- attached product — searchable picker --}}
                 <div>
                     <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">محصول متصل (اختیاری)</span>

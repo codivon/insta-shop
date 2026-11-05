@@ -29,7 +29,7 @@ class Story extends Model
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
-        'shop_id', 'product_id', 'type', 'media_path', 'video_url', 'caption',
+        'shop_id', 'product_id', 'type', 'media_path', 'icon_path', 'video_url', 'caption',
         'link_url', 'link_title', 'likes_enabled', 'comments_enabled',
         'starts_at', 'ends_at', 'status',
     ];
@@ -173,6 +173,25 @@ class Story extends Model
     public function thumbUrl(): ?string
     {
         return $this->isVideo() ? null : $this->mediaUrl();
+    }
+
+    /**
+     * Face of the story ring on the seller's storefront (each story is
+     * its own ring there): the picked icon wins, image stories fall back
+     * to the media itself, video stories without an icon → null (the
+     * caller falls back to the shop logo).
+     */
+    public function iconUrl(): ?string
+    {
+        if ($this->icon_path) {
+            return (string) Storage::disk('public')->url((string) $this->icon_path);
+        }
+
+        if (! $this->isVideo()) {
+            return $this->mediaUrl();
+        }
+
+        return null;
     }
 
     /** Whether the given customer already saw this story. */

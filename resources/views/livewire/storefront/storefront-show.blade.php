@@ -158,6 +158,53 @@
         </div>
     </section>
 
+    {{-- ═══════════════ Story rings — EVERY story is its own ring (STOREFRONT-ONLY) ═══════════════
+         Client: «استوری‌هایی که فروشنده می‌گذارد در خود فروشگاه هم نمایش داده شود — ۵ استوری
+         انگار ۵ تا اکانت استوری گذاشته؛ فقط اینجا، نه بقیه جاها». Each ring's face = the
+         story's picked icon (add-story modal) → media (image) → shop logo fallback.
+         Tapping a ring opens the viewer AT that story. ═══════════════ --}}
+    @if ($storefrontStories->isNotEmpty())
+        <section class="mx-auto max-w-6xl px-4 pt-5 sm:px-6" aria-label="استوری‌های فروشگاه">
+            <div class="scroll-slim -mx-1 flex gap-3 overflow-x-auto px-1 pb-2 sm:gap-4">
+                @foreach ($storefrontStories as $story)
+                    @php
+                        $sfSeen = in_array($story->id, $storefrontSeenIds, true);
+                        $sfIcon = $story->iconUrl()
+                            ?? ($story->shop->logo_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($story->shop->logo_path) : null);
+                        $sfLabel = $story->product?->name !== null && $story->product?->name !== ''
+                            ? $story->product->name
+                            : trim((string) \Illuminate\Support\Str::words(trim((string) $story->caption), 3, '…'));
+                    @endphp
+                    <button type="button" wire:click="openStoryAt({{ $loop->index }})"
+                            wire:key="sf-story-{{ $story->id }}"
+                            class="group relative w-[4.75rem] shrink-0 text-center transition active:scale-95 sm:w-24"
+                            aria-label="نمایش استوری {{ \App\Support\Fmt::fa($loop->iteration) }}">
+                        <span class="relative inline-grid place-items-center rounded-full p-[3px] {{ $sfSeen ? 'bg-slate-300 dark:bg-slate-700' : 'bg-gradient-to-tr from-amber-400 via-rose-500 to-primary-600' }}">
+                            <span class="grid size-16 place-items-center overflow-hidden rounded-full bg-white p-[3px] sm:size-20 dark:bg-slate-950">
+                                @if ($sfIcon)
+                                    <img src="{{ $sfIcon }}" alt="استوری {{ \App\Support\Fmt::fa($loop->iteration) }} {{ $shop->name }}" loading="lazy"
+                                         class="size-full rounded-full object-cover">
+                                @else
+                                    <span class="grid size-full place-items-center bg-gradient-to-br from-primary-500 to-primary-700 text-white">
+                                        <x-icon name="store" class="size-6" />
+                                    </span>
+                                @endif
+                            </span>
+                            @if ($story->isVideo())
+                                <span class="absolute bottom-0 left-1/2 grid size-5 -translate-x-1/2 place-items-center rounded-full bg-slate-900/85 text-white shadow ring-2 ring-white dark:ring-slate-950">
+                                    <x-icon name="play" class="size-2.5" />
+                                </span>
+                            @endif
+                        </span>
+                        <span class="mt-1.5 block truncate text-[10px] font-bold text-slate-600 sm:text-[11px] dark:text-slate-300">
+                            {{ $sfLabel !== '' ? $sfLabel : 'استوری '.\App\Support\Fmt::fa($loop->iteration) }}
+                        </span>
+                    </button>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     {{-- ═══════════════ فروش ویژه — SPECIAL SALE (dedicated, with live countdown) ═══════════════ --}}
     @if ($special->isNotEmpty() && ! $filtersActive)
         <section class="cv-auto mx-auto max-w-6xl px-4 pt-7 sm:px-6" aria-label="فروش ویژه">
@@ -427,9 +474,13 @@
         </x-slot:footer>
     </x-modal-panel>
 
+    {{-- ═══════════════ story viewer (opens from the rings above — storefront ONLY) ═══════════════ --}}
+    @livewire('customer.story-viewer')
+
     {{-- ═══════════════ toast ═══════════════ --}}
     <div x-data="{ show: false, msg: '' }"
          @storefront-toast.window="msg = $event.detail.message; show = true; setTimeout(() => show = false, 2600)"
+         @story-toast.window="msg = $event.detail.message; show = true; setTimeout(() => show = false, 2600)"
          x-show="show" x-transition.opacity
          class="fixed bottom-8 left-1/2 z-50 w-72 -translate-x-1/2 rounded-2xl bg-slate-900/95 px-4 py-3 text-center text-[11px] font-bold text-white shadow-2xl dark:bg-slate-800/95"
          x-cloak>

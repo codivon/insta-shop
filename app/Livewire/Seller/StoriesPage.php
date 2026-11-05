@@ -43,6 +43,15 @@ class StoriesPage extends Component
     /** @var mixed Livewire temporary upload (image stories) */
     public $media;
 
+    /**
+     * @var mixed Livewire temporary upload — optional circular ICON of
+     *            the story ring on the public storefront (each story is its own
+     *            ring there; video stories have no poster, so they need this one).
+     *            Empty → image stories use the media itself, video stories fall
+     *            back to the shop logo.
+     */
+    public $icon;
+
     public string $videoUrl = '';
 
     public string $productId = '';
@@ -213,12 +222,25 @@ class StoriesPage extends Component
             ->find((int) $this->productId);
     }
 
+    /** The story being edited — drives the modal's current-icon preview. */
+    public function getEditingStoryProperty(): ?Story
+    {
+        if ($this->editingId === null) {
+            return null;
+        }
+
+        return Story::query()
+            ->where('shop_id', $this->shop()->id)
+            ->find($this->editingId);
+    }
+
     public function render()
     {
         return view('livewire.seller.stories-page', [
             'stories' => $this->stories,
             'productOptions' => $this->productOptions,
             'selectedProduct' => $this->selectedProduct,
+            'editingStory' => $this->editingStory,
             'runningCount' => $this->runningCount,
             'activeLimit' => $this->activeLimit,
             'moderation' => $this->moderation,
@@ -288,6 +310,11 @@ class StoriesPage extends Component
             Storage::disk('public')->delete($story->media_path);
         }
 
+        // Replacing the ring icon → drop the old file.
+        if ($this->icon && $story->icon_path) {
+            Storage::disk('public')->delete($story->icon_path);
+        }
+
         $story->update($this->payload());
 
         ActivityLogger::log('story.updated', 'استوری #'.$story->id.' فروشگاه «'.$this->shop()->name.'» ویرایش شد', subject: $story);
@@ -308,6 +335,10 @@ class StoriesPage extends Component
 
         if ($story->media_path) {
             Storage::disk('public')->delete($story->media_path);
+        }
+
+        if ($story->icon_path) {
+            Storage::disk('public')->delete($story->icon_path);
         }
 
         $story->delete();
@@ -337,6 +368,9 @@ class StoriesPage extends Component
             'media_path' => $this->type === Story::TYPE_IMAGE && $this->media
                 ? $this->media->store('stories/'.$this->shop()->id, 'public')
                 : null,
+            'icon_path' => $this->icon
+                ? $this->icon->store('stories/'.$this->shop()->id.'/icons', 'public')
+                : null,
             'caption' => $this->caption !== '' ? $this->caption : null,
             'link_url' => $this->linkUrl !== '' ? $this->linkUrl : null,
             'link_title' => $this->linkUrl !== '' && $this->linkTitle !== '' ? $this->linkTitle : null,
@@ -351,6 +385,11 @@ class StoriesPage extends Component
             unset($payload['media_path']);
         }
 
+        // Editing WITHOUT picking a new icon keeps the current one.
+        if ($this->editingId !== null && $payload['icon_path'] === null) {
+            unset($payload['icon_path']);
+        }
+
         return $payload;
     }
 
@@ -359,6 +398,7 @@ class StoriesPage extends Component
         $this->editingId = null;
         $this->type = Story::TYPE_IMAGE;
         $this->media = null;
+        $this->icon = null;
         $this->videoUrl = '';
         $this->productId = '';
         $this->productSearch = '';
@@ -390,6 +430,7 @@ class StoriesPage extends Component
                 $isVideo ? null : 'mimes:jpg,jpeg,png,webp',
                 $isVideo ? null : 'max:5120',
             ]),
+            'icon' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'videoUrl' => [$isVideo ? 'required' : 'nullable', 'url', 'max:500',
                 function (string $attribute, mixed $value, \Closure $fail) use ($isVideo): void {
                     if ($isVideo && $value !== '' && ! Story::isDirectVideoUrl((string) $value)) {
@@ -419,6 +460,9 @@ class StoriesPage extends Component
             'media.image' => 'فایل باید تصویر باشد.',
             'media.mimes' => 'فرمت‌های مجاز: jpg، jpeg، png، webp.',
             'media.max' => 'حجم تصویر حداکثر ۵ مگابایت است.',
+            'icon.image' => 'تصویر آیکون باید یک فایل تصویری باشد.',
+            'icon.mimes' => 'فرمت‌های مجاز آیکون: jpg، jpeg، png، webp.',
+            'icon.max' => 'حجم تصویر آیکون حداکثر ۲ مگابایت است.',
             'videoUrl.required' => 'لینک ویدیو را وارد کنید.',
             'videoUrl.url' => 'لینک ویدیو باید یک آدرس اینترنتی معتبر باشد.',
             'videoUrl.max' => 'لینک ویدیو حداکثر ۵۰۰ کاراکتر است.',

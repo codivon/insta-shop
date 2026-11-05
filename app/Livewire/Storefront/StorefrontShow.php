@@ -11,6 +11,8 @@ use App\Models\Shop;
 use App\Models\ShopAttribute;
 use App\Models\ShopFilter;
 use App\Models\ShopFilterItem;
+use App\Models\Story;
+use App\Models\StoryView;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -234,6 +236,52 @@ class StorefrontShow extends Component
             'customer_id' => $customer->id,
             'product_id' => $productId,
         ]);
+    }
+
+    /* ─────────────────── storefront stories (per-story rings) ─────────────────── */
+
+    /**
+     * Active stories of THIS shop, oldest → newest. On the seller's own
+     * storefront EVERY story is its own story ring (client: «۵ استوری =
+     * انگار ۵ اکانت استوری گذاشته») — home keeps the one-ring-per-shop
+     * style, this is storefront-only.
+     */
+    public function getStorefrontStoriesProperty(): Collection
+    {
+        return Story::query()
+            ->visible()
+            ->ofPublicShops()
+            ->where('shop_id', $this->shop->id)
+            ->with(['shop:id,name,logo_path,instagram_username', 'product.mainImage'])
+            ->withCount('likes')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /** Story ids the signed-in customer already watched (ring seen-state). */
+    public function getStorefrontSeenIdsProperty(): array
+    {
+        $customer = auth('customer')->user();
+
+        if (! $customer || $this->storefrontStories->isEmpty()) {
+            return [];
+        }
+
+        return StoryView::query()
+            ->where('customer_id', $customer->id)
+            ->whereIn('story_id', $this->storefrontStories->pluck('id'))
+            ->pluck('story_id')
+            ->all();
+    }
+
+    /** Open the story viewer at a SPECIFIC story ring (not always the first). */
+    public function openStoryAt(int $index): void
+    {
+        if ($this->storefrontStories->isEmpty()) {
+            return;
+        }
+
+        $this->dispatch('open-stories', shopId: $this->shop->id, startIndex: max(0, $index));
     }
 
     /* ─────────────────────── computed data ─────────────────────── */
@@ -597,6 +645,8 @@ class StorefrontShow extends Component
             'cartCount' => $this->cartCount,
             'filterBlocks' => $this->filterBlocks,
             'specPicksCount' => $this->specPicksCount,
+            'storefrontStories' => $this->storefrontStories,
+            'storefrontSeenIds' => $this->storefrontSeenIds,
         ])->title($this->shop->name);
     }
 }

@@ -34,14 +34,17 @@ class StoryViewer extends Component
     public array $counted = [];
 
     #[On('open-stories')]
-    public function open(int $shopId): void
+    public function open(int $shopId, int $startIndex = 0): void
     {
-        if (empty($this->storyIds($shopId))) {
+        $ids = $this->storyIds($shopId);
+
+        if ($ids === []) {
             return;
         }
 
         $this->shopId = $shopId;
-        $this->index = 0;
+        // per-story rings (storefront) open the viewer at the tapped story
+        $this->index = min(max(0, $startIndex), count($ids) - 1);
         $this->counted = [];
         $this->commentBody = '';
         $this->isOpen = true;
@@ -90,7 +93,9 @@ class StoryViewer extends Component
         $story = $this->current;
 
         if ($customer === null || $story === null) {
-            $this->dispatch('home-toast', message: 'برای واکنش به استوری، ابتدا وارد حساب خود شوید.');
+            // generic name — the viewer also runs on the public storefront,
+            // where there is no «home-toast» listener
+            $this->dispatch('story-toast', message: 'برای واکنش به استوری، ابتدا وارد حساب خود شوید.');
 
             return;
         }
@@ -123,7 +128,7 @@ class StoryViewer extends Component
         $story = $this->current;
 
         if ($customer === null || $story === null) {
-            $this->dispatch('home-toast', message: 'برای ثبت نظر، ابتدا وارد حساب خود شوید.');
+            $this->dispatch('story-toast', message: 'برای ثبت نظر، ابتدا وارد حساب خود شوید.');
 
             return;
         }
