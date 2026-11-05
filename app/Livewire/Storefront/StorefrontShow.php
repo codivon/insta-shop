@@ -336,14 +336,21 @@ class StorefrontShow extends Component
             ->get();
     }
 
-    /** Slider: discounted products, biggest discount first. */
+    /**
+     * Slider: discounted products, biggest discount first.
+     * The subtraction MUST be «compare_at_price - price» (always positive
+     * under the whereColumn guard): on MySQL both columns are UNSIGNED
+     * BIGINT and the reversed «price - compare_at_price» throws
+     * 1690 «Numeric value out of range» for every discounted row
+     * (v0.17.14 — /shop/demo_store 500).
+     */
     public function getDiscountedProperty(): Collection
     {
         return $this->baseQuery()
             ->with(['mainImage', 'category'])
             ->whereColumn('compare_at_price', '>', 'price')
             ->where('price', '>', 0)
-            ->orderByRaw('(price - compare_at_price) asc')
+            ->orderByRaw('(compare_at_price - price) desc')
             ->latest()
             ->limit(10)
             ->get();
@@ -386,7 +393,8 @@ class StorefrontShow extends Component
             'cheap' => $query->orderBy('price')->latest(),
             'expensive' => $query->orderByDesc('price')->latest(),
             'popular' => $query->orderByDesc('views')->latest(),
-            'discount' => $query->whereColumn('compare_at_price', '>', 'price')->orderByRaw('(price - compare_at_price) asc')->latest(),
+            // same unsigned-safe direction as getDiscountedProperty() (v0.17.14)
+            'discount' => $query->whereColumn('compare_at_price', '>', 'price')->orderByRaw('(compare_at_price - price) desc')->latest(),
             default => $query->latest(), // newest
         };
 

@@ -6,41 +6,45 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
-use App\Models\Seller;
 use App\Models\Shop;
 use App\Models\ShopAttribute;
 use App\Models\ShopAttributeValue;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Demo catalog (v0.17.9 + v0.17.11) — یک فروشگاه نمونهٔ تأییدشده + محصولات
- * واقعی‌نمای باسلام/دیجی‌کالا-سبک:
+ * Demo catalog (v0.17.9 → v0.17.14) — یک مارکت‌پلیس نمونه از ۹ فروشگاه
+ * تأییدشده (DemoSellersSeeder) با محصولات واقعی‌نمای باسلام/دیجی‌کالا-سبک:
  *
  *   ① ۴۳ محصول «پرچمدار» دست‌نویس (data/demo-products.php) با گالری اختصاصی
  *      روی زیر‌دسته‌های منتخب هر ۱۴ دستهٔ اصلی.
- *   ② «پُرکنِ» زیر‌دسته‌ها (v0.17.11): هر زیر‌دستهٔ سطح-۲ (فرزندِ مستقیم
- *      دستهٔ اصلی) حداقل ۳ محصول می‌گیرد — کمبودها با ردیف‌های تولیدشده
- *      قطعی (deterministic) از پروفایل همان دستهٔ اصلی (برند/بازهٔ قیمت/
- *      رنگ/گارانتی/واحد) پر می‌شود و گالری آن‌ها به تصاویر عمومیِ همان
- *      خانواده اشاره می‌کند (کپی فایل جدیدی روی دیسک نمی‌شود).
- *   ③ تنوع‌ها (v0.17.12): هر محصولِ دمو حداقل ۲ تنوع قابل‌فروش می‌گیرد —
- *      ۴۳ محصول پرچمدار با ماتریس دست‌نویسِ مخصوص به خودشان
- *      (data/demo-product-variants.php: تیتانیوم برای گوشی، سایز کفش،
- *      حجم عطر، جلد کتاب، وزن خشکبار، طعم پروتئین، سال ضرب سکه و…)
- *      و محصولات تکمیلی با تنوع‌های قطعیِ هم‌خانواده (رنگ/گارانتی/سایز).
- *      قیمت تنوع اول = قیمت پایهٔ محصول (min تنوع‌ها) تا قیمت کارت‌ها
- *      ثابت بماند و موجودی = مجموع تنوع‌ها (syncAggregates).
+ *   ② توزیع بین فروشگاه‌ها (v0.17.14): هر دستهٔ اصلی متعلق به یک فروشگاهِ
+ *      دمو است (data/demo-sellers.php) و همهٔ محصولات آن دسته — پرچمدار و
+ *      تولیدی — در همان فروشگاه ساخته می‌شوند؛ کالای دیجیتال در
+ *      demo_store، خانه و آشپزخانه در مهرجان و…. روی دیتابیس‌های قدیمی
+ *      محصولات با «همان اسلاگ» به فروشگاه مالکِ دسته منتقل می‌شوند
+ *      (جابجایی، نه تکرار).
+ *   ③ «پُرکنِ» زیر‌دسته‌ها (v0.17.11): هر زیر‌دستهٔ سطح-۲ حداقل ۳ محصول
+ *      می‌گیرد — کمبودها با ردیف‌های تولیدشدهٔ قطعی (deterministic) از
+ *      پروفایل همان دستهٔ اصلی پر می‌شود و گالری‌ها به تصاویر عمومیِ همان
+ *      خانواده اشاره می‌کنند (کپی فایل جدیدی روی دیسک نمی‌شود).
+ *   ④ تنوع‌ها (v0.17.12): هر محصولِ دمو حداقل ۲ تنوع قابل‌فروش — ۴۳ محصول
+ *      پرچمدار با ماتریس دست‌نویس (data/demo-product-variants.php) و
+ *      محصولات تکمیلی با تنوع‌های قطعی هم‌خانواده (رنگ/گارانتی/سایز).
+ *      قیمت تنوع اول = قیمت پایهٔ محصول تا قیمت کارت‌ها ثابت بماند و
+ *      موجودی = مجموع تنوع‌ها (syncAggregates).
  *
  * Images for the flagship rows ship inside the repo
  * (database/seeders/data/demo/products) and are copied into the public
  * disk on seed — no manual upload needed.
  *
- * Idempotent: the seller is matched on its demo phone, products on
- * (shop_id, slug) and gallery rows on (product_id, sort).
+ * Idempotent: demo products are matched on their slug ACROSS all demo
+ * shops (created / moved / updated — never duplicated), gallery rows on
+ * (product_id, sort).
  *
- * حذف کامل: `php artisan demo:remove` فروشگاه، محصولات، تصاویر و
+ * حذف کامل: `php artisan demo:remove` همهٔ فروشگاه‌ها، محصولات، تصاویر و
  * بنرهای نمونه را یک‌جا پاک می‌کند (یا خطوط Demo*Seeder را از
  * DatabaseSeeder بردارید).
  */
@@ -48,20 +52,29 @@ class DemoProductSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /** The fixed demo seller identity (also used by demo:remove). */
-    private const SELLER_PHONE = '989120000000'; // normalized (E.164 without +) — matches Phone::normalize()
-
-    private const SELLER_HANDLE = 'demo_store';
-
     public function run(): void
     {
-        $seller = $this->ensureSeller();
-        $shop = $this->ensureShop($seller);
-        $products = require database_path('seeders/data/demo-products.php');
+        // v0.17.14 — the 9 demo sellers/shops (idempotent, safe standalone).
+        $this->call(DemoSellersSeeder::class);
+
+        $shops = DemoSellersSeeder::shopByHandle();
+        $shopByRoot = DemoSellersSeeder::shopByRoot();
+
+        if ($shops->isEmpty()) {
+            $this->command?->warn('  هیچ فروشگاه نمونه‌ای ساخته نشد — DemoProductSeeder متوقف شد.');
+
+            return;
+        }
+
+        $groups = require database_path('seeders/data/demo-products.php');
 
         $created = 0;
+        $moved = 0;
 
-        foreach ($products as $group) {
+        foreach ($groups as $group) {
+            $shop = $shops->get($shopByRoot[$group['root']] ?? '')
+                ?? $shops->get('demo_store'); // unknown root → the flagship store
+
             foreach ($group['products'] as $row) {
                 $category = $this->resolveCategory($group['root'], $row['sub']);
 
@@ -71,91 +84,31 @@ class DemoProductSeeder extends Seeder
                     continue;
                 }
 
-                $specialEnds = ! empty($row['special'])
-                    ? now()->addDays((int) ($row['special_days'] ?? 3))
-                    : null;
+                [$product, $didMove] = $this->upsertDemoProduct($shop, $category, $row);
 
-                $product = Product::query()->updateOrCreate(
-                    ['shop_id' => $shop->id, 'slug' => $row['slug']],
-                    [
-                        'category_id' => $category->id,
-                        'name' => $row['name'],
-                        'description' => $row['desc'],
-                        'specifications' => $row['specs'],
-                        'type' => Product::TYPE_PHYSICAL,
-                        'price' => (int) $row['price'],
-                        'compare_at_price' => $row['compare'] !== null ? (int) $row['compare'] : null,
-                        'stock' => (int) ($row['stock'] ?? 5),
-                        'weight_grams' => $row['weight_grams'] ?? null,
-                        'unit' => $row['unit'] ?? 'تعداد',
-                        'status' => Product::STATUS_PUBLISHED,
-                        'views' => (int) ($row['views'] ?? 0),
-                        'is_special' => (bool) ($row['special'] ?? false),
-                        'special_ends_at' => $specialEnds,
-                    ],
-                );
+                if ($product === null) {
+                    continue;
+                }
 
-                $this->syncImages($product, $row['img'], $row['slug']);
+                $this->syncImages($product, $row['img'], (string) $product->slug);
                 $created++;
+                $moved += $didMove ? 1 : 0;
             }
         }
 
-        $generated = $this->fillChildCategories($shop);
+        $generated = $this->fillChildCategories($shopByRoot);
 
         if ($generated > 0) {
             $this->command?->line("  <fg=green>✓</> {$generated} محصول تکمیلی برای زیر‌دسته‌های کم‌محصول ساخته شد.");
         }
 
-        $variants = $this->seedVariants($shop);
+        $variants = $this->seedVariants($shops);
 
-        $this->command?->line("  <fg=green>✓</> فروشگاه نمونه با {$created} محصول پرچمدار در دسته‌بندی‌ها ساخته شد.");
+        $this->command?->line("  <fg=green>✓</> {$created} محصول پرچمدار بین {$shops->count()} فروشگاه نمونه توزیع شد".($moved > 0 ? " ({$moved} ردیف قدیمی به فروشگاه مالکِ دسته منتقل شد)" : '').'.');
         $this->command?->line("  <fg=green>✓</> {$variants} تنوع قابل‌فروش روی محصولات نمونه ثبت شد (هر محصول ≥ ۲ تنوع).");
     }
 
     // ── helpers ──────────────────────────────────────────────────────
-
-    /** The approved demo seller (idempotent on the demo phone). */
-    private function ensureSeller(): Seller
-    {
-        return Seller::query()->updateOrCreate(
-            ['phone' => self::SELLER_PHONE],
-            [
-                'instagram_username' => self::SELLER_HANDLE,
-                'full_name' => 'فروشگاه نمونه اینستاشاپ',
-                'status' => 'approved',
-                'phone_verified_at' => now(),
-            ],
-        );
-    }
-
-    /** The demo shop (one per seller) + bundled logo artwork. */
-    private function ensureShop(Seller $seller): Shop
-    {
-        $logoPath = null;
-        $source = database_path('seeders/data/demo/banners/shop-logo.jpg');
-
-        if (is_file($source)) {
-            $logoPath = 'shops/demo-logo.jpg';
-
-            if (! Storage::disk('public')->exists($logoPath)) {
-                Storage::disk('public')->put($logoPath, file_get_contents($source));
-            }
-        }
-
-        return Shop::query()->updateOrCreate(
-            ['seller_id' => $seller->id],
-            [
-                'name' => 'دیجی‌مارکت اینستاشاپ',
-                'instagram_username' => self::SELLER_HANDLE,
-                'about' => 'فروشگاه نمونهٔ پلتفرم اینستاشاپ — موبایل، لپ‌تاپ و گجت‌های دیجیتال با قیمت رقابتی و ارسال سریع به سراسر کشور. این فروشگاه و محصولاتش با سیدر نمونه ساخته شده‌اند و می‌توانید هر لحظه با دستور demo:remove حذفشان کنید.',
-                'logo_path' => $logoPath,
-                'phone' => '02191000000',
-                'address' => 'تهران، خیابان ولیعصر، مرکز کامپیوتر پیروزی، پلاک ۱۰',
-                'status' => 'active',
-                'show_stock' => true,
-            ],
-        );
-    }
 
     /** Sub-category under its root; fall back to the root itself. */
     private function resolveCategory(string $rootName, string $subName): ?Category
@@ -175,9 +128,89 @@ class DemoProductSeeder extends Seeder
             ->first();
     }
 
+    /**
+     * The demo row with this slug — wherever it currently lives among the
+     * demo shops. Production databases seeded before v0.17.14 hold every
+     * product inside demo_store; matching by slug lets the seeder MOVE
+     * those rows to the root-owning shop instead of duplicating them.
+     */
+    private function findDemoProduct(string $slug): ?Product
+    {
+        return Product::query()
+            ->whereIn('shop_id', $this->demoShopIds())
+            ->where('slug', $slug)
+            ->first();
+    }
+
+    private array $demoShopIdCache = [];
+
+    /** Ids of all demo shops (cached per run). */
+    private function demoShopIds(): array
+    {
+        if ($this->demoShopIdCache === []) {
+            $this->demoShopIdCache = Shop::query()
+                ->whereHas('seller', fn ($q) => $q->whereIn('phone', DemoSellersSeeder::sellerPhones()))
+                ->pluck('id')
+                ->all();
+        }
+
+        return $this->demoShopIdCache;
+    }
+
+    /**
+     * Create-or-move-or-update ONE flagship product inside its root-owning
+     * shop. Returns [product, moved] — moved=true when an existing demo row
+     * changed shop (v0.17.14 distribution on legacy databases).
+     */
+    private function upsertDemoProduct(Shop $shop, Category $category, array $row): array
+    {
+        $slug = (string) $row['slug'];
+        $product = $this->findDemoProduct($slug);
+        $moved = false;
+
+        if ($product === null && Product::query()->where('slug', $slug)->exists()) {
+            // slug taken by a NON-demo row (never happens on demo DBs) —
+            // suffix ours instead of colliding with the unique index.
+            $slug .= '-'.$shop->id;
+
+            $this->command?->warn("  اسلاگ «{$row['slug']}» اشغال است — محصول در {$shop->name} با اسلاگ «{$slug}» ساخته شد.");
+        }
+
+        if ($product !== null) {
+            $moved = (int) $product->shop_id !== (int) $shop->id;
+        } else {
+            $product = new Product;
+        }
+
+        $specialEnds = ! empty($row['special'])
+            ? now()->addDays((int) ($row['special_days'] ?? 3))
+            : null;
+
+        $product->forceFill([
+            'shop_id' => $shop->id,
+            'slug' => $slug,
+            'category_id' => $category->id,
+            'name' => $row['name'],
+            'description' => $row['desc'],
+            'specifications' => $row['specs'],
+            'type' => Product::TYPE_PHYSICAL,
+            'price' => (int) $row['price'],
+            'compare_at_price' => $row['compare'] !== null ? (int) $row['compare'] : null,
+            'stock' => (int) ($row['stock'] ?? 5),
+            'weight_grams' => $row['weight_grams'] ?? null,
+            'unit' => $row['unit'] ?? 'تعداد',
+            'status' => Product::STATUS_PUBLISHED,
+            'views' => (int) ($row['views'] ?? 0),
+            'is_special' => (bool) ($row['special'] ?? false),
+            'special_ends_at' => $specialEnds,
+        ])->save();
+
+        return [$product, $moved];
+    }
+
     // ── v0.17.12: variations (تنوع‌های قابل‌فروش هر محصول دمو) ──────────
 
-    /** Extra select attributes the demo shop needs beyond the 3 defaults. */
+    /** Extra select attributes every demo shop needs beyond the 3 defaults. */
     private const EXTRA_ATTRIBUTES = [
         'حافظه داخلی' => ['۳۲ گیگابایت', '۶۴ گیگابایت', '۲۵۶ گیگابایت', '۵۱۲ گیگابایت', '۱ ترابایت'],
         'حجم' => ['۶۰ میلی‌لیتر', '۱۰۰ میلی‌لیتر', '۲۰۰ میلی‌لیتر'],
@@ -233,33 +266,35 @@ class DemoProductSeeder extends Seeder
     ];
 
     /**
-     * Give EVERY demo product at least 2 sellable variants.
-     * Flagships use the hand-written matrix (data/demo-product-variants.php),
-     * generated rows get deterministic combos from the same root profile.
-     * Returns the number of variant rows in place afterwards.
+     * Give EVERY demo product of EVERY demo shop at least 2 sellable
+     * variants. Flagships use the hand-written matrix
+     * (data/demo-product-variants.php), generated rows get deterministic
+     * combos from the same root profile. Returns the variant row count.
      */
-    private function seedVariants(Shop $shop): int
+    private function seedVariants(Collection $shops): int
     {
-        $index = $this->ensureVariationAttributes($shop);
-
         $flagship = require database_path('seeders/data/demo-product-variants.php');
-
-        $products = Product::query()
-            ->where('shop_id', $shop->id)
-            ->where('type', Product::TYPE_PHYSICAL)
-            ->with('category.parent')
-            ->get();
 
         $count = 0;
 
-        foreach ($products as $product) {
-            $specs = $flagship[$product->slug] ?? $this->generateVariantSpecs($product);
+        foreach ($shops as $shop) {
+            $index = $this->ensureVariationAttributes($shop);
 
-            if ($specs === []) {
-                continue; // unknown profile — leave the plain product alone
+            $products = Product::query()
+                ->where('shop_id', $shop->id)
+                ->where('type', Product::TYPE_PHYSICAL)
+                ->with('category.parent')
+                ->get();
+
+            foreach ($products as $product) {
+                $specs = $flagship[$product->slug] ?? $this->generateVariantSpecs($product);
+
+                if ($specs === []) {
+                    continue; // unknown profile — leave the plain product alone
+                }
+
+                $count += $this->syncProductVariants($product, $specs, $index);
             }
-
-            $count += $this->syncProductVariants($product, $specs, $index);
         }
 
         return $count;
@@ -614,14 +649,15 @@ class DemoProductSeeder extends Seeder
 
     /**
      * Generate enough deterministic rows so EVERY level-2 category has
-     * CHILD_MIN demo products. Reuses the flagship galleries of the same
-     * family (no new disk copies). Returns the number of created rows.
+     * CHILD_MIN demo products inside the shop that owns its root.
+     * Reuses the flagship galleries of the same family (no new disk
+     * copies). Returns the number of created rows.
      */
-    private function fillChildCategories(Shop $shop): int
+    private function fillChildCategories(array $shopByRoot): int
     {
-        // imgKey → flagship slug (the public copies live at products/demo/{slug}-N.jpg)
         $groups = require database_path('seeders/data/demo-products.php');
 
+        // imgKey → flagship slug (the public copies live at products/demo/{slug}-N.jpg)
         $familyImages = [];
 
         foreach ($groups as $group) {
@@ -629,6 +665,8 @@ class DemoProductSeeder extends Seeder
                 $familyImages[$group['root']][$row['img']] = $row['slug'];
             }
         }
+
+        $shops = DemoSellersSeeder::shopByHandle();
 
         $children = Category::query()
             ->whereNotNull('parent_id')
@@ -639,6 +677,12 @@ class DemoProductSeeder extends Seeder
         $created = 0;
 
         foreach ($children as $index => $child) {
+            $shop = $shops->get($shopByRoot[$child->parent?->name] ?? '');
+
+            if ($shop === null) {
+                continue; // root without a demo owner (non-demo category tree)
+            }
+
             $have = Product::query()
                 ->where('shop_id', $shop->id)
                 ->where('category_id', $child->id)
@@ -707,25 +751,31 @@ class DemoProductSeeder extends Seeder
 
         $special = (($seed >> 8) % 11) === 0;
 
-        $product = Product::query()->updateOrCreate(
-            ['shop_id' => $shop->id, 'slug' => $slug],
-            [
-                'category_id' => $child->id,
-                'name' => $name,
-                'description' => $desc,
-                'specifications' => $specs,
-                'type' => Product::TYPE_PHYSICAL,
-                'price' => $price,
-                'compare_at_price' => $compare,
-                'stock' => 3 + (($seed >> 5) % 13),
-                'weight_grams' => null,
-                'unit' => $profile['unit'],
-                'status' => Product::STATUS_PUBLISHED,
-                'views' => 15 + (($seed >> 7) % 780),
-                'is_special' => $special,
-                'special_ends_at' => $special ? now()->addDays(2 + ($n % 4)) : null,
-            ],
-        );
+        $product = $this->findDemoProduct($slug) ?? new Product;
+
+        if ($product->exists && (int) $product->shop_id !== (int) $shop->id) {
+            // legacy layout — move the generated row to the root owner too
+            $this->command?->line("  محصول تکمیلی «{$slug}» به {$shop->name} منتقل شد.");
+        }
+
+        $product->forceFill([
+            'shop_id' => $shop->id,
+            'slug' => $product->exists ? $product->slug : $slug,
+            'category_id' => $child->id,
+            'name' => $name,
+            'description' => $desc,
+            'specifications' => $specs,
+            'type' => Product::TYPE_PHYSICAL,
+            'price' => $price,
+            'compare_at_price' => $compare,
+            'stock' => 3 + (($seed >> 5) % 13),
+            'weight_grams' => null,
+            'unit' => $profile['unit'],
+            'status' => Product::STATUS_PUBLISHED,
+            'views' => 15 + (($seed >> 7) % 780),
+            'is_special' => $special,
+            'special_ends_at' => $special ? now()->addDays(2 + ($n % 4)) : null,
+        ])->save();
 
         $this->attachFamilyImages($product, $rootName, $index + $n, $familyImages);
 
