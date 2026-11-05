@@ -22,6 +22,11 @@ class DatabaseSeeder extends Seeder
             ProvinceSeeder::class,
             CitySeeder::class,
             CategorySeeder::class,
+
+            // ── محتوای نمونه (دمو): ۴ اسلایدر + ۴ بنر + فروشگاه و محصولات نمونه ──
+            // حذف کامل: «php artisan demo:remove» را اجرا کنید یا همین دو خط را بردارید.
+            DemoBannerSeeder::class,
+            DemoProductSeeder::class,
         ]);
     }
 }
