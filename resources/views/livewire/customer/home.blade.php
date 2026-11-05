@@ -58,21 +58,41 @@
 
             {{-- ── hero banner slider (admin-managed) or default promo ── --}}
             @if ($banners->isNotEmpty())
-                <div x-data="{ slide: 0, n: {{ $banners->count() }}, go(i) { this.slide = (i + this.n) % this.n } }"
+                {{-- touch swipe: horizontal pan drags the track live (tx in px),
+                     a ≥40px flick commits to the next/prev slide; `touch-pan-y`
+                     keeps vertical page scrolling native. Track stays LTR so
+                     translateX math is the classic carousel. --}}
+                <div x-data="{
+                         slide: 0, n: {{ $banners->count() }},
+                         go(i) { this.slide = (i + this.n) % this.n },
+                         tx: 0, dragging: false, sx: 0,
+                         tStart(e) { this.dragging = true; this.sx = e.touches[0].clientX; this.tx = 0 },
+                         tMove(e) { if (this.dragging) this.tx = e.touches[0].clientX - this.sx },
+                         tEnd() {
+                             if (! this.dragging) return;
+                             this.dragging = false;
+                             if (Math.abs(this.tx) > 40) this.go(this.slide + (this.tx < 0 ? 1 : -1));
+                             this.tx = 0;
+                         }
+                     }"
                      x-init="{{ $banners->count() > 1 ? 'setInterval(() => go(slide + 1), 5000)' : '' }}"
-                     class="relative overflow-hidden rounded-2xl shadow-xl" aria-label="اسلایدر بنر">
-                    {{-- track is LTR so translateX(-N*100%) is the classic carousel —
-                         slide CONTENT itself is directionless images --}}
-                    <div dir="ltr" class="flex transition-transform duration-500 ease-out" :style="'transform: translateX(-' + (slide * 100) + '%)'">
+                     class="relative overflow-hidden rounded-2xl shadow-xl"
+                     @touchstart="tStart" @touchmove="tMove" @touchend="tEnd"
+                     aria-label="اسلایدر بنر">
+                    <div dir="ltr"
+                         class="flex select-none ease-out"
+                         :class="dragging ? 'transition-none' : 'transition-transform duration-500'"
+                         :style="'transform: translateX(calc(-' + (slide * 100) + '% + ' + tx + 'px))'"
+                         style="touch-action: pan-y">
                         @foreach ($banners as $banner)
                             <div wire:key="banner-slide-{{ $banner->id }}" class="w-full shrink-0">
                                 @if ($banner->link_url)
-                                    <a href="{{ $banner->link_url }}" class="block">
-                                        <img src="{{ $banner->imageUrl() }}" alt="{{ $banner->title ?: 'بنر' }}" loading="lazy"
+                                    <a href="{{ $banner->link_url }}" class="block" draggable="false">
+                                        <img src="{{ $banner->imageUrl() }}" alt="{{ $banner->title ?: 'بنر' }}" loading="lazy" draggable="false"
                                              class="aspect-[12/5] w-full object-cover">
                                     </a>
                                 @else
-                                    <img src="{{ $banner->imageUrl() }}" alt="{{ $banner->title ?: 'بنر' }}" loading="lazy"
+                                    <img src="{{ $banner->imageUrl() }}" alt="{{ $banner->title ?: 'بنر' }}" loading="lazy" draggable="false"
                                          class="aspect-[12/5] w-full object-cover">
                                 @endif
                             </div>

@@ -3,6 +3,7 @@
 namespace InstaShop\Installer\Http\Controllers;
 
 use App\Models\Admin;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -178,11 +179,7 @@ class InstallerController extends Controller
 
         try {
             if ($kind === 'migrations') {
-                Artisan::call('migrate', [
-                    '--path' => 'database/migrations/'.basename($items[$index]),
-                    '--force' => true,
-                    '--no-interaction' => true,
-                ]);
+                $this->migrateWithRetry('database/migrations/'.basename($items[$index]));
             } else {
                 Artisan::call('db:seed', [
                     '--class' => $items[$index],
@@ -215,6 +212,37 @@ class InstallerController extends Controller
         sort($files);
 
         return $files;
+    }
+
+    /**
+     * Migrate one file, retrying ONCE on transient MySQL DDL errors.
+     *
+     * A shared-host MySQL occasionally rejects the very first statement that
+     * touches a freshly created table (SQLSTATE 42S02 / driver 1146 «table
+     * doesn't exist» — see the settings-table incident) or loses it to a
+     * lock (1205/1213). Every migration re-drops its own tables first, so a
+     * clean second run of the SAME file is always safe.
+     */
+    protected function migrateWithRetry(string $path): void
+    {
+        $call = fn () => Artisan::call('migrate', [
+            '--path' => $path,
+            '--force' => true,
+            '--no-interaction' => true,
+        ]);
+
+        try {
+            $call();
+        } catch (Throwable $e) {
+            $code = (int) ($e instanceof QueryException ? ($e->errorInfo[1] ?? 0) : 0);
+
+            if (! in_array($code, [1146, 1205, 1213], true)) {
+                throw $e;
+            }
+
+            usleep(500_000);
+            $call();
+        }
     }
 
     /**
