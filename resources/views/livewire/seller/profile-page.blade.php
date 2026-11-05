@@ -76,22 +76,7 @@
             </a>
         </div>
 
-        {{-- ── edit name ── --}}
-        <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <h3 class="text-xs font-extrabold">نام و نام خانوادگی</h3>
-            <p class="mt-0.5 text-[10px] text-slate-400">نام نمایشی شما در پنل و ارتباط با مشتریان</p>
-            <form wire:submit="saveName" class="mt-3 flex gap-2">
-                <input type="text" wire:model="full_name" placeholder="مثلاً: مهدی رضایی" maxlength="60"
-                       class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
-                <button type="submit" wire:loading.attr="disabled" wire:target="saveName"
-                        class="rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95 disabled:opacity-50">
-                    ذخیره
-                </button>
-            </form>
-            @error('full_name') <p class="mt-2 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-        </div>
-
-        {{-- ── shortcuts & settings rows ── --}}
+        {{-- ── shortcuts & settings rows — نام و نام خانوادگی به «ویرایش فروشگاه» منتقل شد ── --}}
         <div class="mt-4 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
             <a href="{{ route('seller.shop') }}" wire:navigate
                class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">

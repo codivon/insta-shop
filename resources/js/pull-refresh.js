@@ -1,19 +1,30 @@
 //
 // InstaShop — Chrome-style pull-to-refresh for the mobile shells
 //
-
 // The customer & seller shells pin the viewport (h-dvh + overflow-hidden)
 // and scroll INSIDE <main> — so the browser's native pull-to-refresh can
-// never fire. This module restores the Chrome-on-Android behavior: when
-// the scroller sits at the very top and the user drags down, a spinner
-// drops in with rubber-band resistance; past the threshold it "arms" and
-// releasing the finger reloads the page.
+// never fire. This module restores the Chrome-on-Android behavior: the
+// page reloads only when the finger STARTS inside the very top strip of
+// the screen (~24px, over the pinned header too) and drags down past the
+// threshold.
+//
+// Client report (v0.17.4): «رفرش خودکار رو بر دار… فقط باید z-index از همه
+// بیشتر باشه تا هرجایی کار کنه» — the old scroller-bound version armed
+// from ANYWHERE at scroll-top (a drag on the first card, the banner
+// carousel… felt like the page refreshes ITSELF). Now the gesture is
+// deliberate: start inside the top strip or it never arms. Document-level
+// capture binding makes it work on EVERY page (over headers, bells,
+// theme toggles — anything), and the spinner z-index sits above every
+// overlay in the app.
 //
 // Touch-only (a mouse can never trigger it), and disabled on focused
 // pages (chat/product) whose <main> does not scroll, and inside elements
 // marked data-ptr-ignore (e.g. the story viewer overlay).
+//
 
-const THRESHOLD = 72; // px of raw drag that arms the refresh
+const THRESHOLD = 72;      // px of downward drag that arms the refresh
+const TOP_ZONE = 26;       // px strip under the top edge where the pull may start
+const SPINNER_TOP = 20;    // px under the top edge the spinner sits at (Chrome)
 
 const init = () => {
     // The scroller: the first <main> that actually scrolls (customer +
@@ -40,6 +51,14 @@ const init = () => {
         document.body.appendChild(indicator);
     }
 
+    // Notch / status-bar inset — the top strip starts BELOW it.
+    let safeTop = 0;
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none;';
+    document.body.appendChild(probe);
+    safeTop = probe.offsetHeight;
+    probe.remove();
+
     let startY = 0;
     let tracking = false;
     let armed = false;
@@ -54,58 +73,77 @@ const init = () => {
         indicator.style.setProperty('--ptr-scale', '0.5');
     };
 
-    scroller.addEventListener('touchstart', (e) => {
-        if (e.touches.length !== 1) return;
-        if (e.target.closest('[data-ptr-ignore]')) return;
-        if (scroller.scrollTop > 0) return;
+    // ── document-level capture binding: works EVERYWHERE (the user's
+    //    ask — «تا هرجایی کار کنه»), including on the pinned header,
+    //    notification bell, theme toggle… anything under the top strip.
+    document.addEventListener(
+        'touchstart',
+        (e) => {
+            if (e.touches.length !== 1) return;
+            if (e.target.closest('[data-ptr-ignore]')) return;
+            // deliberate gesture ONLY: the finger must start inside the
+            // very top strip of the screen (≈20px) — never mid-page
+            if (e.touches[0].clientY > TOP_ZONE + safeTop) return;
+            // and only while the page sits at its very top
+            if (scroller.scrollTop > 0) return;
 
-        startY = e.touches[0].clientY;
-        tracking = true;
-        armed = false;
-        indicator.classList.remove('ip-ptr-back', 'ip-ptr-loading');
-    }, { passive: true });
-
-    scroller.addEventListener('touchmove', (e) => {
-        if (!tracking || e.touches.length !== 1) return;
-
-        const dy = e.touches[0].clientY - startY;
-
-        if (dy <= 0) {
-            if (indicator.style.transform !== '') reset(false);
-            return;
-        }
-
-        // Chrome-style: the spinner NEVER travels down the page — it stays
-        // pinned ~20px under the top edge and only grows/rotates in place
-        // while the pull progresses.
-        const p = Math.min(1, dy / THRESHOLD);
-        armed = dy >= THRESHOLD;
-
-        indicator.classList.toggle('ip-ptr-armed', armed);
-        indicator.style.transform = 'translate(-50%, 0)';
-        indicator.style.setProperty('--ptr-rot', `${Math.round(p * 360)}deg`);
-        indicator.style.setProperty('--ptr-scale', (0.5 + 0.5 * p).toFixed(3));
-    }, { passive: true });
-
-    scroller.addEventListener('touchend', () => {
-        if (!tracking) return;
-
-        if (armed) {
-            tracking = false;
+            startY = e.touches[0].clientY;
+            tracking = true;
             armed = false;
-            indicator.classList.add('ip-ptr-loading');
+            indicator.classList.remove('ip-ptr-back', 'ip-ptr-loading');
+        },
+        { capture: true, passive: true },
+    );
+
+    document.addEventListener(
+        'touchmove',
+        (e) => {
+            if (!tracking || e.touches.length !== 1) return;
+
+            const dy = e.touches[0].clientY - startY;
+
+            if (dy <= 0) {
+                if (indicator.style.transform !== '') reset(false);
+                return;
+            }
+
+            // Chrome-style: the spinner NEVER travels down the page — it stays
+            // pinned ~20px under the top edge and only grows/rotates in place
+            // while the pull progresses.
+            const p = Math.min(1, dy / THRESHOLD);
+            armed = dy >= THRESHOLD;
+
+            indicator.classList.toggle('ip-ptr-armed', armed);
             indicator.style.transform = 'translate(-50%, 0)';
-            indicator.style.setProperty('--ptr-rot', '0deg');
-            indicator.style.setProperty('--ptr-scale', '1');
+            indicator.style.setProperty('--ptr-rot', `${Math.round(p * 360)}deg`);
+            indicator.style.setProperty('--ptr-scale', (0.5 + 0.5 * p).toFixed(3));
+        },
+        { capture: true, passive: true },
+    );
 
-            // Chrome reloads the full document — do the same.
-            setTimeout(() => window.location.reload(), 120);
+    document.addEventListener(
+        'touchend',
+        () => {
+            if (!tracking) return;
 
-            return;
-        }
+            if (armed) {
+                tracking = false;
+                armed = false;
+                indicator.classList.add('ip-ptr-loading');
+                indicator.style.transform = 'translate(-50%, 0)';
+                indicator.style.setProperty('--ptr-rot', '0deg');
+                indicator.style.setProperty('--ptr-scale', '1');
 
-        reset(true);
-    }, { passive: true });
+                // Chrome reloads the full document — do the same.
+                setTimeout(() => window.location.reload(), 120);
+
+                return;
+            }
+
+            reset(true);
+        },
+        { capture: true, passive: true },
+    );
 };
 
 init();

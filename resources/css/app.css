@@ -456,12 +456,15 @@ body {
 /* ── pull-to-refresh indicator (resources/js/pull-refresh.js) ──
    Pinned ~20px under the top edge (Chrome Android style): the spinner
    NEVER travels down the page — it drops in at a fixed spot and only
-   grows/rotates in place while dragging. Touch-only. */
+   grows/rotates in place while dragging. Touch-only, starts ONLY from
+   the very top strip of the screen. z-index above EVERYTHING in the
+   app (modals 95 / story viewer 90 / headers 30) — client ask:
+   «باید z-index از همه بیشتر باشه تا هرجایی کار کنه». */
 #ip-ptr {
     position: fixed;
     top: calc(20px + env(safe-area-inset-top, 0px));
     left: 50%;
-    z-index: 60;
+    z-index: 9999;
     transform: translate(-50%, -72px);
     transition: transform .25s cubic-bezier(.2, .7, .3, 1.2);
     pointer-events: none;

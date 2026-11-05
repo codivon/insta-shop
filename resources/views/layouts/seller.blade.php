@@ -17,6 +17,9 @@
 </head>
 <body class="ip-fit-dvh flex flex-col bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
 
+    {{-- PWA boot splash — professional app-opening cover (only for real app opens) --}}
+    @include('partials.pwa-boot', ['role' => 'seller'])
+
     {{-- App shell: exactly viewport height on every device → the header and
          tab bar stay pinned and ONLY <main> scrolls (also on real phones). --}}
     <div class="relative mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-slate-50 shadow-2xl dark:bg-slate-950 lg:my-6 lg:h-[calc(100vh-3rem)] lg:min-h-0 lg:rounded-[2.5rem] lg:border lg:border-slate-300 dark:lg:border-slate-800">
@@ -202,7 +205,6 @@
 
     @include('partials.pwa-sheets', ['role' => 'seller'])
 
-    @include('partials.build-check')
 
     @stack('scripts')
 </body>

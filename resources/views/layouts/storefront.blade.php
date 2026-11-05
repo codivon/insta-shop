@@ -39,7 +39,6 @@
         </div>
     </footer>
 
-    @include('partials.build-check')
 
     @include('partials.seller-return-fab')
 

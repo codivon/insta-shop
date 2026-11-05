@@ -87,7 +87,7 @@ self.addEventListener('fetch', (event) => {
     if (req.headers.has('range')) return;
 
     event.respondWith(
-        caches.open('instashop-static-v1').then(async (cache) => {
+        caches.open('instashop-static-v2').then(async (cache) => {
             const cached = await cache.match(req);
             const network = fetch(req)
                 .then((res) => {

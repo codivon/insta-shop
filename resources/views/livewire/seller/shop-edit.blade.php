@@ -94,6 +94,16 @@
             </h3>
 
             <div class="mt-3 space-y-3">
+                {{-- ── نام و نام خانوادگی فروشنده (از پروفایل به اینجا منتقل شد) ── --}}
+                <div>
+                    <label for="se-fullname" class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">
+                        نام و نام خانوادگی شما <span class="text-[9px] font-semibold text-slate-400">— نام نمایشی در پنل و ارتباط با مشتریان</span>
+                    </label>
+                    <input id="se-fullname" type="text" wire:model="fullName" maxlength="60" placeholder="مثلاً: مهدی رضایی"
+                           class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold outline-none transition placeholder:text-slate-400 focus:border-primary-400 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800">
+                    @error('fullName') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                </div>
+
                 <div>
                     <label for="se-name" class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-300">نام فروشگاه <span class="text-rose-500">*</span></label>
                     <input id="se-name" type="text" wire:model="name" maxlength="120" placeholder="مثال: فروشگاه زعفران قائنات"

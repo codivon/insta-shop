@@ -20,6 +20,9 @@ class ShopEdit extends Component
 
     public string $name = '';
 
+    /** Seller's own display name (نام و نام خانوادگی) — moved here from the profile page. */
+    public string $fullName = '';
+
     public string $instagramUsername = '';
 
     public string $about = '';
@@ -44,6 +47,7 @@ class ShopEdit extends Component
         $seller = auth('seller')->user();
 
         $this->name = $shop->name;
+        $this->fullName = (string) ($seller->full_name ?? '');
         $this->instagramUsername = (string) ($seller->instagram_username ?? '');
         $this->about = (string) $shop->about;
         $this->phone = $shop->phone ? Phone::toLocal($shop->phone) : '';
@@ -141,6 +145,7 @@ class ShopEdit extends Component
     {
         $this->validateWithToast(fn () => $this->validate([
             'name' => ['required', 'string', 'min:2', 'max:120'],
+            'fullName' => ['nullable', 'string', 'min:3', 'max:60'],
             'about' => ['nullable', 'string', 'max:2000'],
             'phone' => ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail) {
                 if ($value === '' || $value === null) {
@@ -159,6 +164,8 @@ class ShopEdit extends Component
         ], [
             'name.required' => 'نام فروشگاه را وارد کنید.',
             'name.min' => 'نام فروشگاه حداقل ۲ کاراکتر است.',
+            'fullName.min' => 'نام و نام خانوادگی باید حداقل ۳ حرف باشد.',
+            'fullName.max' => 'نام و نام خانوادگی حداکثر ۶۰ حرف است.',
         ]));
 
         $this->shop()->update([
@@ -168,6 +175,11 @@ class ShopEdit extends Component
             'address' => trim($this->address) ?: null,
             'status' => $this->status,
             'show_stock' => $this->showStock,
+        ]);
+
+        // seller's own display name lives on the seller, not the shop
+        auth('seller')->user()->update([
+            'full_name' => trim($this->fullName) !== '' ? trim($this->fullName) : null,
         ]);
 
         // NOTE: the Instagram handle is intentionally NOT editable here —

@@ -85,6 +85,6 @@ class PwaController extends Controller
         return response()
             ->json($payload, 200, [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
             ->header('Content-Type', 'application/manifest+json; charset=utf-8')
-            ->header('Cache-Control', 'public, max-age=3600');
+            ->header('Cache-Control', 'public, max-age=300'); // short — icon/name updates reach installed apps fast
     }
 }

@@ -17,6 +17,9 @@
 </head>
 <body class="ip-fit-dvh flex flex-col bg-slate-200 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
 
+    {{-- PWA boot splash — professional app-opening cover (only for real app opens) --}}
+    @include('partials.pwa-boot', ['role' => 'customer'])
+
     {{-- App shell: exactly viewport height on every device → the header and
          tab bar stay pinned and ONLY <main> scrolls (also on real phones).
          .ip-app-shell (app.css) sets 100vh WITH a 100dvh override — on the
@@ -106,7 +109,6 @@
     @include('partials.panel-toast')
     @include('partials.pwa-sheets', ['role' => 'customer'])
 
-    @include('partials.build-check')
 
     @include('partials.seller-return-fab')
 

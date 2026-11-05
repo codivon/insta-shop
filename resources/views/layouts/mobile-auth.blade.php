@@ -62,7 +62,6 @@
 
     @include('partials.pwa-sheets')
 
-    @include('partials.build-check')
 
     @stack('scripts')
 </body>
