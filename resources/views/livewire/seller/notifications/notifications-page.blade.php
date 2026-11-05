@@ -100,8 +100,11 @@
                         <div class="mt-1.5 flex items-center gap-3">
                             <span class="text-[10px] text-slate-400">{{ \App\Support\JDate::ago($item->created_at) }}</span>
                             @if ($item->link)
-                                <a href="{{ $item->link }}" wire:navigate wire:click="markRead({{ $item->id }})"
-                                   class="text-[10px] font-bold text-primary-600 hover:underline dark:text-primary-400">مشاهده</a>
+                                {{-- open() marks read first, then navigates (client v0.17.15:
+                                     the old wire:navigate + wire:click anchor raced — the
+                                     navigation cancelled markRead so items stayed unread) --}}
+                                <button type="button" wire:click="openNotification({{ $item->id }})"
+                                        class="text-[10px] font-bold text-primary-600 hover:underline dark:text-primary-400">مشاهده</button>
                             @endif
                             @unless ($item->is_read)
                                 <button type="button" wire:click="markRead({{ $item->id }})"

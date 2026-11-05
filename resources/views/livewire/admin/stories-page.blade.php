@@ -239,6 +239,53 @@
         @endforeach
     </div>
 
+    {{-- ── shop filter (searchable) — client v0.17.15: «مشخص شود کدام
+         فروشگاه استوری را گزاشته و فیلتر فروشگاه با سرچ فروشگاه هم باشه»
+         (same picker pattern as the create-form product search) --}}
+    <div class="flex flex-wrap items-center gap-2">
+        <div class="relative w-full max-w-xs" x-data="{ open: false }" @click.outside="open = false">
+            @if ($filterShop)
+                <div class="flex items-center justify-between gap-2 rounded-xl border border-primary-200 bg-primary-50/60 px-3 py-2.5 shadow-sm dark:border-primary-900 dark:bg-primary-950/30">
+                    <span class="flex min-w-0 items-center gap-2 text-xs font-extrabold text-primary-700 dark:text-primary-300">
+                        @if ($filterShop->logo_path)
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($filterShop->logo_path) }}" alt="" class="size-6 shrink-0 rounded-full object-cover">
+                        @else
+                            <span class="grid size-6 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-[9px] font-black text-white">{{ mb_substr($filterShop->name, 0, 1) }}</span>
+                        @endif
+                        <span class="truncate">استوری‌های {{ $filterShop->name }}</span>
+                    </span>
+                    <button type="button" wire:click="$set('shopFilter', '')" aria-label="حذف فیلتر فروشگاه"
+                            class="grid size-6 shrink-0 place-items-center rounded-lg text-primary-500 transition hover:bg-primary-100 active:scale-90 dark:hover:bg-primary-900/50">
+                        <x-icon name="x" class="size-3.5" />
+                    </button>
+                </div>
+            @else
+                <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm focus-within:border-primary-400 dark:border-slate-700 dark:bg-slate-900">
+                    <x-icon name="search" class="size-3.5 shrink-0 text-slate-400" />
+                    <input type="text" wire:model.live.debounce.300ms="shopSearch" x-on:focus="open = true"
+                           placeholder="فیلتر بر اساس فروشگاه (جستجو)…"
+                           class="w-full bg-transparent text-xs outline-none placeholder:text-slate-400"
+                           aria-label="جستجوی فروشگاه برای فیلتر">
+                </label>
+                <div x-show="open" x-cloak x-transition.opacity
+                     class="scroll-slim absolute inset-x-0 top-full z-30 mt-1 max-h-52 space-y-0.5 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                    @forelse ($shopFilterOptions as $filterOption)
+                        <button type="button" wire:click="$set('shopFilter', {{ $filterOption->id }})"
+                                wire:key="sfopt-{{ $filterOption->id }}"
+                                class="block w-full rounded-lg px-2.5 py-2 text-start text-xs font-semibold text-slate-600 transition hover:bg-primary-50 hover:text-primary-700 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white">
+                            <span class="block truncate">{{ $filterOption->name }}</span>
+                            @if ($filterOption->instagram_username)
+                                <span class="block truncate text-[10px] font-semibold text-slate-400">{{ $filterOption->instagram_username }}</span>
+                            @endif
+                        </button>
+                    @empty
+                        <p class="px-2.5 py-2 text-[10px] font-bold text-slate-400">فروشگاهی پیدا نشد.</p>
+                    @endforelse
+                </div>
+            @endif
+        </div>
+    </div>
+
     {{-- ── list ── --}}
     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         @forelse ($stories as $story)
@@ -260,7 +307,21 @@
 
                 <div class="flex min-w-0 flex-1 flex-col">
                     <div class="flex items-center justify-between gap-2">
-                        <span class="truncate text-xs font-extrabold">{{ $story->shop->name }}</span>
+                        {{-- shop identity (client v0.17.15: «مشخص شود کدام فروشگاه
+                             استوری را گزاشته») — avatar + name + @handle --}}
+                        <span class="flex min-w-0 items-center gap-1.5">
+                            @if ($story->shop->logo_path)
+                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($story->shop->logo_path) }}" alt="" class="size-6 shrink-0 rounded-full object-cover">
+                            @else
+                                <span class="grid size-6 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-[9px] font-black text-white">{{ mb_substr($story->shop->name, 0, 1) }}</span>
+                            @endif
+                            <span class="min-w-0">
+                                <span class="block truncate text-xs font-extrabold">{{ $story->shop->name }}</span>
+                                @if ($story->shop->instagram_username)
+                                    <span class="block truncate text-[9px] font-semibold text-slate-400" dir="ltr">{{ $story->shop->instagram_username }}</span>
+                                @endif
+                            </span>
+                        </span>
                         <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black {{ $story->stateClass() }}">{{ $story->stateLabel() }}</span>
                     </div>
 

@@ -40,6 +40,13 @@ class StoriesPage extends Component
     #[Url]
     public string $filter = 'all';
 
+    /** client v0.17.15: «فیلتر فروشگاه با سرچ فروشگاه» — '' = all shops */
+    #[Url]
+    public string $shopFilter = '';
+
+    /** Search term of the shop filter picker. */
+    public string $shopSearch = '';
+
     public int $perPage = 12;
 
     public bool $hasMore = true;
@@ -99,7 +106,7 @@ class StoriesPage extends Component
 
     public function updating(string $property): void
     {
-        if ($property === 'filter') {
+        if (in_array($property, ['filter', 'shopFilter'], true)) {
             $this->perPage = 12;
             $this->hasMore = true;
         }
@@ -123,6 +130,12 @@ class StoriesPage extends Component
     {
         $this->productId = '';
         $this->productSearch = '';
+    }
+
+    /** Picking a filter shop clears the picker search term. */
+    public function updatedShopFilter(): void
+    {
+        $this->shopSearch = '';
     }
 
     public function updatedType(): void
@@ -175,7 +188,7 @@ class StoriesPage extends Component
     {
         $rows = $this->filteredQuery()
             ->with([
-                'shop:id,name,logo_path,seller_id',
+                'shop:id,name,logo_path,instagram_username,seller_id',
                 'product:id,name',
             ])
             ->withCount(['likes', 'comments'])
@@ -192,6 +205,35 @@ class StoriesPage extends Component
     public function getShopOptionsProperty(): Collection
     {
         return Shop::query()->orderBy('name')->get(['id', 'name']);
+    }
+
+    /**
+     * client v0.17.15: searchable options of the shop FILTER picker —
+     * name OR instagram @handle, same pattern as the product picker.
+     */
+    public function getShopFilterOptionsProperty(): Collection
+    {
+        $query = Shop::query()->orderBy('name');
+
+        if (trim($this->shopSearch) !== '') {
+            $term = trim($this->shopSearch);
+
+            $query->where(fn ($q) => $q
+                ->where('name', 'like', '%'.$term.'%')
+                ->orWhere('instagram_username', 'like', '%'.$term.'%'));
+        }
+
+        return $query->limit(20)->get(['id', 'name', 'logo_path', 'instagram_username']);
+    }
+
+    /** The shop selected in the filter (for the chip + avatar). */
+    public function getFilterShopProperty(): ?Shop
+    {
+        if ($this->shopFilter === '' || ! ctype_digit((string) $this->shopFilter)) {
+            return null;
+        }
+
+        return Shop::query()->find((int) $this->shopFilter);
     }
 
     /** Published products of the picked shop, filtered by the picker search. */
@@ -220,6 +262,8 @@ class StoriesPage extends Component
             'counts' => $this->counts,
             'shopOptions' => $this->shopOptions,
             'productOptions' => $this->productOptions,
+            'shopFilterOptions' => $this->shopFilterOptions,
+            'filterShop' => $this->filterShop,
         ])->title('استوری‌ها')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — استوری‌ها']);
     }
@@ -382,6 +426,12 @@ class StoriesPage extends Component
             'rejected' => $query->where('status', Story::STATUS_REJECTED),
             default => null,
         };
+
+        // client v0.17.15: shop filter — «مشخص شود کدام فروشگاه استوری را
+        // گزاشته و فیلتر فروشگاه با سرچ فروشگاه هم باشه»
+        if ($this->shopFilter !== '' && ctype_digit((string) $this->shopFilter)) {
+            $query->where('shop_id', (int) $this->shopFilter);
+        }
 
         return $query;
     }

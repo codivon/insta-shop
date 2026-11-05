@@ -26,9 +26,12 @@
                 <x-icon name="chevron-left" class="size-4 shrink-0 opacity-90" />
             </a>
 
-            {{-- ── story rings (Instagram-style, one ring per shop) ── --}}
+            {{-- ── story rings (Instagram-style, one ring per shop) ──
+                 pt-2.5 = client v0.17.15: «نمایش استوری‌ها را از بالا ۱۰ پیکسل
+                 فاصله بده» — also un-clips the «جدید» badge (-top-1) that the
+                 overflow-x container used to cut off at its top edge. --}}
             @if ($storyShops->isNotEmpty())
-                <div class="scroll-slim -mx-1 mb-4 flex gap-3 overflow-x-auto px-1 pb-2" aria-label="استوری فروشگاه‌ها">
+                <div class="scroll-slim -mx-1 mb-4 flex gap-3 overflow-x-auto px-1 pb-2 pt-2.5" aria-label="استوری فروشگاه‌ها">
                     @foreach ($storyShops as $ring)
                         <button type="button" wire:click="openStories({{ $ring['shop']->id }})"
                                 wire:key="sring-{{ $ring['shop']->id }}"
@@ -270,6 +273,40 @@
             </div>
         @endif
 
+        {{-- ── shop results — client v0.17.15: «اسم فروشندگان یا آیدی فروشندگان
+             یا فروشگاه‌ها را هم در جستجو داشته باشیم و در نتیجه جستجو، فروشگاه
+             هم اضافه بشه» — matching shops (name / @handle / seller name)
+             appear above the matching products. --}}
+        @if ($search !== '' && $searchShops->isNotEmpty())
+            <div class="mt-6" aria-label="فروشگاه‌های یافت‌شده">
+                <h3 class="text-sm font-extrabold">فروشگاه‌ها</h3>
+                <div class="scroll-slim mt-3 flex gap-3 overflow-x-auto pb-1">
+                    @foreach ($searchShops as $searchShop)
+                        <a href="{{ $searchShop->storefrontUrl() }}" wire:navigate wire:key="sshop-{{ $searchShop->id }}"
+                           class="flex w-52 shrink-0 items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md active:scale-[0.98] dark:border-slate-800 dark:bg-slate-900">
+                            @if ($searchShop->logo_path)
+                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($searchShop->logo_path) }}"
+                                     alt="لوگوی {{ $searchShop->name }}" loading="lazy"
+                                     class="size-11 shrink-0 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800">
+                            @else
+                                <span class="grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-black text-white">{{ mb_substr($searchShop->name, 0, 1) }}</span>
+                            @endif
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-xs font-extrabold">{{ $searchShop->name }}</span>
+                                <span class="mt-0.5 flex items-center gap-1 text-[9.5px] font-semibold text-slate-400">
+                                    @if ($searchShop->storefrontHandle())
+                                        <x-icon name="instagram" class="size-3 shrink-0" /><span class="truncate">{{ $searchShop->storefrontHandle() }}</span>
+                                    @endif
+                                </span>
+                                <span class="mt-0.5 block text-[9.5px] font-bold text-primary-600 dark:text-primary-400">{{ \App\Support\Fmt::toFa($searchShop->products_count) }} محصول</span>
+                            </span>
+                            <x-icon name="chevron-left" class="size-4 shrink-0 text-slate-300" />
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         {{-- ── product feed (search results replace everything above) ── --}}
         <div class="mt-6 flex items-center justify-between gap-2">
             <h3 class="text-sm font-extrabold">
@@ -365,13 +402,22 @@
             @endforelse
         </div>
 
-        {{-- lazy-load sentinel (IntersectionObserver → home-load-more) --}}
+        {{-- lazy-load sentinel (IntersectionObserver → home-load-more) —
+             client v0.17.15: «وقتی محصول در حال بارگذاری هست بنویسه در حال
+             بارگذاری تا کاربر بدونه باید منتظر بمونه» — the old wire:loading
+             classes were INVERTED (added opacity-0 while loading → the
+             spinner was hidden exactly when needed and visible when idle);             
+             now a spinner + «در حال بارگذاری…» pill shows only during the
+             loadMore commit, same wording as the seller/admin pages. --}}
         @if ($hasMore && $products->isNotEmpty())
             <div x-data
                  x-init="new IntersectionObserver((entries) => { if (entries[0].isIntersecting) $wire.call('loadMore') }, { rootMargin: '260px' }).observe($el)"
-                 class="mt-6 grid place-items-center py-2"
-                 wire:loading.delay.class="opacity-0" wire:loading.delay.remove.class="opacity-100" wire:target="loadMore">
-                <span class="inline-block size-6 animate-spin rounded-full border-2 border-primary-600 border-t-transparent"></span>
+                 class="mt-6 grid place-items-center py-3">
+                <div wire:loading wire:target="loadMore"
+                     class="flex items-center gap-2 rounded-full bg-primary-50 px-4 py-2 text-primary-600 shadow-sm dark:bg-primary-950/40 dark:text-primary-300">
+                    <span class="inline-block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true"></span>
+                    <span class="text-[11px] font-extrabold">در حال بارگذاری محصولات…</span>
+                </div>
             </div>
         @endif
 

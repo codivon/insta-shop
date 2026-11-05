@@ -31,6 +31,29 @@ class NotificationsPage extends Component
         AdminNotification::query()->whereKey($id)->first()?->markRead();
     }
 
+    /**
+     * client v0.17.15: mark read BEFORE navigating — one server action
+     * instead of the racing wire:navigate + wire:click anchor pair
+     * (the navigation used to cancel the markRead commit, so viewing a
+     * notification never read it).
+     */
+    public function openNotification(int $id): void
+    {
+        $item = AdminNotification::query()->whereKey($id)->first();
+
+        if ($item === null) {
+            return;
+        }
+
+        if (! $item->is_read) {
+            $item->markRead();
+        }
+
+        if ($item->link) {
+            $this->redirect($item->link, navigate: true);
+        }
+    }
+
     public function markAllRead(): void
     {
         AdminNotification::query()->unread()->update(['is_read' => true, 'read_at' => now()]);

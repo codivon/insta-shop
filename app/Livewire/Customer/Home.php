@@ -263,6 +263,33 @@ class Home extends Component
         return $this->customer()?->favoriteProductIds() ?? [];
     }
 
+    /**
+     * client v0.17.15: «در نتیجه جستجو، فروشگاه هم اضافه بشه» — while
+     * searching, publicly visible shops whose NAME, instagram @handle or
+     * seller full-name match the term appear as a scroller above products.
+     */
+    public function getSearchShopsProperty(): Collection
+    {
+        $term = trim($this->search);
+
+        if ($term === '') {
+            return collect();
+        }
+
+        return Shop::query()
+            ->publiclyVisible()
+            ->where(fn (Builder $q) => $q
+                ->where('name', 'like', '%'.$term.'%')
+                ->orWhere('instagram_username', 'like', '%'.$term.'%')
+                ->orWhereHas('seller', fn (Builder $s) => $s
+                    ->where('full_name', 'like', '%'.$term.'%')
+                    ->orWhere('instagram_username', 'like', '%'.$term.'%')))
+            ->withCount(['publishedProducts as products_count'])
+            ->orderBy('name')
+            ->limit(10)
+            ->get();
+    }
+
     public function render()
     {
         return view('livewire.customer.home', [
@@ -275,6 +302,7 @@ class Home extends Component
             'topCategories' => $this->topCategories,
             'flashProducts' => $this->flashProducts,
             'spotlightShops' => $this->spotlightShops,
+            'searchShops' => $this->searchShops,
         ])->title('فروشگاه InstaShop');
     }
 
@@ -300,7 +328,19 @@ class Home extends Component
         $query = $this->publicProductQuery();
 
         if ($this->search !== '') {
-            $query->where('name', 'like', '%'.$this->search.'%');
+            $term = $this->search;
+
+            // client v0.17.15: «اسم فروشندگان یا آیدی فروشندگان یا فروشگاه‌ها را
+            // هم در جستجو داشته باشیم» — a shop-name / seller-name / @handle
+            // hit surfaces that shop's products alongside name matches.
+            $query->where(fn (Builder $q) => $q
+                ->where('name', 'like', '%'.$term.'%')
+                ->orWhereHas('shop', fn (Builder $s) => $s
+                    ->where('name', 'like', '%'.$term.'%')
+                    ->orWhere('instagram_username', 'like', '%'.$term.'%')
+                    ->orWhereHas('seller', fn (Builder $se) => $se
+                        ->where('full_name', 'like', '%'.$term.'%')
+                        ->orWhere('instagram_username', 'like', '%'.$term.'%'))));
         }
 
         match ($this->sort) {

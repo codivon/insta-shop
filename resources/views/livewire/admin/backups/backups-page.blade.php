@@ -31,7 +31,11 @@
         </div>
     </div>
 
-    <div @if ($running) wire:poll.3s @else wire:poll.30s @endif class="space-y-5">
+    {{-- client v0.17.15: poll ONLY while a backup is actually running —
+         the idle 30s poll was pure auto-refresh («رفرش یا reload خودکار را
+         حذف کن») and its commits cancelled in-flight user actions
+         (AbortError noise in the console). --}}
+    <div @if ($running) wire:poll.3s @endif class="space-y-5">
 
         {{-- ── stats + auto status ── --}}
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">

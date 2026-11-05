@@ -55,6 +55,32 @@ class NotificationsPage extends Component
             ->first()?->markRead();
     }
 
+    /**
+     * client v0.17.15: «وقتی مشاهده میزنم اون نوتیف باید خوانده شده باشه» —
+     * mark read BEFORE navigating in ONE server action; the old
+     * wire:navigate + wire:click anchor pair raced (the navigation
+     * cancelled the markRead commit → items stayed unread).
+     */
+    public function openNotification(int $id): void
+    {
+        $item = SellerNotification::query()
+            ->where('seller_id', $this->sellerId())
+            ->whereKey($id)
+            ->first();
+
+        if ($item === null) {
+            return;
+        }
+
+        if (! $item->is_read) {
+            $item->markRead();
+        }
+
+        if ($item->link) {
+            $this->redirect($item->link, navigate: true);
+        }
+    }
+
     public function markAllRead(): void
     {
         SellerNotification::query()

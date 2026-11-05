@@ -52,6 +52,31 @@ class NotificationsBell extends Component
         AdminNotification::query()->whereKey($id)->first()?->markRead();
     }
 
+    /**
+     * client v0.17.15: «وقتی مشاهده میزنم، اون نوتیف باید خوانده شده باشه» —
+     * ONE server action replaces the racing wire:navigate + wire:click
+     * raced: the navigation cancelled the markRead commit (the exact
+     * «AbortError: signal is aborted without reason» the client reported)
+     * so notifications stayed unread. ONE action now marks read and only
+     * then navigates, server-side — no race is possible.
+     */
+    public function openNotification(int $id): void
+    {
+        $item = AdminNotification::query()->whereKey($id)->first();
+
+        if ($item === null) {
+            return;
+        }
+
+        if (! $item->is_read) {
+            $item->markRead();
+        }
+
+        if ($item->link) {
+            $this->redirect($item->link, navigate: true);
+        }
+    }
+
     public function markAllRead(): void
     {
         AdminNotification::query()->unread()->update(['is_read' => true, 'read_at' => now()]);

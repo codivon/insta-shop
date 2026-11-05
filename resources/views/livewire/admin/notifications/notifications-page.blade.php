@@ -79,11 +79,14 @@
                         </span>
                         <span class="text-[10px] text-slate-300 dark:text-slate-600">{{ \App\Support\JDate::dateTime($item->created_at) }}</span>
                         @if ($item->link)
-                            <a href="{{ $item->link }}" wire:navigate wire:click="markRead({{ $item->id }})"
-                               class="inline-flex items-center gap-1 text-[11px] font-bold text-primary-600 transition hover:text-primary-700 dark:text-primary-400">
+                            {{-- open() marks read first, then navigates (client v0.17.15:
+                                 the old wire:navigate + wire:click anchor raced — the
+                                 navigation cancelled markRead so items stayed unread) --}}
+                            <button type="button" wire:click="openNotification({{ $item->id }})"
+                                    class="inline-flex items-center gap-1 text-[11px] font-bold text-primary-600 transition hover:text-primary-700 dark:text-primary-400">
                                 مشاهده
                                 <x-icon name="arrow-left" class="size-3" />
-                            </a>
+                            </button>
                         @endif
                     </div>
                 </div>

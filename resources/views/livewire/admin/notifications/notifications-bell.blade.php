@@ -4,8 +4,15 @@
   device (works even when the browser is closed).
   NOTE: ONE root element — the scripts live inside it so the
   Livewire multiple-root check never trips.
+  client v0.17.15: the 30s wire:poll is GONE («رفرش یا reload
+  خودکار را حذف کن» + the AbortError noise — a poll commit used to
+  cancel in-flight user actions). The badge refreshes on every
+  interaction; «مشاهده» now goes through open() which marks the
+  notification read BEFORE navigating (the old
+  wire:navigate + wire:click on one anchor raced: the navigation
+  cancelled the markRead commit → notifications stayed unread).
 ════════════════════════════════════════════════════════════ --}}
-<div class="relative" wire:poll.30s>
+<div class="relative">
     <button type="button" wire:click="toggle"
             class="relative grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
             aria-label="اعلان‌ها">
@@ -54,8 +61,8 @@
                             <div class="mt-1 flex items-center gap-2">
                                 <span class="text-[10px] text-slate-400">{{ \App\Support\JDate::ago($item->created_at) }}</span>
                                 @if ($item->link)
-                                    <a href="{{ $item->link }}" wire:navigate wire:click="markRead({{ $item->id }})"
-                                       class="text-[10px] font-bold text-primary-600 hover:underline dark:text-primary-400">مشاهده</a>
+                                    <button type="button" wire:click="openNotification({{ $item->id }})"
+                                            class="text-[10px] font-bold text-primary-600 hover:underline dark:text-primary-400">مشاهده</button>
                                 @endif
                             </div>
                         </div>

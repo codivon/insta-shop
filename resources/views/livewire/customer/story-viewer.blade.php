@@ -18,13 +18,35 @@
 <div data-ptr-ignore
          x-data="{
             p: 0, prev: -1, paused: false, stopped: false, muted: true, y0: null,
+            hold: false, holdT: null,
             tick() {
                 if ($wire.shopId === null) return;
-                if (this.prev !== $wire.index) { this.prev = $wire.index; this.p = 0; this.stopped = false; this.resumeVideo(); return; }
-                if (this.paused || this.stopped) return;
+                if (this.prev !== $wire.index) { this.prev = $wire.index; this.p = 0; this.stopped = false; this.paused = false; this.hold = false; clearTimeout(this.holdT); this.resumeVideo(); return; }
+                if (this.hold || this.paused || this.stopped) return;
                 if (this.$refs.storyVideo) return; // video drives p via timeupdate
                 this.p += 1;
-                if (this.p >= 100) { this.p = 100; $wire.next(); }
+                if (this.p >= 100) { this.p = 100; this.go('next'); }
+            },
+            go(dir) {
+                // one tap = one commit — reset the bar NOW and freeze the
+                // tick's auto-advance until the morph lands (client v0.17.15:
+                // «درصد پیشرفت جابه‌جا می‌شود یا از استوری می‌پرد بیرون» —
+                // the 50ms tick kept advancing the OLD story while the commit
+                // was in flight and could fire $wire.next() again at p=100)
+                this.p = 0;
+                this.hold = dir === 'next';
+                clearTimeout(this.holdT);
+                if (this.hold) this.holdT = setTimeout(() => { this.hold = false }, 1600);
+                // serialize commits (client v0.17.15: «دکمه‌ها به خوبی کار
+                // نمی‌کنند» — E2E showed 3 rapid taps advanced only 2 stories:
+                // Livewire CANCELS a pending superseded commit, so the middle
+                // tap was simply lost). Chaining every call behind the previous
+                // promise means a new commit is never created while one is in
+                // flight → nothing to cancel → every tap counts (they drain
+                // sequentially, exactly like Instagram's queued skips).
+                this.chain = (this.chain || Promise.resolve())
+                    .then(() => $wire[dir]())
+                    .catch(() => {});
             },
             toggleStop() {
                 this.stopped = !this.stopped;
@@ -102,7 +124,7 @@
 
         {{-- ── media + tap zones (hold = pause · NO context/long-press menu) ── --}}
         <div class="relative flex-1 overflow-hidden"
-             x-on:pointerdown="paused = true; const v = $refs.storyVideo; if (v) v.pause()"
+             x-on:pointerdown="if ($event.target.closest('[data-tap]')) return; paused = true; const v = $refs.storyVideo; if (v) v.pause()"
              x-on:pointerup="paused = false; const v = $refs.storyVideo; if (v && !stopped) v.play().catch(() => {})"
              x-on:pointerleave="paused = false"
              x-on:contextmenu.prevent
@@ -111,9 +133,9 @@
                 <video x-ref="storyVideo"
                        src="{{ $current->videoUrl() }}"
                        autoplay muted playsinline preload="auto"
-                       x-on:ended="$wire.next()"
+                       x-on:ended="go('next')"
                        x-on:timeupdate="const v = $refs.storyVideo; if (v && v.duration > 0) p = Math.min(99, v.currentTime / v.duration * 100)"
-                       x-on:error="p = 100; setTimeout(() => $wire.next(), 700)"
+                       x-on:error="p = 100; setTimeout(() => go('next'), 700)"
                        class="story-media absolute inset-0 size-full bg-black object-contain"
                        draggable="false" aria-label="ویدیوی استوری {{ $current->shop->name }}"></video>
             @else
@@ -125,11 +147,14 @@
             {{-- tap zones — RTL: RIGHT third = previous, LEFT third = next.
                  Full media height (client v0.17.7: the old upper-55% cap left
                  the mid/lower screen dead — taps there did nothing). The
-                 middle third stays free for hold-to-pause. The header/meta
-                 bar (z-20) and bottom sheet sit above/below these. --}}
-            <button type="button" wire:click="prev" aria-label="استوری قبلی"
+                 middle third stays free for hold-to-pause. data-tap keeps
+                 the hold-to-pause pointer handlers OFF these zones (client
+                 v0.17.15: «وقتی سمت چپ کلید می‌شود مدام پیغام مکث می‌دهد» —
+                 pointerdown used to fire on the whole box incl. these
+                 buttons); go() routes the commit race-free. --}}
+            <button type="button" data-tap x-on:click="go('prev')" aria-label="استوری قبلی"
                     class="absolute inset-y-0 start-0 z-10 w-1/3"></button>
-            <button type="button" wire:click="next" aria-label="استوری بعدی"
+            <button type="button" data-tap x-on:click="go('next')" aria-label="استوری بعدی"
                     class="absolute inset-y-0 end-0 z-10 w-1/3"></button>
 
             @if ($current->caption)
@@ -142,7 +167,7 @@
                 </div>
             @endif
 
-            <span x-show="paused && !stopped"
+            <span x-show="paused && !stopped" x-cloak
                   class="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/50 px-4 py-2 text-[10px] font-bold text-white">مکث — برای ادامه رها کنید</span>
             <span x-show="stopped" x-cloak
                   class="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/55 px-4 py-2 text-[10px] font-bold text-white">متوقف شد — دکمهٔ ▶ برای ادامه</span>
