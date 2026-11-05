@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AdminNoStore;
 use App\Http\Middleware\ApplySecuritySettings;
 use App\Http\Middleware\AuthenticatePanel;
 use App\Http\Middleware\CheckMaintenanceMode;
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'panel.auth' => AuthenticatePanel::class,
             'panel.guest' => RedirectIfPanelAuthenticated::class,
             'admin.permission' => EnsureAdminPermission::class,
+            'admin.no-store' => AdminNoStore::class,
         ]);
 
         // Optional maintenance mode (developer settings) — appended to the

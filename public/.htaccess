@@ -65,3 +65,20 @@
         Header set Cache-Control "no-cache, must-revalidate"
     </Files>
 </IfModule>
+
+# ══════════════════════════════════════════════════════════════
+#  Deploy-safety (v0.17.18): the admin panel must NEVER be stored
+#  by a server-level page cache. On cPanel/LiteSpeed a cached /admin
+#  page is served WITHOUT running PHP — so even the app's self-healing
+#  deploy middleware can never see the request, and pre-deploy pages
+#  keep showing «even after every cache clear». LSCache honors the
+#  Cache-Control ENV natively; the mod_headers line covers every
+#  other Apache-side cache/CDN in front of the panel.
+# ══════════════════════════════════════════════════════════════
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^admin(/|$) - [E=LSCACHE_NOCACHE:1,E=Cache-Control:no-cache]
+</IfModule>
+<IfModule mod_headers.c>
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0" env=LSCACHE_NOCACHE
+</IfModule>

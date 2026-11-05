@@ -81,6 +81,6 @@
          git pull — an older number (or the old 4-section nav above) means
          the host is still serving stale views/caches --}}
     <p class="text-center text-[10px] text-slate-400 dark:text-slate-500">
-        نسخهٔ دیپلوی این صفحه: <span dir="ltr" class="font-bold text-slate-500 dark:text-slate-400">v{{ config('app.version') }}</span>
+        نسخهٔ دیپلوی این صفحه: <span dir="ltr" class="font-bold text-slate-500 dark:text-slate-400">v{{ \App\Support\Version::code() }}</span>
     </p>
 </div>

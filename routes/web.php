@@ -107,7 +107,10 @@ Route::get('/ping', fn () => response('pong')->header('Cache-Control', 'no-store
 | Admin panel  (desktop-first, responsive)  — guard: admin
 |--------------------------------------------------------------------------
 */
-Route::prefix('admin')->name('admin.')->group(function () {
+// admin.no-store: the panel is NEVER stored by LiteSpeed/browser caches —
+// a cached admin page would be served without PHP, defeating the
+// self-healing deploy middleware (see AdminNoStore docblock).
+Route::prefix('admin')->name('admin.')->middleware('admin.no-store')->group(function () {
     Route::middleware('panel.guest')->group(function () {
         Route::get('/login', Login::class)->name('login');
     });
