@@ -100,8 +100,10 @@
 
     <div class="grid gap-6 xl:grid-cols-5">
 
-        {{-- ── 14-day story views chart ── --}}
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3 dark:border-slate-800 dark:bg-slate-900" data-testid="story-chart-card">
+        {{-- ── 14-day story views chart ── min-w-0: a grid item must be
+             allowed to shrink or the 14-label chart blows the whole
+             track (and the page) wider than the viewport on phones. --}}
+        <div class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3 dark:border-slate-800 dark:bg-slate-900" data-testid="story-chart-card">
             <div class="flex items-center justify-between">
                 <h3 class="flex items-center gap-2 text-sm font-extrabold">
                     <span class="grid size-8 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
@@ -114,16 +116,21 @@
                 </span>
             </div>
 
-            <div class="mt-5 flex h-32 justify-between gap-1.5" dir="ltr">
+            <div class="mt-5 flex h-32 justify-between gap-1 sm:gap-1.5" dir="ltr">
                 @php $maxViews = max($storyChart->max('views'), 1); @endphp
                 @foreach ($storyChart as $bar)
-                    <div class="flex flex-1 flex-col items-center gap-1.5">
-                        <div class="flex w-full flex-1 items-end">
+                    <div class="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                        <div class="flex w-full min-w-0 flex-1 items-end">
                             <div class="w-full rounded-t-lg transition-all {{ $bar['today'] ? 'bg-gradient-to-t from-primary-600 to-primary-400 shadow-md shadow-primary-600/30' : 'bg-primary-200 dark:bg-primary-900' }}"
                                  style="height: {{ max(6, (int) round($bar['views'] / $maxViews * 100)) }}%"
                                  title="{{ $bar['label'] }}: {{ \App\Support\Fmt::fa($bar['views']) }} بازدید استوری"></div>
                         </div>
-                        <span class="text-[9px] font-bold {{ $bar['today'] ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}">{{ $bar['label'] }}</span>
+                        {{-- full weekday name on ≥sm, single letter on phones —
+                             min-w-0 + truncate keep the column shrinkable --}}
+                        <span class="w-full min-w-0 truncate text-center text-[9px] font-bold {{ $bar['today'] ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}">
+                            <span class="sm:hidden">{{ $bar['short'] }}</span>
+                            <span class="hidden sm:inline">{{ $bar['label'] }}</span>
+                        </span>
                     </div>
                 @endforeach
             </div>
@@ -145,7 +152,7 @@
         </div>
 
         {{-- ── 7-day orders chart ── --}}
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2 dark:border-slate-800 dark:bg-slate-900">
+        <div class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2 dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center justify-between">
                 <h3 class="flex items-center gap-2 text-sm font-extrabold">
                     <span class="grid size-8 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
@@ -158,16 +165,19 @@
                 </span>
             </div>
 
-            <div class="mt-5 flex h-32 justify-between gap-2" dir="ltr">
+            <div class="mt-5 flex h-32 justify-between gap-1.5 sm:gap-2" dir="ltr">
                 @php $maxOrders = max($chart->max('orders'), 1); @endphp
                 @foreach ($chart as $bar)
-                    <div class="flex flex-1 flex-col items-center gap-1.5">
-                        <div class="flex w-full flex-1 items-end">
+                    <div class="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                        <div class="flex w-full min-w-0 flex-1 items-end">
                             <div class="w-full rounded-t-lg transition-all {{ $bar['today'] ? 'bg-gradient-to-t from-primary-600 to-primary-400 shadow-md shadow-primary-600/30' : 'bg-primary-200 dark:bg-primary-900' }}"
                                  style="height: {{ max(8, (int) round($bar['orders'] / $maxOrders * 100)) }}%"
                                  title="{{ $bar['label'] }}: {{ $bar['orders'] }} سفارش — {{ $bar['amount'] }} تومان موفق"></div>
                         </div>
-                        <span class="text-[9px] font-bold {{ $bar['today'] ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}">{{ $bar['label'] }}</span>
+                        <span class="w-full min-w-0 truncate text-center text-[9px] font-bold {{ $bar['today'] ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400' }}">
+                            <span class="sm:hidden">{{ $bar['short'] }}</span>
+                            <span class="hidden sm:inline">{{ $bar['label'] }}</span>
+                        </span>
                     </div>
                 @endforeach
             </div>
@@ -185,7 +195,7 @@
         </div>
 
         {{-- ── latest orders ── --}}
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3 dark:border-slate-800 dark:bg-slate-900">
+        <div class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3 dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center justify-between">
                 <h3 class="flex items-center gap-2 text-sm font-extrabold">
                     <span class="grid size-8 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
@@ -209,7 +219,9 @@
                 </div>
             @else
                 <div class="mt-4 overflow-x-auto">
-                    <table class="w-full min-w-[540px] text-right text-sm">
+                    {{-- min-w only from sm up — on phones the compacted
+                         columns fit the card instead of overflowing it --}}
+                    <table class="w-full min-w-0 text-right text-sm sm:min-w-[540px]">
                         <thead>
                             <tr class="border-b border-slate-100 text-[11px] text-slate-400 dark:border-slate-800">
                                 <th class="pb-2.5 font-semibold">شماره</th>
@@ -222,14 +234,22 @@
                         <tbody class="divide-y divide-slate-50 dark:divide-slate-800/60">
                             @foreach ($recentOrders as $order)
                                 <tr class="transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                                    <td class="py-2.5 font-extrabold">#{{ \App\Support\Fmt::fa($order->id) }}</td>
+                                    <td class="whitespace-nowrap py-2.5 font-extrabold">#{{ \App\Support\Fmt::fa($order->id) }}</td>
                                     <td class="py-2.5">
-                                        <span class="block text-xs font-semibold">{{ $order->customer?->full_name ?: 'بدون نام' }}</span>
+                                        <span class="block max-w-[86px] truncate text-xs font-semibold sm:max-w-none">{{ $order->customer?->full_name ?: 'بدون نام' }}</span>
                                         <span class="block text-[10px] text-slate-400" dir="ltr">{{ \App\Support\Fmt::toFa($order->customer?->phone ?? '—') }}</span>
                                     </td>
-                                    <td class="py-2.5 text-xs font-bold">{{ \App\Support\Fmt::money($order->total_amount) }}</td>
-                                    <td class="py-2.5 text-[11px] text-slate-400">{{ $order->dateFa() }}</td>
-                                    <td class="py-2.5">
+                                    <td class="whitespace-nowrap py-2.5 text-xs font-bold">
+                                        {{-- «تومان» dropped on phones so every column fits the card --}}
+                                        <span class="hidden sm:inline">{{ \App\Support\Fmt::money($order->total_amount) }}</span>
+                                        <span class="sm:hidden">{{ \App\Support\Fmt::moneyShort($order->total_amount) }}</span>
+                                    </td>
+                                    <td class="whitespace-nowrap py-2.5 text-[11px] text-slate-400">
+                                        {{-- time hidden on phones so all five columns fit the card --}}
+                                        <span class="hidden sm:inline">{{ $order->dateFa() }}</span>
+                                        <span class="sm:hidden">{{ \App\Support\JDate::date($order->created_at) }}</span>
+                                    </td>
+                                    <td class="whitespace-nowrap py-2.5">
                                         <span class="rounded-full px-2.5 py-1 text-[10px] font-bold {{ $order->statusClasses() }}">{{ $order->statusLabel() }}</span>
                                     </td>
                                 </tr>

@@ -44,7 +44,9 @@ class Dashboard extends Component
     // untouched; the new key namespace also orphans any poisoned old entry.
     private function cached(string $key, callable $compute): mixed
     {
-        $cacheKey = 'admin.dash.v2.'.$key;
+        // v3: chart payloads gained the «short» day label — bumping the
+        // namespace orphans v2 entries that would render without it.
+        $cacheKey = 'admin.dash.v3.'.$key;
 
         try {
             $hit = Cache::get($cacheKey);
@@ -182,9 +184,14 @@ class Dashboard extends Component
                 $day = $from->copy()->addDays($i);
                 $key = $day->toDateString();
                 $row = $rows[$key] ?? null;
+                $dayName = $day->locale('fa')->dayName;
 
                 $out[] = [
-                    'label' => $day->locale('fa')->dayName,
+                    'label' => $dayName,
+                    // Single letter («چ») for narrow mobile columns — full
+                    // weekday names can't shrink below ~45px each and were
+                    // blowing the chart outside its card on phones.
+                    'short' => mb_substr($dayName, 0, 1),
                     'orders' => (int) ($row->orders ?? 0),
                     'amount' => (int) ($row->amount ?? 0),
                     'today' => $i === 6,
@@ -219,9 +226,12 @@ class Dashboard extends Component
                 $day = $from->copy()->addDays($i);
                 $key = $day->toDateString();
                 $row = $rows[$key] ?? null;
+                $dayName = $day->locale('fa')->dayName;
 
                 $out[] = [
-                    'label' => $day->locale('fa')->dayName,
+                    'label' => $dayName,
+                    // Mobile-friendly single letter — see orders chart above.
+                    'short' => mb_substr($dayName, 0, 1),
                     'views' => (int) ($row->views ?? 0),
                     'today' => $i === 13,
                 ];
