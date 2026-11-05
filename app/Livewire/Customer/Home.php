@@ -126,6 +126,15 @@ class Home extends Component
         $this->dispatch('home-toast', message: '«'.$product->name.'» به سبد خرید اضافه شد.');
     }
 
+    /**
+     * A story was just watched in the nested viewer — re-render so
+     * `storyShops` (computed) re-reads story_views; when the LAST unseen
+     * story of a shop is watched, its home ring goes grey instantly
+     * without a manual reload (client v0.17.8).
+     */
+    #[On('story-marked-seen')]
+    public function onStoryMarkedSeen(): void {}
+
     // ── Computed data ────────────────────────────────────────────────
 
     /**

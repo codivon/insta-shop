@@ -16,6 +16,7 @@ use App\Models\StoryView;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -283,6 +284,15 @@ class StorefrontShow extends Component
 
         $this->dispatch('open-stories', shopId: $this->shop->id, startIndex: max(0, $index));
     }
+
+    /**
+     * A story was just watched in the nested viewer — re-render so
+     * `storefrontSeenIds` (computed) re-reads story_views and THAT ring
+     * loses its gradient border instantly, without a manual reload
+     * (client v0.17.8).
+     */
+    #[On('story-marked-seen')]
+    public function onStoryMarkedSeen(): void {}
 
     /* ─────────────────────── computed data ─────────────────────── */
 

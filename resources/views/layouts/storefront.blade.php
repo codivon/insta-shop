@@ -7,7 +7,14 @@
   component (it needs shop data), same pattern as the panels.
 ═══════════════════════════════════════════════════════════ --}}
 <!DOCTYPE html>
-<html lang="fa" dir="rtl" data-panel="storefront">
+{{-- data-panel="customer" — NOT "storefront": this value rides the
+     X-Instashop-Panel header on every Livewire request (app.js) and
+     ResolvePanel resolves the SESSION from it. The storefront is part
+     of the customer panel (its full-page GETs already resolve the
+     customer session via the /shop prefix) — with the old alias every
+     Livewire call here (story views/likes/comments) fell back to the
+     guest landing session and customers were never recognised. --}}
+<html lang="fa" dir="rtl" data-panel="customer">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">

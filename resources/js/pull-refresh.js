@@ -32,7 +32,9 @@
 //
 
 const THRESHOLD = 72;      // px of downward drag that arms the refresh
-const TOP_ZONE = 26;       // px strip under the top edge where the pull may start
+const TOP_ZONE = 36;       // px strip under the top edge where the pull may start
+                           // (v0.17.8: client «محدوده رفرش دستی را یکم بیشتر کن…
+                           // ۱۰ پیکسل پایین‌تر» — was 26, +10px on mobile)
 const SPINNER_TOP = 20;    // px under the top edge the spinner sits at (Chrome)
 
 const init = () => {

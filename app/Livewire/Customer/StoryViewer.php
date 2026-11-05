@@ -259,6 +259,8 @@ class StoryViewer extends Component
                 'customer_id' => $customer->id,
             ]);
 
+            $this->announceSeen($story);
+
             return;
         }
 
@@ -269,7 +271,21 @@ class StoryViewer extends Component
                 'story_id' => $story->id,
                 'visitor_token' => $token,
             ]);
+
+            $this->announceSeen($story);
         }
+    }
+
+    /**
+     * Live ring grey-out (client v0.17.8: «وقتی استوری مشاهده میشود، border
+     * دورش لحظه‌ای از بین نمیرود و باید رفرش شود») — the hosting page's
+     * rings read story_views through computed properties, so re-rendering
+     * the parent the moment a story is watched turns its ring grey without
+     * any manual reload (storefront per-story rings + home per-shop rings).
+     */
+    private function announceSeen(Story $story): void
+    {
+        $this->dispatch('story-marked-seen', storyId: $story->id, shopId: (int) $this->shopId);
     }
 
     /** Stable anonymous id for guest viewers (persisted in the session). */
