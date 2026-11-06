@@ -57,6 +57,11 @@ class StoriesPage extends Component
     // ── create form ──────────────────────────────────────────────────
     public bool $creating = false;
 
+    // ── edit form (v0.21.0) — same fields, opened from a story card ──
+    public bool $editing = false;
+
+    public ?int $editingId = null;
+
     public string $type = Story::TYPE_IMAGE;
 
     /** @var mixed Livewire temporary upload (image stories) */
@@ -160,11 +165,69 @@ class StoriesPage extends Component
 
     public function toggleCreate(): void
     {
+        // an open edit form yields to the create form
+        if ($this->editing) {
+            $this->cancelEdit();
+        }
+
         $this->creating = ! $this->creating;
 
         if ($this->creating) {
             $this->resetErrorBag();
         }
+    }
+
+    // ── edit (v0.21.0) — «در پنل مدیریت قابلیت ویرایش هم به استوری‌ها اضافه شود» ──
+
+    /** Load a story into the shared form (shop stays locked while editing). */
+    public function openEdit(int $storyId): void
+    {
+        $story = Story::query()->findOrFail($storyId);
+
+        $this->creating = false;
+        $this->editing = true;
+        $this->editingId = $story->id;
+
+        $this->type = $story->type;
+        $this->media = null;
+        $this->videoUrl = (string) $story->video_url;
+        $this->shopId = (string) $story->shop_id;
+        $this->productId = $story->product_id !== null ? (string) $story->product_id : '';
+        $this->productSearch = '';
+        $this->caption = (string) $story->caption;
+        $this->linkUrl = (string) $story->link_url;
+        $this->linkTitle = (string) $story->link_title;
+        $this->likesEnabled = $story->likes_enabled;
+        $this->commentsEnabled = $story->comments_enabled;
+
+        // the window is always edited as explicit start/end datetimes
+        $this->startMode = 'custom';
+        $this->startDate = $story->starts_at?->format('Y-m-d') ?? now()->toDateString();
+        $this->startTime = $story->starts_at?->format('H:i') ?? now()->format('H:i');
+        $this->duration = 'custom';
+        $this->endDate = $story->ends_at?->format('Y-m-d') ?? now()->addHours(24)->toDateString();
+        $this->endTime = $story->ends_at?->format('H:i') ?? now()->addHours(24)->format('H:i');
+
+        $this->resetErrorBag();
+        $this->dispatch('scroll-to-top');
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->editing = false;
+        $this->editingId = null;
+        $this->media = null;
+        $this->resetErrorBag();
+    }
+
+    /** The story being edited (for the locked shop chip + existing media preview). */
+    public function getEditStoryProperty(): ?Story
+    {
+        if ($this->editingId === null) {
+            return null;
+        }
+
+        return Story::query()->with('shop:id,name')->find($this->editingId);
     }
 
     // ── computed data ────────────────────────────────────────────────
@@ -194,10 +257,10 @@ class StoriesPage extends Component
             ])
             ->withCount(['likes', 'comments'])
             ->orderByDesc('id')
-            ->limit($this->perPage)
+            ->limit(min(max($this->perPage, 1), 120))
             ->get();
 
-        $this->hasMore = $this->filteredQuery()->count() > $this->perPage;
+        $this->hasMore = $this->filteredQuery()->count() > min(max($this->perPage, 1), 120);
 
         return $rows;
     }
@@ -325,6 +388,11 @@ class StoriesPage extends Component
     {
         $story = Story::query()->findOrFail($storyId);
 
+        // an open edit form on the same row closes with it
+        if ($this->editingId === $storyId) {
+            $this->cancelEdit();
+        }
+
         if ($story->media_path) {
             Storage::disk('public')->delete($story->media_path);
         }
@@ -342,13 +410,7 @@ class StoriesPage extends Component
     {
         $this->validateWithToast(fn () => $this->validate($this->rules(), $this->messages()));
 
-        $startsAt = $this->startMode === 'now'
-            ? now()
-            : Carbon::createFromFormat('Y-m-d H:i', $this->startDate.' '.$this->startTime, config('app.timezone'));
-
-        $endsAt = $this->duration !== 'custom'
-            ? $startsAt->copy()->addHours((int) $this->duration)
-            : Carbon::createFromFormat('Y-m-d H:i', $this->endDate.' '.$this->endTime, config('app.timezone'));
+        [$startsAt, $endsAt] = $this->resolveWindow();
 
         if ($endsAt->lessThanOrEqualTo($startsAt)) {
             $this->addError('endDate', 'زمان پایان باید بعد از زمان شروع باشد.');
@@ -389,6 +451,97 @@ class StoriesPage extends Component
         $this->creating = false;
         $this->filter = 'all';
         $this->dispatch('panel-toast', message: 'استوری ثبت و منتشر شد. ✅', type: 'success');
+    }
+
+    // ── edit (v0.21.0) ───────────────────────────────────────────────
+
+    public function updateStory(): void
+    {
+        $story = Story::query()->find($this->editingId ?? 0);
+
+        if ($story === null) {
+            $this->cancelEdit();
+            $this->dispatch('panel-toast', message: 'این استوری دیگر وجود ندارد.', type: 'error');
+
+            return;
+        }
+
+        $this->validateWithToast(fn () => $this->validate($this->rules(), $this->messages()));
+
+        [$startsAt, $endsAt] = $this->resolveWindow();
+
+        if ($endsAt->lessThanOrEqualTo($startsAt)) {
+            $this->addError('endDate', 'زمان پایان باید بعد از زمان شروع باشد.');
+
+            return;
+        }
+
+        $payload = [
+            // the shop is LOCKED while editing — product options and the
+            // media folder stay coherent with the story's own shop
+            'shop_id' => $story->shop_id,
+            'product_id' => $this->productId !== '' ? (int) $this->productId : null,
+            'type' => $this->type,
+            'caption' => $this->caption !== '' ? $this->caption : null,
+            'link_url' => $this->linkUrl !== '' ? $this->linkUrl : null,
+            'link_title' => $this->linkUrl !== '' && $this->linkTitle !== '' ? $this->linkTitle : null,
+            'likes_enabled' => $this->likesEnabled,
+            'comments_enabled' => $this->commentsEnabled,
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
+            // moderation state is NOT touched by an edit (an approved story
+            // stays approved; a rejected one needs the explicit تأیید action)
+        ];
+
+        if ($this->type === Story::TYPE_IMAGE) {
+            if ($this->media) {
+                // replace the image: remove the old file only after the new
+                // one is safely on disk
+                $old = $story->media_path;
+                $payload['media_path'] = $this->media->store("stories/{$story->shop_id}", 'public');
+                $payload['video_url'] = null;
+
+                if ($old && $old !== $payload['media_path']) {
+                    Storage::disk('public')->delete($old);
+                }
+            } else {
+                // keep the existing image (media_path untouched)
+                $payload['video_url'] = null;
+            }
+        } else {
+            // video story: direct link only — a stale uploaded image is dropped
+            $payload['media_path'] = null;
+            $payload['video_url'] = $this->videoUrl;
+
+            if ($story->media_path) {
+                Storage::disk('public')->delete($story->media_path);
+            }
+        }
+
+        $story->fill($payload)->save();
+
+        ActivityLogger::log(
+            'story.updated',
+            'استوری #'.$story->id.' فروشگاه «'.$story->shop->name.'» از پنل مدیریت ویرایش شد',
+            subject: $story,
+        );
+
+        $this->cancelEdit();
+        $this->dispatch('panel-toast', message: 'استوری ویرایش شد. ✅', type: 'success');
+    }
+
+    /** Shared start/end resolution for create + update (validate() runs first). */
+    private function resolveWindow(): array
+    {
+        $startsAt = $this->startMode === 'now'
+            ? now()
+            : Carbon::createFromFormat('Y-m-d H:i', $this->startDate.' '.$this->startTime, config('app.timezone'));
+
+        $endsAt = $this->duration !== 'custom'
+            ? $startsAt->copy()->addHours((int) $this->duration)
+            : Carbon::createFromFormat('Y-m-d H:i', $this->endDate.' '.$this->endTime, config('app.timezone'));
+
+        return [$startsAt, $endsAt];
     }
 
     // ── helpers ──────────────────────────────────────────────────────
@@ -440,12 +593,15 @@ class StoriesPage extends Component
     protected function rules(): array
     {
         $isVideo = $this->type === Story::TYPE_VIDEO;
+        // edit mode: the image is OPTIONAL (empty = keep the current one);
+        // create mode: an image story REQUIRES a fresh upload
+        $mediaRequired = ! $isVideo && ! $this->editing;
 
         return [
             'shopId' => ['required', 'integer', 'exists:shops,id'],
             'type' => ['required', 'in:image,video'],
             'media' => array_filter([
-                $isVideo ? 'nullable' : 'required',
+                $isVideo ? 'nullable' : ($mediaRequired ? 'required' : 'nullable'),
                 $isVideo ? null : 'image',
                 $isVideo ? null : 'mimes:jpg,jpeg,png,webp',
                 $isVideo ? null : 'max:5120',
@@ -463,7 +619,25 @@ class StoriesPage extends Component
             'linkTitle' => ['nullable', 'required_with:linkUrl', 'string', 'max:150'],
             'likesEnabled' => ['boolean'],
             'commentsEnabled' => ['boolean'],
-            'productId' => ['nullable', 'integer'],
+            'productId' => ['nullable', 'integer',
+                // the attached product MUST belong to the story's own shop
+                // (and be published) — create AND edit (v0.21.0 hardening)
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === null || $value === '' || ! ctype_digit((string) $value)) {
+                        return;
+                    }
+
+                    $valid = Product::query()
+                        ->where('id', (int) $value)
+                        ->where('shop_id', (int) $this->shopId)
+                        ->where('status', 'published')
+                        ->exists();
+
+                    if (! $valid) {
+                        $fail('محصول انتخاب‌شده به این فروشگاه تعلق ندارد یا منتشر نشده است.');
+                    }
+                },
+            ],
             'startMode' => ['required', 'in:now,custom'],
             'startDate' => ['required_if:startMode,custom', 'nullable', 'date'],
             'startTime' => ['required_if:startMode,custom', 'nullable', 'date_format:H:i'],
@@ -491,6 +665,7 @@ class StoriesPage extends Component
             'linkTitle.required_with' => 'برای لینک، یک عنوان وارد کنید (عنوان روی استوری نمایش داده می‌شود).',
             'linkTitle.max' => 'عنوان لینک حداکثر ۱۵۰ کاراکتر است.',
             'productId.integer' => 'محصول انتخاب‌شده معتبر نیست.',
+            'productId.0' => 'محصول انتخاب‌شده به این فروشگاه تعلق ندارد یا منتشر نشده است.',
             'startDate.required_if' => 'تاریخ شروع را انتخاب کنید.',
             'startDate.date' => 'تاریخ شروع نامعتبر است.',
             'startTime.required_if' => 'ساعت شروع را وارد کنید.',

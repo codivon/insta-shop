@@ -20,6 +20,7 @@ use App\Support\IranCalendar;
 use App\Support\Payments\PaymentService;
 use App\Support\Phone;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -495,6 +496,22 @@ class CheckoutPage extends Component
 
             return;
         }
+
+        /*
+         * SECURITY (v0.21.0): 10 tries/min per customer — scripted guessing
+         * of short seller codes gets throttled (the failure messages stay
+         * specific for real users, the limiter is the anti-oracle control).
+         */
+        $customerId = (int) (auth('customer')->id() ?? 0);
+
+        if (RateLimiter::tooManyAttempts('discount-guess:'.$customerId, 10)) {
+            $this->discountMessage = 'تعداد تلاش‌ها زیاد است — چند دقیقه بعد دوباره امتحان کنید.';
+            $this->addError('discountCode', $this->discountMessage);
+
+            return;
+        }
+
+        RateLimiter::hit('discount-guess:'.$customerId);
 
         $discount = Discount::findActive($code);
 

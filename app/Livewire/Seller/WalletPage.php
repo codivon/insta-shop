@@ -473,10 +473,10 @@ class WalletPage extends Component
         $txTotal = (clone $txQuery)->count();
         $transactions = (clone $txQuery)
             ->with('order')
-            ->limit($this->perPage)
+            ->limit(min(max($this->perPage, 1), 60))
             ->get();
 
-        $txHasMore = $transactions->count() >= $this->perPage;
+        $txHasMore = $transactions->count() >= min(max($this->perPage, 1), 60);
 
         [$chartFrom, $chartTo] = $this->resolveChartRange($this->chartFrom, $this->chartTo, $this->chartMode);
 

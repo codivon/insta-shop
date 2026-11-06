@@ -250,10 +250,10 @@ class Home extends Component
         $rows = $this->productQuery()
             ->with(['mainImage', 'category', 'shop.seller:id,instagram_username'])
             ->withCount(['variants as variants_count' => fn ($q) => $q->where('status', 'active')])
-            ->limit($this->perPage)
+            ->limit(min(max($this->perPage, 1), 60))
             ->get();
 
-        $this->hasMore = $total > $this->perPage;
+        $this->hasMore = $total > min(max($this->perPage, 1), 60);
 
         return $rows;
     }

@@ -312,9 +312,9 @@ class OrdersPage extends Component
             ->latest('id');
 
         $total = (clone $query)->count();
-        $rows = $query->limit($this->perPage)->get();
+        $rows = $query->limit(min(max($this->perPage, 1), 60))->get();
 
-        $this->hasMore = $total > $this->perPage;
+        $this->hasMore = $total > min(max($this->perPage, 1), 60);
 
         return $rows;
     }

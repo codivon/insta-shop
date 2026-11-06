@@ -147,7 +147,7 @@ class CategoryShowPage extends Component
     {
         $rows = $this->feedQuery()
             ->orderByDesc('id')
-            ->limit($this->perPage)
+            ->limit(min(max($this->perPage, 1), 60))
             ->get();
 
         $this->hasMore = $this->total > $this->perPage;

@@ -8,6 +8,7 @@ use App\Models\SupportTicket;
 use App\Models\SupportTicketMessage;
 use App\Support\AdminNotifier;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -66,6 +67,16 @@ class TicketsPage extends Component
 
     public function submitTicket(): void
     {
+        // Rate limit (v0.21.0): 5 tickets/hour per author — each ticket
+        // fires an admin notification + web push, floods must not reach it.
+        if (RateLimiter::tooManyAttempts('ticket-customer:'.auth('customer')->id(), 5)) {
+            $this->dispatch('panel-toast', message: 'تعداد تیکت‌های شما زیاد است — بعداً تلاش کنید.', type: 'error');
+
+            return;
+        }
+
+        RateLimiter::hit('ticket-customer:'.auth('customer')->id());
+
         $this->validateWithToast(fn () => $this->validate([
             'subject' => ['required', 'string', 'min:3', 'max:120'],
             'category' => ['required', 'in:'.implode(',', array_keys(SupportTicket::CATEGORIES))],
@@ -123,9 +134,9 @@ class TicketsPage extends Component
             ->orderByDesc('id');
 
         $total = (clone $query)->count();
-        $rows = $query->limit($this->perPage)->get();
+        $rows = $query->limit(min(max($this->perPage, 1), 50))->get();
 
-        $this->hasMore = $total > $this->perPage;
+        $this->hasMore = $total > min(max($this->perPage, 1), 50);
 
         return $rows;
     }

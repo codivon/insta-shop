@@ -110,13 +110,55 @@ class Order extends Model
             : 0;
 
         $order = DB::transaction(function () use ($customer, $delivery, $gateway, $lines, $shipping, $discount, $discountAmount, $checkout) {
+            /*
+             * SECURITY (v0.21.0): the discount is CLAIMED atomically while
+             * holding the discount row lock. The old code blindly did
+             * increment('used_count') after the checkout-time evaluation —
+             * N concurrent placeOrder calls all evaluated BEFORE any of
+             * them committed, so a code with quantity=1 / quantity_per_user=1
+             * could yield N discounted orders. Every creator now serializes
+             * on the row lock and the caps are re-checked under it; a lost
+             * claim simply drops the discount (order proceeds undiscounted).
+             */
+            $claimedDiscount = null;
+
+            if ($discount instanceof Discount) {
+                $locked = Discount::query()->whereKey($discount->id)->lockForUpdate()->first();
+
+                $stillValid = $locked !== null
+                    && $locked->published
+                    && ($locked->starts_at === null || ! now()->lt($locked->starts_at))
+                    && ($locked->ends_at === null || ! now()->gt($locked->ends_at))
+                    && ($locked->quantity <= 0 || $locked->used_count < $locked->quantity);
+
+                // per-user quota — re-checked UNDER the row lock (all creators
+                // for this code serialize here, so the count below sees the
+                // previous creator's committed order row → no per-user race)
+                if ($stillValid && $locked->quantity_per_user > 0) {
+                    $used = static::query()
+                        ->where('customer_id', $customer->id)
+                        ->whereIn('status', ['pending', 'paid'])
+                        ->where('discount_code', $locked->code)
+                        ->count();
+
+                    $stillValid = $used < $locked->quantity_per_user;
+                }
+
+                if ($stillValid) {
+                    $locked->increment('used_count');
+                    $claimedDiscount = $locked;
+                }
+            }
+
+            $appliedAmount = $claimedDiscount !== null ? $discountAmount : 0;
+
             $order = static::query()->create([
                 'customer_id' => $customer->id,
                 'status' => 'pending',
-                'total_amount' => max(0, (int) $lines->sum(fn ($line) => $line['unit_price'] * $line['quantity']) + $shipping - $discountAmount),
+                'total_amount' => max(0, (int) $lines->sum(fn ($line) => $line['unit_price'] * $line['quantity']) + $shipping - $appliedAmount),
                 'shipping_cost' => $shipping,
-                'discount_amount' => $discountAmount,
-                'discount_code' => $discount?->code,
+                'discount_amount' => $appliedAmount,
+                'discount_code' => $claimedDiscount?->code,
                 'shipments' => array_values((array) ($checkout['shipments'] ?? [])),
                 'items_count' => (int) $lines->sum('quantity'),
                 'receiver_name' => (string) $delivery['receiver_name'],
@@ -128,11 +170,6 @@ class Order extends Model
 
             $order->items()->createMany($lines->all());
             $order->ensureShopShipments();
-
-            // the code is consumed the moment an order is created for it
-            if ($discount instanceof Discount) {
-                $discount->increment('used_count');
-            }
 
             return $order;
         });
@@ -220,14 +257,36 @@ class Order extends Model
         });
     }
 
-    /** Mark a pending order failed (canceled / verification error). */
+    /**
+     * Mark a pending order failed (canceled / verification error).
+     *
+     * SECURITY (v0.21.0): the status is re-read from the DB under a row
+     * lock — the old check trusted the stale in-memory instance, so a
+     * duplicate gateway callback racing finalizePaid could flip a PAID
+     * order to failed (stock/wallet already settled). Also: a failed
+     * order RELEASES the discount quota it reserved at creation, so
+     * abandoned checkouts no longer burn a seller's global cap.
+     */
     public function markFailed(): bool
     {
-        if ($this->status !== 'pending') {
-            return false;
-        }
+        return (bool) DB::transaction(function () {
+            $fresh = static::query()->whereKey($this->id)->lockForUpdate()->first();
 
-        return (bool) $this->forceFill(['status' => 'failed'])->save();
+            if (! $fresh || $fresh->status !== 'pending') {
+                return false;
+            }
+
+            $fresh->forceFill(['status' => 'failed'])->save();
+
+            if ((string) $fresh->discount_code !== '') {
+                Discount::query()
+                    ->where('code', $fresh->discount_code)
+                    ->where('used_count', '>', 0)
+                    ->decrement('used_count');
+            }
+
+            return true;
+        });
     }
 
     /* ──────────────────────────── Helpers ──────────────────────────── */

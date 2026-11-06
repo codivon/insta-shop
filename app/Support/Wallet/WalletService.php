@@ -148,7 +148,10 @@ final class WalletService
         return DB::transaction(function () use ($wallet, $amount, $sheba, $cardNumber) {
             $fresh = Wallet::query()->whereKey($wallet->id)->lockForUpdate()->first();
 
-            if (! $fresh || $fresh->balance < $amount) {
+            // HARDENING (v0.21.0): reject non-positive amounts explicitly —
+            // decrement('balance', -N) would CREDIT the wallet; the only
+            // caller validates today, but the service must not trust that.
+            if (! $fresh || $amount <= 0 || $fresh->balance < $amount) {
                 return null;
             }
 
@@ -174,19 +177,31 @@ final class WalletService
      */
     public static function approveWithdrawal(WalletTransaction $tx, ?string $adminNote = null): bool
     {
-        if (! $tx->isWithdrawal() || $tx->status !== WalletTransaction::STATUS_PENDING) {
+        if (! $tx->isWithdrawal()) {
+            return false;
+        }
+
+        /*
+         * SECURITY (v0.21.0): atomic pending→done transition (affected-rows
+         * check). The old check-then-act allowed approve+reject in two tabs
+         * to BOTH succeed — refunding the reserved balance AND paying out.
+         */
+        $claimed = WalletTransaction::query()
+            ->whereKey($tx->id)
+            ->where('status', WalletTransaction::STATUS_PENDING)
+            ->update([
+                'status' => WalletTransaction::STATUS_DONE,
+                'admin_note' => $adminNote !== '' && $adminNote !== null ? trim($adminNote) : null,
+                'description' => 'برداشت تأییدشده — '.($tx->card_number ? 'کارت '.Banking::maskCard($tx->card_number) : (string) $tx->sheba),
+            ]);
+
+        if ($claimed === 0) {
             return false;
         }
 
         $destination = $tx->card_number
             ? 'کارت '.Banking::maskCard($tx->card_number)
             : (string) $tx->sheba;
-
-        $tx->update([
-            'status' => WalletTransaction::STATUS_DONE,
-            'admin_note' => $adminNote !== '' && $adminNote !== null ? trim($adminNote) : null,
-            'description' => 'برداشت تأییدشده — '.$destination,
-        ]);
 
         SellerNotifier::notify(
             $tx->wallet?->seller_id,
@@ -207,18 +222,37 @@ final class WalletService
      */
     public static function rejectWithdrawal(WalletTransaction $tx, ?string $adminNote = null): bool
     {
-        if (! $tx->isWithdrawal() || $tx->status !== WalletTransaction::STATUS_PENDING) {
+        if (! $tx->isWithdrawal()) {
             return false;
         }
 
-        DB::transaction(function () use ($tx, $adminNote) {
+        /*
+         * SECURITY (v0.21.0): atomic pending→rejected transition — the
+         * refund increment runs ONLY when this call wins the pending row
+         * (mirrors approveWithdrawal; kills the approve+reject double-spend).
+         */
+        $refunded = DB::transaction(function () use ($tx, $adminNote): bool {
+            $claimed = WalletTransaction::query()
+                ->whereKey($tx->id)
+                ->where('status', WalletTransaction::STATUS_PENDING)
+                ->update([
+                    'status' => WalletTransaction::STATUS_REJECTED,
+                    'admin_note' => $adminNote !== '' && $adminNote !== null ? trim($adminNote) : null,
+                    'description' => 'درخواست رد شد — مبلغ به کیف پول بازگشت',
+                ]);
+
+            if ($claimed === 0) {
+                return false;
+            }
+
             $tx->wallet->increment('balance', $tx->amount);
-            $tx->update([
-                'status' => WalletTransaction::STATUS_REJECTED,
-                'admin_note' => $adminNote !== '' && $adminNote !== null ? trim($adminNote) : null,
-                'description' => 'درخواست رد شد — مبلغ به کیف پول بازگشت',
-            ]);
+
+            return true;
         });
+
+        if (! $refunded) {
+            return false;
+        }
 
         SellerNotifier::notify(
             $tx->wallet?->seller_id,

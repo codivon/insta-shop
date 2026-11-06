@@ -52,6 +52,14 @@ class BackupSettings extends Component
 
     public string $smtpUsername = '';
 
+    /**
+     * WRITE-ONLY (v0.21.0): the stored SMTP password is NEVER hydrated back
+     * into this public property — Livewire dehydrates public props into the
+     * client snapshot on every render, which published the real password to
+     * the browser (page source / wire:snapshot). It stays empty unless the
+     * admin types a new one; save() only overwrites the stored value when
+     * non-empty.
+     */
     public string $smtpPassword = '';
 
     public string $smtpEncryption = 'tls';    // tls | ssl | none
@@ -73,7 +81,7 @@ class BackupSettings extends Component
         $this->smtpHost = (string) Setting::get('backups.smtp_host', '');
         $this->smtpPort = (string) Setting::get('backups.smtp_port', '587');
         $this->smtpUsername = (string) Setting::get('backups.smtp_username', '');
-        $this->smtpPassword = (string) Setting::get('backups.smtp_password', '');
+        // $smtpPassword intentionally left empty — write-only (see property)
         $this->smtpEncryption = (string) Setting::get('backups.smtp_encryption', 'tls');
         $this->smtpFromAddress = (string) Setting::get('backups.smtp_from_address', '');
         $this->smtpFromName = (string) Setting::get('backups.smtp_from_name', '');
@@ -132,7 +140,7 @@ class BackupSettings extends Component
     /** Pairs passed to Setting::setMany (single source of truth). */
     private function settingPairs(): array
     {
-        return [
+        $pairs = [
             'backups.auto_enabled' => $this->autoEnabled ? '1' : '0',
             'backups.frequency' => $this->frequency,
             'backups.interval_days' => $this->frequency === 'custom' ? max(1, (int) $this->intervalDays) : (int) $this->intervalDays,
@@ -144,11 +152,23 @@ class BackupSettings extends Component
             'backups.smtp_host' => trim($this->smtpHost),
             'backups.smtp_port' => (int) $this->smtpPort,
             'backups.smtp_username' => trim($this->smtpUsername),
-            'backups.smtp_password' => $this->smtpPassword,
             'backups.smtp_encryption' => $this->smtpEncryption,
             'backups.smtp_from_address' => trim($this->smtpFromAddress),
             'backups.smtp_from_name' => trim($this->smtpFromName),
         ];
+
+        // write-only password: empty input = keep the stored one
+        if (trim($this->smtpPassword) !== '') {
+            $pairs['backups.smtp_password'] = $this->smtpPassword;
+        }
+
+        return $pairs;
+    }
+
+    /** Whether an SMTP password is already stored (for the masked hint). */
+    public function getHasSmtpPasswordProperty(): bool
+    {
+        return trim((string) Setting::get('backups.smtp_password', '')) !== '';
     }
 
     private function snapshotKeys(): array

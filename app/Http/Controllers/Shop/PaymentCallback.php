@@ -9,6 +9,7 @@ use App\Support\AdminNotifier;
 use App\Support\Fmt;
 use App\Support\Payments\PaymentService;
 use Illuminate\Http\Request;
+use Shetabit\Multipay\Exceptions\PreviouslyVerifiedException;
 use Throwable;
 
 /**
@@ -84,6 +85,35 @@ class PaymentCallback
                 route('admin.orders.show', $order->id),
                 'circle-check',
                 $order,
+            );
+        } catch (PreviouslyVerifiedException $e) {
+            /*
+             * SECURITY (v0.21.0): Zibal answers 201 («previously verified»)
+             * when the trackId was already confirmed — the money WAS taken.
+             * A duplicate/retried callback must NOT take the failure path:
+             * the old code called markFailed() here, which (with the stale
+             * status check) could flip an order the racing callback had
+             * just finalized into «failed» AFTER stock/wallet settlement.
+             * finalizePaid is idempotent (pending-only, row-locked) — this
+             * path just re-enters the success flow.
+             */
+            PaymentLog::record(
+                $order,
+                (string) ($order->gateway ?: 'zibal'),
+                'callback_previously_verified',
+                (string) $order->gateway_ref,
+                (int) $order->total_amount,
+                true,
+                'gateway reports the trackId was verified before — treated as paid (idempotent)',
+            );
+
+            $order->finalizePaid((string) ($order->gateway_ref !== '' ? $order->gateway_ref : 'previously-verified'));
+
+            ActivityLogger::log(
+                'order.paid',
+                'پرداخت سفارش '.Fmt::fa($order->id).' تأیید شد (callback تکراری — تراکنش قبلاً وریفای شده بود)',
+                subject: $order,
+                after: ['status' => 'paid'],
             );
         } catch (Throwable $e) {
             // the exact reason lands in payment_logs — the developer panel

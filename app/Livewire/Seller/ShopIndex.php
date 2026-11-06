@@ -158,10 +158,10 @@ class ShopIndex extends Component
         $rows = $this->filteredQuery()
             ->with(['mainImage', 'category'])
             ->latest()
-            ->limit($this->perPage)
+            ->limit(min(max($this->perPage, 1), 60))
             ->get();
 
-        $this->hasMore = $total > $this->perPage;
+        $this->hasMore = $total > min(max($this->perPage, 1), 60);
 
         return $rows;
     }

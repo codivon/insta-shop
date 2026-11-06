@@ -37,7 +37,19 @@ class LogDriver implements SmsDriver
 
     public function send(SmsMessage $message): SmsResult
     {
-        Log::info('SMS[log] to='.Phone::toLocal($message->to)." template={$message->template} body=".$message->body());
+        /*
+         * SECURITY (v0.21.0): outside local the OTP body is masked — if the
+         * admin ever leaves the log driver active on the production host,
+         * valid login codes must not sit in plaintext inside laravel.log
+         * (any log reader / log-download UI would expose account access).
+         * The on-screen dev code (OtpService) is local-only anyway, so the
+         * masked body only reduces debuggability in a misconfigured prod.
+         */
+        $body = app()->isLocal()
+            ? $message->body()
+            : preg_replace('/\b\d{4,8}\b/', '••••••', $message->body());
+
+        Log::info('SMS[log] to='.Phone::toLocal($message->to)." template={$message->template} body=".$body);
 
         return SmsResult::success(providerMessageId: 'log-'.uniqid());
     }

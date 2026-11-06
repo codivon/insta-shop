@@ -68,7 +68,7 @@
          @keydown.escape.window="$wire.close()"
          x-on:touchstart.passive="y0 = $event.touches[0].clientY"
          x-on:touchmove.passive="if (y0 !== null && $event.touches[0].clientY - y0 > 90) { y0 = null; $wire.close(); }"
-         class="fixed inset-0 z-[80] flex flex-col bg-black ip-fade-up" role="dialog" aria-modal="true" aria-label="نمایش استوری">
+         class="fixed inset-0 z-[100] flex flex-col bg-black ip-fade-up" role="dialog" aria-modal="true" aria-label="نمایش استوری">
 
         {{-- ── progress segments ── --}}
         <div class="absolute inset-x-0 top-0 z-20 flex gap-1 px-3 pt-3" style="padding-top: calc(12px + env(safe-area-inset-top, 0px));">
@@ -248,6 +248,21 @@
                         </div>
                     @endif
                 </div>
+
+                {{-- guest hint (v0.21.0): the old hint was ONLY a toast fired
+                     from this nested component — the toast container lives on
+                     the hosting page BELOW this opaque overlay (z-40/z-50 <
+                     the old z-[80]), so guests tapping like saw NOTHING at
+                     all. Now: the toast sits above the viewer AND an inline
+                     hint with a direct login link is always visible. --}}
+                @if (! auth('customer')->check())
+                    <a href="{{ route('shop.login') }}" wire:navigate
+                       class="flex items-center justify-center gap-1.5 rounded-xl bg-white/95 px-3 py-2 text-[10.5px] font-extrabold text-slate-900 transition hover:bg-white active:scale-[0.98]">
+                        <x-icon name="log-in" class="size-3.5" />
+                        برای لایک و ثبت نظر، وارد حساب مشتری شوید
+                    </a>
+                @endif
+
                 @error('commentBody') <p class="text-[10px] font-bold text-rose-400">{{ $message }}</p> @enderror
             @endif
         </div>

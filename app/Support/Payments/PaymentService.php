@@ -235,6 +235,33 @@ class PaymentService
             throw $e;
         }
 
+        /*
+         * SECURITY (v0.21.0): the paid amount is compared locally for the
+         * drivers that do NOT re-send the amount at verify time (Zibal's
+         * API takes only merchant + trackId). Zibal echoes the bound
+         * amount/paidAmount in RIAL (vendor currency TOMAN → ratio 10);
+         * a mismatch below the order total fails closed. Zarinpal already
+         * sends the amount inside the verify request (gateway-side check).
+         */
+        if ($gateway === 'zibal') {
+            $details = (array) $receipt->getDetails();
+            $paidRial = (int) ($details['paidAmount'] ?? $details['amount'] ?? 0);
+
+            if ($paidRial > 0 && (int) round($paidRial / 10) < (int) $order->total_amount) {
+                PaymentLog::record(
+                    $order,
+                    $gateway,
+                    'verify_amount_mismatch',
+                    (string) $order->gateway_ref,
+                    (int) $order->total_amount,
+                    false,
+                    'gateway paid amount '.$paidRial.' rial is BELOW the order total '.(int) $order->total_amount.' toman',
+                );
+
+                throw new \RuntimeException('مبلغ پرداخت‌شده با مبلغ سفارش مطابقت ندارد — تراکنش تأیید نشد.');
+            }
+        }
+
         PaymentLog::record(
             $order,
             $gateway,

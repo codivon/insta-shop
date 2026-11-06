@@ -1,4 +1,4 @@
-<div class="ip-fade-up space-y-4">
+<div class="ip-fade-up space-y-4" @scroll-to-top.window="window.scrollTo({ top: 0, behavior: 'smooth' })">
 
     {{-- ── header + create toggle ── --}}
     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -8,30 +8,43 @@
         </div>
         <button type="button" wire:click="toggleCreate"
                 class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95">
-            <x-icon name="{{ $creating ? 'minus' : 'plus' }}" class="size-4" />
-            {{ $creating ? 'بستن فرم' : 'افزودن استوری' }}
+            <x-icon name="{{ $creating || $editing ? 'minus' : 'plus' }}" class="size-4" />
+            {{ $creating || $editing ? 'بستن فرم' : 'افزودن استوری' }}
         </button>
     </div>
 
-    {{-- ── create form ── --}}
-    @if ($creating)
-        <div class="rounded-2xl border border-primary-200 bg-white p-5 shadow-sm dark:border-primary-900/60 dark:bg-slate-900">
-            <h2 class="text-sm font-extrabold">استوری جدید برای فروشگاه</h2>
-            <p class="mt-1 text-[11px] text-slate-400">استوریِ ثبت‌شده از پنل مدیریت مستقیم منتشر می‌شود (بدون صف تایید).</p>
+    {{-- ── create / edit form (shared — v0.21.0 adds edit mode) ── --}}
+    @if ($creating || $editing)
+        <div class="rounded-2xl border border-primary-200 bg-white p-5 shadow-sm dark:border-primary-900/60 dark:bg-slate-900" x-data x-effect="if ($wire.editing) $el.scrollIntoView({ behavior: 'smooth', block: 'start' })">
+            <h2 class="text-sm font-extrabold">{{ $editing ? 'ویرایش استوری #'.\App\Support\Fmt::fa((string) $editingId) : 'استوری جدید برای فروشگاه' }}</h2>
+            <p class="mt-1 text-[11px] text-slate-400">
+                @if ($editing)
+                    فروشگاه و وضعیت تأیید ثابت می‌مانند؛ سایر جزئیات و پنجرهٔ نمایش قابل ویرایش است.
+                @else
+                    استوریِ ثبت‌شده از پنل مدیریت مستقیم منتشر می‌شود (بدون صف تایید).
+                @endif
+            </p>
 
             <div class="mt-4 grid gap-4 lg:grid-cols-2">
                 {{-- shop + product --}}
                 <div class="space-y-3">
                     <label class="block">
-                        <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">فروشگاه *</span>
-                        <select wire:model.live="shopId" wire:loading.attr="disabled"
-                                class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
-                            <option value="">انتخاب فروشگاه…</option>
-                            @foreach ($shopOptions as $shopOption)
-                                <option value="{{ $shopOption->id }}">{{ $shopOption->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('shopId') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                        <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">فروشگاه @if ($editing)<span class="text-[9px] font-black text-slate-400">(ثابت)</span>@else * @endif</span>
+                        @if ($editing)
+                            <span class="mt-1.5 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100/70 px-3 py-2.5 text-xs font-extrabold text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
+                                <x-icon name="lock" class="size-3.5 shrink-0" />
+                                {{ $this->editStory?->shop?->name ?? '—' }}
+                            </span>
+                        @else
+                            <select wire:model.live="shopId" wire:loading.attr="disabled"
+                                    class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                                <option value="">انتخاب فروشگاه…</option>
+                                @foreach ($shopOptions as $shopOption)
+                                    <option value="{{ $shopOption->id }}">{{ $shopOption->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('shopId') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                        @endif
                     </label>
 
                     <label class="block">
@@ -113,15 +126,25 @@
                     @if ($type === 'image')
                         <div class="flex items-start gap-3">
                             <label class="flex-1">
-                                <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">تصویر استوری * (پیشنهادی: عمودی ۹:۱۶)</span>
+                                <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                                    @if ($editing)
+                                        تصویر جدید (اختیاری — خالی = نگه‌داشتن تصویر فعلی)
+                                    @else
+                                        تصویر استوری * (پیشنهادی: عمودی ۹:۱۶)
+                                    @endif
+                                </span>
                                 <input type="file" accept="image/jpeg,image/png,image/webp" wire:model.live="media"
                                        class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs file:me-3 file:rounded-lg file:border-0 file:bg-primary-600 file:px-3 file:py-1.5 file:text-[10px] file:font-bold file:text-white shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
                                 @error('media') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                                 <span wire:loading wire:target="media" class="mt-1 block text-[10px] font-semibold text-primary-500">در حال بارگذاری…</span>
                             </label>
                             @if ($media)
-                                <img src="{{ $media->temporaryUrl() }}" alt="پیش‌نمایش استوری"
+                                <img src="{{ $media->temporaryUrl() }}" alt="پیش‌نمایش تصویر جدید"
                                      class="h-24 w-16 rounded-xl border border-slate-200 object-cover dark:border-slate-700">
+                            @elseif ($editing && $this->editStory?->media_path)
+                                <span class="grid h-24 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800" title="تصویر فعلی">
+                                    <img src="{{ $this->editStory->mediaUrl() }}" alt="تصویر فعلی استوری" class="size-full object-cover">
+                                </span>
                             @endif
                         </div>
                     @else
@@ -152,9 +175,11 @@
                         @error('caption') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                     </label>
 
-                    {{-- window --}}
+                    {{-- window — in edit mode the radios are hidden: the window
+                         is always edited as explicit start/end datetimes --}}
                     <div class="grid grid-cols-2 gap-2">
                         <label class="col-span-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">شروع</span>
+                        @if (! $editing)
                         <label class="flex cursor-pointer items-center gap-2 rounded-xl border p-2.5 text-[11px] font-extrabold transition {{ $startMode === 'now'
                             ? 'border-primary-500 bg-primary-50/70 ring-1 ring-primary-500/30 dark:border-primary-600 dark:bg-primary-950/30'
                             : 'border-slate-200 dark:border-slate-700' }}">
@@ -167,6 +192,7 @@
                             <input type="radio" wire:model.live="startMode" value="custom" class="size-3.5 accent-primary-600">
                             زمان دلخواه
                         </label>
+                        @endif
                         @if ($startMode === 'custom')
                             <div class="col-span-2 grid grid-cols-2 gap-2">
                                 <x-jdate-picker model="startDate" placeholder="تاریخ شروع…" />
@@ -180,6 +206,7 @@
 
                     <div>
                         <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">مدت نمایش</span>
+                        @if (! $editing)
                         <div class="mt-1.5 grid grid-cols-4 gap-2" role="radiogroup" aria-label="مدت نمایش">
                             @foreach ([['12', '۱۲ ساعت'], ['24', '۲۴ ساعت'], ['48', '۴۸ ساعت'], ['custom', 'دلخواه']] as [$value, $label])
                                 <label class="flex cursor-pointer items-center justify-center rounded-xl border p-2.5 text-[11px] font-extrabold transition {{ $duration === $value
@@ -190,6 +217,7 @@
                                 </label>
                             @endforeach
                         </div>
+                        @endif
                         @if ($duration === 'custom')
                             <div class="mt-2 grid grid-cols-2 gap-2">
                                 <x-jdate-picker model="endDate" placeholder="تاریخ پایان…" />
@@ -204,15 +232,27 @@
             </div>
 
             <div class="mt-5 flex items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-                <button type="button" wire:click="toggleCreate"
-                        class="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
-                    انصراف
-                </button>
-                <button type="button" wire:click="createStory" wire:loading.attr="disabled" wire:target="createStory"
-                        class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95 disabled:opacity-60">
-                    <x-icon name="zap" class="size-4" />
-                    انتشار استوری
-                </button>
+                @if ($editing)
+                    <button type="button" wire:click="cancelEdit"
+                            class="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                        انصراف
+                    </button>
+                    <button type="button" wire:click="updateStory" wire:loading.attr="disabled" wire:target="updateStory"
+                            class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95 disabled:opacity-60">
+                        <x-icon name="check" class="size-4" />
+                        ذخیرهٔ تغییرات
+                    </button>
+                @else
+                    <button type="button" wire:click="toggleCreate"
+                            class="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                        انصراف
+                    </button>
+                    <button type="button" wire:click="createStory" wire:loading.attr="disabled" wire:target="createStory"
+                            class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95 disabled:opacity-60">
+                        <x-icon name="zap" class="size-4" />
+                        انتشار استوری
+                    </button>
+                @endif
             </div>
         </div>
     @endif
@@ -355,9 +395,15 @@
                                 <x-icon name="circle-x" class="size-3" /> رد
                             </button>
                         @endif
+                        <span class="flex-1"></span>
+                        {{-- edit (v0.21.0) — the shared form switches into edit mode --}}
+                        <button type="button" wire:click="openEdit({{ $story->id }})"
+                                class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-extrabold text-slate-600 transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                            <x-icon name="edit" class="size-3" /> ویرایش
+                        </button>
                         <button type="button" wire:click="destroy({{ $story->id }})"
                                 wire:confirm="این استوری برای همیشه حذف شود؟"
-                                class="ms-auto inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[10px] font-extrabold text-rose-600 transition hover:bg-rose-50 active:scale-95 dark:border-rose-900 dark:hover:bg-rose-950/40">
+                                class="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[10px] font-extrabold text-rose-600 transition hover:bg-rose-50 active:scale-95 dark:border-rose-900 dark:hover:bg-rose-950/40">
                             <x-icon name="trash" class="size-3" /> حذف
                         </button>
                     </div>

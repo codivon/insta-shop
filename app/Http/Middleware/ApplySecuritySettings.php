@@ -81,6 +81,25 @@ class ApplySecuritySettings
                 $headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
                 $headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
+                /*
+                 * v0.21.0: report-only CSP — adds the modern framing control
+                 * (frame-ancestors) plus a baseline script/style policy without
+                 * breaking the inline Alpine/JSON-LD/scripts this app relies
+                 * on. Violations land in the browser console; once clean it
+                 * can be flipped to enforce mode.
+                 */
+                $headers->set('Content-Security-Policy-Report-Only',
+                    "default-src 'self'; ".
+                    "script-src 'self' 'unsafe-inline'; ".
+                    "style-src 'self' 'unsafe-inline'; ".
+                    "img-src 'self' data: blob: https:; ".
+                    "media-src 'self' https: blob:; ".
+                    "font-src 'self' data:; ".
+                    "connect-src 'self'; ".
+                    "frame-ancestors 'self'; ".
+                    "base-uri 'self'; ".
+                    "form-action 'self'");
+
                 // Any TLS-terminated response gets HSTS (not only when the
                 // force-https redirect is enabled — a site may already sit
                 // behind https without the redirect toggle on).

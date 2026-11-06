@@ -41,11 +41,25 @@ class SmsSettings extends Component
         $this->driver = (string) Setting::get('sms.driver', 'log');
 
         // Pre-fill every driver's fields from settings (nested: fields[driver][field]).
+        // SECURITY (v0.21.0): SECRET fields (api keys / passwords / tokens) are
+        // NOT hydrated back — Livewire publishes public props into the client
+        // snapshot on every render, which exposed real provider credentials to
+        // the browser. Secret inputs are write-only: empty = keep stored value.
         foreach ($this->driverList() as $d) {
             foreach (array_keys($d['fields']) as $field) {
+                if (self::isSecretField($field)) {
+                    continue;
+                }
+
                 $this->fields[$d['name']][$field] = (string) Setting::get("sms.{$d['name']}.{$field}", '');
             }
         }
+    }
+
+    /** Credential fields whose stored value must never reach the browser. */
+    public static function isSecretField(string $field): bool
+    {
+        return (bool) preg_match('/password|passwd|token|secret|key/i', $field);
     }
 
     /** All registered drivers as plain arrays for the blade view. */
@@ -75,7 +89,14 @@ class SmsSettings extends Component
         $activeFields = $drivers->firstWhere('name', $this->driver)['fields'] ?? [];
 
         foreach (array_keys($activeFields) as $field) {
-            $pairs["sms.{$this->driver}.{$field}"] = trim((string) ($this->fields[$this->driver][$field] ?? ''));
+            $value = trim((string) ($this->fields[$this->driver][$field] ?? ''));
+
+            // write-only secrets: an empty input keeps the stored credential
+            if (self::isSecretField($field) && $value === '') {
+                continue;
+            }
+
+            $pairs["sms.{$this->driver}.{$field}"] = $value;
         }
 
         $snapshot = ActivityLogger::settingsSnapshot(array_keys($pairs));
@@ -149,6 +170,23 @@ class SmsSettings extends Component
     public function getLogsProperty(): Collection
     {
         return SmsLog::query()->latest('id')->limit(12)->get();
+    }
+
+    /** Whether a stored value exists for a (secret) field — drives the «ذخیره شده» hint. */
+    public function getStoredSecretsProperty(): array
+    {
+        $stored = [];
+
+        foreach ($this->driverList() as $d) {
+            foreach (array_keys($d['fields']) as $field) {
+                if (self::isSecretField($field)
+                    && trim((string) Setting::get("sms.{$d['name']}.{$field}", '')) !== '') {
+                    $stored["{$d['name']}.{$field}"] = true;
+                }
+            }
+        }
+
+        return $stored;
     }
 
     public function render()

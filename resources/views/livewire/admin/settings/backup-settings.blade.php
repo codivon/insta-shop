@@ -153,8 +153,11 @@
                                    class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[12.5px] font-bold outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-900" />
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-[11.5px] font-bold text-slate-500 dark:text-slate-400">رمز عبور</label>
-                            <input type="password" wire:model="smtpPassword" dir="ltr"
+                            <label class="mb-1.5 block text-[11.5px] font-bold text-slate-500 dark:text-slate-400">رمز عبور @if ($this->hasSmtpPassword)<span class="text-[9.5px] font-black text-emerald-600">• ذخیره شده</span>@endif</label>
+                            {{-- write-only: the stored password is never sent back to the browser —
+                                 empty input keeps the saved value (v0.21.0) --}}
+                            <input type="password" wire:model="smtpPassword" dir="ltr" autocomplete="new-password"
+                                   placeholder="{{ $this->hasSmtpPassword ? 'برای تغییر، رمز جدید را وارد کنید' : '' }}"
                                    class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[12.5px] font-bold outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-900" />
                         </div>
                         <div>

@@ -169,7 +169,11 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // v0.21.0: secure-by-default — only an explicit false (local dev) ships
+    // non-Secure cookies; a hand-written production .env without the key
+    // used to silently disable it. (APP_ENV is read directly — config files
+    // must not depend on container-bound helpers.)
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') !== 'local'),
 
     /*
     |--------------------------------------------------------------------------

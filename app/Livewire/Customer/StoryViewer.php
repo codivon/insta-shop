@@ -8,6 +8,7 @@ use App\Models\StoryComment;
 use App\Models\StoryLike;
 use App\Models\StoryView;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -101,6 +102,16 @@ class StoryViewer extends Component
             return;
         }
 
+        // Rate limit (v0.21.0): a scripted customer can churn likes on every
+        // public story without bound — 40 toggles/min is far above human pace.
+        if (RateLimiter::tooManyAttempts('story-like:'.$customer->id, 40)) {
+            $this->dispatch('story-toast', message: 'تعداد واکنش‌ها زیاد است — کمی بعد دوباره تلاش کنید.');
+
+            return;
+        }
+
+        RateLimiter::hit('story-like:'.$customer->id);
+
         $existing = StoryLike::query()
             ->where('story_id', $story->id)
             ->where('customer_id', $customer->id)
@@ -134,12 +145,22 @@ class StoryViewer extends Component
             return;
         }
 
+        // Rate limit (v0.21.0): 5 comments/min per customer — comment floods
+        // (300 chars each) into story_threads and seller analytics are cut off.
+        if (RateLimiter::tooManyAttempts('story-comment:'.$customer->id, 5)) {
+            $this->dispatch('story-toast', message: 'تعداد نظرها زیاد است — کمی بعد دوباره تلاش کنید.');
+
+            return;
+        }
+
         $this->validate([
             'commentBody' => ['required', 'string', 'min:1', 'max:300'],
         ], [
             'commentBody.required' => 'متن نظر را بنویسید.',
             'commentBody.max' => 'نظر حداکثر ۳۰۰ کاراکتر است.',
         ]);
+
+        RateLimiter::hit('story-comment:'.$customer->id);
 
         StoryComment::query()->create([
             'story_id' => $story->id,

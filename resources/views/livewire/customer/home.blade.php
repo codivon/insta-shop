@@ -427,12 +427,14 @@
     {{-- ── Instagram-style story viewer (opens from the rings above) ── --}}
     @livewire('customer.story-viewer')
 
-    {{-- toast --}}
+    {{-- toast — z-[130]: must float ABOVE the story viewer (z-[100]) —
+         the guest «وارد حساب خود شوید» hint fires from the nested viewer
+         and used to render BENEATH its opaque overlay (invisible). --}}
     <div x-data="{ show: false, msg: '' }"
          @home-toast.window="msg = $event.detail.message; show = true; setTimeout(() => show = false, 2600)"
          @story-toast.window="msg = $event.detail.message; show = true; setTimeout(() => show = false, 2600)"
          x-show="show" x-transition.opacity
-         class="fixed bottom-24 left-1/2 z-40 w-72 -translate-x-1/2 rounded-2xl bg-slate-900/95 px-4 py-3 text-center text-[11px] font-bold text-white shadow-2xl dark:bg-slate-800/95"
+         class="fixed bottom-24 left-1/2 z-[130] w-72 -translate-x-1/2 rounded-2xl bg-slate-900/95 px-4 py-3 text-center text-[11px] font-bold text-white shadow-2xl dark:bg-slate-800/95"
          x-cloak>
         <span x-text="msg"></span>
     </div>

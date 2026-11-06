@@ -43,8 +43,8 @@ class OrdersPage extends Component
         $query = $customer->orders()->with(['items' => fn ($q) => $q->with('product.mainImage')]);
 
         $total = (clone $query)->count();
-        $rows = $query->limit($this->perPage)->get();
-        $this->hasMore = $total > $this->perPage;
+        $rows = $query->limit(min(max($this->perPage, 1), 60))->get();
+        $this->hasMore = $total > min(max($this->perPage, 1), 60);
 
         return $rows;
     }

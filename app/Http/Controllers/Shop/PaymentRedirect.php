@@ -21,7 +21,12 @@ class PaymentRedirect
     {
         $customer = $request->user('customer');
 
-        abort_unless($customer && $order->customer_id === $customer->id, 403);
+        /*
+         * SECURITY (v0.21.0): non-owned orders answer 404 (not 403) — a 403
+         * for existing ids vs 404 for missing ones was a clean oracle for
+         * enumerating other customers' pending order ids (sequential ids).
+         */
+        abort_unless($customer && $order->customer_id === $customer->id, 404);
 
         // Already processed → show its result page instead.
         if ($order->status !== 'pending') {

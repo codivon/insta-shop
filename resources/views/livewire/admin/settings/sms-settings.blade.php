@@ -80,9 +80,9 @@
                                 </span>
                                 <input type="{{ $isSecret ? 'password' : 'text' }}"
                                        wire:model="fields.{{ $driver }}.{{ $fieldKey }}"
-                                       dir="ltr" autocomplete="off"
+                                       dir="ltr" autocomplete="{{ $isSecret ? 'new-password' : 'off' }}"
                                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm transition focus:border-primary-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                                       placeholder="{{ $isSecret ? '••••••••' : '' }}">
+                                       placeholder="{{ $isSecret ? (isset($this->storedSecrets[$driver.'.'.$fieldKey]) ? '• ذخیره شده — برای تغییر، مقدار جدید را وارد کنید' : '••••••••') : '' }}">
                                 @error("fields.{$driver}.{$fieldKey}") <span class="mt-1 block text-[10px] text-rose-500">{{ $message }}</span> @enderror
                             </label>
                         @endforeach
