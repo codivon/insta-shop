@@ -25,11 +25,20 @@
   It is included ONLY by layouts.admin → scoped to every admin page.
 ═══════════════════════════════════════════════════════════════════ --}}
 <style>
-/* ── 0 · page-level guards (admin documents only) ─────────────── */
+/* ── 0 · page-level guards (admin documents only) ───────────────
+   SCROLL REGRESSION NOTE (v0.17.20): v0.17.19 guarded horizontal bleed
+   with `overflow-x: hidden` here. Being INLINE + unlayered it OVERRIDES
+   the bundle's scroll-safe `overflow-x: clip` (app.css) on BOTH html and
+   body — and on the client's phone that froze ALL vertical scrolling on
+   every admin page («هیچ صفحه اسکرول نمیشه، محتویات ثابته»). Healthy
+   Chrome tolerates root-level overflow-x:hidden, that phone's engine
+   does NOT. `clip` NEVER creates a scroll container and never freezes
+   page scroll on any engine; engines without clip ignore the declaration
+   (worst case: cosmetic sideways panning). ── */
 html[data-panel="admin"],
 html[data-panel="admin"] body {
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 html[data-panel="admin"] body {
     margin: 0;
@@ -50,7 +59,11 @@ html[data-panel="admin"] body,
     flex-direction: column;
     min-height: 100vh;
     min-height: 100dvh;
-    width: 100%;
+    /* width:auto (NOT 100%): on ≥1024px the shell carries margin-right:
+       260px for the pinned sidebar — width:100% ignored the margin and
+       pushed a phantom 260px column past the document's left edge in
+       RTL (width:auto correctly subtracts the margin). */
+    width: auto;
     max-width: 100%;
     min-width: 0;
 }
@@ -184,12 +197,14 @@ html[data-panel="admin"].dark #admin-sidebar > div:last-child {
     }
     html.admin-drawer-open #admin-sidebar-overlay {
         opacity: 1;
+        visibility: visible;
         pointer-events: auto;
     }
-    html.admin-drawer-open,
-    html.admin-drawer-open body {
-        overflow: hidden;
-    }
+    /* NO body scroll-lock while the drawer is open (v0.17.20): a stuck
+       `overflow: hidden` on html/body — one dropped close event on a
+       quirky engine is enough — freezes EVERY admin page. The dim
+       overlay already communicates modality; background scroll behind
+       it is harmless. */
 }
 @media (min-width: 1024px) {
     #admin-sidebar {
@@ -215,8 +230,12 @@ html[data-panel="admin"].dark #admin-sidebar > div:last-child {
     z-index: 40;
     background: rgba(2, 6, 23, 0.4); /* slate-950/40 — matches bg-slate-950/40 */
     opacity: 0;
+    /* belt & suspenders: a hidden overlay can NEVER intercept touches,
+       even on engines that mishandle pointer-events (the scroll-killer
+       class of bugs) — visibility fades with the opacity */
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease, visibility 0.3s;
 }
 
 /* ── 5 · topbar ──
