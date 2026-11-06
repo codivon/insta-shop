@@ -77,6 +77,11 @@ class InstallerState
         $env = strtr($stub, [
             '%%APP_KEY%%' => static::provisionalKey(),
             '%%APP_URL%%' => rtrim($appUrl, '/'),
+            // The wizard just ran over $appUrl — mirror its scheme so a
+            // pre-SSL (HTTP) host does NOT get Secure-flagged session cookies
+            // it can never store (that would lock the admin out of the very
+            // login this install just created). Over HTTPS the flag stays on.
+            '%%SESSION_SECURE%%' => str_starts_with(strtolower($appUrl), 'https://') ? 'true' : 'false',
             '%%DB_HOST%%' => $db['db_host'],
             '%%DB_PORT%%' => (string) $db['db_port'],
             '%%DB_DATABASE%%' => $db['db_database'],

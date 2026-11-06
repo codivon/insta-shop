@@ -23,8 +23,20 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class HandleInstallerAccess
 {
-    /** Cookie that mirrors the server-side installer session token. */
-    private const SESSION_COOKIE = 'instashop_install';
+    /**
+     * Cookie that mirrors the server-side installer session token.
+     *
+     * MUST stay public and MUST be listed in bootstrap/app.php
+     * encryptCookies(except:) — this middleware is PREPENDED to the global
+     * stack, so it runs BEFORE the web-group EncryptCookies middleware.
+     * An encrypted cookie would still be ciphertext here (inbound) while
+     * sessionTokenValid() compares it against the raw 48-hex token — the
+     * comparison can only ever succeed when the cookie travels RAW.
+     * (v0.21.1: shipping it encrypted broke EVERY legit install POST since
+     * v0.20.0 with 403 «نشست نصب معتبر نیست» — HttpOnly still keeps it away
+     * from JavaScript, so excluding it from value-encryption is safe.)
+     */
+    public const SESSION_COOKIE = 'instashop_install';
 
     public function handle(Request $request, Closure $next): Response
     {

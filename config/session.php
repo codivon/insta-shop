@@ -173,6 +173,10 @@ return [
     // non-Secure cookies; a hand-written production .env without the key
     // used to silently disable it. (APP_ENV is read directly — config files
     // must not depend on container-bound helpers.)
+    // v0.21.1: while the app is NOT installed, InstallerServiceProvider pins
+    // 'session.secure' => false so a pre-SSL (HTTP) host can actually store
+    // the wizard's cookies; writeEnv() then bakes the right long-term value
+    // (HTTPS→true / HTTP→false) into .env.
     'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') !== 'local'),
 
     /*

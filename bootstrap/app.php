@@ -31,6 +31,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // funnel into /install. Registered by the instashop/installer package.
         $middleware->prepend(HandleInstallerAccess::class);
 
+        // The installer-session cookie is read by HandleInstallerAccess in
+        // the GLOBAL stack — one full layer BEFORE the web group's
+        // EncryptCookies would decrypt it. It must therefore travel RAW
+        // (never value-encrypted), or the token comparison on every installer
+        // POST would compare ciphertext against the plain token and reject
+        // every legitimate install (v0.21.1 regression fix).
+        $middleware->encryptCookies(except: [HandleInstallerAccess::SESSION_COOKIE]);
+
         // Panel-scoped auth middleware (each panel guards with its own guard)
         $middleware->alias([
             'panel.auth' => AuthenticatePanel::class,
