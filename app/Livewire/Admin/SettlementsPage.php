@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Shop;
 use App\Models\WalletTransaction;
 use App\Support\ActivityLogger;
+use App\Support\Csv;
 use App\Support\Fmt;
 use App\Support\JDate;
 use Illuminate\Support\Carbon;
@@ -191,7 +192,7 @@ class SettlementsPage extends Component
             fputcsv($out, ['shop', 'orders', 'goods', 'commission', 'payout']);
 
             foreach ($shops as $s) {
-                fputcsv($out, [$s->shop_name, $s->orders, $s->goods, $s->commission, $s->payout]);
+                fputcsv($out, Csv::row([$s->shop_name, $s->orders, $s->goods, $s->commission, $s->payout]));
             }
 
             fclose($out);

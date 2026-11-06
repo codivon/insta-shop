@@ -360,7 +360,9 @@ Route::prefix('shop')->name('shop.')->group(function () {
      | panel.auth flow; the order is identified by its gateway reference,
      | not by the session). Same browser keeps the customer cookie anyway.
      */
-    Route::match(['get', 'post'], '/payment/callback', PaymentCallback::class)->name('payment.callback');
+    Route::match(['get', 'post'], '/payment/callback', PaymentCallback::class)
+        ->middleware('throttle:60,1')
+        ->name('payment.callback');
 
     /*
      | Legacy customer-app shop links (/shop/s/{slug}) — 301-redirect

@@ -215,7 +215,7 @@ class BannersPage extends Component
         return [
             'title' => ['nullable', 'string', 'max:150'],
             'image' => [$required ? 'required' : 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'linkUrl' => ['nullable', 'url', 'max:500'],
+            'linkUrl' => ['nullable', 'url', 'max:500', 'starts_with:https://'],
             'sort' => ['required', 'integer', 'min:0', 'max:9999'],
             'isActive' => ['boolean'],
         ];

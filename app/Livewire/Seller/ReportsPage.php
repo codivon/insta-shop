@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductView;
+use App\Support\Csv;
 use App\Support\Fmt;
 use App\Support\JDate;
 use Carbon\CarbonImmutable;
@@ -110,7 +111,7 @@ class ReportsPage extends Component
             fputcsv($out, ['order_id', 'paid_at', 'product', 'variant', 'quantity', 'unit_price', 'line_total']);
 
             foreach ($rows as $row) {
-                fputcsv($out, [
+                fputcsv($out, Csv::row([
                     $row->order_id,
                     $row->paid_at ? Carbon::parse($row->paid_at)->format('Y-m-d H:i') : '',
                     $row->product_name,
@@ -118,7 +119,7 @@ class ReportsPage extends Component
                     (int) $row->quantity,
                     (int) $row->unit_price,
                     (int) $row->unit_price * (int) $row->quantity,
-                ]);
+                ]));
             }
 
             fclose($out);
@@ -163,7 +164,7 @@ class ReportsPage extends Component
             fputcsv($out, ['product', 'status', 'views_in_period', 'views_total']);
 
             foreach ($products as $p) {
-                fputcsv($out, [$p['name'], $p['status'], $p['period'], $p['total']]);
+                fputcsv($out, Csv::row([$p['name'], $p['status'], $p['period'], $p['total']]));
             }
 
             fclose($out);

@@ -69,6 +69,14 @@ class PhoneLogin extends Component
             return;
         }
 
+        // SECURITY: a blocked customer must not receive OTPs (harassment via
+        // SMS + code burn) — reject BEFORE issuing/sending any code.
+        if (Customer::query()->where('phone', $normalized)->where('status', 'blocked')->exists()) {
+            $this->addError('phone', 'حساب شما مسدود شده است. با پشتیبانی تماس بگیرید.');
+
+            return;
+        }
+
         $result = app(OtpService::class)->send($normalized, 'customer');
 
         if (! $result['ok']) {
@@ -147,7 +155,10 @@ class PhoneLogin extends Component
             'last_login_at' => now(),
         ])->save();
 
-        Auth::guard('customer')->login($customer, remember: true);
+        // SECURITY: session-bound login (no 5-year remember cookie). The
+        // customer session itself lives 30 days (config/panels.php), so the
+        // UX is unchanged — but a stolen cookie can no longer outlive it.
+        Auth::guard('customer')->login($customer, remember: false);
         session()->regenerate();
 
         // The guest cart (shared cookie) is merged by MergeGuestCart

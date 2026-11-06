@@ -116,7 +116,7 @@ class DeveloperSettings extends Component
 
         /* ── Security ── */
         $this->forceHttps = (bool) Setting::get('security.force_https');
-        $this->securityHeaders = (bool) Setting::get('security.headers_enabled');
+        $this->securityHeaders = (bool) Setting::get('security.headers_enabled', true);
         $this->botBlocking = (bool) Setting::get('security.bot_blocking');
         $this->botDenyList = (string) Setting::get('security.bot_deny_list', '');
         $this->adminIpWhitelist = (string) Setting::get('security.admin_ip_whitelist', '');
@@ -633,7 +633,7 @@ class DeveloperSettings extends Component
             'تنظیمات امنیت ذخیره و اعمال شد',
             before: [
                 'security.force_https' => (bool) Setting::get('security.force_https', false),
-                'security.headers_enabled' => (bool) Setting::get('security.headers_enabled', false),
+                'security.headers_enabled' => (bool) Setting::get('security.headers_enabled', true),
                 'security.bot_blocking' => (bool) Setting::get('security.bot_blocking', false),
                 'security.login_max_attempts' => (int) Setting::get('security.login_max_attempts', 5),
                 'security.login_lockout_minutes' => (int) Setting::get('security.login_lockout_minutes', 10),

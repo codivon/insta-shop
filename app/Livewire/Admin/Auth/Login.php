@@ -10,6 +10,7 @@ use App\Support\Fmt;
 use App\Support\ImageCaptcha;
 use App\Support\SchemaReady;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -100,10 +101,24 @@ class Login extends Component
     /**
      * Brute-force guard, configurable in Developer Settings → امنیت
      * (security.login_max_attempts / security.login_lockout_minutes).
+     *
+     * SECURITY (three independent buckets — one leaked bucket must never
+     * mean unlimited guessing):
+     *  - email+IP   : the classic per-administrator bucket
+     *  - email only : distributed attacks (IP rotation) still hit a
+     *                 GLOBAL ceiling per account
+     *  - IP only    : one source hammering many accounts is capped
      */
-    protected function limiterKey(): string
+    protected function limiterKeys(): array
     {
-        return 'admin-login:'.sha1(mb_strtolower(trim($this->email)).'|'.(string) request()->ip());
+        $email = sha1(mb_strtolower(trim($this->email)));
+        $ip = sha1((string) request()->ip());
+
+        return [
+            'admin-login:'.sha1($email.'|'.$ip),
+            'admin-login-email:'.$email,
+            'admin-login-ip:'.$ip,
+        ];
     }
 
     protected function lockoutConfig(): array
@@ -128,15 +143,36 @@ class Login extends Component
         $this->resetErrorBag();
         $this->validate();
 
-        /* ── robot check first — no rate-limit burn for bots ── */
+        /* ── robot check first — captcha failures are throttled per IP ── */
+        $captchaKey = 'admin-captcha-fail:'.sha1((string) request()->ip());
+
+        if (RateLimiter::tooManyAttempts($captchaKey, 15)) {
+            $this->addError('captcha', 'تلاش‌های ناموفق بیش از حد مجاز است. چند دقیقه دیگر دوباره تلاش کنید.');
+
+            return;
+        }
+
         if (ImageCaptcha::available()) {
             $captchaOk = ImageCaptcha::verify($this->captcha);
+        } elseif (app()->isProduction()) {
+            /*
+             * SECURITY: the math fallback (2 + 3 = ?) is fully visible in
+             * the DOM — scriptable by any bot. On production hosts without
+             * GD we FAIL CLOSED instead of degrading to a solvable riddle:
+             * the operator must enable GD (or solve the deployment), not
+             * the attacker bypass the challenge.
+             */
+            $this->addError('captcha', 'کپچای تصویری روی این سرور در دسترس نیست (افزونهٔ GD فعال نیست) — ورود متوقف است. با سازنده تماس بگیرید.');
+
+            return;
         } else {
             $expected = (int) session('admin_captcha_sum', -1);
             $captchaOk = $expected >= 0 && $this->captchaValue($this->captcha) === $expected;
         }
 
         if (! $captchaOk) {
+            RateLimiter::hit($captchaKey, 600);
+
             $this->addError('captcha', 'کد امنیتی درست نیست.');
 
             $this->regenerateCaptcha();
@@ -146,25 +182,26 @@ class Login extends Component
 
         [$max, $minutes] = $this->lockoutConfig();
 
-        $key = $this->limiterKey();
+        $keys = $this->limiterKeys();
 
-        if (RateLimiter::tooManyAttempts($key, $max)) {
-            $seconds = RateLimiter::availableIn($key);
+        // email-only bucket gets a wider ceiling (one admin from several IPs
+        // is normal); the IP-only bucket covers many-accounts-one-source.
+        $ceilings = [$max, $max * 3, $max * 6];
 
-            ActivityLogger::log('security.lockout', 'ورود پنل مدیریت موقتاً قفل شد — تلاش‌های ناموفق مکرر برای '.$this->email);
+        foreach (array_map(null, $keys, $ceilings) as [$key, $ceiling]) {
+            if (RateLimiter::tooManyAttempts($key, $ceiling)) {
+                $seconds = max(
+                    RateLimiter::availableIn($key),
+                    RateLimiter::availableIn($keys[0]),
+                );
 
-            AdminNotifier::notify(
-                'security.lockout',
-                'قفل ورود پنل مدیریت 🔒',
-                'تلاش‌های ناموفق مکرر برای '.$this->email.' — ورود '.Fmt::fa((int) ceil($seconds / 60)).' دقیقه قفل شد.',
-                route('admin.developer.settings'),
-                'shield',
-            );
+                $this->notifyLockoutOnce($keys[0], $minutes);
 
-            $this->addError('email', 'به دلیل تلاش‌های ناموفق مکرر، ورود موقتاً قفل شده است. لطفاً '
-                .Fmt::fa((int) ceil($seconds / 60)).' دقیقه دیگر دوباره تلاش کنید.');
+                $this->addError('email', 'به دلیل تلاش‌های ناموفق مکرر، ورود موقتاً قفل شده است. لطفاً '
+                    .Fmt::fa((int) ceil($seconds / 60)).' دقیقه دیگر دوباره تلاش کنید.');
 
-            return;
+                return;
+            }
         }
 
         $ok = Auth::guard('admin')->attempt(
@@ -173,9 +210,11 @@ class Login extends Component
         );
 
         if (! $ok) {
-            RateLimiter::hit($key, $minutes * 60);
+            foreach (array_map(null, $keys, $ceilings) as [$key, $ceiling]) {
+                RateLimiter::hit($key, $minutes * 60);
+            }
 
-            $left = max(0, $max - RateLimiter::attempts($key));
+            $left = max(0, $max - RateLimiter::attempts($keys[0]));
 
             $this->addError('email', 'ایمیل یا رمز عبور نادرست است.'
                 .($left > 0 && $left <= 2 ? ' '.Fmt::fa($left).' تلاش باقی مانده است.' : ''));
@@ -186,7 +225,10 @@ class Login extends Component
             return;
         }
 
-        RateLimiter::clear($key);
+        foreach ($keys as $key) {
+            RateLimiter::clear($key);
+        }
+
         ImageCaptcha::forget();
         session()->forget('admin_captcha_sum');
 
@@ -206,5 +248,28 @@ class Login extends Component
         return view('livewire.admin.auth.login', [
             'captchaImage' => $this->captchaImage,
         ]);
+    }
+
+    /**
+     * Notify about a lockout ONCE per lockout window — an attacker hammering
+     * a locked account must not be able to flood the admin notification feed.
+     */
+    protected function notifyLockoutOnce(string $primaryKey, int $minutes): void
+    {
+        $flag = 'admin-lockout-notified:'.sha1($primaryKey);
+
+        if (! Cache::add($flag, true, now()->addMinutes($minutes))) {
+            return;
+        }
+
+        ActivityLogger::log('security.lockout', 'ورود پنل مدیریت موقتاً قفل شد — تلاش‌های ناموفق مکرر برای '.$this->email);
+
+        AdminNotifier::notify(
+            'security.lockout',
+            'قفل ورود پنل مدیریت 🔒',
+            'تلاش‌های ناموفق مکرر برای '.$this->email.' — ورود '.Fmt::fa($minutes).' دقیقه قفل شد.',
+            route('admin.developer.settings'),
+            'shield',
+        );
     }
 }

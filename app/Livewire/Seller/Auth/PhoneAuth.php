@@ -105,6 +105,15 @@ class PhoneAuth extends Component
             return;
         }
 
+        // SECURITY: a suspended seller must not receive OTPs — reject BEFORE
+        // issuing/sending any code (harassment guard + no status oracle).
+        if ($this->mode !== 'register'
+            && Seller::query()->where('phone', $normalized)->where('status', 'suspended')->exists()) {
+            $this->addError('phone', 'حساب فروشندگی شما تعلیق شده است. با پشتیبانی تماس بگیرید.');
+
+            return;
+        }
+
         $purpose = $this->mode === 'register' ? 'register' : 'login';
 
         if ($this->mode === 'register') {
@@ -235,7 +244,10 @@ class PhoneAuth extends Component
             $seller->forceFill(['last_login_at' => now()])->save();
         }
 
-        Auth::guard('seller')->login($seller, remember: true);
+        // SECURITY: session-bound login — seller sessions live 7 days
+        // (see config/panels.php); a stolen cookie can no longer outlive the
+        // session via a 5-year remember token. Re-auth is one cheap OTP.
+        Auth::guard('seller')->login($seller, remember: false);
         session()->regenerate();
 
         // Every seller owns exactly one shop — create it on first login

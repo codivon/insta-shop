@@ -29,14 +29,42 @@ class PaymentCallback
             return redirect()->route('landing');
         }
 
+        /*
+         * SECURITY: this endpoint is public (banks redirect browsers here),
+         * so the per-order HMAC token (`t`) — minted into the callback URL
+         * at purchase time — is the ONLY acceptable proof. A guessed
+         * `?o={id}` (sequential ids!) without the token is rejected BEFORE
+         * any verify()/finalizePaid() call; the attempt is audited.
+         */
+        if (! PaymentService::callbackTokenValid($order, (string) $request->input('t', ''))) {
+            PaymentLog::record(
+                $order,
+                (string) ($order->gateway ?: 'unknown'),
+                'callback_rejected',
+                (string) $order->gateway_ref,
+                (int) $order->total_amount,
+                false,
+                'forged/unsigned callback rejected (missing or invalid HMAC token)',
+            );
+
+            ActivityLogger::log(
+                'security.payment_forgery',
+                'درخواست جعلی callback پرداخت برای سفارش '.Fmt::fa($order->id).' رد شد (بدون امضای معتبر).',
+                subject: $order,
+            );
+
+            // Never leak the order's state — behave like an unknown order.
+            return redirect()->route('landing');
+        }
+
         if ($order->status !== 'pending') {
             return redirect()->route('shop.payment.result', $order->id);
         }
 
         /*
-         * The success path itself is hardened inside
-         * PaymentService::verify() — the local driver's transactionId is
-         * restored from the order whenever the callback loses it.
+         * The success path itself is hardened inside PaymentService::verify()
+         * (signed URL + token-gated local driver). The local driver's
+         * transactionId is restored from the order only in local environments.
          */
         try {
             $receipt = PaymentService::verify($order);

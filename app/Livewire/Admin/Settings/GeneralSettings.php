@@ -55,8 +55,8 @@ class GeneralSettings extends Component
             'metaDescription' => ['nullable', 'max:300'],
             'storePhone' => ['nullable', 'max:20'],
             'storeInstagram' => ['nullable', 'max:60', 'regex:/^[A-Za-z0-9._]+$/'],
-            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
-            'favicon' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg,ico', 'max:1024'],
+            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
+            'favicon' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,ico', 'max:1024'],
         ];
     }
 

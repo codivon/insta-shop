@@ -29,6 +29,8 @@ return [
                 'admin.dashboard' => 'داشبورد',
                 'admin.activity' => 'فعالیت‌های اخیر (گزارش کامل رویدادها)',
                 'admin.notifications' => 'نوتیفیکیشن‌ها',
+                'admin.notifications.subscribe' => 'ثبت دستگاه پوش نوتیفیکیشن',
+                'admin.notifications.unsubscribe' => 'حذف دستگاه پوش نوتیفیکیشن',
                 'admin.profile' => 'پروفایل مدیر (ویرایش اطلاعات و رمز عبور)',
             ],
         ],
@@ -71,9 +73,12 @@ return [
         'system' => [
             'label' => 'سیستم',
             'permissions' => [
-                'admin.backups' => 'پشتیبان‌گیری و بازگردانی (صفحهٔ مدیریت پشتیبان‌ها)',
-                'admin.backups.download' => 'دانلود فایل پشتیبان',
-                'admin.backups.upload' => 'بارگذاری فایل پشتیبان (بازگردانی)',
+                'admin.backups' => 'پشتیبان‌گیری (صفحهٔ مدیریت پشتیبان‌ها — دانلود/آپلود/بازگردانی فقط سازنده)',
+                // SECURITY: admin.backups.download / admin.backups.upload are
+                // deliberately NOT registered — a full-DB restore zip is the
+                // same trust level as the developer pages (a crafted DB would
+                // grant a super-admin row → total takeover). They stay
+                // super-admin ONLY via the fail-closed middleware.
             ],
         ],
 

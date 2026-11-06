@@ -362,7 +362,10 @@ class StoriesPage extends Component
             : Carbon::createFromFormat('Y-m-d H:i', $this->endDate.' '.$this->endTime, config('app.timezone'));
 
         $payload = [
-            'product_id' => $this->productId !== '' ? (int) $this->productId : null,
+            // SECURITY: use the shop-SCOPED computed product — a tampered
+            // public property must never attach ANOTHER shop's product
+            // (possibly unpublished) to this story.
+            'product_id' => $this->selectedProduct?->id,
             'type' => $this->type,
             'video_url' => $this->type === Story::TYPE_VIDEO ? $this->videoUrl : null,
             'media_path' => $this->type === Story::TYPE_IMAGE && $this->media
@@ -439,7 +442,7 @@ class StoriesPage extends Component
                 },
             ],
             'caption' => ['nullable', 'string', 'max:500'],
-            'linkUrl' => ['nullable', 'url', 'max:500'],
+            'linkUrl' => ['nullable', 'url', 'max:500', 'starts_with:https://'],
             'linkTitle' => ['nullable', 'required_with:linkUrl', 'string', 'max:150'],
             'likesEnabled' => ['boolean'],
             'commentsEnabled' => ['boolean'],

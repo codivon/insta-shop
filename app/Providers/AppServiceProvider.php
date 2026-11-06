@@ -41,7 +41,14 @@ class AppServiceProvider extends ServiceProvider
          */
         try {
             if (SchemaReady::check('settings')) {
-                if ((bool) Setting::get('developer.dev_mode')) {
+                /*
+                 * SECURITY: dev_mode (real exceptions on screen) must never
+                 * unlock stack traces on a PRODUCTION host — a single
+                 * settings-table write would otherwise flip it on. Debug
+                 * rendering stays a deliberate .env decision (APP_DEBUG)
+                 * plus a local-env convenience.
+                 */
+                if ((bool) Setting::get('developer.dev_mode') && ! app()->isProduction()) {
                     config(['app.debug' => true]);
                 }
 
@@ -49,6 +56,15 @@ class AppServiceProvider extends ServiceProvider
 
                 if ($lifetime > 0) {
                     config(['session.lifetime' => $lifetime]);
+                }
+
+                /*
+                 * SECURITY: when the operator forces HTTPS, session cookies
+                 * must never travel over plain HTTP either — mark them
+                 * Secure before the session middleware builds them.
+                 */
+                if ((bool) Setting::get('security.force_https')) {
+                    config(['session.secure' => true]);
                 }
             }
         } catch (\Throwable) {

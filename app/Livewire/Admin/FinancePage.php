@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Support\ActivityLogger;
+use App\Support\Csv;
 use App\Support\Fmt;
 use App\Support\JDate;
 use Illuminate\Support\Carbon;
@@ -249,14 +250,14 @@ class FinancePage extends Component
             fputcsv($out, ['type', 'date', 'amount', 'status', 'order', 'description']);
 
             foreach ($rows as $row) {
-                fputcsv($out, [
+                fputcsv($out, Csv::row([
                     $row->typeLabel(),
                     $row->created_at ? $row->created_at->format('Y-m-d H:i') : '',
                     $row->amount,
                     $row->statusLabel(),
                     $row->order_id ?: '',
                     $row->description,
-                ]);
+                ]));
             }
 
             fclose($out);

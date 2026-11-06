@@ -73,12 +73,24 @@ class SmsManager
             $result = SmsResult::failure($e->getMessage());
         }
 
+        /*
+         * SECURITY: when a REAL provider delivers an OTP, the audit row must
+         * not contain the live code — a database/log leak would otherwise
+         * expose usable one-time passwords. The test/log driver (local dev)
+         * keeps the full body so codes stay visible where they are sent.
+         */
+        $body = $message->body();
+
+        if ($message->templateKey === 'otp_login' && $driver->name() !== 'log') {
+            $body = (string) preg_replace('/\b\d{6}\b/', '●●●●●●', $body);
+        }
+
         SmsLog::create([
             'panel' => $message->panel,
             'driver' => $driver->name(),
             'phone' => $message->to,
             'template' => $message->templateKey ?? $message->template,
-            'message' => $message->body(),
+            'message' => $body,
             'status' => $result->ok ? 'sent' : 'failed',
             'error' => $result->error,
             'provider_message_id' => $result->providerMessageId,

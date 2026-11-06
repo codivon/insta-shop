@@ -53,7 +53,9 @@ return [
             'session' => [
                 'cookie' => 'instashop_seller_session',
                 'table' => 'seller_sessions',
-                'lifetime' => 1440,
+                // 7 days (session-bound login, no remember cookie) — weekly
+                // OTP re-login replaces the old 5-year remember token.
+                'lifetime' => 10080,
             ],
         ],
 

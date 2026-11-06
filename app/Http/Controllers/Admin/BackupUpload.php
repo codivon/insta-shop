@@ -24,6 +24,9 @@ class BackupUpload extends Controller
 {
     private const CHUNK_MAX = 8 * 1024 * 1024; // 8MB per piece
 
+    /** SECURITY: hard cap on the TOTAL uploaded archive (disk-exhaustion guard). */
+    private const TOTAL_MAX = 300 * 1024 * 1024; // 300MB
+
     public function store(Request $request): JsonResponse
     {
         $phase = (string) $request->input('phase', 'chunk');
@@ -56,6 +59,12 @@ class BackupUpload extends Controller
         $handle = fopen($target, 'ab');
         fwrite($handle, (string) $request->file('chunk')->getContent());
         fclose($handle);
+
+        if (is_file($target) && filesize($target) > self::TOTAL_MAX) {
+            @unlink($target);
+
+            return response()->json(['ok' => false, 'message' => 'حجم فایل پشتیبان بیش از حد مجاز است (۳۰۰ مگابایت).'], 422);
+        }
 
         return response()->json(['ok' => true, 'index' => (int) $request->input('index')]);
     }

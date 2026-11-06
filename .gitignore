@@ -30,3 +30,6 @@ Homestead.yaml
 Thumbs.db
 .screens/
 pwa-src
+
+# local dev sqlite (sandbox)
+db/

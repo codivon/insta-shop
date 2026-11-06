@@ -50,6 +50,16 @@ class PaymentService
     }
 
     /**
+     * SECURITY: the local TEST gateway must never run on a production
+     * install — its verify() succeeds purely from the order's stored
+     * reference, so a public callback would mark orders paid for free.
+     */
+    public static function localGatewayAllowed(): bool
+    {
+        return app()->isLocal();
+    }
+
+    /**
      * Gateways the CUSTOMER may choose from at checkout: the local test
      * gateway is always there; a real gateway shows up once ANY credential
      * for it is saved (admin settings panel or .env config).
@@ -62,7 +72,9 @@ class PaymentService
 
         foreach (self::GATEWAYS as $key => $label) {
             if ($key === 'local') {
-                $available[$key] = $label;
+                if (self::localGatewayAllowed()) {
+                    $available[$key] = $label;
+                }
 
                 continue;
             }
@@ -116,6 +128,14 @@ class PaymentService
         $gateway = $order->gateway && array_key_exists($order->gateway, self::GATEWAYS)
             ? $order->gateway
             : self::activeGateway();
+
+        // Fail CLOSED: outside local, the test gateway never touches real orders.
+        if ($gateway === 'local' && ! self::localGatewayAllowed()) {
+            PaymentLog::record($order, 'local', 'purchase_blocked', null, (int) $order->total_amount, false,
+                'local test gateway is disabled outside local environments');
+
+            throw new \RuntimeException('درگاه آزمایشی روی سرور عملیاتی غیرفعال است — از پنل مدیریت یک درگاه واقعی تنظیم کنید.');
+        }
 
         $invoice = new Invoice;
         $invoice->amount($order->total_amount);
@@ -178,17 +198,17 @@ class PaymentService
         $gateway = $order->gateway ?: self::activeGateway();
 
         /*
-         * Success-path hardening (the «پرداخت موفق → ناموفق» bug): the local
-         * test gateway POSTs to a URL whose QUERY string carries the
-         * transactionId, and the shetabit Laravel provider feeds the driver
-         * from the CURRENT Laravel request (`Request::overwrite('input', …)`).
-         * Whenever that marker is lost along the way (proxies stripping the
-         * query on POST, odd PHP builds, double redirects) the Local driver
-         * would wrongly treat the payment as CANCELLED. The order already
-         * stores the reference at purchase time — restore it here so the
-         * verify() call is self-sufficient for the local driver.
+         * Success-path hardening for the LOCAL TEST gateway (the
+         * «پرداخت موفق → ناموفق» bug): the local driver POSTs to a URL whose
+         * QUERY string carries the transactionId, and proxies/redirects can
+         * lose it — the stored reference is restored here. This auto-inject
+         * is what makes the local driver self-verifying, therefore it is
+         * allowed ONLY where the local gateway itself is allowed (local
+         * environments). Production gateways verify cryptographically via
+         * their own API and never need it.
          */
         if ($gateway === 'local'
+            && self::localGatewayAllowed()
             && (string) $order->gateway_ref !== ''
             && ! request()->filled('transactionId')
             && ! request()->boolean('cancel')) {
@@ -229,9 +249,26 @@ class PaymentService
         return $receipt;
     }
 
-    /** Per-order callback URL (the gateway appends transactionId/cancel). */
+    /**
+     * SECURITY: the callback is PUBLIC (banks redirect real browsers to it),
+     * so the order id travels with a per-order HMAC token. Anyone POST/GETing
+     * the callback without the token (i.e. every guessed URL) is dropped —
+     * a forged callback can never reach verify()/finalizePaid().
+     */
+    public static function callbackToken(Order $order): string
+    {
+        return hash_hmac('sha256', 'payment-callback:'.$order->id, (string) config('app.key'));
+    }
+
+    public static function callbackTokenValid(Order $order, string $token): bool
+    {
+        return $token !== ''
+            && hash_equals(self::callbackToken($order), $token);
+    }
+
+    /** Per-order SIGNED callback URL (the gateway appends transactionId/cancel). */
     protected static function callbackUrl(Order $order): string
     {
-        return route('shop.payment.callback', ['o' => $order->id]);
+        return route('shop.payment.callback', ['o' => $order->id, 't' => self::callbackToken($order)]);
     }
 }

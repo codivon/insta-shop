@@ -40,15 +40,16 @@ class CheckMaintenanceMode
         }
 
         // The admin panel always stays open; its Livewire calls too.
-        $panel = null;
-
+        // SECURITY: only the server-resolved panel context (URI / Livewire
+        // page) counts — a forged X-Instashop-Panel header must not lift
+        // the maintenance wall.
         try {
             $panel = app(PanelContext::class)->key();
         } catch (\Throwable) {
-            $panel = $request->header('X-Instashop-Panel');
+            $panel = null;
         }
 
-        if ($panel === 'admin' || $request->header('X-Instashop-Panel') === 'admin') {
+        if ($panel === 'admin') {
             return $next($request);
         }
 

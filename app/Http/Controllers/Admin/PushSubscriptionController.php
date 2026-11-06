@@ -19,6 +19,20 @@ use Throwable;
  */
 class PushSubscriptionController extends Controller
 {
+    /**
+     * SECURITY (SSRF): the browser hands us an arbitrary URL — without an
+     * allowlist an authenticated panel user could register an INTRANET
+     * address (http://10.0.0.5:8080/..., cloud metadata, …) and make the
+     * server POST to it on the next broadcast. Only the real Web Push
+     * services are accepted.
+     */
+    protected const PUSH_ENDPOINT_HOSTS = [
+        'fcm.googleapis.com',
+        'push.googleapis.com',
+        'updates.push.services.mozilla.com',
+        'web.push.apple.com',
+    ];
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -27,6 +41,10 @@ class PushSubscriptionController extends Controller
             'keys.auth' => ['required', 'string', 'max:400'],
             'device_label' => ['nullable', 'string', 'max:110'],
         ]);
+
+        if (! $this->endpointAllowed($data['endpoint'])) {
+            return response()->json(['ok' => false, 'error' => 'اندپوینت پوش نامعتبر است.'], 422);
+        }
 
         [$audience, $sellerId] = $this->audience();
 
@@ -64,11 +82,29 @@ class PushSubscriptionController extends Controller
             'endpoint' => ['required', 'url', 'max:1000'],
         ]);
 
+        // SECURITY: delete ONLY within the caller's own audience — a seller
+        // must never be able to unregister another panel's (or an admin's)
+        // device just by knowing the endpoint URL.
+        [$audience, $sellerId] = $this->audience();
+
         PushSubscription::query()
             ->where('endpoint_hash', hash('sha1', $data['endpoint']))
+            ->where('audience', $audience)
+            ->when($sellerId !== null, fn ($q) => $q->where('seller_id', $sellerId))
             ->delete();
 
         return response()->json(['ok' => true]);
+    }
+
+    /** Scheme + host allowlist for browser push endpoints. */
+    protected function endpointAllowed(string $endpoint): bool
+    {
+        $scheme = strtolower((string) parse_url($endpoint, PHP_URL_SCHEME));
+        $host = strtolower((string) parse_url($endpoint, PHP_URL_HOST));
+
+        return $scheme === 'https'
+            && $host !== ''
+            && in_array($host, self::PUSH_ENDPOINT_HOSTS, true);
     }
 
     /**

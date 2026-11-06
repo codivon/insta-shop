@@ -1008,7 +1008,25 @@ class ProductForm extends Component
 
     protected function storeProductFile(Product $product, $uploaded): string
     {
+        /*
+         * SECURITY: extension allowlist — a client-controlled extension must
+         * never survive onto the disk (.php/.phtml/.htaccess/.svg/.html would
+         * become executable/renderable if the private disk is ever moved
+         * under a web-served root). Disallowed extensions fall back to a
+         * neutral ".bin" and stay downloadable.
+         */
+        $allowed = [
+            'pdf', 'zip', 'rar', '7z', 'mp4', 'mp3', 'wav', 'ogg',
+            'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt',
+            'jpg', 'jpeg', 'png', 'webp',
+        ];
+
         $ext = strtolower($uploaded->getClientOriginalExtension() ?: 'bin');
+
+        if (! in_array($ext, $allowed, true)) {
+            $ext = 'bin';
+        }
+
         $name = $product->id.'-'.bin2hex(random_bytes(8)).'.'.$ext;
 
         return $uploaded->storeAs('product-files/'.$product->id, $name, 'local');

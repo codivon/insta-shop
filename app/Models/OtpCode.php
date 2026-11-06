@@ -26,9 +26,25 @@ class OtpCode extends Model
             && $this->attempts < $this->max_attempts;
     }
 
+    /**
+     * Atomic consume — a concurrent double-submit can never both succeed
+     * (check-then-act race): only the FIRST update that still sees
+     * consumed_at IS NULL wins.
+     */
     public function markConsumed(): void
     {
-        $this->forceFill(['consumed_at' => now()])->save();
+        if ($this->consumed_at !== null) {
+            return;
+        }
+
+        $updated = static::query()
+            ->whereKey($this->getKey())
+            ->whereNull('consumed_at')
+            ->update(['consumed_at' => now()]);
+
+        if ($updated > 0) {
+            $this->forceFill(['consumed_at' => now()]);
+        }
     }
 
     public function incrementAttempts(): void

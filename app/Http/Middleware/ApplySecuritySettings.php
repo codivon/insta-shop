@@ -71,9 +71,9 @@ class ApplySecuritySettings
         /** @var Response $response */
         $response = $next($request);
 
-        /* ── 3) Security response headers ── */
+        /* ── 3) Security response headers — SECURE BY DEFAULT ── */
         try {
-            if ($this->bool('security.headers_enabled')) {
+            if ($this->bool('security.headers_enabled', true)) {
                 $headers = $response->headers;
 
                 $headers->set('X-Frame-Options', 'SAMEORIGIN');
@@ -81,7 +81,10 @@ class ApplySecuritySettings
                 $headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
                 $headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
-                if ($this->bool('security.force_https') && $this->requestIsSecure($request)) {
+                // Any TLS-terminated response gets HSTS (not only when the
+                // force-https redirect is enabled — a site may already sit
+                // behind https without the redirect toggle on).
+                if ($this->requestIsSecure($request)) {
                     $headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
                 }
             }
@@ -145,9 +148,9 @@ class ApplySecuritySettings
         return false;
     }
 
-    protected function bool(string $key): bool
+    protected function bool(string $key, bool $default = false): bool
     {
-        return (bool) Setting::get($key);
+        return (bool) Setting::get($key, $default);
     }
 
     /** Secure already, or the proxy in front of us already upgraded to https. */
@@ -172,18 +175,19 @@ class ApplySecuritySettings
         return ! in_array($host, ['localhost', '127.0.0.1', '::1'], true);
     }
 
-    /** Mirrors CheckMaintenanceMode's admin detection (panel ctx or header). */
+    /**
+     * SECURITY: admin detection derives ONLY from the server-resolved panel
+     * context (URI prefix / signed Livewire page). The client-settable
+     * X-Instashop-Panel header is NOT trusted here — a forged header must
+     * never bypass the IP allow-list or the bot blocker.
+     */
     protected function isAdminRequest(Request $request): bool
     {
-        $panel = null;
-
         try {
-            $panel = app(PanelContext::class)->key();
+            return app(PanelContext::class)->key() === 'admin';
         } catch (\Throwable) {
-            $panel = $request->header('X-Instashop-Panel');
+            return false;
         }
-
-        return $panel === 'admin' || $request->header('X-Instashop-Panel') === 'admin';
     }
 
     /** One entry per line (also accepts , or ;) — exact IP or wildcard pattern. */

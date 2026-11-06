@@ -84,6 +84,11 @@ class InstallerController extends Controller
 
     public function saveDatabase(Request $request): JsonResponse
     {
+        // SECURITY: defense in depth — even if the middleware is bypassed or
+        // the install half-completed (.env written, finish() never called),
+        // a completed install is NEVER re-runnable publicly.
+        abort_if(InstallerState::isInstalled(), 404);
+
         $data = $request->validate([
             'db_host' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9\.\-_]+$/'],
             'db_port' => ['required', 'integer', 'between:1,65535'],
@@ -166,6 +171,9 @@ class InstallerController extends Controller
 
     protected function runBatch(string $kind, int $index): JsonResponse
     {
+        // SECURITY: same fail-closed re-check as saveDatabase().
+        abort_if(InstallerState::isInstalled(), 404);
+
         $items = $kind === 'migrations' ? $this->migrationFiles() : $this->seederClasses();
         $total = count($items);
 
@@ -295,6 +303,9 @@ class InstallerController extends Controller
 
     public function finish(): JsonResponse
     {
+        // SECURITY: only the very first finish() may stamp the lock.
+        abort_if(InstallerState::isInstalled(), 404);
+
         InstallerState::markInstalled();
 
         try {

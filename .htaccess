@@ -2,9 +2,17 @@
 # InstaShop — root .htaccess (shared-hosting friendly deployment)
 #
 # Point the domain/subdomain to the project ROOT (not /public) and
-# this file transparently forwards every request into public/ while
-# blocking sensitive files. If your host already points to public/,
-# this file simply stays unused and harmless.
+# this file transparently forwards EVERY request into public/.
+#
+# SECURITY: the forward is UNCONDITIONAL (no "-f" passthrough). An
+# old release skipped the forward for existing files, which served
+# raw project files that happen to exist outside public/ — database
+# backups (storage/app/private/backups/*.zip), logs, the sqlite dev
+# database, docs. Nothing legitimate is ever served from outside
+# public/, so everything is forwarded — always.
+#
+# If your host already points to public/, this file simply stays
+# unused and harmless.
 # ═══════════════════════════════════════════════════════════════
 
 Options -Indexes -MultiViews
@@ -15,18 +23,21 @@ Options -Indexes -MultiViews
     # ── Block dotfiles (.env, .git, ...) except ACME challenges ──
     RewriteRule (^|/)\.(?!well-known) - [F,L]
 
+    # ── Deny sensitive project directories outright (belt & braces:
+    #    they must never be served even if the forward is ignored) ──
+    RewriteRule ^(storage/app|db|vendor|app|config|database|routes|resources|tests|docs|scripts|packages|bootstrap)(/|$) - [F,L]
+
     # ── Force HTTPS (enable on production host if desired) ──────
     # RewriteCond %{HTTPS} off
     # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-    # ── Forward everything into public/ ─────────────────────────
+    # ── Forward EVERYTHING into public/ (loop-guarded) ──────────
     RewriteCond %{REQUEST_URI} !^/public/
-    RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
 
 # ── Deny direct access to sensitive files (belt & suspenders) ──
-<FilesMatch "^(\.env|\.env\.|\.gitignore|\.gitattributes|\.editorconfig|composer\.(json|lock)|package\.json|vite\.config\..*|artisan|.*\.stub)$">
+<FilesMatch "^(\.env|\.env\.|\.git.*|\.editorconfig|composer\.(json|lock)|package(-lock)?\.json|bun\.lock|package\.json|vite\.config\..*|artisan|.*\.stub|.*\.(sqlite|log|zip|md|sh|ya?ml))$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
