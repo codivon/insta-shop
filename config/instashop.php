@@ -14,7 +14,7 @@
 return [
 
     // Current application version — bump on every release.
-    'version' => '0.21.1',
+    'version' => '0.21.2',
 
     // GitHub repo (owner/name) used by the update checker.
     'update_repo' => 'codivon/insta-shop',

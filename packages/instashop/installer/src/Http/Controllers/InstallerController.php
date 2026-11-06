@@ -264,11 +264,17 @@ class InstallerController extends Controller
 
                 $retryable = in_array($code, [1050, 1060, 1061, 1146, 1205, 1213], true);
 
-                if (! $retryable || ++$attempts > 2) {
+                if (! $retryable || ++$attempts > 4) {
                     throw $e;
                 }
 
-                usleep($attempts === 1 ? 500_000 : 1_000_000);
+                // v0.21.2: 5 attempts with real backoff (0.5/1/2/4s). The
+                // shared host's flake class (1146 «table doesn't exist» on
+                // statements right after a CREATE — settings-table incident)
+                // is intermittent; the extra fresh chances per file let the
+                // pipeline push through instead of handing the error to the
+                // user on the first hiccup.
+                usleep([500_000, 1_000_000, 2_000_000, 4_000_000][$attempts - 1]);
             }
         }
     }

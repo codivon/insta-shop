@@ -37,9 +37,15 @@ return new class extends Migration
 
         self::recreate('discounts');
 
+        // NOTE (v0.21.2): the shop_id FK is added AFTER the create via
+        // foreignKeyIfMissing() — Laravel's inline ->constrained() turns the
+        // create into «CREATE TABLE …» + «ALTER TABLE … ADD CONSTRAINT» and
+        // on the client's flaky MySQL the ALTER (second statement on a fresh
+        // table) intermittently died with 1146 «table doesn't exist», and
+        // every whole-file retry re-ran into the same window. See the helper.
         Schema::create('discounts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('shop_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('shop_id');
 
             /* ── اطلاعات ── */
             $table->string('title', 120);
@@ -71,6 +77,8 @@ return new class extends Migration
 
             $table->index(['shop_id', 'published']);
         });
+
+        self::foreignKeyIfMissing('discounts', 'shop_id', 'shops', 'id');
     }
 
     public function down(): void
