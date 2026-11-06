@@ -276,7 +276,22 @@ html[data-panel="admin"].dark #admin-topbar {
 }
 
 /* ── 6 · settings hub section tiles — ALWAYS 2 compact columns on
-      phones (the reported «تب‌ها بهم ریخته» comes from this grid) ── */
+      phones (the reported «تب‌ها بهم ریخته» comes from this grid)
+      ────────────────────────────────────────────────────────────────
+      v0.17.21 — ENGINE-PROOF REWRITE. The old version (a) fought the
+      bundle with a display:grid↔flex switch across breakpoints and
+      (b) styled the text wrapper via `> span:last-of-type`, which ALSO
+      matched the active tile's check badge — result on the client's
+      desktop (and in healthy Chrome too, verified!): the title collapsed
+      to zero width and the 20px check circle stretched into a full-
+      width white pill hanging out of the card. The rewrite:
+        • the container is ALWAYS grid — only the COLUMN TEMPLATE changes
+          per breakpoint (a lost desktop rule degrades to 2-col tiles,
+          never to a broken strip),
+        • every styled node carries an explicit data hook from the blade
+          (data-hub-tile-body / data-hub-tile-check / data-hub-tile-active),
+        • the active state is fully re-specified server-side (no JS,
+          no bundle needed). ── */
 [data-hub-tiles] {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -289,32 +304,123 @@ html[data-panel="admin"].dark #admin-topbar {
     gap: 8px;
     width: 100%;
     min-width: 0;
+    margin: 0;
     padding: 12px 8px;
+    border: 0;
     border-radius: 12px;
+    box-sizing: border-box;
     text-align: center;
+    font: inherit;
+    color: inherit;
     cursor: pointer;
 }
-[data-hub-tile] > span:last-of-type {
+/* icon box — 36px grid square (identical to size-9 place-items-center
+   rounded-lg so a healthy bundle renders unchanged, a dead one still
+   gets a sane square instead of a stretched monster) */
+[data-hub-tile] > span:first-child {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    border-radius: 8px;
+}
+/* text wrapper — THE fix for the collapsed title (the old rule hit the
+   check badge too via span:last-of-type) */
+[data-hub-tile-body] {
+    display: block;
     min-width: 0;
     width: 100%;
 }
+[data-hub-tile-body] > span:first-child {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    line-height: 20px;
+    font-weight: 800;
+}
 [data-hub-tile-desc] {
     display: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 2px;
+    font-size: 10px;
+}
+/* check badge — hidden on phones, a FIXED 20px circle on desktop
+   (never allowed to grow: min/max width are pinned) */
+[data-hub-tile-check] {
+    display: none;
+}
+/* active tile — server-rendered attribute (data-hub-tile-active), so it
+   works even when Alpine/the bundle never boots on a device; values are
+   identical to the bundle's utilities → healthy rendering unchanged */
+[data-hub-tile-active="true"] {
+    background: var(--ip-primary-600, #db2777);
+    color: #fff;
+}
+[data-hub-tile-active="true"] > span:first-child {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+[data-hub-tile-active="true"] [data-hub-tile-body] > span:first-child {
+    color: #fff;
+}
+[data-hub-tile-active="true"] [data-hub-tile-desc] {
+    color: rgba(255, 255, 255, 0.7);
 }
 @media (min-width: 1024px) {
-    [data-hub-tiles] {
-        display: flex !important;
-        flex-direction: column;
+    /* template-only switch — grid stays grid, there is no display:flex
+       for a broken engine to lose: worst case (rule dropped) the tiles
+       simply remain the 2-column phone grid, which is still correct */
+    [data-hub-tiles],
+    #settings-sections [data-hub-tiles] {
+        grid-template-columns: none !important;
         gap: 0;
     }
-    [data-hub-tile] {
-        flex-direction: row;
+    [data-hub-tile],
+    #settings-sections [data-hub-tile] {
+        flex-direction: row !important;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
         gap: 12px;
         padding: 10px 12px;
         text-align: right;
     }
+    [data-hub-tile-body] > span:first-child {
+        font-size: 12px;
+    }
     [data-hub-tile-desc] {
         display: block;
+    }
+    [data-hub-tile-check],
+    #settings-sections [data-hub-tile-check] {
+        display: grid !important;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 20px !important;
+        height: 20px !important;
+        min-width: 20px !important;
+        max-width: 20px !important;
+        min-height: 20px;
+        margin-inline-start: auto;
+        border-radius: 9999px;
+        box-sizing: border-box;
+        background: #fff;
+        color: var(--ip-primary-600, #db2777);
+    }
+    /* the two-column hub layout — the bundle's arbitrary
+       lg:grid-cols-[260px_minmax(0,1fr)] is a layout utility that has
+       already died on the client's devices */
+    [data-hub-grid] {
+        grid-template-columns: 260px minmax(0, 1fr) !important;
+    }
+    /* bundle lg:sticky lg:top-20, re-specified for dead-bundle engines */
+    #settings-sections {
+        position: sticky;
+        top: 80px;
     }
 }
 

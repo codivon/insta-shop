@@ -17,8 +17,11 @@
         </span>
     </div>
 
-    {{-- ── hub: internal sidebar + section ── --}}
-    <div class="grid items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+    {{-- ── hub: internal sidebar + section ──
+         data-hub-grid = shell-CSS hook: the ≥1024px two-column template is
+         re-specified without the bundle (arbitrary lg:grid-cols has already
+         died on the client's devices) --}}
+    <div data-hub-grid class="grid items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
 
         {{-- internal section navigation — mobile: 2-col tiles, desktop: vertical list
              data-* hooks = the self-contained shell CSS (partials/admin-shell-css)
@@ -29,6 +32,7 @@
             <div data-hub-tiles class="grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:gap-0" role="tablist">
                 @foreach ($sections as $key => $section)
                     <button type="button" wire:click="$set('tab', '{{ $key }}')" role="tab" data-hub-tile
+                            data-hub-tile-active="{{ $tab === $key ? 'true' : 'false' }}"
                             :aria-selected="$wire.tab === '{{ $key }}'"
                             @if ($loop->first) wire:key="sec-first" @endif
                             class="group flex w-full flex-col items-center gap-2 rounded-xl px-2 py-3 text-center transition lg:flex-row lg:gap-3 lg:px-3 lg:py-2.5 lg:text-right {{ $tab === $key
@@ -39,7 +43,7 @@
                             : 'bg-primary-600/10 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400' }}">
                             <x-icon name="{{ $section['icon'] }}" class="size-4.5" />
                         </span>
-                        <span class="w-full min-w-0">
+                        <span data-hub-tile-body class="w-full min-w-0">
                             <span class="block truncate text-[11px] font-extrabold leading-5 lg:text-xs {{ $tab === $key ? 'text-white' : 'text-slate-700 dark:text-slate-200' }}">
                                 {{ $section['label'] }}
                             </span>
@@ -48,7 +52,10 @@
                             </span>
                         </span>
                         @if ($tab === $key)
-                            <span class="ms-auto hidden size-5 shrink-0 place-items-center rounded-full bg-white text-primary-700 lg:grid">
+                            {{-- data-hub-tile-check = shell-CSS hook: fixed 20px
+                                 badge — the old `> span:last-of-type` rule used to
+                                 stretch this into a full-width white pill --}}
+                            <span data-hub-tile-check class="ms-auto hidden size-5 shrink-0 place-items-center rounded-full bg-white text-primary-700 lg:grid">
                                 <x-icon name="check" class="size-3" />
                             </span>
                         @endif
