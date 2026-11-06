@@ -10,6 +10,7 @@ use App\Support\ActivityLogger;
 use App\Support\Phone;
 use App\Support\Sms\SmsManager;
 use App\Support\Sms\SmsMessage;
+use App\Support\Sms\SmsTemplates;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -108,16 +109,37 @@ class SmsSettings extends Component
             return;
         }
 
+        $manager = app(SmsManager::class);
+        $label = $this->driverList()->firstWhere('name', $this->driver)['label'] ?? $this->driver;
+
+        // Pattern-based providers (کاوه‌نگار، آی‌پی‌پنل، فراز، sms.ir) can
+        // only deliver through a registered panel pattern — a raw free-text
+        // test would always fail. Instead the real otp_login template is
+        // sent (with a throwaway code) so the test exercises the exact
+        // production path: credentials + pattern code + variables.
+        $isPattern = $this->driver !== 'log' && $manager->has($this->driver) && $manager->driver($this->driver)->patternBased();
+
+        if ($isPattern) {
+            $message = SmsTemplates::make(
+                'otp_login',
+                $normalized,
+                ['code' => (string) random_int(100000, 999999), 'minutes' => 5],
+                'admin',
+            );
+        } else {
+            $message = SmsMessage::make($normalized)
+                ->text($this->testText)
+                ->panel('admin');
+        }
+
         // Send through the currently SELECTED driver (not necessarily the
         // saved active one) so the admin can test before saving.
-        $message = SmsMessage::make($normalized)
-            ->text($this->testText)
-            ->panel('admin');
-
-        $result = app(SmsManager::class)->send($message, $this->driver);
+        $result = $manager->send($message, $this->driver);
 
         if ($result->ok) {
-            session()->flash('admin-sms-flash', 'پیام تست با موفقیت از طریق «'.$this->driverList()->firstWhere('name', $this->driver)['label'].'» ارسال شد.');
+            session()->flash('admin-sms-flash', $isPattern
+                ? 'پیام تست پترنی (قالب ورود OTP) با موفقیت از طریق «'.$label.'» ارسال شد.'
+                : 'پیام تست با موفقیت از طریق «'.$label.'» ارسال شد.');
             $this->reset('testText');
         } else {
             session()->flash('admin-sms-error', 'ارسال تست ناموفق بود: '.($result->error ?: 'خطای ناشناخته'));

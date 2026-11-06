@@ -114,6 +114,18 @@
             </h2>
             <p class="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">پیش از رفتن به حالت واقعی، پروایدر فعال را با یک پیام آزمایشی چک کنید.</p>
 
+            @php $testDriver = $drivers->firstWhere('name', $driver); @endphp
+            @if ($testDriver && $driver !== 'log' && app(\App\Support\Sms\SmsManager::class)->driver($driver)->patternBased())
+                <div class="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] font-semibold leading-5 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+                    <x-icon name="alert" class="mt-0.5 size-3.5 shrink-0" />
+                    <span>
+                        این پروایدر پترن‌محور است؛ به‌جای متن آزاد، «پیام تست» از قالب واقعی ورود OTP ارسال می‌شود. کد/شناسه پترن هر پیامک را از
+                        <a href="{{ route('admin.settings.sms.templates') }}" wire:navigate class="underline decoration-amber-400 underline-offset-2">قالب‌های پیامک</a>
+                        تنظیم کنید.
+                    </span>
+                </div>
+            @endif
+
             <div class="mt-4 space-y-3">
                 <label class="block">
                     <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">شماره موبایل</span>

@@ -30,6 +30,11 @@ class LogDriver implements SmsDriver
         return [];
     }
 
+    public function patternBased(): bool
+    {
+        return false;
+    }
+
     public function send(SmsMessage $message): SmsResult
     {
         Log::info('SMS[log] to='.Phone::toLocal($message->to)." template={$message->template} body=".$message->body());

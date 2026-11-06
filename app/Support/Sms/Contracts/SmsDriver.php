@@ -22,6 +22,15 @@ interface SmsDriver
     /** Settings fields this driver needs: name => [label, required] */
     public function settingsFields(): array;
 
+    /**
+     * True when the provider can ONLY deliver through registered panel
+     * patterns/templates (کاوه‌نگار Verify، آی‌پی‌پنل پترن، sms.ir
+     * UltraFastSend، فراز/ایران‌پیامک پترن) — a raw free-text message
+     * can never go through, so admin test sends use the otp_login
+     * template instead.
+     */
+    public function patternBased(): bool;
+
     /** Send the message. Must never throw — failures go into SmsResult. */
     public function send(SmsMessage $message): SmsResult;
 }

@@ -119,8 +119,14 @@ class SmsTemplates
         if ($template !== null && $template->enabled) {
             $message->text(self::render($template, $data));
 
+            // v0.18.1 FIX: always carry the variable map along with the
+            // pattern code — SmsMessage::template() RESETS ->data when the
+            // second arg is omitted, so pattern-based providers
+            // (کاوه‌نگار token، آی‌پی‌پنل variable، sms.ir ParameterArray،
+            // ملی‌پیامک segments) previously received EMPTY values even
+            // with everything configured — the «با تنظیم هم کار نمی‌کند» bug.
             if ((string) $template->pattern_code !== '') {
-                $message->template($template->pattern_code);
+                $message->template($template->pattern_code, $data);
             }
 
             return $message;
@@ -131,7 +137,7 @@ class SmsTemplates
             // Disabled templates suppress body-text output but keep the
             // pattern path so pattern providers keep working if configured.
             if ((string) $template->pattern_code !== '') {
-                $message->template($template->pattern_code);
+                $message->template($template->pattern_code, $data);
 
                 return $message;
             }

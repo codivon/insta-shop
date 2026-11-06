@@ -11,9 +11,23 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 /**
- * RestfulSms (SMS.ir legacy REST API — Ebrahimzadeh style).
- * Docs: https://restfulsms.com/api/SendSms
- * Settings: sms.restfulsms.api_token, sms.restfulsms.line_number
+ * SMS.ir (سرویس REST قدیمی RestfulSms.com — همان «اپراتور ابراهیم‌زاده»).
+ *
+ * v0.18.1: rewritten 1:1 from the customer's proven implementation —
+ * the free-text SendSms API never worked for their panel; the working
+ * flow is UltraFastSend (template based):
+ *
+ *   POST https://RestfulSms.com/api/UltraFastSend/direct
+ *   Body: {
+ *     mobile: "09…", UserApiKey: …, SecretKey: …,
+ *     TemplateId: …, ParameterArray: [{Parameter, ParameterValue}, …]
+ *   }
+ *
+ * The TemplateId comes ONLY from the SMS-template registry (مرکز پیامک
+ * → «کد قرار گرفتن در پنل پیامک») — the per-provider OTP field was removed.
+ *
+ * Settings: sms.restfulsms.api_key (UserApiKey),
+ *           sms.restfulsms.secret_key (SecretKey)
  */
 class RestfulSmsDriver implements SmsDriver
 {
@@ -24,57 +38,79 @@ class RestfulSmsDriver implements SmsDriver
 
     public function label(): string
     {
-        return 'ابراهیم‌زاده / RestfulSms (SMS.ir)';
+        return 'sms.ir';
     }
 
     public function settingsFields(): array
     {
         return [
-            'api_token' => ['توکن API (x-sms-ir-api-token)', true],
-            'line_number' => ['خط ارسال (اختیاری)', false],
+            'api_key' => ['کلید API (UserApiKey)', true],
+            'secret_key' => ['کلید مخفی (SecretKey)', true],
         ];
+    }
+
+    public function patternBased(): bool
+    {
+        return true;
     }
 
     public function send(SmsMessage $message): SmsResult
     {
-        $token = (string) Setting::get('sms.restfulsms.api_token', '');
-        $lineNumber = (string) Setting::get('sms.restfulsms.line_number', '');
+        $apiKey = (string) Setting::get('sms.restfulsms.api_key', '');
+        $secretKey = (string) Setting::get('sms.restfulsms.secret_key', '');
+        $templateId = (string) $message->template;
 
-        if ($token === '') {
-            return SmsResult::failure('تنظیمات RestfulSms ناقص است (api_token).');
+        if ($apiKey === '' || $secretKey === '') {
+            return SmsResult::failure('تنظیمات sms.ir ناقص است (UserApiKey و SecretKey را در تنظیمات پیامک وارد کنید).');
+        }
+
+        if ($templateId === '') {
+            return SmsResult::failure('شناسه قالب (TemplateId) برای این پیامک تنظیم نشده است — در «قالب‌های پیامک» فیلد «کد قرار گرفتن در پنل پیامک» را پر کنید.');
         }
 
         try {
-            $payload = [
-                'mobile' => [Phone::toLocal($message->to)],
-                'text' => $message->body(),
-            ];
+            // Proven implementation passes the template variables as a
+            // ParameterArray of {Parameter, ParameterValue} pairs.
+            $parameters = [];
 
-            if ($lineNumber !== '') {
-                $payload['lineNumber'] = $lineNumber;
+            foreach ($message->data as $name => $value) {
+                $parameters[] = [
+                    'Parameter' => (string) $name,
+                    'ParameterValue' => (string) $value,
+                ];
             }
 
-            $response = Http::timeout(15)
-                ->withHeaders(['x-sms-ir-api-token' => $token])
-                ->post('https://restfulsms.com/api/SendSms', $payload);
+            $payload = [
+                'UserApiKey' => $apiKey,
+                'SecretKey' => $secretKey,
+                'mobile' => Phone::toLocal($message->to),
+                'TemplateId' => $templateId,
+                'ParameterArray' => $parameters !== [] ? $parameters : [['Parameter' => 'code', 'ParameterValue' => '']],
+            ];
 
-            $json = $response->json() ?? [];
+            $response = Http::timeout(15)->post(
+                'https://RestfulSms.com/api/UltraFastSend/direct',
+                $payload,
+            );
+
+            $body = (string) $response->body();
+            $json = json_decode($body, true) ?? [];
 
             if (! $response->successful() || (($json['IsSuccessful'] ?? false) !== true)) {
                 return SmsResult::failure(
-                    'RestfulSms: '.($json['Message'] ?? 'خطای ناشناخته'),
-                    $json,
+                    'sms.ir: '.($json['Message'] ?? mb_substr($body, 0, 180) ?: 'خطای ناشناخته'),
+                    $json ?: ['raw' => $body],
                 );
             }
 
             return SmsResult::success(
-                providerMessageId: (string) data_get($json, 'Value.PackageId', ''),
+                providerMessageId: (string) (data_get($json, 'Data.PackId') ?? data_get($json, 'Value.PackageId') ?? ''),
                 raw: $json,
             );
         } catch (ConnectionException $e) {
-            return SmsResult::failure('RestfulSms: خطای اتصال — '.$e->getMessage());
+            return SmsResult::failure('sms.ir: خطای اتصال — '.$e->getMessage());
         } catch (\Throwable $e) {
-            return SmsResult::failure('RestfulSms: '.$e->getMessage());
+            return SmsResult::failure('sms.ir: '.$e->getMessage());
         }
     }
 }

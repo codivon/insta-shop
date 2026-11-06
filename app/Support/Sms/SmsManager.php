@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Models\SmsLog;
 use App\Support\Sms\Contracts\SmsDriver;
 use App\Support\Sms\Drivers\FarazIPPanelDriver;
+use App\Support\Sms\Drivers\FarazSmsDriver;
 use App\Support\Sms\Drivers\KavenegarDriver;
 use App\Support\Sms\Drivers\LogDriver;
 use App\Support\Sms\Drivers\MelliPayamakDriver;
@@ -27,6 +28,7 @@ class SmsManager
             new LogDriver,
             new KavenegarDriver,
             new FarazIPPanelDriver,
+            new FarazSmsDriver,
             new MelliPayamakDriver,
             new RestfulSmsDriver,
         ] as $driver) {

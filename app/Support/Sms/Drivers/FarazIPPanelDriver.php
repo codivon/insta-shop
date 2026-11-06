@@ -11,9 +11,19 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 /**
- * FarazSMS / IPPanel — pattern (variable) API.
- * Docs: https://www.ippanel.com/api  →  POST /api/v1/sms/pattern/normal/send
- * Settings: sms.ippanel.apikey, sms.ippanel.sender, sms.ippanel.pattern_otp
+ * IPPanel (آی‌پی‌پنل / فراز) — legacy pattern API with panel
+ * username + password, ported 1:1 from the customer's proven
+ * implementation (worked in production in their previous shop):
+ *
+ *   GET https://ippanel.com/patterns/pattern
+ *       ?username=…&password=…&from=…&to=["09…"]
+ *       &input_data={"…":"…"}&pattern_code=…
+ *   (POST fields: the raw input_data map — replicated as form params)
+ *
+ * v0.18.1: pattern code comes ONLY from the SMS-template registry
+ * (مرکز پیامک) — the per-provider OTP field was removed.
+ *
+ * Settings: sms.ippanel.username, sms.ippanel.password, sms.ippanel.from
  */
 class FarazIPPanelDriver implements SmsDriver
 {
@@ -24,58 +34,81 @@ class FarazIPPanelDriver implements SmsDriver
 
     public function label(): string
     {
-        return 'فراز اس‌ام‌اس / IPPanel (ارسال الگو)';
+        return 'آی‌پی‌پنل (ippanel.com — پترن با نام کاربری)';
     }
 
     public function settingsFields(): array
     {
         return [
-            'apikey' => ['کلید API (apikey)', true],
-            'sender' => ['خط ارسال (شماره خط)', true],
-            'pattern_otp' => ['کد الگوی OTP', true],
+            'username' => ['نام کاربری پنل', true],
+            'password' => ['رمز عبور پنل', true],
+            'from' => ['خط ارسال (شماره خط)', true],
         ];
+    }
+
+    public function patternBased(): bool
+    {
+        return true;
     }
 
     public function send(SmsMessage $message): SmsResult
     {
-        $apikey = (string) Setting::get('sms.ippanel.apikey', '');
-        $sender = (string) Setting::get('sms.ippanel.sender', '');
-        $pattern = $message->template ?: (string) Setting::get('sms.ippanel.pattern_otp', '');
+        $username = (string) Setting::get('sms.ippanel.username', '');
+        $password = (string) Setting::get('sms.ippanel.password', '');
+        $from = (string) Setting::get('sms.ippanel.from', '');
+        $pattern = (string) $message->template;
 
-        if ($apikey === '' || $pattern === '') {
-            return SmsResult::failure('تنظیمات IPPanel ناقص است (apikey یا pattern_otp).');
+        if ($username === '' || $password === '' || $from === '') {
+            return SmsResult::failure('تنظیمات آی‌پی‌پنل ناقص است (نام کاربری، رمز عبور و خط ارسال را در تنظیمات پیامک وارد کنید).');
+        }
+
+        if ($pattern === '') {
+            return SmsResult::failure('کد پترن برای این پیامک تنظیم نشده است — در «قالب‌های پیامک» فیلد «کد قرار گرفتن در پنل پیامک» را پر کنید.');
         }
 
         try {
-            $response = Http::timeout(15)->withHeaders(['apikey' => $apikey])
-                ->post('https://api2.ippanel.com/api/v1/sms/pattern/normal/send', [
-                    'code' => $pattern,
-                    'sender' => $sender,
-                    'recipient' => Phone::toLocal($message->to),
-                    'variable' => ['code' => (string) ($message->data['code'] ?? '')],
-                ]);
+            $inputData = $message->data !== [] ? $message->data : ['code' => ''];
 
-            $json = $response->json() ?? [];
+            $url = 'https://ippanel.com/patterns/pattern?'.http_build_query([
+                'username' => $username,
+                'password' => $password,
+                'from' => $from,
+                'to' => json_encode([Phone::toLocal($message->to)]),
+                'input_data' => json_encode($inputData, JSON_UNESCAPED_UNICODE),
+                'pattern_code' => $pattern,
+            ]);
 
-            $metaOk = (($json['code'] ?? null) == 200)
-                || (($json['metadata']['status'] ?? null) === true)
-                || $response->status() === 200 && isset($json['data']);
+            // Proven implementation posts the input_data map as body fields
+            // alongside the query string — replicated exactly.
+            $response = Http::timeout(15)->asForm()->post($url, $inputData);
 
-            if (! $response->successful() || ! $metaOk) {
+            $body = (string) $response->body();
+            $json = json_decode($body, true) ?? [];
+
+            $ok = $response->successful()
+                && ($json !== [])
+                && (($json['code'] ?? null) === 'ok'
+                    || (($json['code'] ?? null) !== 'error' && isset($json['data'])));
+
+            if (! $ok) {
                 return SmsResult::failure(
-                    'IPPanel: '.($json['message'] ?? $json['errorMessage'] ?? 'خطای ناشناخته'),
-                    $json,
+                    'آی‌پی‌پنل: '.($json['message'] ?? $json['error_message'] ?? mb_substr($body, 0, 180) ?: 'خطای ناشناخته'),
+                    $json ?: ['raw' => $body],
                 );
             }
 
+            $packageId = data_get($json, 'data.package_id')
+                ?? data_get($json, 'data.message_id')
+                ?? data_get($json, 'data.0.message_id');
+
             return SmsResult::success(
-                providerMessageId: (string) data_get($json, 'data.0.message_id', data_get($json, 'data.message_id', '')),
+                providerMessageId: (string) (is_array($packageId) ? json_encode($packageId, JSON_UNESCAPED_UNICODE) : ($packageId ?? '')),
                 raw: $json,
             );
         } catch (ConnectionException $e) {
-            return SmsResult::failure('IPPanel: خطای اتصال — '.$e->getMessage());
+            return SmsResult::failure('آی‌پی‌پنل: خطای اتصال — '.$e->getMessage());
         } catch (\Throwable $e) {
-            return SmsResult::failure('IPPanel: '.$e->getMessage());
+            return SmsResult::failure('آی‌پی‌پنل: '.$e->getMessage());
         }
     }
 }

@@ -13,7 +13,14 @@ use Illuminate\Support\Facades\Http;
 /**
  * Kavenegar — Verify/Lookup API (template based).
  * Docs: https://kavenegar.com/rest.html  →  /v1/{API-KEY}/verify/lookup.json
- * Settings: sms.kavenegar.api_key, sms.kavenegar.template_otp
+ *
+ * v0.18.1: the template name now comes ONLY from the SMS-template registry
+ * (مرکز پیامک → «کد قرار گرفتن در پنل پیامک») — the per-provider OTP field
+ * was removed from the settings tab. Variable mapping follows the proven
+ * legacy implementation: data['code'] → token, plus explicit
+ * token/token2/token3/token10/token20 passthrough.
+ *
+ * Settings: sms.kavenegar.api_key
  */
 class KavenegarDriver implements SmsDriver
 {
@@ -31,27 +38,46 @@ class KavenegarDriver implements SmsDriver
     {
         return [
             'api_key' => ['کلید API کاوه‌نگار', true],
-            'template_otp' => ['نام قالب OTP در کاوه‌نگار', true],
         ];
+    }
+
+    public function patternBased(): bool
+    {
+        return true;
     }
 
     public function send(SmsMessage $message): SmsResult
     {
         $apiKey = (string) Setting::get('sms.kavenegar.api_key', '');
-        $template = $message->template ?: (string) Setting::get('sms.kavenegar.template_otp', '');
+        $template = (string) $message->template;
 
-        if ($apiKey === '' || $template === '') {
-            return SmsResult::failure('تنظیمات کاوه‌نگار ناقص است (api_key یا template_otp).');
+        if ($apiKey === '') {
+            return SmsResult::failure('تنظیمات کاوه‌نگار ناقص است (کلید API را در تنظیمات پیامک وارد کنید).');
+        }
+
+        if ($template === '') {
+            return SmsResult::failure('نام قالب (Verify Lookup) برای این پیامک تنظیم نشده است — در «قالب‌های پیامک» فیلد «کد قرار گرفتن در پنل پیامک» را پر کنید.');
         }
 
         try {
+            // Proven mapping: code → token; token2..token20 passthrough.
+            $data = $message->data;
+            $tokens = array_filter([
+                'token' => (string) ($data['token'] ?? $data['code'] ?? ''),
+                'token2' => isset($data['token2']) ? (string) $data['token2'] : null,
+                'token3' => isset($data['token3']) ? (string) $data['token3'] : null,
+                'token10' => isset($data['token10']) ? (string) $data['token10'] : null,
+                'token20' => isset($data['token20']) ? (string) $data['token20'] : null,
+            ], fn ($v) => $v !== null && $v !== '');
+
+            $query = array_merge([
+                'receptor' => Phone::toLocal($message->to),
+                'template' => $template,
+            ], $tokens);
+
             $response = Http::timeout(15)->get(
                 "https://api.kavenegar.com/v1/{$apiKey}/verify/lookup.json",
-                [
-                    'receptor' => Phone::toLocal($message->to),
-                    'token' => (string) ($message->data['code'] ?? ''),
-                    'template' => $template,
-                ],
+                $query,
             );
 
             $json = $response->json() ?? [];
