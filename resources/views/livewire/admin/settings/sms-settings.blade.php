@@ -149,7 +149,10 @@
         @if ($logs->isEmpty())
             <p class="px-5 py-10 text-center text-xs text-slate-400">هنوز پیامکی ارسال نشده است.</p>
         @else
-            <div class="overflow-x-auto">
+            {{-- data-table-frame = shell-CSS fallback: the horizontal scroll
+                 stays inside this frame even if the bundle's overflow-x-auto
+                 never applies on a device --}}
+            <div data-table-frame class="overflow-x-auto">
                 <table class="w-full min-w-[720px] text-right text-sm">
                     <thead>
                         <tr class="border-b border-slate-100 bg-slate-50/60 text-[11px] text-slate-400 dark:border-slate-800 dark:bg-slate-800/40">

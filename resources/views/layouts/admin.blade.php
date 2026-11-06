@@ -11,6 +11,11 @@
     <link rel="stylesheet" href="/fonts/vazirmatn.css">
     @include('partials.brand-favicon')
     @include('partials.theme-vars')
+    {{-- self-contained shell CSS — MUST load BEFORE the bundle so a healthy
+         bundle still wins the cascade (identical values, zero visual diff);
+         when the bundle half-applies on a device (the client's phone!)
+         these plain-CSS rules carry the whole admin shell instead --}}
+    @include('partials.admin-shell-css')
     @livewireStyles
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -22,7 +27,7 @@
            aria-label="منوی مدیریت">
 
         {{-- brand --}}
-        <div class="flex h-16 items-center justify-between border-b border-slate-200 px-5 dark:border-slate-800">
+        <div id="admin-side-head" class="flex h-16 items-center justify-between border-b border-slate-200 px-5 dark:border-slate-800">
             <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2.5">
                 @if (\App\Support\Branding::logoUrl())
                     <img src="{{ \App\Support\Branding::logoUrl() }}" alt="لوگوی {{ \App\Support\Theme::resolve()['app_name'] }}" class="size-9 rounded-xl object-contain">
@@ -214,7 +219,7 @@
         <div class="border-t border-slate-200 p-4 dark:border-slate-800">
             <div class="flex items-center justify-between rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
                 <div class="flex items-center gap-2.5">
-                    <span class="grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-bold text-white">
+                    <span class="ip-avatar grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-bold text-white">
                         {{ mb_substr(auth('admin')->user()?->name ?? 'م', 0, 1) }}
                     </span>
                     <span>
@@ -252,9 +257,9 @@
          page owns an inner scroller (messages only) + a pinned composer.
          The footer is dropped in this mode so nothing can overflow. ───────── --}}
     @php $chat = $chat ?? false; @endphp
-    <div class="flex flex-col lg:mr-[260px] {{ $chat ? 'h-dvh overflow-hidden' : 'min-h-screen' }}">
+    <div id="admin-shell" class="flex flex-col lg:mr-[260px] {{ $chat ? 'h-dvh overflow-hidden' : 'min-h-screen' }}">
         {{-- topbar --}}
-        <header class="sticky top-0 z-30 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <header id="admin-topbar" class="sticky top-0 z-30 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             {{-- NOTE: NO backdrop-blur here on purpose — backdrop-filter makes
                  the header a CONTAINING BLOCK for position:fixed descendants,
                  which would shrink the bell dropdown's full-screen close
@@ -270,7 +275,7 @@
                     <div>
                         <h1 class="text-base font-extrabold leading-5">@yield('title', 'پنل مدیریت')</h1>
                         @unless ($chat)
-                            <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                            <div class="ip-crumb mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
                                 <a href="/" class="transition hover:text-primary-600">{{ \App\Support\Theme::resolve()['app_name'] }}</a>
                                 <x-icon name="chevron-left" class="size-3" />
                                 <span>@yield('breadcrumb', 'مدیریت کل — تنظیمات')</span>
@@ -307,18 +312,8 @@
     </div>
 
     @once
-        <style>
-            /* drawer state is driven by ONE class on <html> — sidebar and
-               overlay can never fall out of sync (half-open sidebar with no
-               dim overlay was possible with the old two-element toggling) */
-            @media (max-width: 1023.98px) {
-                /* Tailwind v4 hides the sidebar with the CSS `translate`
-                   property (translate-x-full) — reset THAT, not transform */
-                html.admin-drawer-open #admin-sidebar { translate: 0 0; transform: none; }
-                html.admin-drawer-open #admin-sidebar-overlay { opacity: 1; pointer-events: auto; }
-                html.admin-drawer-open, html.admin-drawer-open body { overflow: hidden; }
-            }
-        </style>
+        {{-- drawer state CSS moved to partials/admin-shell-css (self-contained
+             shell — survives any partial Tailwind bundle loss on a device) --}}
         <script>
             // admin sidebar drawer (mobile) — IIFE so a wire:navigate script
             // re-run can never hit a "already declared" SyntaxError
@@ -533,6 +528,60 @@
     @endonce
 
     @include('partials.panel-toast')
+
+    {{-- ───────── stylesheet-health probe (v0.17.19) ─────────
+         The client's phone kept rendering the panel with a PARTIALLY
+         applied Tailwind bundle (host assets verified byte-identical;
+         the loss happens on that device). The self-contained shell CSS
+         above keeps the panel correct either way — this probe makes the
+         failure VISIBLE: if a live bundle is not actually applying
+         (hidden → display:none fails), an amber banner tells the user
+         exactly what to do and the console logs the sheet stats. ───────── --}}
+    <div id="ip-css-probe-banner" role="alert">
+        ⚠️ بارگذاری کامل استایل‌های پنل در این مرورگر انجام نشد — ظاهر ممکن است ناقص باشد.
+        لطفاً یک‌بار «کش مرورگر» را پاک کنید (تنظیمات ← حریم خصوصی ← پاک کردن داده‌های مرورگر)
+        یا Chrome را به آخرین نسخه به‌روزرسانی کنید. کد خطا: <span dir="ltr">CSS-SHELL</span>
+        <button type="button" onclick="this.parentElement.remove()">متوجه شدم</button>
+    </div>
+    @once
+        <script>
+            (function () {
+                function probeCssHealth() {
+                    try {
+                        var probe = document.createElement('div');
+                        probe.className = 'hidden';
+                        probe.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;';
+                        document.body.appendChild(probe);
+                        var ok = getComputedStyle(probe).display === 'none';
+                        probe.remove();
+
+                        if (ok) return;
+
+                        document.getElementById('ip-css-probe-banner')
+                            ?.classList.add('ip-css-broken');
+
+                        var rules = 0;
+                        for (var i = 0; i < document.styleSheets.length; i++) {
+                            try { rules += document.styleSheets[i].cssRules.length; } catch (e) {}
+                        }
+                        console.warn('[InstaShop] admin Tailwind bundle did NOT apply on this device — shell CSS is carrying the panel. stylesheets='
+                            + document.styleSheets.length + ' rules=' + rules);
+                    } catch (e) { /* never break the panel for a diagnostic */ }
+                }
+
+                if (document.readyState === 'complete') {
+                    setTimeout(probeCssHealth, 300);
+                } else {
+                    window.addEventListener('load', function () { setTimeout(probeCssHealth, 300); });
+                }
+                /* wire:navigate swaps the document — re-check after each one */
+                document.addEventListener('livewire:navigated', function () {
+                    setTimeout(probeCssHealth, 300);
+                });
+            })();
+        </script>
+    @endonce
+
 
 
     @stack('scripts')

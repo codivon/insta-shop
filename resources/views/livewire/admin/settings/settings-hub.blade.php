@@ -20,13 +20,15 @@
     {{-- ── hub: internal sidebar + section ── --}}
     <div class="grid items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
 
-        {{-- internal section navigation — mobile: 2-col tiles, desktop: vertical list --}}
-        <nav class="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20 dark:border-slate-800 dark:bg-slate-900"
+        {{-- internal section navigation — mobile: 2-col tiles, desktop: vertical list
+             data-* hooks = the self-contained shell CSS (partials/admin-shell-css)
+             re-specifies this grid without the Tailwind bundle --}}
+        <nav id="settings-sections" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20 dark:border-slate-800 dark:bg-slate-900"
              aria-label="بخش‌های تنظیمات">
             <p class="px-2 pt-1 pb-2 text-[10px] font-black tracking-wide text-slate-400">بخش‌های تنظیمات</p>
-            <div class="grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:gap-0" role="tablist">
+            <div data-hub-tiles class="grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:gap-0" role="tablist">
                 @foreach ($sections as $key => $section)
-                    <button type="button" wire:click="$set('tab', '{{ $key }}')" role="tab"
+                    <button type="button" wire:click="$set('tab', '{{ $key }}')" role="tab" data-hub-tile
                             :aria-selected="$wire.tab === '{{ $key }}'"
                             @if ($loop->first) wire:key="sec-first" @endif
                             class="group flex w-full flex-col items-center gap-2 rounded-xl px-2 py-3 text-center transition lg:flex-row lg:gap-3 lg:px-3 lg:py-2.5 lg:text-right {{ $tab === $key
@@ -41,7 +43,7 @@
                             <span class="block truncate text-[11px] font-extrabold leading-5 lg:text-xs {{ $tab === $key ? 'text-white' : 'text-slate-700 dark:text-slate-200' }}">
                                 {{ $section['label'] }}
                             </span>
-                            <span class="mt-0.5 hidden truncate text-[10px] lg:block {{ $tab === $key ? 'text-white/70' : 'text-slate-400' }}">
+                            <span data-hub-tile-desc class="mt-0.5 hidden truncate text-[10px] lg:block {{ $tab === $key ? 'text-white/70' : 'text-slate-400' }}">
                                 {{ $section['description'] }}
                             </span>
                         </span>
@@ -55,8 +57,10 @@
             </div>
         </nav>
 
-        {{-- active section (embedded child component) --}}
-        <div wire:key="section-{{ $tab }}">
+        {{-- active section (embedded child component) — min-w-0 + data hook:
+             a wide table inside must NEVER blow this grid item past the
+             viewport (min-width:auto would size it to the table's 720px) --}}
+        <div wire:key="section-{{ $tab }}" data-hub-section class="min-w-0">
             @if ($tab === 'general')
                 @livewire(\App\Livewire\Admin\Settings\GeneralSettings::class, [], key('settings-general'))
             @elseif ($tab === 'appearance')
