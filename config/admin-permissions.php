@@ -84,6 +84,7 @@ return [
             'permissions' => [
                 'admin.settings' => 'مرکز تنظیمات (دسترسی به صفحه تنظیمات)',
                 'admin.settings.general' => 'تنظیمات عمومی (عنوان، لوگو، فاوآیکون)',
+                'admin.settings.landing' => 'صفحهٔ اصلی (متن‌ها، ترتیب و نمایش بخش‌های لندینگ)',
                 'admin.settings.appearance' => 'ظاهر و رنگ‌بندی',
                 'admin.settings.sms' => 'پیامک و پرووایدر',
                 'admin.settings.sms.templates' => 'قالب‌های پیامک',

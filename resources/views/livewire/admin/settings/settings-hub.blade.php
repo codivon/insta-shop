@@ -70,6 +70,8 @@
         <div wire:key="section-{{ $tab }}" data-hub-section class="min-w-0">
             @if ($tab === 'general')
                 @livewire(\App\Livewire\Admin\Settings\GeneralSettings::class, [], key('settings-general'))
+            @elseif ($tab === 'landing')
+                @livewire(\App\Livewire\Admin\Settings\LandingSettings::class, [], key('settings-landing'))
             @elseif ($tab === 'appearance')
                 @livewire(\App\Livewire\Admin\AppearanceSettings::class, [], key('settings-appearance'))
             @elseif ($tab === 'sms')

@@ -45,6 +45,7 @@ class SettingsHub extends Component
 
         $anySection = collect([
             'admin.settings.general',
+            'admin.settings.landing',
             'admin.settings.appearance',
             'admin.settings.sms',
             'admin.settings.payment',
@@ -77,6 +78,12 @@ class SettingsHub extends Component
                 'label' => 'تنظیمات عمومی',
                 'description' => 'عنوان، لوگو و فاوآیکون سایت',
                 'perm' => 'admin.settings.general',
+            ],
+            'landing' => [
+                'icon' => 'layout-grid',
+                'label' => 'صفحهٔ اصلی',
+                'description' => 'متن‌ها، ترتیب و نمایش بخش‌های لندینگ',
+                'perm' => 'admin.settings.landing',
             ],
             'appearance' => [
                 'icon' => 'palette',
