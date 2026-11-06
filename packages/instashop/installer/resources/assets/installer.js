@@ -120,6 +120,21 @@
         if (el.errBox) el.errBox.hidden = false;
     }
 
+    /* v0.21.3: a bare 5xx HTML page (SAPI killed the process — typically
+       the heavy demo seeder outliving the host's PHP time/memory cap) or
+       a dropped connection used to surface as a cryptic «خطای سرور (500)».
+       Explain what happened, reassure that finished work persists and
+       point at the resume-in-place retry button. */
+    function genericFail(status) {
+        if (status >= 500) {
+            return 'سرور در میانهٔ اجرای این مورد پاسخ را قطع کرد (کد ' + fa(status) + ') — معمولاً به‌خاطر سقف زمانی یا حافظهٔ PHP روی هاست. کارهای انجام‌شده حفظ شده‌اند؛ با «تلاش مجدد» از همین نقطه ادامه می‌دهیم. اگر چند بار تکرار شد، از پشتیبانی هاست بخواهید سقف max_execution_time و memory_limit را بالا ببرد.';
+        }
+        if (status === 419) {
+            return 'نشست نصب منقضی شده (کد ۴۱۹) — صفحه را یک‌بار تازه‌سازی کنید تا ادامه دهید.';
+        }
+        return 'خطای سرور (' + fa(status) + ')';
+    }
+
     function post(url, payload) {
         return fetch(url, {
             method: 'POST',
@@ -130,10 +145,13 @@
                 'X-Requested-With': 'XMLHttpRequest',
             },
             body: JSON.stringify(payload || {}),
+        }).catch(function () {
+            var err = new Error('ارتباط با سرور برقرار نشد — سرور دیر پاسخ داد یا اتصال قطع شد. با «تلاش مجدد» از همین نقطه ادامه دهید؛ کارهای انجام‌شده حفظ می‌شوند.');
+            throw err;
         }).then(function (res) {
             return res.json().catch(function () { return null; }).then(function (data) {
                 if (!res.ok || !data || data.ok === false) {
-                    var err = new Error((data && data.message) || ('خطای سرور (' + res.status + ')'));
+                    var err = new Error((data && data.message) || genericFail(res.status));
                     err.detail = data && data.detail;
                     err.errors = data && data.errors;
                     throw err;

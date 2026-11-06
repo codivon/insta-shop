@@ -8,8 +8,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use InstaShop\Installer\Support\InstallerState;
 use PDO;
+use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -174,6 +177,8 @@ class InstallerController extends Controller
         // SECURITY: same fail-closed re-check as saveDatabase().
         abort_if(InstallerState::isInstalled(), 404);
 
+        $this->raiseLimits();
+
         $items = $kind === 'migrations' ? $this->migrationFiles() : $this->seederClasses();
         $total = count($items);
 
@@ -185,24 +190,29 @@ class InstallerController extends Controller
             ? 'database/migrations/'.basename($items[$index])
             : $items[$index];
 
+        $log = $this->installerLog();
+        $started = microtime(true);
+        $log->info("INSTALL {$kind} #{$index} BEGIN {$label}");
+
         try {
             if ($kind === 'migrations') {
                 $this->migrateWithRetry('database/migrations/'.basename($items[$index]));
+                $detail = trim(Artisan::output());
             } else {
-                Artisan::call('db:seed', [
-                    '--class' => $items[$index],
-                    '--force' => true,
-                ]);
+                $detail = $this->seedWithRetry($items[$index]);
             }
+
+            $log->info("INSTALL {$kind} #{$index} END {$label} (".round((microtime(true) - $started) * 1000).'ms)');
 
             return response()->json([
                 'ok' => true,
                 'finished' => false,
                 'total' => $total,
                 'message' => $label,
-                'detail' => trim(Artisan::output()),
+                'detail' => $detail,
             ]);
         } catch (Throwable $e) {
+            $log->error("INSTALL {$kind} #{$index} FAIL {$label}: ".$e->getMessage());
             report($e);
 
             return response()->json([
@@ -210,6 +220,72 @@ class InstallerController extends Controller
                 'message' => 'اجرای «'.$label.'» ناموفق بود.',
                 'detail' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * v0.21.3: the heaviest demo seeder (357 products + gallery copies +
+     * variant matrices ≈ several thousand SQL statements) can outlive the
+     * shared host's default max_execution_time / memory_limit. When that
+     * happens the SAPI kills the WHOLE process — no exception is thrown,
+     * laravel.log stays silent and the browser gets a bare 500 page (the
+     * field report: «خطای سرور (500)» right after DemoBannerSeeder, an
+     * empty laravel.log, and the retry button later completing the same
+     * seeder from its idempotent checkpoint). Both limits are
+     * PHP_INI_ALL, so the installer lifts them for its own long-running
+     * requests — best-effort: a hard server-level cap may still win, in
+     * which case the BEGIN/END journal below + the friendlier frontend
+     * message make the failure visible and resumable.
+     */
+    protected function raiseLimits(): void
+    {
+        @set_time_limit(0);
+        @ini_set('memory_limit', '512M');
+    }
+
+    /**
+     * Dedicated log channel (storage/logs/installer.log) so every
+     * pipeline item is traceable — including a process that is killed
+     * mid-run, which leaves a dangling BEGIN line and no END (exactly
+     * the signature the missing laravel.log entry could not provide).
+     */
+    protected function installerLog(): LoggerInterface
+    {
+        return Log::build(['driver' => 'single', 'path' => storage_path('logs/installer.log')]);
+    }
+
+    /**
+     * v0.21.3: seeders now get the same transient-flake resilience the
+     * migrations already have (this host also drops single statements
+     * under load: lock waits 1205/1213, "server has gone away" 2006/2013,
+     * the documented early-1146 flake). Every demo seeder is idempotent
+     * by design (slug upserts, updateOrCreate, count-then-fill, exists-
+     * checked file copies), so re-running the SAME class always
+     * converges instead of duplicating. 2006/2013 leave the PDO
+     * connection dead → reconnect before the next attempt.
+     */
+    protected function seedWithRetry(string $class): string
+    {
+        $attempts = 0;
+
+        while (true) {
+            try {
+                Artisan::call('db:seed', [
+                    '--class' => $class,
+                    '--force' => true,
+                ]);
+
+                return trim(Artisan::output());
+            } catch (Throwable $e) {
+                $code = (int) ($e instanceof QueryException ? ($e->errorInfo[1] ?? 0) : 0);
+
+                if (! in_array($code, [1146, 1205, 1213, 2006, 2013], true) || ++$attempts > 2) {
+                    throw $e;
+                }
+
+                DB::reconnect();
+                usleep([500_000, 1_000_000][$attempts - 1]);
+            }
         }
     }
 
