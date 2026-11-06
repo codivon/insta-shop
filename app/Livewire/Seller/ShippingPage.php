@@ -9,6 +9,7 @@ use App\Models\City;
 use App\Models\Province;
 use App\Models\Shop;
 use App\Support\Fmt;
+use App\Support\ImagePayload;
 use App\Support\IranHolidays;
 use App\Support\JDate;
 use Illuminate\Support\Carbon;
@@ -499,7 +500,7 @@ class ShippingPage extends Component
     {
         return [
             'createTitle' => ['required', 'string', 'min:2', 'max:120'],
-            'createImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:1024'],
+            'createImage' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:1024', ImagePayload::rule()],
             'createIsActive' => ['boolean'],
             'createWaitingTime' => ['nullable', 'string', 'max:120'],
             'createMaxPackageWeight' => ['nullable', 'integer', 'min:0', 'max:10000000'],

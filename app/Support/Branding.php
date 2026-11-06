@@ -26,6 +26,16 @@ class Branding
     /** Persist an uploaded file (Livewire TemporaryUploadedFile) under branding/. */
     public static function store(mixed $file, string $slot): string
     {
+        // SECURITY (v0.20.0): inline guard — the sole caller validates its
+        // inputs, but Branding::store() itself used to write whatever it was
+        // handed onto the PUBLIC disk. Content-guessed extension must be an
+        // image format AND the raw bytes must carry no PHP-executable
+        // markers (polyglot PNG+PHP defense), no matter who calls this.
+        $ext = strtolower((string) (is_object($file) && method_exists($file, 'guessExtension') ? $file->guessExtension() : ''));
+
+        abort_unless(in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'ico'], true), 422, 'فایل برندینگ باید تصویر معتبر (png/jpg/webp/ico) باشد.');
+        abort_unless(ImagePayload::clean($file), 422, 'فایل تصویر برندینگ معتبر نیست.');
+
         // remove the previous file to avoid orphans
         self::delete($slot);
 

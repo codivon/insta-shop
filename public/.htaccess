@@ -5,6 +5,18 @@
 
     RewriteEngine On
 
+    # ═══════════════════════════════════════════════════════════
+    #  SECURITY (v0.20.0): /storage (public disk) must never execute
+    #  anything. Belt-and-braces for cPanel/LiteSpeed boxes — the app's
+    #  validators already keep php-like payloads out (content-MIME
+    #  checks + hashName), but a server misconfig (php-fpm pooled over
+    #  the storage dir, a future cPanel option flip) must not turn an
+    #  uploaded file into RCE. Blocks the real script extensions
+    #  (php/php5/phtml/phar/pht/cgi/pl/py/sh/asp/aspx/jsp) anywhere
+    #  under /storage.
+    # ═══════════════════════════════════════════════════════════
+    RewriteRule ^storage/.*\.(php[0-9]?|phtml|phar|pht|cgi|pl|py|sh|asp|aspx|jsp)$ - [F,L,NC]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

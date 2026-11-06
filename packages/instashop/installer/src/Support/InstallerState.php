@@ -104,6 +104,53 @@ class InstallerState
 
         // The provisional key now lives inside .env — remove the copy.
         @unlink(static::keyPath());
+
+        // SECURITY (v0.20.0): the installer-session token is no longer valid.
+        @unlink(static::sessionTokenPath());
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+     |  SECURITY (v0.20.0) — installer session binding
+     |
+     |  Between the moment .env is written (saveDatabase) and the moment
+     |  install.lock lands (finish), isInstalled() stays false and every
+     |  POST under /install/* would stay reachable by ANYONE who finds the
+     |  host in that deploy window — including rewriting .env to an
+     |  attacker-controlled MySQL host. The wizard now binds itself to the
+     |  browser that STARTED it: a random token is created on the first
+     |  GET of the wizard, mirrored into an HttpOnly cookie, and every
+     |  mutating installer request must carry the matching cookie.
+     * ════════════════════════════════════════════════════════════════ */
+
+    /** Path of the server-side half of the installer session token. */
+    public static function sessionTokenPath(): string
+    {
+        return storage_path('app/installer.session');
+    }
+
+    /** Create (once) and return the installer session token. */
+    public static function ensureSessionToken(): string
+    {
+        $path = static::sessionTokenPath();
+
+        if (! is_file($path)) {
+            @mkdir(dirname($path), 0755, true);
+            @file_put_contents($path, bin2hex(random_bytes(24)));
+        }
+
+        return trim((string) @file_get_contents($path));
+    }
+
+    /** Constant-time check of the cookie against the stored token. */
+    public static function sessionTokenValid(?string $given): bool
+    {
+        $path = static::sessionTokenPath();
+
+        if (! is_file($path) || ! is_string($given) || $given === '') {
+            return false;
+        }
+
+        return hash_equals(trim((string) @file_get_contents($path)), $given);
     }
 
     /** Best-effort `php artisan storage:link` equivalent (no shell needed). */

@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\Story;
 use App\Support\ActivityLogger;
+use App\Support\ImagePayload;
 use App\Support\SellerNotifier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -448,6 +449,7 @@ class StoriesPage extends Component
                 $isVideo ? null : 'image',
                 $isVideo ? null : 'mimes:jpg,jpeg,png,webp',
                 $isVideo ? null : 'max:5120',
+                $isVideo ? null : ImagePayload::rule(),
             ]),
             'videoUrl' => [$isVideo ? 'required' : 'nullable', 'url', 'max:500',
                 function (string $attribute, mixed $value, \Closure $fail) use ($isVideo): void {

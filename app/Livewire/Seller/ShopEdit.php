@@ -3,8 +3,10 @@
 namespace App\Livewire\Seller;
 
 use App\Livewire\Concerns\NotifiesOnValidation;
+use App\Models\Setting;
 use App\Models\Shop;
 use App\Support\Fmt;
+use App\Support\ImagePayload;
 use App\Support\Phone;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -93,7 +95,7 @@ class ShopEdit extends Component
 
         // size/mime rules here so the seller sees the problem immediately
         $validator = Validator::make([$property => $file], [
-            $property => ['image', 'mimes:jpg,jpeg,png,webp', "max:{$maxKb}"],
+            $property => ['image', 'mimes:jpg,jpeg,png,webp', "max:{$maxKb}", ImagePayload::rule()],
         ], [
             "{$property}.image" => "فایل {$label} تصویر نیست.",
             "{$property}.mimes" => "فرمت {$label} باید JPG، PNG یا WebP باشد.",
@@ -168,6 +170,15 @@ class ShopEdit extends Component
             'fullName.max' => 'نام و نام خانوادگی حداکثر ۶۰ حرف است.',
         ]));
 
+        // SECURITY (v0.20.0): an ADMIN pause is enforcement — the seller
+        // cannot re-activate their own shop while the admin marker is set
+        // (the marker is cleared only when an admin re-activates the shop).
+        $adminPaused = (bool) Setting::get('shops.admin_pause.'.$this->shop()->id);
+
+        if ($this->status === 'active' && $adminPaused) {
+            $this->status = 'paused';
+        }
+
         $this->shop()->update([
             'name' => trim($this->name),
             'about' => trim($this->about) ?: null,
@@ -176,6 +187,10 @@ class ShopEdit extends Component
             'status' => $this->status,
             'show_stock' => $this->showStock,
         ]);
+
+        if ($this->status === 'paused' && $adminPaused) {
+            $this->dispatch('panel-toast', message: 'فعال‌سازی فروشگاه توسط پشتیبانی متوقف شده است — برای رفع توقف با پشتیبانی تماس بگیرید.', type: 'error');
+        }
 
         // seller's own display name lives on the seller, not the shop
         auth('seller')->user()->update([

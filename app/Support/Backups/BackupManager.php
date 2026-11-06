@@ -237,6 +237,22 @@ final class BackupManager
 
             $tmpDir = storage_path('app/backups-restore-'.Str::uuid());
             $this->ensureDirectory($tmpDir);
+
+            // SECURITY (v0.20.0): entry allowlist BEFORE extractTo — a
+            // crafted ZIP must only ever contain the manifest + data/*.json
+            // table dumps. Anything else (nested paths, absolute paths,
+            // symlinks, unexpected files) is rejected outright (zip-slip
+            // defense-in-depth; extraction behavior is PHP-version-dependent).
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $entry = (string) ($zip->getNameIndex($i) ?: '');
+
+                if (! preg_match('#^(backup\.meta\.json|data/[A-Za-z0-9_]+\.json)$#', $entry)) {
+                    $zip->close();
+
+                    throw new RuntimeException('ساختار فایل پشتیبان نامعتبر است (ورودی ناشناخته در ZIP: '.basename($entry).').');
+                }
+            }
+
             $zip->extractTo($tmpDir);
             $zip->close();
 

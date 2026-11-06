@@ -4,6 +4,7 @@ namespace InstaShop\Installer\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use InstaShop\Installer\Http\Controllers\AdminSetupController;
 use InstaShop\Installer\Support\InstallerState;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,6 +23,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class HandleInstallerAccess
 {
+    /** Cookie that mirrors the server-side installer session token. */
+    private const SESSION_COOKIE = 'instashop_install';
+
     public function handle(Request $request, Closure $next): Response
     {
         $installed = InstallerState::isInstalled();
@@ -37,6 +41,33 @@ class HandleInstallerAccess
 
         if (! $installed && ! $request->is('install', 'install/*') && ! $request->is('up')) {
             return redirect()->to('/install');
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // SECURITY (v0.20.0) — installer session binding.
+        // While the app is NOT installed, mutating installer requests
+        // must come from the browser session that STARTED the wizard:
+        // every GET of the wizard (re)issues the HttpOnly cookie, every
+        // POST/PUT/PATCH/DELETE under /install/* must match it. This
+        // closes the .env-rewrite window on a discoverable host.
+        // ═══════════════════════════════════════════════════════════
+        if ($request->is('install', 'install/*')) {
+            if ($request->isMethod('GET')) {
+                $token = InstallerState::ensureSessionToken();
+
+                Cookie::queue(Cookie::make(
+                    self::SESSION_COOKIE,
+                    $token,
+                    60 * 8,          // 8 hours — plenty for one install run
+                    path: '/',
+                    httpOnly: true,
+                    sameSite: 'Lax',
+                ));
+            } elseif (! InstallerState::sessionTokenValid($request->cookie(self::SESSION_COOKIE))) {
+                return response()->json([
+                    'message' => 'نشست نصب معتبر نیست — صفحهٔ نصب را دوباره باز کنید.',
+                ], 403);
+            }
         }
 
         return $next($request);

@@ -46,6 +46,7 @@ return [
                 'admin.discounts' => 'کدهای تخفیف',
                 'admin.stories' => 'استوری‌ها (تأیید و مدیریت استوری فروشگاه‌ها)',
                 'admin.banners' => 'بنرها و اسلایدر صفحهٔ اصلی',
+                'admin.slider' => 'اسلایدر هیرو صفحهٔ اصلی (مدیریت اسلایدها)',
                 'admin.income' => 'درآمد و کمیسیون‌ها',
                 'admin.finance' => 'گزارش مالی',
                 'admin.settlements' => 'تسویه‌ها',

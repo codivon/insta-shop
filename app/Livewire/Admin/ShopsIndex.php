@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Seller;
+use App\Models\Setting;
 use App\Models\Shop;
 use App\Models\WalletTransaction;
 use App\Support\ActivityLogger;
@@ -66,6 +67,16 @@ class ShopsIndex extends Component
         $shop = Shop::query()->findOrFail($shopId);
 
         $shop->forceFill(['status' => $shop->status === 'active' ? 'paused' : 'active'])->save();
+
+        // SECURITY (v0.20.0): remember WHO paused the shop — an admin pause
+        // is an enforcement action, so the seller must not be able to flip
+        // the shop back to «active» from their own edit form. Admin
+        // re-activation clears the marker.
+        if ($shop->status === 'paused') {
+            Setting::set('shops.admin_pause.'.$shopId, '1');
+        } else {
+            Setting::forget('shops.admin_pause.'.$shopId);
+        }
 
         // seller notification: «وضعیت فروشگاه»
         SellerNotifier::notify(

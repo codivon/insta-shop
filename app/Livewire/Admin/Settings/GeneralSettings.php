@@ -7,6 +7,7 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Setting;
 use App\Support\ActivityLogger;
 use App\Support\Branding;
+use App\Support\ImagePayload;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -55,8 +56,8 @@ class GeneralSettings extends Component
             'metaDescription' => ['nullable', 'max:300'],
             'storePhone' => ['nullable', 'max:20'],
             'storeInstagram' => ['nullable', 'max:60', 'regex:/^[A-Za-z0-9._]+$/'],
-            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
-            'favicon' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,ico', 'max:1024'],
+            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048', ImagePayload::rule()],
+            'favicon' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,ico', 'max:1024', ImagePayload::rule()],
         ];
     }
 

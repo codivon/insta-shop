@@ -10,6 +10,7 @@ use App\Models\Story;
 use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
 use App\Support\Fmt;
+use App\Support\ImagePayload;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -432,8 +433,9 @@ class StoriesPage extends Component
                 $isVideo ? null : 'image',
                 $isVideo ? null : 'mimes:jpg,jpeg,png,webp',
                 $isVideo ? null : 'max:5120',
+                $isVideo ? null : ImagePayload::rule(),
             ]),
-            'icon' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'icon' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', ImagePayload::rule()],
             'videoUrl' => [$isVideo ? 'required' : 'nullable', 'url', 'max:500',
                 function (string $attribute, mixed $value, \Closure $fail) use ($isVideo): void {
                     if ($isVideo && $value !== '' && ! Story::isDirectVideoUrl((string) $value)) {

@@ -6,6 +6,7 @@ use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Banner;
 use App\Support\ActivityLogger;
+use App\Support\ImagePayload;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
@@ -214,7 +215,7 @@ class BannersPage extends Component
 
         return [
             'title' => ['nullable', 'string', 'max:150'],
-            'image' => [$required ? 'required' : 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'image' => [$required ? 'required' : 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', ImagePayload::rule()],
             'linkUrl' => ['nullable', 'url', 'max:500', 'starts_with:https://'],
             'sort' => ['required', 'integer', 'min:0', 'max:9999'],
             'isActive' => ['boolean'],

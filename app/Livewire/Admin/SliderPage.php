@@ -11,6 +11,15 @@ use App\Models\Banner;
  */
 class SliderPage extends BannersPage
 {
+    /**
+     * SECURITY (v0.20.0): the page route is guarded by the route name
+     * (admin.slider — now also registered in the permission registry so
+     * roles CAN grant it); the component previously inherited «admin.banners»
+     * here, so the Livewire actions and the page URL checked DIFFERENT
+     * permissions. Both are now the same key.
+     */
+    protected static string $permission = 'admin.slider';
+
     protected string $position = Banner::POSITION_HERO;
 
     protected string $sectionTitle = 'اسلایدر صفحهٔ اصلی';

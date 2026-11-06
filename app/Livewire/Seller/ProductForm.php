@@ -13,6 +13,7 @@ use App\Models\SpecificationTemplate;
 use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
 use App\Support\Fmt;
+use App\Support\ImagePayload;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -739,7 +740,7 @@ class ProductForm extends Component
             'isSpecial' => ['boolean'],
             'specialEndsAt' => ['nullable', 'exclude_unless:isSpecial,true', 'required', 'date'],
             'photos' => ['nullable', 'array', 'max:'.max(0, 6 - $existingCount)],
-            'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048', ImagePayload::rule()],
             'specifications' => ['nullable', 'array', 'max:10'],
             'specifications.*.name' => ['nullable', 'string', 'max:80'],
             'specifications.*.items' => ['nullable', 'array', 'max:25'],

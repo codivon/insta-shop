@@ -173,6 +173,48 @@ class DiscountForm extends Component
         }
     }
 
+    /**
+     * SECURITY (v0.20.0): the client can put ANY id into customerIds /
+     * includeIds / excludeIds (public Livewire props) — every id is
+     * re-scoped here against rows this shop may actually target before
+     * anything is persisted.
+     */
+    private function sanitizeScopeIds(): void
+    {
+        $shop = $this->shop();
+
+        // customers: keep only real customer rows — and only those who
+        // actually ordered from THIS shop (same scope as the picker search,
+        // so a tampered id list can never target another tenant's buyers).
+        $this->customerIds = Customer::query()
+            ->whereHas('orders.items.product', fn ($q) => $q->where('shop_id', $shop->id))
+            ->whereIn('id', array_map('intval', $this->customerIds))
+            ->pluck('id')->map(fn ($v) => (int) $v)->all();
+
+        // include / exclude: meaning depends on the selected type —
+        // categories must exist (root rows, same as the picker),
+        // products must belong to THIS shop.
+        $resolveIds = function (array $ids, bool $categories) use ($shop): array {
+            $ids = array_map('intval', $ids);
+
+            if ($ids === []) {
+                return [];
+            }
+
+            return $categories
+                ? Category::query()->whereIn('id', $ids)->whereNull('parent_id')->pluck('id')->map(fn ($v) => (int) $v)->all()
+                : Product::query()->whereIn('id', $ids)->where('shop_id', $shop->id)->pluck('id')->map(fn ($v) => (int) $v)->all();
+        };
+
+        if (in_array($this->include_type, [Discount::INCLUDE_CATEGORY, Discount::INCLUDE_PRODUCT], true)) {
+            $this->includeIds = $resolveIds($this->includeIds, $this->include_type === Discount::INCLUDE_CATEGORY);
+        }
+
+        if ($this->exclude_type !== Discount::EXCLUDE_NONE) {
+            $this->excludeIds = $resolveIds($this->excludeIds, $this->exclude_type === Discount::INCLUDE_CATEGORY);
+        }
+    }
+
     /* ══════════ persistence ══════════ */
 
     public function save(): void
@@ -207,6 +249,8 @@ class DiscountForm extends Component
         if (! $discount) {
             abort(404);
         }
+
+        $this->sanitizeScopeIds();
 
         $discount->fill([
             'title' => trim($this->title),
@@ -255,6 +299,17 @@ class DiscountForm extends Component
             'percent' => ['exclude_unless:type,'.Discount::TYPE_PERCENT, 'required', 'integer', 'min:1', 'max:100'],
             'discount_ceiling' => ['nullable', 'exclude_unless:type,'.Discount::TYPE_PERCENT, 'integer', 'min:0', 'max:999999999999'],
             'description' => ['nullable', 'string', 'max:1000'],
+            /* SECURITY (v0.20.0): these three arrays are client-writable
+             * Livewire public properties — without per-item rules a tampered
+             * commit could persist arbitrary nested JSON into the discount
+             * row. Integer-only items + hard caps, then save() re-scopes
+             * every id against allowed rows before it hits the DB. */
+            'customerIds' => ['nullable', 'array', 'max:500'],
+            'customerIds.*' => ['integer'],
+            'includeIds' => ['nullable', 'array', 'max:200'],
+            'includeIds.*' => ['integer'],
+            'excludeIds' => ['nullable', 'array', 'max:200'],
+            'excludeIds.*' => ['integer'],
             'least_price' => ['nullable', 'integer', 'min:0', 'max:999999999999'],
             'least_products_count' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'quantity' => ['nullable', 'integer', 'min:0', 'max:1000000'],
@@ -301,7 +356,13 @@ class DiscountForm extends Component
             ->get(['id', 'name']);
     }
 
-    /** Customer search results for the «انتخاب مشتریان» picker. */
+    /** Customer search results for the «انتخاب مشتریان» picker.
+     *
+     * SECURITY (v0.20.0): previously ANY seller could enumerate the ENTIRE
+     * customer base of the platform (full_name + phone) with a two-character
+     * search — a cross-tenant PII leak. Results are now restricted to
+     * customers who have actually ordered from THIS shop.
+     */
     public function getSearchResultsProperty(): Collection
     {
         $term = trim($this->usersSearch);
@@ -311,6 +372,7 @@ class DiscountForm extends Component
         }
 
         return Customer::query()
+            ->whereHas('orders.items.product', fn ($q) => $q->where('shop_id', $this->shop()->id))
             ->where(function ($q) use ($term) {
                 $q->where('full_name', 'like', "%{$term}%")
                     ->orWhere('phone', 'like', "%{$term}%");
@@ -326,7 +388,10 @@ class DiscountForm extends Component
             return collect();
         }
 
-        return Customer::query()->whereIn('id', $this->customerIds)->get(['id', 'full_name', 'phone']);
+        return Customer::query()
+            ->whereHas('orders.items.product', fn ($q) => $q->where('shop_id', $this->shop()->id))
+            ->whereIn('id', $this->customerIds)
+            ->get(['id', 'full_name', 'phone']);
     }
 
     public function render()

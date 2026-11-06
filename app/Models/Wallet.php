@@ -7,7 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['seller_id', 'balance'])]
+/**
+ * SECURITY (v0.20.0): balance removed from fillable — it must only ever
+ * change through WalletService increment/decrement inside lockForUpdate
+ * transactions, never through a mass-assignment call site.
+ */
+#[Fillable(['seller_id'])]
 class Wallet extends Model
 {
     protected function casts(): array

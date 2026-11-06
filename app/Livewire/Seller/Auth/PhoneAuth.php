@@ -208,7 +208,8 @@ class PhoneAuth extends Component
                 'instagram_username' => $this->instagram,
                 'status' => $autoApproved ? 'approved' : 'pending',
                 'phone_verified_at' => now(),
-                'last_login_at' => now(),
+                // (v0.20.0) dead key removed — last_login_at is not fillable;
+                // the real write happens via forceFill below on first login.
             ]);
 
             ActivityLogger::log(

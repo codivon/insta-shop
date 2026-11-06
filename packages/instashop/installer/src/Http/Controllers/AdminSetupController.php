@@ -125,12 +125,14 @@ class AdminSetupController extends Controller
             'store_instagram' => 'آیدی اینستاگرام',
         ]);
 
+        // SECURITY (v0.20.0): is_super left the fillable list — the very
+        // first admin is minted through forceFill (the only sanctioned way).
         $admin = Admin::create([
             'name' => trim($data['name']),
             'email' => strtolower(trim($data['email'])),
             'password' => $data['password'], // hashed automatically (model cast)
-            'is_super' => true,
         ]);
+        $admin->forceFill(['is_super' => true])->save();
 
         /* ---- theme + optional store defaults (all changeable later) ---- */
         $preset = $data['theme_preset'] ?? Theme::DEFAULTS['theme.preset'];

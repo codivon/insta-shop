@@ -8,8 +8,15 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-#[Fillable(['name', 'email', 'password', 'is_super'])]
-#[Hidden(['password', 'remember_token'])]
+/**
+ * SECURITY (v0.20.0): is_super is NO LONGER mass-assignable — it must only
+ * ever be set through forceFill() (installer first-admin bootstrap). A
+ * future mass-assignment call site can therefore never silently mint a
+ * super-admin. Check your write path if you need to set it:
+ * `$admin->forceFill(['is_super' => true])->save()`.
+ */
+#[Fillable(['name', 'email', 'password'])]
+#[Hidden(['password', 'remember_token', 'is_super'])]
 class Admin extends Authenticatable
 {
     protected function casts(): array

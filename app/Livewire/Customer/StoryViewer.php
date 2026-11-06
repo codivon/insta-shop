@@ -30,9 +30,6 @@ class StoryViewer extends Component
 
     public string $commentBody = '';
 
-    /** Story ids whose view counter was already bumped this session. */
-    public array $counted = [];
-
     #[On('open-stories')]
     public function open(int $shopId, int $startIndex = 0): void
     {
@@ -45,7 +42,6 @@ class StoryViewer extends Component
         $this->shopId = $shopId;
         // per-story rings (storefront) open the viewer at the tapped story
         $this->index = min(max(0, $startIndex), count($ids) - 1);
-        $this->counted = [];
         $this->commentBody = '';
         $this->isOpen = true;
 
@@ -233,10 +229,17 @@ class StoryViewer extends Component
     }
 
     /**
-     * Bump the view counter once per session + record the «seen» mark.
+     * Bump the view counter + record the «seen» mark.
      * Logged-in customers are keyed by customer_id (drives the ring
      * seen-state too); guests get an anonymous visitor token so the
      * analytics cover every viewer, not only logged-in ones.
+     *
+     * SECURITY (v0.20.0): the counter dedupe moved server-side. The old
+     * gate (`in_array($story->id, $this->counted)`) trusted a client-writable
+     * public property — a tampered commit resetting $counted could inflate
+     * view counts without bound (they feed seller analytics). The view row
+     * (customer_id / visitor_token) is now the source of truth: the counter
+     * increments only when a NEW story_views row is minted.
      */
     private function markViewed(): void
     {
@@ -246,18 +249,17 @@ class StoryViewer extends Component
             return;
         }
 
-        if (! in_array($story->id, $this->counted, true)) {
-            $story->increment('views');
-            $this->counted[] = $story->id;
-        }
-
         $customer = $this->customer();
 
         if ($customer !== null) {
-            StoryView::query()->firstOrCreate([
+            $fresh = StoryView::query()->firstOrCreate([
                 'story_id' => $story->id,
                 'customer_id' => $customer->id,
-            ]);
+            ])->wasRecentlyCreated;
+
+            if ($fresh) {
+                $story->increment('views');
+            }
 
             $this->announceSeen($story);
 
@@ -267,10 +269,14 @@ class StoryViewer extends Component
         $token = $this->visitorToken();
 
         if ($token !== null) {
-            StoryView::query()->firstOrCreate([
+            $fresh = StoryView::query()->firstOrCreate([
                 'story_id' => $story->id,
                 'visitor_token' => $token,
-            ]);
+            ])->wasRecentlyCreated;
+
+            if ($fresh) {
+                $story->increment('views');
+            }
 
             $this->announceSeen($story);
         }

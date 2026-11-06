@@ -98,7 +98,14 @@ class OrdersPage extends Component
             return null;
         }
 
+        // SECURITY (v0.20.0): $detailId is a client-writable public Livewire
+        // property — openDetail() checks ownership but a tampered commit
+        // ($wire.set('detailId', …)) skips it. The getter must therefore
+        // re-scope EVERY render to orders that contain THIS shop's items,
+        // so another shop's order (customer name/phone/address PII) can
+        // never resolve — even under a hydration-attack payload.
         return Order::query()
+            ->whereHas('items', fn ($q) => $q->where('shop_id', $this->shop()->id))
             ->with(['customer:id,full_name,phone', 'items.product.mainImage', 'shopShipments.shop:id,name'])
             ->find($this->detailId);
     }

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin\Notifications;
 
+use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Models\AdminNotification;
 use App\Support\WebPusher;
 use Livewire\Attributes\On;
@@ -18,6 +19,18 @@ use Livewire\Component;
  */
 class NotificationsBell extends Component
 {
+    use GuardsPermissions;
+
+    /**
+     * SECURITY (v0.20.0): this bell used to run with NO auth check at all —
+     * /livewire/update is panel-less, so a seller/customer/guest session
+     * could legally reach these actions (mark read/unread all, open links)
+     * had it ever obtained a checksummed snapshot. bootGuardsPermissions()
+     * re-runs on every mount/hydrate: guests → 401, any authenticated admin
+     * → allowed (the bell is global topbar UI), other panels → 401.
+     */
+    protected static ?string $permission = null;
+
     public bool $open = false;
 
     /** Browser push permission state: default|granted|denied|unsupported|subscribed */
