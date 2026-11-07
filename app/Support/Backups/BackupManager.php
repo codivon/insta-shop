@@ -5,6 +5,7 @@ namespace App\Support\Backups;
 use App\Models\Backup;
 use App\Models\Setting;
 use App\Support\Fmt;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -43,10 +44,33 @@ final class BackupManager
      |  Table list
      *----------------------------------------------------------------- */
 
-    /** Every content table of the app (system tables excluded). */
+    /** Every content table of the CURRENT database (system tables excluded).
+     *
+     * v0.21.4 SCOPING FIX — the production bug «backup build failed: 1146
+     * Table 'owqdlxcv_insta_shop.advertisements' doesn't exist»:
+     * `Schema::getTableListing()` with a null schema compiles
+     * `... from information_schema.tables where table_schema not in
+     * (system schemas)` — i.e. it lists tables from EVERY database this
+     * MySQL user can see, NOT just the app's. On cPanel the account user
+     * is granted on ALL of the account's databases, so a second database
+     * (old test install, unrelated script — its `advertisements` table was
+     * the field example) leaked its table NAMES into the dump list;
+     * `DB::table($name)` then queried the app database → 1146 → every
+     * automatic AND manual backup failed. Fix: pass the CURRENT
+     * connection's database name so information_schema is filtered with
+     * `table_schema = '<db>'`. SQLite (sqlite_master via PRAGMA) is
+     * file-scoped already and its «database name» is a file path — keep
+     * the null behavior there. Reproduced + verified on real MariaDB 11.8
+     * with a second database holding a foreign `advertisements` table.
+     */
     public function tables(): array
     {
-        return collect(Schema::getTableListing())
+        $schema = in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)
+            ? DB::getDatabaseName()
+            : null;
+
+        return collect(Schema::getTables($schema))
+            ->pluck('name')
             ->map(fn ($name) => strtolower((string) $name))
             // SQLite lists schema-qualified names («main.users») — keep the
             // bare table name; MySQL already returns plain names.
@@ -84,6 +108,7 @@ final class BackupManager
         $backup->forceFill(['status' => Backup::STATUS_PROCESSING, 'error' => null])->save();
 
         $tmpDir = null;
+        $zip = null;
 
         try {
             $tables = $this->tables();
@@ -116,42 +141,27 @@ final class BackupManager
             $totalRecords = 0;
 
             foreach ($tables as $index => $table) {
-                $rows = 0;
-                $file = $tmpDir.'/'.$table.'.json';
-                $handle = fopen($file, 'w');
-                fwrite($handle, '[');
+                try {
+                    $this->dumpTable($zip, $tmpDir, $table, $meta, $totalRecords);
+                } catch (QueryException $e) {
+                    // v0.21.4 defense-in-depth: a table that is LISTED but
+                    // not readable must not kill the whole backup — skip it,
+                    // journal it, keep going. Covered class = «this table
+                    // can't be opened at all»: 1051 unknown table, 1109
+                    // unknown table (secondary contexts), 1146 no such table,
+                    // 1356 view references invalid objects, 1812/1814/1932
+                    // missing or discarded InnoDB tablespace (verified live on
+                    // MariaDB 11.8: ALTER ... DISCARD TABLESPACE → select
+                    // fails with 1814). REAL data errors (deadlock 1205,
+                    // gone-away 2006, bad data) still fail loudly.
+                    $code = (int) ($e->errorInfo[1] ?? 0);
 
-                $first = true;
-
-                $writeRows = function ($chunk) use (&$first, &$rows, &$totalRecords, $handle) {
-                    foreach ($chunk as $row) {
-                        $json = json_encode((array) $row, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
-
-                        if ($json !== false) {
-                            fwrite($handle, ($first ? '' : ',').$json);
-                            $first = false;
-                            $rows++;
-                            $totalRecords++;
-                        }
+                    if (! in_array($code, [1051, 1109, 1146, 1356, 1812, 1814, 1932], true)) {
+                        throw $e;
                     }
-                };
 
-                $query = DB::table($table)->select('*');
-
-                if (in_array('id', Schema::getColumnListing($table), true)) {
-                    // chunkById paginates by the primary key — no orderBy
-                    // complaint, constant memory even on huge tables.
-                    $query->chunkById(self::CHUNK, fn ($chunk) => $writeRows($chunk), 'id');
-                } else {
-                    // Tables without an id column: stream the whole set.
-                    $writeRows($query->cursor());
+                    Log::warning("backup skipped unreadable table «{$table}»: ".$e->getMessage());
                 }
-
-                fwrite($handle, ']');
-                fclose($handle);
-
-                $meta['tables'][$table] = $rows;
-                $zip->addFile($file, 'data/'.$table.'.json');
 
                 $backup->forceFill([
                     'tables_total' => count($tables),
@@ -195,6 +205,16 @@ final class BackupManager
                 'error' => null,
             ])->save();
         } catch (Throwable $e) {
+            // Close the archive best-effort BEFORE the temp dir vanishes —
+            // an open ZipArchive garbage-collected over a deleted temp file
+            // spews «Cannot destroy the zip context» warnings.
+            if ($zip instanceof ZipArchive) {
+                try {
+                    @$zip->close();
+                } catch (Throwable) {
+                }
+            }
+
             if ($tmpDir !== null) {
                 $this->deleteDirectory($tmpDir);
             }
@@ -206,6 +226,60 @@ final class BackupManager
 
             Log::error('backup build failed: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Stream ONE table into the ZIP as data/<table>.json (chunked, constant
+     * memory). Extracted from build() so a single unreadable table can be
+     * skipped without tangling the archive/progress bookkeeping.
+     *
+     * @param  array<string, int>  $meta  tables map (name → row count)
+     */
+    private function dumpTable(ZipArchive $zip, string $tmpDir, string $table, array &$meta, int &$totalRecords): void
+    {
+        $rows = 0;
+        $file = $tmpDir.'/'.$table.'.json';
+        $handle = fopen($file, 'w');
+        fwrite($handle, '[');
+
+        $first = true;
+
+        $writeRows = function ($chunk) use (&$first, &$rows, &$totalRecords, $handle) {
+            foreach ($chunk as $row) {
+                $json = json_encode((array) $row, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+                if ($json !== false) {
+                    fwrite($handle, ($first ? '' : ',').$json);
+                    $first = false;
+                    $rows++;
+                    $totalRecords++;
+                }
+            }
+        };
+
+        try {
+            $query = DB::table($table)->select('*');
+
+            if (in_array('id', Schema::getColumnListing($table), true)) {
+                // chunkById paginates by the primary key — no orderBy
+                // complaint, constant memory even on huge tables.
+                $query->chunkById(self::CHUNK, fn ($chunk) => $writeRows($chunk), 'id');
+            } else {
+                // Tables without an id column: stream the whole set.
+                $writeRows($query->cursor());
+            }
+        } catch (Throwable $e) {
+            @fclose($handle);
+            @unlink($file);
+
+            throw $e;
+        }
+
+        fwrite($handle, ']');
+        fclose($handle);
+
+        $meta['tables'][$table] = $rows;
+        $zip->addFile($file, 'data/'.$table.'.json');
     }
 
     /* ------------------------------------------------------------------
