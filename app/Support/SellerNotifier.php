@@ -44,6 +44,7 @@ final class SellerNotifier
         'product.status' => ['تغییر وضعیت محصول', 'package'],
         'shop.status' => ['وضعیت فروشگاه', 'store'],
         'story.status' => ['وضعیت استوری فروشگاه', 'zap'],
+        'subscription.status' => ['وضعیت اشتراک فروشگاه (فعال‌سازی، یادآوری پایان، لغو)', 'crown'],
         'ticket.reply' => ['پاسخ پشتیبانی به تیکت شما', 'headset'],
         'system.misc' => ['پیام سیستمی', 'bell'],
     ];

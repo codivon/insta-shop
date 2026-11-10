@@ -69,3 +69,18 @@ Schedule::command('backups:cleanup')
     ->dailyAt('03:30')
     ->name('instashop-backups-cleanup')
     ->withoutOverlapping(30);
+
+/*
+|--------------------------------------------------------------------------
+| Subscription expiry reminders (v0.22.0 — اشتراک فروشندگان)
+|--------------------------------------------------------------------------
+|
+| `subscriptions:remind` notifies each seller ONCE (reminded_at stamp)
+| when their active subscription ends within the next 3 days —
+| «۳ روز تا پایان اشتراک». Renewal nudge without any spam.
+|
+*/
+Schedule::command('subscriptions:remind')
+    ->dailyAt('10:00')
+    ->name('instashop-subscriptions-remind')
+    ->withoutOverlapping(30);

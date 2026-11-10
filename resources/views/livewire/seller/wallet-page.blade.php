@@ -216,15 +216,19 @@
                         class="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-right shadow-sm transition hover:border-primary-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-800">
                     <span class="grid size-10 shrink-0 place-items-center rounded-xl {{ $tx->isDeposit()
                             ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-950/50 dark:text-emerald-400'
-                            : 'bg-amber-50 text-amber-500 dark:bg-amber-950/50 dark:text-amber-400' }}">
-                        <x-icon name="{{ $tx->isDeposit() ? 'arrow-down-left' : 'arrow-up-right' }}" class="size-4.5" />
+                            : ($tx->type === 'plan'
+                                ? 'bg-violet-50 text-violet-500 dark:bg-violet-950/50 dark:text-violet-400'
+                                : 'bg-amber-50 text-amber-500 dark:bg-amber-950/50 dark:text-amber-400') }}">
+                        <x-icon name="{{ $tx->isDeposit() ? 'arrow-down-left' : ($tx->type === 'plan' ? 'crown' : 'arrow-up-right') }}" class="size-4.5" />
                     </span>
 
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-1.5">
-                            <span class="truncate text-[11px] font-extrabold">{{ $tx->isDeposit() ? 'واریز فروش' : 'درخواست برداشت' }}</span>
+                            <span class="truncate text-[11px] font-extrabold">{{ $tx->typeLabel() }}</span>
                             @unless ($tx->isDeposit())
-                                <span class="shrink-0 rounded-full px-1.5 py-0.5 text-[8.5px] font-black {{ $tx->statusClasses() }}">{{ $tx->statusLabel() }}</span>
+                                @unless ($tx->type === 'plan')
+                                    <span class="shrink-0 rounded-full px-1.5 py-0.5 text-[8.5px] font-black {{ $tx->statusClasses() }}">{{ $tx->statusLabel() }}</span>
+                                @endunless
                             @endunless
                         </div>
                         <div class="mt-0.5 truncate text-[9.5px] font-semibold text-slate-400">

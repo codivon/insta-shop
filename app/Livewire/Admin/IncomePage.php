@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
 use App\Models\Order;
+use App\Models\SellerSubscription;
 use App\Models\Shop;
 use App\Support\Fmt;
 use Illuminate\Support\Carbon;
@@ -115,12 +116,31 @@ class IncomePage extends Component
         $rows = $orders->flatMap(fn ($order) => collect($order->commissions ?? []))
             ->filter(fn (array $row) => $this->shopId === 0 || (int) $row['shop_id'] === $this->shopId);
 
+        // v0.22.0 — subscription sales in the SAME date window (wallet
+        // purchases + admin-granted paid subscriptions; grants marked free
+        // contribute 0 by definition).
+        $subs = SellerSubscription::query()
+            ->where('price_paid', '>', 0)
+            ->when($this->range !== 'all', fn ($q) => $q->whereBetween('created_at', $this->rangeWindow()))
+            ->when($this->shopId > 0, fn ($q) => $q->whereHas('seller.shop', fn ($shop) => $shop->where('id', $this->shopId)));
+
         return [
             'commission' => (int) $rows->sum('commission_amount'),
             'goods' => (int) $rows->sum('items_total'),
             'payout' => (int) $rows->sum('payout'),
             'orders' => $orders->count(),
+            'subscription' => (int) $subs->sum('price_paid'),
         ];
+    }
+
+    /** [startOfDay, endOfDay] of the active range (mirror of ordersQuery). */
+    private function rangeWindow(): array
+    {
+        return match ($this->range) {
+            '7' => [Carbon::today()->subDays(6)->startOfDay(), now()],
+            '90' => [Carbon::today()->subDays(89)->startOfDay(), now()],
+            default => [Carbon::today()->subDays(29)->startOfDay(), now()],
+        };
     }
 
     /** 14-day chart of received commissions. */

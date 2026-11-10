@@ -25,6 +25,7 @@ use App\Livewire\Admin\LocationsPage;
 use App\Livewire\Admin\Notifications\NotificationsPage;
 use App\Livewire\Admin\OrderShow;
 use App\Livewire\Admin\OrdersIndex;
+use App\Livewire\Admin\PlansPage;
 use App\Livewire\Admin\ProductForm as AdminProductForm;
 use App\Livewire\Admin\ProductsIndex;
 use App\Livewire\Admin\ProfilePage as AdminProfilePage;
@@ -34,6 +35,7 @@ use App\Livewire\Admin\SettlementsPage;
 use App\Livewire\Admin\ShopsIndex;
 use App\Livewire\Admin\SliderPage;
 use App\Livewire\Admin\StoriesPage;
+use App\Livewire\Admin\SubscriptionsPage;
 use App\Livewire\Admin\Support\TicketShow;
 use App\Livewire\Admin\Support\TicketsIndex;
 use App\Livewire\Admin\Users\CustomerShow;
@@ -75,6 +77,7 @@ use App\Livewire\Seller\ShopEdit;
 use App\Livewire\Seller\ShopIndex;
 use App\Livewire\Seller\StoriesPage as SellerStoriesPage;
 use App\Livewire\Seller\StoryViewsPage;
+use App\Livewire\Seller\SubscriptionPage;
 use App\Livewire\Seller\Support\TicketShowPage;
 use App\Livewire\Seller\Support\TicketsPage;
 use App\Livewire\Seller\WalletPage;
@@ -151,6 +154,10 @@ Route::prefix('admin')->name('admin.')->middleware('admin.no-store')->group(func
 
         // ── Platform income (کمیسیون‌های دریافتی — batch 81) ──
         Route::get('/income', IncomePage::class)->name('income');
+
+        // ── Seller subscriptions (پلن‌های اشتراک + مدیریت اشتراک‌ها — v0.22.0) ──
+        Route::get('/plans', PlansPage::class)->name('plans');
+        Route::get('/subscriptions', SubscriptionsPage::class)->name('subscriptions');
 
         // ── Finance center: financial reports + settlements + withdrawals ──
         Route::get('/finance', FinancePage::class)->name('finance');
@@ -243,6 +250,9 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
         // ── Wallet (balance + deposits from paid orders + withdrawals) ──
         Route::get('/wallet', WalletPage::class)->name('wallet');
+
+        // ── Subscription plans (اشتراک و ارتقا — v0.22.0) ──
+        Route::get('/subscription', SubscriptionPage::class)->name('subscription');
 
         // ── Bank cards (profile + wallet destination accounts) ──
         Route::get('/cards', BankCardsPage::class)->name('cards');

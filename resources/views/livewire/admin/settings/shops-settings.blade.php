@@ -2,7 +2,7 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
             <h2 class="text-base font-extrabold">تنظیمات فروشگاه‌ها</h2>
-            <p class="mt-1 text-xs text-slate-400">تایید خودکار فروشندگان و کمیسیون سراسری پلتفرم</p>
+            <p class="mt-1 text-xs text-slate-400">تایید خودکار فروشندگان، کمیسیون سراسری و دورهٔ آزمایشی اشتراک</p>
         </div>
         <button type="button" wire:click="save" wire:loading.attr="disabled" wire:target="save"
                 class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-primary-600/25 transition hover:bg-primary-700 active:scale-95 disabled:opacity-60">
@@ -79,7 +79,34 @@
                 </div>
 
                 <p class="rounded-xl bg-slate-50 px-3 py-2.5 text-[10px] font-semibold leading-5 text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
-                    پیش‌فرض صفر است. هر فروشنده می‌تواند از مودال ویرایش خودش در «فروشندگان»، کمیسیون اختصاصی داشته باشد؛ در آن صورت همین مقدار نادیده گرفته می‌شود.
+                    پیش‌فرض صفر است. اولویت نهایی: کمیسیون اختصاصی فروشنده ← کمیسیون پلن اشتراک فعال ← همین نرخ سراسری.
+                </p>
+            </div>
+        </div>
+
+        {{-- دورهٔ آزمایشی اشتراک (v0.22.0) --}}
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 lg:col-span-2">
+            <div class="flex items-start gap-3">
+                <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-950/50 dark:text-primary-400">
+                    <x-icon name="crown" class="size-5" />
+                </span>
+                <div>
+                    <h3 class="text-sm font-extrabold">دورهٔ آزمایشی اشتراک (رایگان)</h3>
+                    <p class="mt-1 text-[11px] leading-5 text-slate-400">
+                        برای هر فروشندهٔ تازه‌تأیید (چه با تایید خودکار و چه با تایید مدیر) یک دورهٔ آزمایشی بدون پرداخت فعال می‌شود — مثل «۳ ماه رایگان» برای جذب فروشنده. هزینهٔ پلن در این دوره صفر است و نرخ کمیسیون عادی اعمال می‌شود. هر فروشنده فقط یک‌بار آن را می‌گیرد.
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-4 flex flex-wrap items-end gap-4">
+                <label class="block">
+                    <span class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">مدت دورهٔ آزمایشی (روز) — ۰ = خاموش</span>
+                    <input type="number" min="0" max="365" wire:model.blur="trialDays" placeholder="مثلاً 90 برای سه ماه رایگان"
+                           class="w-48 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-semibold outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                    @error('trialDays') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                </label>
+                <p class="rounded-xl bg-slate-50 px-3 py-2.5 text-[10px] font-semibold leading-5 text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
+                    پیشنهاد جذب: ۹۰ روز رایگان برای فروشنده‌های جدید + پلن سالانه با کمیسیون صفر به‌عنوان بالاترین پلن.
                 </p>
             </div>
         </div>

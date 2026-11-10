@@ -48,6 +48,8 @@ return [
                 'admin.banners' => 'بنرها و اسلایدر صفحهٔ اصلی',
                 'admin.slider' => 'اسلایدر هیرو صفحهٔ اصلی (مدیریت اسلایدها)',
                 'admin.income' => 'درآمد و کمیسیون‌ها',
+                'admin.plans' => 'پلن‌های اشتراک (ساخت و مدیریت پلن‌های فروش)',
+                'admin.subscriptions' => 'اشتراک فروشندگان (اعطای، تمدید، لغو)',
                 'admin.finance' => 'گزارش مالی',
                 'admin.settlements' => 'تسویه‌ها',
                 'admin.withdrawals' => 'مدیریت برداشت‌ها',

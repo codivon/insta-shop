@@ -52,6 +52,41 @@
             </div>
         @endif
 
+        {{-- ── subscription strip (v0.22.0) ── --}}
+        @php
+            $sub = $activeSubscription ?? null;
+            $subSoon = $sub && $sub->isActive() && $sub->daysLeft() <= 7;
+        @endphp
+        @if ($sub && $sub->isActive())
+            <a href="{{ route('seller.subscription') }}" wire:navigate
+               class="mt-4 flex items-center justify-between rounded-2xl border p-3.5 shadow-sm transition active:scale-[.99] {{ $subSoon ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900' }}">
+                <span class="flex items-center gap-2.5">
+                    <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/25">
+                        <x-icon name="crown" class="size-4" />
+                    </span>
+                    <span>
+                        <span class="block text-xs font-extrabold">{{ $sub->title() }} — {{ \App\Support\Fmt::toFa($sub->daysLeft()) }} روز مانده</span>
+                        <span class="block text-[10px] text-slate-400">{{ $subSoon ? 'زود تموم می‌شه — تمدید کن تا مزایا قطع نشه' : 'اشتراک فعال · مدیریت از صفحهٔ اشتراک و ارتقا' }}</span>
+                    </span>
+                </span>
+                <x-icon name="chevron-left" class="size-4 text-slate-400" />
+            </a>
+        @else
+            <a href="{{ route('seller.subscription') }}" wire:navigate
+               class="mt-4 flex items-center justify-between rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 p-3.5 transition active:scale-[.99] dark:border-amber-800 dark:bg-amber-950/20">
+                <span class="flex items-center gap-2.5">
+                    <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/25">
+                        <x-icon name="crown" class="size-4" />
+                    </span>
+                    <span>
+                        <span class="block text-xs font-extrabold text-amber-700 dark:text-amber-300">اشتراک و ارتقا</span>
+                        <span class="block text-[10px] text-slate-500 dark:text-slate-400">پلن‌ها را ببین و کمیسیون کمتری بپرداز</span>
+                    </span>
+                </span>
+                <x-icon name="chevron-left" class="size-4 text-slate-400" />
+            </a>
+        @endif
+
         {{-- ── greeting hero with real stats ── --}}
         <div class="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-5 text-white shadow-xl shadow-primary-600/25">
             <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">

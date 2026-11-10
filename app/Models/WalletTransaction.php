@@ -14,6 +14,8 @@ class WalletTransaction extends Model
 
     public const TYPE_WITHDRAWAL = 'withdrawal';
 
+    public const TYPE_PLAN = 'plan'; // v0.22.0 — خرید اشتراک از کیف پول
+
     public const STATUS_DONE = 'done';
 
     public const STATUS_PENDING = 'pending';
@@ -48,10 +50,20 @@ class WalletTransaction extends Model
         return $this->type === self::TYPE_WITHDRAWAL;
     }
 
+    /** Whether this row SPENDS wallet money (withdrawals + plan purchases). */
+    public function isSpend(): bool
+    {
+        return $this->type === self::TYPE_WITHDRAWAL || $this->type === self::TYPE_PLAN;
+    }
+
     /** Persian label of the transaction type. */
     public function typeLabel(): string
     {
-        return $this->isDeposit() ? 'واریز فروش' : 'درخواست برداشت';
+        return match ($this->type) {
+            self::TYPE_DEPOSIT => 'واریز فروش',
+            self::TYPE_PLAN => 'خرید اشتراک',
+            default => 'درخواست برداشت',
+        };
     }
 
     /** Persian label + classes of the status chip. */
@@ -77,5 +89,15 @@ class WalletTransaction extends Model
     public function amountLabel(): string
     {
         return ($this->isDeposit() ? '+' : '−').Fmt::money($this->amount);
+    }
+
+    /** Chip classes of the transaction type. */
+    public function typeClasses(): string
+    {
+        return match ($this->type) {
+            self::TYPE_DEPOSIT => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
+            self::TYPE_PLAN => 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300',
+            default => 'bg-slate-100 text-slate-700 dark:bg-slate-950/60 dark:text-slate-300',
+        };
     }
 }

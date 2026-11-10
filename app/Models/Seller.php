@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -21,7 +22,20 @@ class Seller extends Authenticatable
         ];
     }
 
-    /* ───────────────── commission (79) ───────────────── */
+    /* ───────────────── subscription (v0.22.0) ───────────────── */
+
+    /** The seller's ACTIVE subscription (ends_at > now), if any. */
+    public function activeSubscription(): ?SellerSubscription
+    {
+        return SellerSubscription::activeFor($this->id);
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(SellerSubscription::class);
+    }
+
+    /* ───────────────── commission (79 + 22.0) ───────────────── */
 
     /** Whether the seller has a PERSONAL commission override. */
     public function hasCommissionOverride(): bool
@@ -30,11 +44,29 @@ class Seller extends Authenticatable
             && $this->commission_value !== null;
     }
 
-    /** Resolved [type, value] — personal override, else the global default (percent 0). */
+    /**
+     * Resolved [type, value] — priority:
+     *   ۱. the admin's PERSONAL override (a deliberate per-seller deal);
+     *   ۲. the commission of the seller's ACTIVE plan (v0.22.0) — a plan
+     *      with commission_type = null contributes nothing;
+     *   ۳. the global default from settings («تنظیمات فروشگاه‌ها»).
+     * The seller's subscription page always shows the RESOLVED rate so
+     * nobody buys a plan expecting a rate the override still suppresses.
+     */
     public function resolvedCommission(): array
     {
         if ($this->hasCommissionOverride()) {
             return [$this->commission_type, (int) $this->commission_value];
+        }
+
+        $subscription = $this->activeSubscription();
+
+        if ($subscription !== null) {
+            $override = $subscription->commissionOverride();
+
+            if ($override !== null) {
+                return $override;
+            }
         }
 
         $type = (string) Setting::get('shops.commission_type', 'percent');

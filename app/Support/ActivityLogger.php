@@ -42,6 +42,7 @@ final class ActivityLogger
         'shops.auto_approve_seller' => 'تایید خودکار فروشنده',
         'shops.commission_type' => 'نوع کمیسیون',
         'shops.commission_value' => 'مقدار کمیسیون',
+        'shops.subscription_trial_days' => 'دورهٔ آزمایشی اشتراک (روز)',
         'developer.queue_shared_hosting' => 'صف با دو کرون‌جاب',
         'developer.maintenance.enabled' => 'حالت بروزرسانی سایت',
         'developer.maintenance.secret' => 'کد مخفی بروزرسانی',

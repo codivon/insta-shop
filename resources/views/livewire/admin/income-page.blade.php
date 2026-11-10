@@ -35,9 +35,10 @@
     </div>
 
     {{-- ── totals ── --}}
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
         @foreach ([
             ['label' => 'کمیسیون دریافتی', 'value' => \App\Support\Fmt::money($totals['commission']), 'icon' => 'coins', 'tone' => 'from-amber-500 to-orange-600'],
+            ['label' => 'درآمد اشتراک', 'value' => \App\Support\Fmt::money($totals['subscription']), 'icon' => 'crown', 'tone' => 'from-yellow-500 to-amber-600'],
             ['label' => 'مجموع فروش کالا', 'value' => \App\Support\Fmt::money($totals['goods']), 'icon' => 'bag', 'tone' => 'from-emerald-500 to-teal-600'],
             ['label' => 'واریز به فروشندگان', 'value' => \App\Support\Fmt::money($totals['payout']), 'icon' => 'wallet', 'tone' => 'from-sky-500 to-cyan-600'],
             ['label' => 'سفارش پرداخت‌شده', 'value' => \App\Support\Fmt::fa($totals['orders']), 'icon' => 'check', 'tone' => 'from-rose-500 to-pink-600'],

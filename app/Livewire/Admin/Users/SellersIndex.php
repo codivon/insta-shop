@@ -10,6 +10,7 @@ use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
 use App\Support\Fmt;
 use App\Support\Phone;
+use App\Support\Subscription\SubscriptionService;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -102,6 +103,11 @@ class SellersIndex extends Component
 
         $before = ['status' => $seller->status];
         $seller->forceFill(['status' => 'approved'])->save();
+
+        // (v0.22.0) دورهٔ آزمایشی اشتراک — the one-time free period fires
+        // on THIS first approval (no-op when the setting is 0/off, and a
+        // re-approve never re-gifts it: startTrial checks seller history).
+        SubscriptionService::startTrial($seller);
 
         $name = '@'.$seller->instagram_username;
 

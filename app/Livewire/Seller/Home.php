@@ -82,6 +82,7 @@ class Home extends Component
             'shop' => $shop,
             'stats' => $stats,
             'storefrontUrl' => $this->storefrontUrl,
+            'activeSubscription' => $seller?->activeSubscription(),
             'chart' => $chart['series'],
             'chartTotal' => $chart['total'],
             'chartOrders' => $chart['orders'],
