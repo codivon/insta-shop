@@ -9,6 +9,7 @@ use App\Services\OtpService;
 use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
 use App\Support\Phone;
+use App\Support\Subscription\SubscriptionService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -212,9 +213,20 @@ class PhoneAuth extends Component
                 // the real write happens via forceFill below on first login.
             ]);
 
+            // v0.25.0 — «اشتراک رایگان خودکار»: when the admin enables it
+            // in «تنظیمات فروشگاه‌ها», the new seller starts with the free
+            // plan (first active price-0 plan) from the very first minute.
+            $autoFree = (bool) Setting::get('shops.auto_free_subscription', false);
+
+            if ($autoFree) {
+                SubscriptionService::grantAutoFree($seller);
+            }
+
             ActivityLogger::log(
                 'seller.new',
-                'فروشنده جدید ثبت‌نام کرد — @'.$this->instagram.($autoApproved ? ' (تایید خودکار)' : ' (در انتظار تایید)'),
+                'فروشنده جدید ثبت‌نام کرد — @'.$this->instagram
+                    .($autoApproved ? ' (تایید خودکار)' : ' (در انتظار تایید)')
+                    .($autoFree ? ' + اشتراک رایگان خودکار' : ''),
                 subject: $seller,
                 after: ['status' => $autoApproved ? 'approved' : 'pending'],
             );
@@ -222,7 +234,8 @@ class PhoneAuth extends Component
             AdminNotifier::notify(
                 'seller.new',
                 'فروشنده جدید 🏪 @'.$this->instagram,
-                $autoApproved ? 'با تایید خودکار فعال شد.' : 'در انتظار تایید شماست.',
+                ($autoApproved ? 'با تایید خودکار فعال شد.' : 'در انتظار تایید شماست.')
+                    .($autoFree ? ' · اشتراک رایگان خودکار فعال شد.' : ''),
                 route('admin.users.sellers'),
                 'store',
                 $seller,

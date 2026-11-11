@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductBump;
 use App\Models\SellerSubscription;
 use App\Models\Shop;
+use App\Models\ShopBump;
 use App\Models\Story;
 use App\Models\StoryView;
 use Illuminate\Database\Eloquent\Builder;
@@ -204,6 +205,33 @@ class Home extends Component
     }
 
     /**
+     * v0.25.0 — the ids of RUNNING bumped products: the rocket badge on
+     * the main feed's product cards (client: «آیکونش روی محصولات باشه»).
+     */
+    public function getBumpProductIdsProperty(): array
+    {
+        return ProductBump::query()
+            ->where('ends_at', '>', now())
+            ->whereHas('product', fn ($q) => $q
+                ->where('status', 'published')
+                ->whereHas('shop', fn ($shop) => $shop->publiclyVisible()))
+            ->pluck('product_id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * v0.25.0 — نردبانِ فروشگاه: shop_id => ends_at timestamp of RUNNING
+     * shop bumps. Bumped shops lead the shop lists (client: «وقتی نردبان
+     * شد در صفحه اصلی قسمت مشتری منایش بده») + carry the rocket badge.
+     */
+    public function getShopBumpEndsProperty(): array
+    {
+        return ShopBump::activeByShopId();
+    }
+
+    /**
      * shop_id => boost tier of the shop's seller ACTIVE plan (0/1/2).
      * Plans with boost_level > 0 sell «اولویت نمایش در صفحهٔ اصلی» — the
      * strongest tier wins when a seller somehow holds several rows.
@@ -236,18 +264,27 @@ class Home extends Component
         return (int) now()->format('z'); // day of year (0..365)
     }
 
-    /** Sort shops: boost tier desc → daily rotation → newest (PHP-side, portable, no pagination involved). */
+    /** Sort shops: SHOP BUMP first → boost tier desc → daily rotation → newest (PHP-side, portable, no pagination involved). */
     private function sortShopsByBoost(Collection $shops): Collection
     {
+        $bumps = $this->shopBumpEnds;
         $tiers = $this->boostTiersByShopId();
 
-        if ($tiers === []) {
+        if ($bumps === [] && $tiers === []) {
             return $shops;
         }
 
         $seed = $this->rotationSeed();
 
-        return $shops->sort(function (Shop $a, Shop $b) use ($tiers, $seed) {
+        return $shops->sort(function (Shop $a, Shop $b) use ($bumps, $tiers, $seed) {
+            // v0.25.0 — نردبانِ فروشگاه: صدرِ مطلق؛ میان نردبانی‌ها، پایانِ دورتر جلوتر.
+            $bumpA = $bumps[$a->id] ?? 0;
+            $bumpB = $bumps[$b->id] ?? 0;
+
+            if ($bumpA !== $bumpB) {
+                return $bumpB <=> $bumpA;
+            }
+
             $tierA = $tiers[$a->id] ?? 0;
             $tierB = $tiers[$b->id] ?? 0;
 
@@ -294,15 +331,30 @@ class Home extends Component
     /** Basalam-style «پیشنهادهای امروز بازار» — active shops + 3 products each. */
     public function getSpotlightShopsProperty(): Collection
     {
-        $shops = Shop::query()
+        $candidates = Shop::query()
             ->publiclyVisible()
             ->whereHas('publishedProducts')
             ->withCount(['publishedProducts as products_count'])
             ->latest()
-            ->limit(20) // wide candidate pool — the boost ordering narrows it below
+            ->limit(20) // wide candidate pool — the bump/boost ordering narrows it below
             ->get();
 
-        $shops = $this->sortShopsByBoost($shops)->take(8);
+        // v0.25.0 — a bumped shop that fell outside the 20-newest candidate
+        // pool MUST still reach the strip (that is what it paid for).
+        $bumpShopIds = array_keys($this->shopBumpEnds);
+
+        if ($bumpShopIds !== []) {
+            $bumped = Shop::query()
+                ->publiclyVisible()
+                ->whereHas('publishedProducts')
+                ->withCount(['publishedProducts as products_count'])
+                ->whereIn('id', $bumpShopIds)
+                ->get();
+
+            $candidates = $candidates->merge($bumped)->unique('id')->values();
+        }
+
+        $shops = $this->sortShopsByBoost($candidates)->take(8);
 
         return $shops->map(function (Shop $shop) {
             $shop->spotlight_products = $shop->publishedProducts()
@@ -387,6 +439,8 @@ class Home extends Component
             'spotlightShops' => $this->spotlightShops,
             'searchShops' => $this->searchShops,
             'bumpProducts' => $this->bumpProducts,
+            'bumpProductIds' => $this->bumpProductIds,
+            'shopBumpEnds' => $this->shopBumpEnds,
         ])->title('فروشگاه InstaShop');
     }
 

@@ -268,7 +268,9 @@
                 @forelse ($spotlightShops as $shop)
                     @php $storeUrl = $shop->storefrontHandle() ? $shop->storefrontUrl() : null; @endphp
                     <a href="{{ $storeUrl ?? '#' }}" @if ($storeUrl) wire:navigate @else aria-disabled="true" @endif wire:key="spot-{{ $shop->id }}"
-                       class="w-60 shrink-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900 {{ $storeUrl ? 'active:scale-[0.98]' : 'pointer-events-none opacity-60' }}">
+                       class="w-60 shrink-0 rounded-2xl border p-3 shadow-sm transition hover:shadow-md {{ array_key_exists($shop->id, $shopBumpEnds)
+                           ? 'border-orange-300 bg-gradient-to-b from-orange-50/80 to-white dark:border-orange-900/60 dark:from-orange-950/20 dark:to-slate-900'
+                           : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900' }} {{ $storeUrl ? 'active:scale-[0.98]' : 'pointer-events-none opacity-60' }}">
                         <div class="flex items-center gap-2.5">
                             @if ($shop->logo_path)
                                 <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($shop->logo_path) }}" alt="لوگوی {{ $shop->name }}" loading="lazy" class="size-10 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800">
@@ -276,7 +278,16 @@
                                 <span class="grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-black text-white">{{ mb_substr($shop->name, 0, 1) }}</span>
                             @endif
                             <span class="min-w-0 flex-1">
-                                <span class="block truncate text-xs font-extrabold">{{ $shop->name }}</span>
+                                <span class="flex items-center gap-1">
+                                    <span class="truncate text-xs font-extrabold">{{ $shop->name }}</span>
+                                    {{-- نشانِ نردبانِ فروشگاه (v0.25.0) --}}
+                                    @if (array_key_exists($shop->id, $shopBumpEnds))
+                                        <span class="flex shrink-0 items-center gap-0.5 rounded-full bg-gradient-to-l from-orange-500 to-amber-500 px-1.5 py-0.5 text-[8px] font-black text-white shadow-sm">
+                                            <x-icon name="rocket" class="size-2.5" />
+                                            نردبان
+                                        </span>
+                                    @endif
+                                </span>
                                 <span class="mt-0.5 flex items-center gap-1 text-[9.5px] text-slate-400">
                                     @if ($shop->instagram_username)
                                         <x-icon name="instagram" class="size-3" />{{ $shop->instagram_username }}
@@ -321,7 +332,9 @@
                 <div class="scroll-slim mt-3 flex gap-3 overflow-x-auto pb-1">
                     @foreach ($searchShops as $searchShop)
                         <a href="{{ $searchShop->storefrontUrl() }}" wire:navigate wire:key="sshop-{{ $searchShop->id }}"
-                           class="flex w-52 shrink-0 items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md active:scale-[0.98] dark:border-slate-800 dark:bg-slate-900">
+                           class="flex w-52 shrink-0 items-center gap-2.5 rounded-2xl border p-3 shadow-sm transition hover:shadow-md active:scale-[0.98] {{ array_key_exists($searchShop->id, $shopBumpEnds)
+                               ? 'border-orange-300 bg-gradient-to-b from-orange-50/80 to-white dark:border-orange-900/60 dark:from-orange-950/20 dark:to-slate-900'
+                               : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900' }}">
                             @if ($searchShop->logo_path)
                                 <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($searchShop->logo_path) }}"
                                      alt="لوگوی {{ $searchShop->name }}" loading="lazy"
@@ -330,7 +343,15 @@
                                 <span class="grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-black text-white">{{ mb_substr($searchShop->name, 0, 1) }}</span>
                             @endif
                             <span class="min-w-0 flex-1">
-                                <span class="block truncate text-xs font-extrabold">{{ $searchShop->name }}</span>
+                                <span class="flex items-center gap-1">
+                                    <span class="truncate text-xs font-extrabold">{{ $searchShop->name }}</span>
+                                    {{-- نشانِ نردبانِ فروشگاه (v0.25.0) --}}
+                                    @if (array_key_exists($searchShop->id, $shopBumpEnds))
+                                        <span class="shrink-0 rounded-full bg-gradient-to-l from-orange-500 to-amber-500 px-1.5 py-0.5 text-[8px] font-black text-white shadow-sm" title="نردبان فعال">
+                                            <x-icon name="rocket" class="size-2.5" />
+                                        </span>
+                                    @endif
+                                </span>
                                 <span class="mt-0.5 flex items-center gap-1 text-[9.5px] font-semibold text-slate-400">
                                     @if ($searchShop->storefrontHandle())
                                         <x-icon name="instagram" class="size-3 shrink-0" /><span class="truncate">{{ $searchShop->storefrontHandle() }}</span>
@@ -383,6 +404,13 @@
                             @endif
                             @if ($discount > 0)
                                 <span class="absolute right-2 top-2 rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-bold text-white shadow">٪{{ \App\Support\Fmt::toFa($discount) }}</span>
+                            @endif
+                            {{-- آیکونِ نردبان روی محصولاتِ نردبان‌شده (v0.25.0) --}}
+                            @if (in_array($product->id, $bumpProductIds))
+                                <span class="absolute left-2 top-2 flex items-center gap-0.5 rounded-full bg-gradient-to-l from-orange-500 to-amber-500 px-1.5 py-0.5 text-[8px] font-black text-white shadow" title="نردبان شده">
+                                    <x-icon name="rocket" class="size-2.5" />
+                                    نردبان
+                                </span>
                             @endif
                             @if ($product->type === \App\Models\Product::TYPE_PHYSICAL && $product->stock < 1)
                                 <span class="absolute inset-0 grid place-items-center bg-slate-900/50 text-[11px] font-bold text-white">ناموجود</span>

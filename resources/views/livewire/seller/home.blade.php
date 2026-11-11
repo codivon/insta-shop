@@ -52,10 +52,56 @@
             </div>
         @endif
 
-        {{-- ── راه‌اندازی فروشگاه: مراحل ضروری + اشتراک و نردبان (v0.24.0) ──
-             بخش اشتراک و نردبان از بالای صفحه به همین کارت منتقل شد؛ نردبان
-             فقط وقتی در مدیریت روشن است نشان داده می‌شود و از پایینِ کارت
-             فاصلهٔ امن دارد. --}}
+        {{-- ── greeting hero with real stats ──
+             کارتِ «راه‌اندازی فروشگاه» که بالای صفحه بود حذف شد (v0.25.0 —
+             درخواست کارفرما: «راه اندازی فروشگاه که در بالا قرار دادی رو حذف کن
+             … قسمت اشتراک و نردبان را بیار پایین روی راه انداز فروشگاه باشه و
+             زیر قسمت فروشگاهت آماده فروشه») — اشتراک و نردبان حالا روی کارتِ
+             راه‌اندازیِ همین‌پایین (زیر بخش سلام و آمار) نشسته‌اند. --}}
+        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-5 text-white shadow-xl shadow-primary-600/25">
+            <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
+                <div class="absolute -top-8 left-6 size-40 rounded-full bg-white/30 blur-2xl"></div>
+                <div class="absolute -bottom-12 right-10 size-48 rounded-full bg-white/20 blur-2xl"></div>
+            </div>
+
+            <p class="relative text-xs text-primary-100">سلام{{ auth('seller')->user()->full_name ? ' '.auth('seller')->user()->full_name : '' }} عزیز، امروز چیکار می‌کنیم؟ ☀️</p>
+            <h2 class="relative mt-1.5 text-lg font-extrabold">
+                @if ($stats['total'] === 0)
+                    اولین محصولت را اضافه کن!
+                @elseif ($stats['outOfStock'] > 0)
+                    {{ \App\Support\Fmt::fa($stats['outOfStock']) }} محصولت ناموجود شده
+                @else
+                    فروشگاهت آماده فروشه!
+                @endif
+            </h2>
+
+            {{-- mini stats (real data) --}}
+            <div class="relative mt-4 grid grid-cols-3 gap-2">
+                @foreach ([
+                    ['icon' => 'package', 'value' => \App\Support\Fmt::fa($stats['total']),     'label' => 'محصول',   'href' => route('seller.shop')],
+                    ['icon' => 'eye',     'value' => \App\Support\Fmt::fa($stats['published']), 'label' => 'منتشرشده', 'href' => route('seller.shop')],
+                    ['icon' => 'alert', 'value' => \App\Support\Fmt::fa($stats['outOfStock']), 'label' => 'ناموجود', 'href' => route('seller.shop')],
+                ] as $st)
+                    <a href="{{ $st['href'] }}" wire:navigate class="rounded-2xl bg-white/15 p-2.5 backdrop-blur transition hover:bg-white/25 active:scale-95">
+                        <x-icon name="{{ $st['icon'] }}" class="size-4 opacity-80" />
+                        <div class="mt-1 text-base font-extrabold">{{ $st['value'] }}</div>
+                        <div class="text-[10px] text-primary-100">{{ $st['label'] }}</div>
+                    </a>
+                @endforeach
+            </div>
+
+            {{-- view my store (public storefront) --}}
+            @if ($storefrontUrl)
+                <a href="{{ $storefrontUrl }}" target="_blank" rel="noopener noreferrer"
+                   class="relative mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-white/95 py-2.5 text-xs font-extrabold text-primary-700 shadow-lg shadow-primary-900/20 backdrop-blur transition hover:bg-white active:scale-[.98]">
+                    <x-icon name="external-link" class="size-4" />
+                    مشاهده فروشگاه من
+                    <span class="rounded-full bg-primary-100 px-2 py-0.5 text-[9px] font-bold text-primary-600">صفحه عمومی فروشگاه</span>
+                </a>
+            @endif
+        </div>
+
+        {{-- ── راه‌اندازی فروشگاه: مراحل + اشتراک و نردبان — همیشه زیر «فروشگاهت آماده فروشه» ── --}}
         @php
             $sub = $activeSubscription ?? null;
             $subSoon = $sub && $sub->isActive() && $sub->daysLeft() <= 7;
@@ -66,14 +112,14 @@
                     <span class="grid size-7 place-items-center rounded-xl bg-primary-600 text-white shadow-sm shadow-primary-600/30"><x-icon name="sparkles" class="size-3.5" /></span>
                     راه‌اندازی فروشگاه
                 </h3>
-                @if (! $onboarding['allDone'])
-                    <span class="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400">
-                        {{ \App\Support\Fmt::fa($onboarding['doneCount']) }} از {{ \App\Support\Fmt::fa($onboarding['total']) }} انجام شد
-                    </span>
-                @else
+                @if ($onboarding['allDone'])
                     <span class="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
                         <x-icon name="circle-check" class="size-3" />
                         آمادهٔ فروش
+                    </span>
+                @else
+                    <span class="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400">
+                        {{ \App\Support\Fmt::fa($onboarding['doneCount']) }} از {{ \App\Support\Fmt::fa($onboarding['total']) }} انجام شد
                     </span>
                 @endif
             </div>
@@ -127,162 +173,58 @@
                 </div>
             @endif
 
-            {{-- ── اشتراک و ارتقا (v0.22.0 → روی کارت راه‌اندازی از v0.24.0) ── --}}
-            <div class="space-y-2.5 border-t border-slate-100 px-4 pb-4 pt-3.5 dark:border-slate-800">
-                @if ($sub && $sub->isActive())
-                    <a href="{{ route('seller.subscription') }}" wire:navigate
-                       class="flex items-center justify-between rounded-2xl border p-3.5 shadow-sm transition active:scale-[.99] {{ $subSoon ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900' }}">
-                        <span class="flex items-center gap-2.5">
-                            <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/25">
-                                <x-icon name="crown" class="size-4" />
+            {{-- ── اشتراک و ارتقا (v0.22.0) + نردبان — روی کارت راه‌اندازی، زیر «فروشگاهت آماده فروشه» ── --}}
+            <div class="border-t border-slate-100 px-4 pb-5 pt-3.5 dark:border-slate-800">
+                <div class="space-y-2.5">
+                    @if ($sub && $sub->isActive())
+                        <a href="{{ route('seller.subscription') }}" wire:navigate
+                           class="flex items-center justify-between rounded-2xl border p-3.5 shadow-sm transition active:scale-[.99] {{ $subSoon ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900' }}">
+                            <span class="flex items-center gap-2.5">
+                                <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/25">
+                                    <x-icon name="crown" class="size-4" />
+                                </span>
+                                <span>
+                                    <span class="block text-xs font-extrabold">{{ $sub->title() }} — {{ \App\Support\Fmt::toFa($sub->daysLeft()) }} روز مانده</span>
+                                    <span class="block text-[10px] text-slate-400">{{ $subSoon ? 'زود تموم می‌شه — تمدید کن تا مزایا قطع نشه' : 'اشتراک فعال · مدیریت از صفحهٔ اشتراک و ارتقا' }}</span>
+                                </span>
                             </span>
-                            <span>
-                                <span class="block text-xs font-extrabold">{{ $sub->title() }} — {{ \App\Support\Fmt::toFa($sub->daysLeft()) }} روز مانده</span>
-                                <span class="block text-[10px] text-slate-400">{{ $subSoon ? 'زود تموم می‌شه — تمدید کن تا مزایا قطع نشه' : 'اشتراک فعال · مدیریت از صفحهٔ اشتراک و ارتقا' }}</span>
+                            <x-icon name="chevron-left" class="size-4 text-slate-400" />
+                        </a>
+                    @else
+                        <a href="{{ route('seller.subscription') }}" wire:navigate
+                           class="flex items-center justify-between rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 p-3.5 transition active:scale-[.99] dark:border-amber-800 dark:bg-amber-950/20">
+                            <span class="flex items-center gap-2.5">
+                                <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/25">
+                                    <x-icon name="crown" class="size-4" />
+                                </span>
+                                <span>
+                                    <span class="block text-xs font-extrabold text-amber-700 dark:text-amber-300">اشتراک و ارتقا</span>
+                                    <span class="block text-[10px] text-slate-500 dark:text-slate-400">پلن‌ها را ببین و کمیسیون کمتری بپرداز</span>
+                                </span>
                             </span>
-                        </span>
-                        <x-icon name="chevron-left" class="size-4 text-slate-400" />
-                    </a>
-                @else
-                    <a href="{{ route('seller.subscription') }}" wire:navigate
-                       class="flex items-center justify-between rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 p-3.5 transition active:scale-[.99] dark:border-amber-800 dark:bg-amber-950/20">
-                        <span class="flex items-center gap-2.5">
-                            <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/25">
-                                <x-icon name="crown" class="size-4" />
-                            </span>
-                            <span>
-                                <span class="block text-xs font-extrabold text-amber-700 dark:text-amber-300">اشتراک و ارتقا</span>
-                                <span class="block text-[10px] text-slate-500 dark:text-slate-400">پلن‌ها را ببین و کمیسیون کمتری بپرداز</span>
-                            </span>
-                        </span>
-                        <x-icon name="chevron-left" class="size-4 text-slate-400" />
-                    </a>
-                @endif
+                            <x-icon name="chevron-left" class="size-4 text-slate-400" />
+                        </a>
+                    @endif
 
-                {{-- نردبان (v0.23.0 → روی کارت راه‌اندازی از v0.24.0) — فقط وقتی در مدیریت روشن است --}}
-                @if ($bumpEnabled)
-                    <a href="{{ route('seller.bump') }}" wire:navigate
-                       class="mb-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition active:scale-[.99] dark:border-slate-800 dark:bg-slate-900">
-                        <span class="flex items-center gap-2.5">
-                            <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-md shadow-orange-500/25">
-                                <x-icon name="rocket" class="size-4" />
+                    {{-- نردبان — فقط وقتی در مدیریت روشن است؛ فاصلهٔ امن از پایین کارت --}}
+                    @if ($bumpEnabled)
+                        <a href="{{ route('seller.bump') }}" wire:navigate
+                           class="mb-1.5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition active:scale-[.99] dark:border-slate-800 dark:bg-slate-900">
+                            <span class="flex items-center gap-2.5">
+                                <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-md shadow-orange-500/25">
+                                    <x-icon name="rocket" class="size-4" />
+                                </span>
+                                <span>
+                                    <span class="block text-xs font-extrabold">نردبان</span>
+                                    <span class="block text-[10px] text-slate-400">محصول و فروشگاهت را مدتی در صدر صفحهٔ اول نشان بده</span>
+                                </span>
                             </span>
-                            <span>
-                                <span class="block text-xs font-extrabold">نردبان</span>
-                                <span class="block text-[10px] text-slate-400">محصولت را مدتی در صدر صفحهٔ اول نشان بده</span>
-                            </span>
-                        </span>
-                        <x-icon name="chevron-left" class="size-4 text-slate-400" />
-                    </a>
-                @endif
+                            <x-icon name="chevron-left" class="size-4 text-slate-400" />
+                        </a>
+                    @endif
+                </div>
             </div>
         </div>
-
-        {{-- ── greeting hero with real stats ── --}}
-        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-5 text-white shadow-xl shadow-primary-600/25">
-            <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">
-                <div class="absolute -top-8 left-6 size-40 rounded-full bg-white/30 blur-2xl"></div>
-                <div class="absolute -bottom-12 right-10 size-48 rounded-full bg-white/20 blur-2xl"></div>
-            </div>
-
-            <p class="relative text-xs text-primary-100">سلام{{ auth('seller')->user()->full_name ? ' '.auth('seller')->user()->full_name : '' }} عزیز، امروز چیکار می‌کنیم؟ ☀️</p>
-            <h2 class="relative mt-1.5 text-lg font-extrabold">
-                @if ($stats['total'] === 0)
-                    اولین محصولت را اضافه کن!
-                @elseif ($stats['outOfStock'] > 0)
-                    {{ \App\Support\Fmt::fa($stats['outOfStock']) }} محصولت ناموجود شده
-                @else
-                    فروشگاهت آماده فروشه!
-                @endif
-            </h2>
-
-            {{-- mini stats (real data) --}}
-            <div class="relative mt-4 grid grid-cols-3 gap-2">
-                @foreach ([
-                    ['icon' => 'package', 'value' => \App\Support\Fmt::fa($stats['total']),     'label' => 'محصول',   'href' => route('seller.shop')],
-                    ['icon' => 'eye',     'value' => \App\Support\Fmt::fa($stats['published']), 'label' => 'منتشرشده', 'href' => route('seller.shop')],
-                    ['icon' => 'alert', 'value' => \App\Support\Fmt::fa($stats['outOfStock']), 'label' => 'ناموجود', 'href' => route('seller.shop')],
-                ] as $st)
-                    <a href="{{ $st['href'] }}" wire:navigate class="rounded-2xl bg-white/15 p-2.5 backdrop-blur transition hover:bg-white/25 active:scale-95">
-                        <x-icon name="{{ $st['icon'] }}" class="size-4 opacity-80" />
-                        <div class="mt-1 text-base font-extrabold">{{ $st['value'] }}</div>
-                        <div class="text-[10px] text-primary-100">{{ $st['label'] }}</div>
-                    </a>
-                @endforeach
-            </div>
-
-            {{-- view my store (public storefront) --}}
-            @if ($storefrontUrl)
-                <a href="{{ $storefrontUrl }}" target="_blank" rel="noopener noreferrer"
-                   class="relative mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-white/95 py-2.5 text-xs font-extrabold text-primary-700 shadow-lg shadow-primary-900/20 backdrop-blur transition hover:bg-white active:scale-[.98]">
-                    <x-icon name="external-link" class="size-4" />
-                    مشاهده فروشگاه من
-                    <span class="rounded-full bg-primary-100 px-2 py-0.5 text-[9px] font-bold text-primary-600">صفحه عمومی فروشگاه</span>
-                </a>
-            @endif
-        </div>
-
-        {{-- ── راه‌اندازی فروشگاه: ۵ مرحله ضروری، به ترتیب ── --}}
-        @if (! $onboarding['allDone'])
-            <div class="mt-4 overflow-hidden rounded-2xl border border-primary-200 bg-white shadow-sm dark:border-primary-900 dark:bg-slate-900" data-testid="onboarding-card">
-                <div class="flex items-center justify-between gap-2 border-b border-slate-100 bg-primary-50/60 px-4 py-3 dark:border-slate-800 dark:bg-primary-950/30">
-                    <h3 class="flex items-center gap-2 text-xs font-extrabold">
-                        <span class="grid size-7 place-items-center rounded-xl bg-primary-600 text-white shadow-sm shadow-primary-600/30"><x-icon name="sparkles" class="size-3.5" /></span>
-                        راه‌اندازی فروشگاه
-                    </h3>
-                    <span class="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-primary-600 shadow-sm dark:bg-slate-900 dark:text-primary-400">
-                        {{ \App\Support\Fmt::fa($onboarding['doneCount']) }} از {{ \App\Support\Fmt::fa($onboarding['total']) }} انجام شد
-                    </span>
-                </div>
-
-                {{-- progress --}}
-                <div class="px-4 pt-3">
-                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                        <div class="h-full rounded-full bg-gradient-to-l from-primary-600 to-primary-400 transition-all duration-500"
-                             style="width: {{ (int) round($onboarding['doneCount'] / max($onboarding['total'], 1) * 100) }}%"></div>
-                    </div>
-                </div>
-
-                <div class="space-y-2 p-4">
-                    @foreach ($onboarding['remaining'] as $index => $step)
-                        @if ($index === 0)
-                            {{-- the active step: the ONLY one the seller should do now --}}
-                            <a href="{{ $step['href'] }}" wire:navigate
-                               class="flex items-center gap-3 rounded-2xl border border-primary-300 bg-primary-50/70 p-3.5 transition hover:border-primary-400 hover:bg-primary-50 active:scale-[.99] dark:border-primary-800 dark:bg-primary-950/40 dark:hover:bg-primary-950/60">
-                                <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary-600 text-white shadow-lg shadow-primary-600/30">
-                                    <x-icon name="{{ $step['icon'] }}" class="size-5" />
-                                </span>
-                                <span class="min-w-0 flex-1">
-                                    <span class="flex items-center gap-1.5 text-xs font-extrabold text-primary-700 dark:text-primary-300">
-                                        {{ $step['title'] }}
-                                        <span class="rounded-full bg-primary-600 px-1.5 py-0.5 text-[8.5px] font-black text-white">قدم بعدی</span>
-                                    </span>
-                                    <span class="mt-0.5 block text-[10px] leading-5 text-slate-500 dark:text-slate-400">{{ $step['desc'] }}</span>
-                                </span>
-                                <span class="grid size-8 shrink-0 place-items-center rounded-xl bg-primary-600 text-white shadow-sm">
-                                    <x-icon name="arrow-left" class="size-4" />
-                                </span>
-                            </a>
-                        @else
-                            {{-- locked until the previous steps are done --}}
-                            <div class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3.5 opacity-60 dark:border-slate-800 dark:bg-slate-900/60">
-                                <span class="grid size-11 shrink-0 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-800">
-                                    <x-icon name="{{ $step['icon'] }}" class="size-5" />
-                                </span>
-                                <span class="min-w-0 flex-1">
-                                    <span class="block text-xs font-extrabold text-slate-500 dark:text-slate-400">{{ $step['title'] }}</span>
-                                    <span class="mt-0.5 block text-[10px] leading-5 text-slate-400 dark:text-slate-500">{{ $step['desc'] }}</span>
-                                </span>
-                                <span class="flex shrink-0 items-center gap-1 rounded-full bg-slate-200/80 px-2 py-1 text-[9px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                    <x-icon name="lock" class="size-3" />
-                                    به ترتیب
-                                </span>
-                            </div>
-                        @endif
-                    @endforeach
-                </div>
-            </div>
-        @endif
 
         {{-- ── quick actions (real links) ── --}}
         <h3 class="mt-6 text-sm font-extrabold">دسترسی سریع</h3>

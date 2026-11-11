@@ -2,9 +2,15 @@
 
 namespace App\Livewire\Seller;
 
+use App\Models\BumpPlan;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductBump;
 use App\Models\Shop;
+use App\Models\Wallet;
+use App\Support\ActivityLogger;
+use App\Support\Bump\BumpService;
+use App\Support\Fmt;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
@@ -31,6 +37,13 @@ class ShopIndex extends Component
     public bool $hasMore = true;
 
     private int $lastLoadAt = 0;
+
+    /* ── bump purchase confirm modal (v0.25.0 — از صفحهٔ نردبان به کارت محصول منتقل شد) ── */
+    public bool $buyOpen = false;
+
+    public ?int $buyProductId = null;
+
+    public ?int $buyPlanId = null;
 
     public function mount(): void
     {
@@ -65,6 +78,93 @@ class ShopIndex extends Component
 
         $this->lastLoadAt = $now;
         $this->perPage += 8;
+    }
+
+    /* ───────────── product bump purchase (v0.25.0) ───────────── */
+
+    /** Product card «نردبان» button → the plan-choice modal. */
+    public function openBuy(int $productId): void
+    {
+        if (! BumpService::enabled()) {
+            return;
+        }
+
+        $product = $this->findOwnedProduct($productId);
+
+        if ($product->status !== Product::STATUS_PUBLISHED) {
+            return; // only published products can ride the bump
+        }
+
+        $this->resetErrorBag();
+        $this->buyProductId = $productId;
+        $this->buyPlanId = BumpService::plans()->first()?->id;
+        $this->buyOpen = true;
+    }
+
+    public function closeBuy(): void
+    {
+        $this->buyOpen = false;
+        $this->buyProductId = null;
+        $this->buyPlanId = null;
+        $this->resetErrorBag();
+    }
+
+    public function setBuyPlan(int $planId): void
+    {
+        $this->buyPlanId = BumpService::plans()->contains('id', $planId) ? $planId : $this->buyPlanId;
+    }
+
+    /** Confirm modal → debit the wallet and start/extend the product bump. */
+    public function confirmBuy(): void
+    {
+        $seller = auth('seller')->user();
+
+        $product = $this->buyProductId !== null
+            ? Product::query()->where('shop_id', $this->shop()->id)->find($this->buyProductId)
+            : null;
+
+        $plan = BumpPlan::query()->where('is_active', true)->find($this->buyPlanId);
+
+        if ($seller === null || $product === null || $plan === null) {
+            $this->closeBuy();
+
+            return;
+        }
+
+        [$ok, $row, $error] = BumpService::purchaseFromWallet($seller, $product, $plan);
+
+        if (! $ok) {
+            $this->addError('buy', $error ?? 'خرید نردبان انجام نشد.');
+
+            return;
+        }
+
+        ActivityLogger::log(
+            'bump.purchased',
+            'فروشنده @'.($seller->instagram_username ?: $seller->phone).' محصول «'.$product->name.'» را با طرح «'.$plan->title.'» ('.$plan->daysLabel().') نردبان کرد — '.Fmt::money($row->price_paid),
+            subject: $row,
+            after: ['product_id' => $product->id, 'bump_plan_id' => $plan->id, 'ends_at' => $row->ends_at->toDateTimeString()],
+        );
+
+        $this->buyOpen = false;
+        $this->buyProductId = null;
+        $this->buyPlanId = null;
+
+        session()->flash('shop-flash', 'نردبان «'.$product->name.'» فعال شد 🚀 مبلغ از کیف پول شما کسر شد.');
+    }
+
+    /** The plan chosen in the confirm modal (for the price preview). */
+    public function getBuyPlanProperty(): ?BumpPlan
+    {
+        return $this->buyPlanId !== null ? BumpPlan::query()->find($this->buyPlanId) : null;
+    }
+
+    /** The product currently in the confirm modal. */
+    public function getBuyProductProperty(): ?Product
+    {
+        return $this->buyProductId !== null
+            ? Product::query()->with('mainImage')->where('shop_id', $this->shop()->id)->find($this->buyProductId)
+            : null;
     }
 
     public function togglePublish(int $productId): void
@@ -168,12 +268,20 @@ class ShopIndex extends Component
 
     public function render()
     {
+        $seller = auth('seller')->user();
+
         return view('livewire.seller.shop-index', [
             'shop' => $this->shop,
             'stats' => $this->stats,
             'storefrontUrl' => $this->storefrontUrl,
             'categories' => $this->categories,
             'products' => $this->products,
+            'bumpEnabled' => BumpService::enabled(),
+            'bumpPlans' => BumpService::plans(),
+            'bumpedProductIds' => $seller ? ProductBump::activeProductIds((int) $seller->id) : [],
+            'walletBalance' => (int) ($seller ? Wallet::ensureForSeller($seller->id)->balance : 0),
+            'buyProduct' => $this->buyProduct,
+            'buyPlan' => $this->buyPlan,
         ])->title('فروشگاه من');
     }
 

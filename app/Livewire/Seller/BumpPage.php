@@ -4,22 +4,28 @@ namespace App\Livewire\Seller;
 
 use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\BumpPlan;
-use App\Models\Product;
 use App\Models\ProductBump;
+use App\Models\Shop;
+use App\Models\ShopBump;
 use App\Models\Wallet;
 use App\Support\ActivityLogger;
 use App\Support\Bump\BumpService;
 use App\Support\Fmt;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * Seller — «نردبان» (v0.24.0, plan-based): pick a published product,
- * choose ONE of the admin-defined bump plans («مثلاً ۱۰ روز با قیمت X»)
- * and pay from the wallet to keep it at the very top of the home page
- * for that window. Renewal while running extends the current bump from
- * its ends_at (BumpService::grant stacking rules).
+ * Seller — «نردبان» (v0.25.0, plan-based):
+ *
+ *   ① نردبانِ خودِ فروشگاه (client: «نردبان خود فروشگاه هم به صفحه نردبان
+ *      اضافه کن، که فروشنده بتونه خود فروشگاهش را هم نردبان کنه») — کارتِ
+ *      فروشگاه با دکمهٔ خرید طرح؛ پرداخت از کیف پول؛ تمدید = انباشت از
+ *      انتهای نردبان فعلی.
+ *   ② فهرستِ نردبان‌شده‌ها با جستجو و lazy load (client: «در صفحه نردبان،
+ *      محصولاتی که نردبان میشوند را نمایش بده با لیزی لودینگ و سرچ») —
+ *      «افزودن نردبان» از این صفحه رفت و روی کارت محصول در «فروشگاه من»
+ *      نشست (ShopIndex).
  *
  * When the admin's master toggle is OFF («تنظیمات فروشگاه‌ها»), the whole
  * section is hidden from the seller panel (home strip) and this page
@@ -30,146 +36,155 @@ class BumpPage extends Component
 {
     use NotifiesOnValidation;
 
-    /* ── purchase confirm modal ── */
-    public bool $buyOpen = false;
+    /* ── shop purchase confirm modal ── */
+    public bool $buyShopOpen = false;
 
-    public ?int $buyProductId = null;
+    public ?int $buyShopPlanId = null;
 
-    public ?int $buyPlanId = null;
+    /* ── bumped list (search + lazy load) ── */
+    public string $bumpSearch = '';
 
-    public string $productQuery = '';
+    public int $perPage = 8;
 
-    public function openBuy(int $productId): void
+    public bool $hasMore = true;
+
+    private int $lastLoadAt = 0;
+
+    /* ───────────── shop bump purchase ───────────── */
+
+    public function openShopBuy(): void
     {
         if (! BumpService::enabled()) {
             return;
         }
 
-        $product = $this->bumpableProducts->firstWhere('id', $productId);
-
-        if ($product === null) {
-            return;
-        }
-
         $this->resetErrorBag();
-        $this->buyProductId = $productId;
-        $this->buyPlanId = BumpService::plans()->first()?->id;
-        $this->buyOpen = true;
+        $this->buyShopPlanId = BumpService::plans()->first()?->id;
+        $this->buyShopOpen = true;
     }
 
-    public function closeBuy(): void
+    public function closeShopBuy(): void
     {
-        $this->buyOpen = false;
-        $this->buyProductId = null;
-        $this->buyPlanId = null;
-        $this->productQuery = '';
+        $this->buyShopOpen = false;
+        $this->buyShopPlanId = null;
         $this->resetErrorBag();
     }
 
-    public function setBuyPlan(int $planId): void
+    public function setShopPlan(int $planId): void
     {
-        $this->buyPlanId = BumpService::plans()->contains('id', $planId) ? $planId : $this->buyPlanId;
+        $this->buyShopPlanId = BumpService::plans()->contains('id', $planId) ? $planId : $this->buyShopPlanId;
     }
 
-    /** Confirm modal → debit the wallet and start/extend the bump. */
-    public function confirmBuy(): void
+    /** Confirm modal → debit the wallet and start/extend the SHOP bump. */
+    public function confirmShopBuy(): void
     {
         $seller = auth('seller')->user();
+        $plan = BumpPlan::query()->where('is_active', true)->find($this->buyShopPlanId);
 
-        $product = $seller
-            ? Product::query()->where('shop_id', $seller->shop?->id)->find($this->buyProductId)
-            : null;
-
-        $plan = BumpPlan::query()->where('is_active', true)->find($this->buyPlanId);
-
-        if ($seller === null || $product === null || $plan === null) {
-            $this->closeBuy();
+        if ($seller === null || $plan === null) {
+            $this->closeShopBuy();
 
             return;
         }
 
-        [$ok, $row, $error] = BumpService::purchaseFromWallet($seller, $product, $plan);
+        [$ok, $row, $error] = BumpService::purchaseShopFromWallet($seller, $plan);
 
         if (! $ok) {
-            $this->addError('buy', $error ?? 'خرید نردبان انجام نشد.');
+            $this->addError('buyShop', $error ?? 'خرید نردبان فروشگاه انجام نشد.');
 
             return;
         }
+
+        $shop = Shop::ensureForSeller($seller);
 
         ActivityLogger::log(
             'bump.purchased',
-            'فروشنده @'.($seller->instagram_username ?: $seller->phone).' محصول «'.$product->name.'» را با طرح «'.$plan->title.'» ('.$plan->daysLabel().') نردبان کرد — '.Fmt::money($row->price_paid),
+            'فروشنده @'.($seller->instagram_username ?: $seller->phone).' فروشگاه «'.$shop->name.'» را با طرح «'.$plan->title.'» ('.$plan->daysLabel().') نردبان کرد — '.Fmt::money($row->price_paid),
             subject: $row,
-            after: ['product_id' => $product->id, 'bump_plan_id' => $plan->id, 'ends_at' => $row->ends_at->toDateTimeString()],
+            after: ['shop_id' => $shop->id, 'bump_plan_id' => $plan->id, 'ends_at' => $row->ends_at->toDateTimeString()],
         );
 
-        $this->buyOpen = false;
-        $this->buyProductId = null;
-        $this->buyPlanId = null;
-        $this->productQuery = '';
+        $this->buyShopOpen = false;
+        $this->buyShopPlanId = null;
 
-        session()->flash('bump-flash', 'نردبان «'.$product->name.'» فعال شد 🚀 مبلغ از کیف پول شما کسر شد.');
+        session()->flash('bump-flash', 'نردبان فروشگاه «'.$shop->name.'» فعال شد 🚀 مبلغ از کیف پول شما کسر شد.');
+    }
+
+    /* ───────────── bumped list (search + lazy load) ───────────── */
+
+    public function updatingBumpSearch(): void
+    {
+        $this->perPage = 8;
+        $this->hasMore = true;
+    }
+
+    /** Triggered by the IntersectionObserver sentinel at the bottom of the list. */
+    #[On('bump-load-more')]
+    public function loadMore(): void
+    {
+        $now = (int) (microtime(true) * 1000);
+
+        if ($now - $this->lastLoadAt < 500) {
+            return;
+        }
+
+        $this->lastLoadAt = $now;
+        $this->perPage += 8;
     }
 
     /* ───────────────────────── data ───────────────────────── */
 
-    /** The seller's published products, optionally filtered by the picker query. */
-    public function getBumpableProductsProperty(): Collection
+    /** The seller's bump rows (products only), searchable + paginated. */
+    public function getBumpRowsProperty(): array
     {
         $seller = auth('seller')->user();
-        $shopId = (int) $seller?->shop?->id;
+        $sellerId = (int) $seller?->id;
+        $search = trim($this->bumpSearch);
 
-        if ($shopId <= 0) {
-            return collect();
-        }
+        $query = ProductBump::query()
+            ->where('seller_id', $sellerId)
+            ->when($search !== '', fn ($q) => $q->whereHas('product', fn ($p) => $p->where('name', 'like', '%'.$search.'%')))
+            ->with('product:id,name,shop_id')
+            ->orderByDesc('ends_at') // running bumps (future ends) naturally sit above ended ones
+            ->orderByDesc('id');
 
-        $q = trim($this->productQuery);
+        $total = (clone $query)->count();
+        $limit = min(max($this->perPage, 1), 60);
+        $rows = $query->limit($limit)->get();
 
-        return Product::query()
-            ->where('shop_id', $shopId)
-            ->where('status', 'published')
-            ->when($q !== '', fn ($query) => $query->where('name', 'like', '%'.$q.'%'))
-            ->with('mainImage')
-            ->orderByDesc('id')
-            ->limit(12)
-            ->get(['id', 'shop_id', 'name', 'price', 'compare_at_price']);
+        $this->hasMore = $total > $limit;
+
+        return $rows->all();
     }
 
-    /** The plan chosen in the confirm modal (for the price preview). */
-    public function getBuyPlanProperty(): ?BumpPlan
+    /** The plan chosen in the shop-purchase confirm modal (price preview). */
+    public function getBuyShopPlanProperty(): ?BumpPlan
     {
-        return $this->buyPlanId !== null ? BumpPlan::query()->find($this->buyPlanId) : null;
+        return $this->buyShopPlanId !== null ? BumpPlan::query()->find($this->buyShopPlanId) : null;
     }
 
     public function render()
     {
         $seller = auth('seller')->user();
+        $shop = Shop::ensureForSeller($seller);
 
-        $active = ProductBump::query()
+        $shopBump = ShopBump::runningForShop((int) $shop->id);
+        $activeCount = ProductBump::query()
             ->where('seller_id', (int) $seller?->id)
             ->where('ends_at', '>', now())
-            ->with(['product:id,name'])
-            ->orderByDesc('ends_at')
-            ->get();
-
-        $history = ProductBump::query()
-            ->where('seller_id', (int) $seller?->id)
-            ->with('product:id,name')
-            ->orderByDesc('id')
-            ->limit(10)
-            ->get();
+            ->count();
 
         $wallet = $seller ? Wallet::ensureForSeller($seller->id) : null;
 
         return view('livewire.seller.bump-page', [
             'enabled' => BumpService::enabled(),
             'plans' => BumpService::plans(),
-            'active' => $active,
-            'history' => $history,
-            'products' => $this->bumpableProducts,
+            'shop' => $shop,
+            'shopBump' => $shopBump,
+            'activeCount' => $activeCount,
+            'bumpRows' => $this->bumpRows,
             'walletBalance' => (int) ($wallet?->balance ?? 0),
-            'buyProduct' => $this->buyProductId ? Product::query()->with('mainImage')->find($this->buyProductId) : null,
-            'buyPlan' => $this->buyPlan,
+            'buyShopPlan' => $this->buyShopPlan,
         ])->title('نردبان');
     }
 }

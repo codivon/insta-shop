@@ -82,6 +82,21 @@ class ProductBump extends Model
             ->get();
     }
 
+    /**
+     * The DISTINCT product ids of one seller's RUNNING bumps (v0.25.0) —
+     * the «نردبان فعال» badge on the «فروشگاه من» product cards.
+     */
+    public static function activeProductIds(int $sellerId): array
+    {
+        return static::query()
+            ->where('seller_id', $sellerId)
+            ->where('ends_at', '>', Carbon::now())
+            ->pluck('product_id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     /** Home-page strip payload: bumped products, longest remaining first. */
     public static function homeStrip(int $limit = 10): Collection
     {

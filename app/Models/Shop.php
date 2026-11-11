@@ -89,6 +89,18 @@ class Shop extends Model
         return $this->products()->where('status', 'published');
     }
 
+    /** «نردبانِ فروشگاه» rows (v0.25.0 — BumpService::grantShop). */
+    public function shopBumps(): HasMany
+    {
+        return $this->hasMany(ShopBump::class);
+    }
+
+    /** The RUNNING bump of this shop, if any (ends_at > now). */
+    public function activeShopBump(): ?ShopBump
+    {
+        return ShopBump::runningForShop($this->id);
+    }
+
     /** Public storefront visibility (used by the customer app from Phase 4). */
     public function isPublic(): bool
     {

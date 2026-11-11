@@ -215,6 +215,52 @@ final class SubscriptionService
         return true;
     }
 
+    /* ───────────────── auto free grant (v0.25.0) ───────────────── */
+
+    /**
+     * «اشتراک رایگان خودکار» — client request: «برای فروشنده‌ای که تازه
+     * ثبت‌نام می‌کنه، اشتراک رایگان خودکار براش فعال بشه». Fired from the
+     * seller registration when the admin turns the toggle on in
+     * «تنظیمات فروشگاه‌ها» (shops.auto_free_subscription).
+     *
+     * The FREE plan = the first ACTIVE plan with price 0 (the seeded
+     * «اشتراک رایگان» — the admin can reprice/rename it freely). No free
+     * plan exists → silent skip (there is nothing to give). The seller
+     * already holding a running subscription → skip (never replace).
+     */
+    public static function grantAutoFree(Seller $seller): ?SellerSubscription
+    {
+        if (SellerSubscription::activeFor($seller->id) !== null) {
+            return null;
+        }
+
+        $plan = Plan::query()
+            ->where('is_active', true)
+            ->where('price', 0)
+            ->orderBy('sort')
+            ->orderBy('duration_days')
+            ->orderBy('id')
+            ->first();
+
+        if ($plan === null) {
+            return null;
+        }
+
+        $row = self::grant($seller, $plan, 0, SellerSubscription::SOURCE_AUTO, 'اشتراک رایگان خودکار ثبت‌نام');
+
+        SellerNotifier::notify(
+            $seller,
+            'subscription.status',
+            'اشتراک رایگان شما فعال شد 🎁',
+            'پلن «'.$plan->title.'» به‌صورت خودکار برای شما فعال شد — اعتبار تا '.JDate::date($row->ends_at).'.',
+            route('seller.subscription'),
+            'crown',
+            $row,
+        );
+
+        return $row;
+    }
+
     /* ───────────────────────── notify helper ───────────────────────── */
 
     private static function notifyActivated(Seller $seller, SellerSubscription $row, string $title): void

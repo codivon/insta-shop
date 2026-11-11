@@ -7,6 +7,7 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\BumpPlan;
 use App\Models\ProductBump;
 use App\Models\Setting;
+use App\Models\ShopBump;
 use App\Support\ActivityLogger;
 use App\Support\Fmt;
 use Livewire\Attributes\Layout;
@@ -98,7 +99,9 @@ class BumpPlansPage extends Component
     {
         $plan = BumpPlan::query()->findOrFail($planId);
 
-        $used = ProductBump::query()->where('bump_plan_id', $planId)->exists();
+        // v0.25.0 — shop bump history rides the same plans as product bumps.
+        $used = ProductBump::query()->where('bump_plan_id', $planId)->exists()
+            || ShopBump::query()->where('bump_plan_id', $planId)->exists();
 
         if ($used) {
             $this->addError('form', 'با این طرح نردبان فروخته شده و حذفش تاریخچهٔ فروشندگان را می‌شکند — آن را «غیرفعال» کنید تا فقط از فروش خارج شود.');
@@ -179,17 +182,29 @@ class BumpPlansPage extends Component
     {
         $plans = BumpPlan::query()->orderBy('sort')->orderBy('days')->orderBy('id')->get();
 
+        // v0.25.0 — shop bumps ride the SAME plans: the sold count and the
+        // revenue stat cover BOTH product and shop bump purchases.
         $soldCounts = ProductBump::query()
             ->selectRaw('bump_plan_id, count(*) as total')
             ->whereNotNull('bump_plan_id')
             ->groupBy('bump_plan_id')
             ->pluck('total', 'bump_plan_id');
 
+        $shopSoldCounts = ShopBump::query()
+            ->selectRaw('bump_plan_id, count(*) as total')
+            ->whereNotNull('bump_plan_id')
+            ->groupBy('bump_plan_id')
+            ->pluck('total', 'bump_plan_id');
+
+        $soldCounts = $soldCounts
+            ->map(fn ($total, $planId) => $total + (int) $shopSoldCounts->get($planId, 0));
+
         return view('livewire.admin.bump-plans-page', [
             'plans' => $plans,
             'soldCounts' => $soldCounts,
-            'activeBumps' => ProductBump::query()->where('ends_at', '>', now())->count(),
-            'bumpRevenue' => (int) ProductBump::query()->sum('price_paid'),
+            'activeBumps' => ProductBump::query()->where('ends_at', '>', now())->count()
+                + ShopBump::query()->where('ends_at', '>', now())->count(),
+            'bumpRevenue' => (int) (ProductBump::query()->sum('price_paid') + ShopBump::query()->sum('price_paid')),
             'bumpEnabled' => (bool) Setting::get('shops.bump_enabled', false),
             'formPlan' => $this->editingId !== null && $this->formOpen ? BumpPlan::query()->find($this->editingId) : null,
         ])->title('طرح‌های نردبان')

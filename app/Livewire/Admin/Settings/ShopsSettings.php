@@ -9,8 +9,12 @@ use App\Support\ActivityLogger;
 use Livewire\Component;
 
 /**
- * Admin — «تنظیمات فروشگاه‌ها» (batch 79 + v0.22.0 + v0.24.0):
+ * Admin — «تنظیمات فروشگاه‌ها» (batch 79 + v0.22.0 + v0.24.0 + v0.25.0):
  *   • تایید خودکار فروشنده — new sellers skip the pending queue;
+ *   • اشتراک رایگان خودکار (v0.25.0 — client: «برای فروشنده ای که تازه
+ *     ثبت نام میکنه، میخوام اشتراک رایگان خودکار براش فعال بشه و این
+ *     مورد را در تنضیمات فروشندگان اضافه کن») — when ON, every new
+ *     registration is granted the active free plan (price = 0) instantly;
  *   • کمیسیون سراسری — percent (٪ of each shop's goods total) or fixed
  *     (تومان flat per shop per order); sellers may override it personally
  *     from their own edit modal (SellersIndex);
@@ -22,8 +26,9 @@ use Livewire\Component;
  * — the client found it useless; no new trial is ever minted and the
  * setting is no longer written. Old trial rows in history keep rendering.
  *
- * Stored as settings group "shops": auto_approve_seller / commission_type /
- * commission_value / bump_enabled.
+ * Stored as settings group "shops": auto_approve_seller /
+ * auto_free_subscription / commission_type / commission_value /
+ * bump_enabled.
  * Default commission = صفر.
  */
 class ShopsSettings extends Component
@@ -35,6 +40,8 @@ class ShopsSettings extends Component
 
     public bool $autoApprove = false;
 
+    public bool $autoFreeSubscription = false;
+
     public string $commissionType = 'percent'; // percent | fixed
 
     public string $commissionValue = '0';
@@ -44,6 +51,7 @@ class ShopsSettings extends Component
     public function mount(): void
     {
         $this->autoApprove = (bool) Setting::get('shops.auto_approve_seller', false);
+        $this->autoFreeSubscription = (bool) Setting::get('shops.auto_free_subscription', false);
         $this->commissionType = (string) Setting::get('shops.commission_type', 'percent');
         $this->commissionType = in_array($this->commissionType, ['percent', 'fixed'], true) ? $this->commissionType : 'percent';
         $this->commissionValue = (string) (int) Setting::get('shops.commission_value', 0);
@@ -59,6 +67,7 @@ class ShopsSettings extends Component
     {
         return [
             'autoApprove' => ['boolean'],
+            'autoFreeSubscription' => ['boolean'],
             'commissionType' => ['required', 'in:percent,fixed'],
             'commissionValue' => [
                 'required',
@@ -86,6 +95,7 @@ class ShopsSettings extends Component
 
         $pairs = [
             'shops.auto_approve_seller' => $this->autoApprove ? '1' : '0',
+            'shops.auto_free_subscription' => $this->autoFreeSubscription ? '1' : '0',
             'shops.commission_type' => $this->commissionType,
             'shops.commission_value' => (int) $this->commissionValue,
             'shops.bump_enabled' => $this->bumpEnabled ? '1' : '0',
@@ -94,11 +104,12 @@ class ShopsSettings extends Component
         $snapshot = ActivityLogger::settingsSnapshot(array_keys($pairs));
 
         Setting::set('shops.auto_approve_seller', $this->autoApprove, 'boolean');
+        Setting::set('shops.auto_free_subscription', $this->autoFreeSubscription, 'boolean');
         Setting::set('shops.commission_type', $this->commissionType, 'text');
         Setting::set('shops.commission_value', (int) $this->commissionValue, 'number');
         Setting::set('shops.bump_enabled', $this->bumpEnabled, 'boolean');
 
-        ActivityLogger::logSettingsChanged('تنظیمات فروشگاه‌ها (تایید خودکار، کمیسیون سراسری و کلید نردبان) ویرایش شد', $snapshot, $pairs);
+        ActivityLogger::logSettingsChanged('تنظیمات فروشگاه‌ها (تایید خودکار، اشتراک رایگان خودکار، کمیسیون سراسری و کلید نردبان) ویرایش شد', $snapshot, $pairs);
 
         $this->dispatch('panel-toast', message: 'تنظیمات فروشگاه‌ها ذخیره شد. ✅', type: 'success');
     }

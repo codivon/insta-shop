@@ -24,6 +24,8 @@ class SellerSubscription extends Model
 
     public const SOURCE_TRIAL = 'trial'; // دورهٔ آزمایشی خودکار
 
+    public const SOURCE_AUTO = 'auto'; // v0.25.0 — اشتراک رایگان خودکار ثبت‌نام
+
     protected function casts(): array
     {
         return [
@@ -62,6 +64,7 @@ class SellerSubscription extends Model
         return match ($this->source) {
             self::SOURCE_WALLET => 'خرید از کیف پول',
             self::SOURCE_TRIAL => 'دورهٔ آزمایشی',
+            self::SOURCE_AUTO => 'اشتراک رایگان خودکار',
             default => 'اعطای مدیر',
         };
     }

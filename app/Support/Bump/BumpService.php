@@ -7,6 +7,8 @@ use App\Models\Product;
 use App\Models\ProductBump;
 use App\Models\Seller;
 use App\Models\Setting;
+use App\Models\Shop;
+use App\Models\ShopBump;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Support\Fmt;
@@ -21,13 +23,19 @@ use Illuminate\Support\Facades\DB;
  *   enabled()            → toggle روشن/خاموش نردبان (تنظیمات فروشگاه‌ها).
  *   plans()              → طرح‌های قابل فروش (مدیر از صفحهٔ «طرح‌های
  *                          نردبان» تعریف می‌کند: «مثلاً ۱۰ روز با قیمت X»).
- *   purchaseFromWallet() → خرید طرح از کیف پول فروشنده (اتمیک: قفل کیف
- *                          پول، کسر، تراکنش TYPE_BUMP، سپس grant — یا
- *                          همه یا هیچ).
+ *   purchaseFromWallet() → خرید طرح از کیف پول فروشنده برای یک محصول
+ *                          (اتمیک: قفل کیف پول، کسر، تراکنش TYPE_BUMP،
+ *                          سپس grant — یا همه یا هیچ).
  *   grant()              → خودِ اعطا: محصولِ با نردبانِ فعال → تمدید
  *                          انباشتی از انتهای نردبان فعلی (مثل اشتراک،
  *                          خرید دوباره = طولانی‌تر شدن نردبان)؛ محصولِ
  *                          بدون نردبان فعال → ردیف تازه از همین حالت.
+ *   grantShop() / purchaseShopFromWallet() → v0.25.0 — نردبانِ خودِ
+ *                          فروشگاه (درخواست کارفرما: «نردبان خود فروشگاه
+ *                          هم به صفحه نردبان اضافه کن») — همان قواعد
+ *                          انباشت، این بار روی shop_bumps؛ فروشگاهِ
+ *                          نردبان‌شده در صدر لیست فروشگاه‌های صفحهٔ اول
+ *                          و اسپات‌لایت با نشانِ نردبان دیده می‌شود.
  *
  * Design notes:
  *  • «فعال» یعنی ends_at > now — انقضا با خودِ تاریخ انجام می‌شود و هیچ
@@ -143,6 +151,101 @@ final class BumpService
             'system.misc',
             'نردبان «'.$product->name.'» فعال شد 🚀',
             'این محصول تا '.JDate::date($row->ends_at).' در صدر صفحهٔ اول نمایش داده می‌شود ('.Fmt::toFa($row->daysLeft()).' روز).',
+            route('seller.bump'),
+            'rocket',
+            $row,
+        );
+
+        return [true, $row, null];
+    }
+
+    /* ───────────────── shop bump (v0.25.0 — نردبانِ خودِ فروشگاه) ───────────────── */
+
+    /**
+     * Grant ONE plan-window to the SHOP itself — the same stacking rules
+     * as the product grant: running bump → extend from its ends_at, none
+     * → fresh row from now. Returns the created row.
+     */
+    public static function grantShop(Seller $seller, Shop $shop, BumpPlan $plan, string $source, ?string $note = null): ShopBump
+    {
+        $running = ShopBump::query()
+            ->where('seller_id', $seller->id)
+            ->where('shop_id', $shop->id)
+            ->where('ends_at', '>', now())
+            ->orderByDesc('ends_at')
+            ->first();
+
+        $startsAt = $running?->ends_at ?? now();
+
+        return ShopBump::query()->create([
+            'seller_id' => $seller->id,
+            'shop_id' => $shop->id,
+            'starts_at' => $startsAt,
+            'ends_at' => $startsAt->copy()->addDays(max(1, $plan->days)),
+            'price_paid' => max(0, (int) $plan->price),
+            'bump_plan_id' => $plan->id,
+            'source' => $source,
+            'note' => $note,
+        ]);
+    }
+
+    /**
+     * Seller self-service purchase of ONE bump plan for their OWN SHOP:
+     * debit the wallet and start/extend the shop bump atomically.
+     * Returns [ok, shopBump|null, error] — ok=false carries a Persian
+     * reason (insufficient balance, disabled…).
+     */
+    public static function purchaseShopFromWallet(Seller $seller, BumpPlan $plan): array
+    {
+        if (! self::enabled()) {
+            return [false, null, 'نردبان در حال حاضر غیرفعال است. با پشتیبانی تماس بگیرید.'];
+        }
+
+        if (! $plan->is_active) {
+            return [false, null, 'این طرح نردبان دیگر قابل خرید نیست.'];
+        }
+
+        $shop = Shop::ensureForSeller($seller);
+
+        $price = max(0, (int) $plan->price);
+
+        [$ok, $row] = DB::transaction(function () use ($seller, $shop, $plan, $price) {
+            $wallet = Wallet::query()
+                ->where('seller_id', $seller->id)
+                ->lockForUpdate()
+                ->first();
+
+            $wallet ??= Wallet::query()->create(['seller_id' => $seller->id]);
+
+            if ($price > 0 && $wallet->balance < $price) {
+                return [false, null];
+            }
+
+            if ($price > 0) {
+                $wallet->decrement('balance', $price);
+
+                WalletTransaction::query()->create([
+                    'wallet_id' => $wallet->id,
+                    'type' => WalletTransaction::TYPE_BUMP,
+                    'amount' => $price,
+                    'commission' => 0,
+                    'status' => WalletTransaction::STATUS_DONE,
+                    'description' => 'خرید نردبان فروشگاه «'.$shop->name.'» — '.$plan->title,
+                ]);
+            }
+
+            return [true, self::grantShop($seller, $shop, $plan, ShopBump::SOURCE_WALLET)];
+        });
+
+        if (! $ok) {
+            return [false, null, 'موجودی کیف پول شما برای این طرح نردبان کافی نیست.'];
+        }
+
+        SellerNotifier::notify(
+            $seller,
+            'system.misc',
+            'نردبان فروشگاه «'.$shop->name.'» فعال شد 🚀',
+            'فروشگاه شما تا '.JDate::date($row->ends_at).' در صدر لیست فروشگاه‌های صفحهٔ اول نمایش داده می‌شود ('.Fmt::toFa($row->daysLeft()).' روز).',
             route('seller.bump'),
             'rocket',
             $row,

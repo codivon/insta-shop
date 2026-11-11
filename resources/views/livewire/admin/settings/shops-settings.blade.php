@@ -39,8 +39,37 @@
             </div>
         </div>
 
-        {{-- ── کمیسیون سراسری ── --}}
+        {{-- ── اشتراک رایگان خودکار (v0.25.0) ── --}}
         <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-start justify-between gap-3">
+                <div class="flex items-start gap-3">
+                    <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400">
+                        <x-icon name="sparkles" class="size-5" />
+                    </span>
+                    <div>
+                        <h3 class="text-sm font-extrabold">اشتراک رایگان خودکار</h3>
+                        <p class="mt-1 text-[11px] leading-5 text-slate-400">
+                            با روشن‌بودن این گزینه، هر فروشنده‌ای که تازه ثبت‌نام می‌کند، به‌طور خودکار «اشتراک رایگان» (اولین پلن فعال با قیمت صفر) را دریافت می‌کند و لازم نیست چیزی بخرد.
+                        </p>
+                    </div>
+                </div>
+                <label class="relative inline-flex shrink-0 cursor-pointer items-center">
+                    <input type="checkbox" wire:model.live="autoFreeSubscription" class="peer sr-only">
+                    <span class="h-6 w-11 rounded-full bg-slate-200 transition peer-checked:bg-violet-500 dark:bg-slate-700"></span>
+                    <span class="absolute start-0.5 top-0.5 size-5 rounded-full bg-white shadow transition peer-checked:start-[1.375rem]"></span>
+                </label>
+            </div>
+
+            <div class="mt-4 flex items-start gap-2 rounded-xl border border-dashed border-violet-300 bg-violet-50/70 px-3 py-2.5 text-[10px] font-semibold leading-5 text-violet-600 dark:border-violet-800 dark:bg-violet-950/20 dark:text-violet-300">
+                <x-icon name="info" class="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                    پلن رایگان از «پلن‌های اشتراک» خوانده می‌شود (اولین پلن فعال با قیمت ۰). اگر فروشنده اشتراک فعال داشته باشد، چیزی جایگزین نمی‌شود.
+                </span>
+            </div>
+        </div>
+
+        {{-- ── کمیسیون سراسری ── --}}
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 lg:col-span-2">
             <div class="flex items-start gap-3">
                 <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">
                     <x-icon name="coins" class="size-5" />

@@ -232,6 +232,13 @@
                                         <x-icon name="image" class="size-7" />
                                     </span>
                                 @endif
+                                {{-- نردبان فعال (v0.25.0) — وقتی محصول در صدر صفحهٔ اول است --}}
+                                @if ($bumpEnabled && in_array($product->id, $bumpedProductIds))
+                                    <span class="absolute bottom-1 end-1 flex items-center gap-0.5 rounded-full bg-gradient-to-l from-orange-500 to-amber-500 px-1.5 py-0.5 text-[8px] font-black text-white shadow-sm">
+                                        <x-icon name="rocket" class="size-2.5" />
+                                        نردبان فعال
+                                    </span>
+                                @endif
                             </div>
 
                             <div class="min-w-0 flex-1">
@@ -278,6 +285,17 @@
 
                     {{-- quick actions --}}
                     <div class="flex items-center justify-end gap-1 border-t border-slate-100 px-3 py-1.5 dark:border-slate-800">
+                        {{-- نردبان (v0.25.0) — فقط وقتی در مدیریت فعال است و محصول منتشرشده است --}}
+                        @if ($bumpEnabled && $product->status === 'published')
+                            <button type="button" wire:click="openBuy({{ $product->id }})"
+                                    class="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition {{ in_array($product->id, $bumpedProductIds)
+                                        ? 'text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-950/40'
+                                        : 'text-slate-500 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-950/40 dark:hover:text-orange-400' }}"
+                                    title="{{ in_array($product->id, $bumpedProductIds) ? 'تمدید/افزودن نردبان' : 'نردبان کردن این محصول' }}">
+                                <x-icon name="rocket" class="size-3.5" />
+                                {{ in_array($product->id, $bumpedProductIds) ? 'تمدید نردبان' : 'نردبان' }}
+                            </button>
+                        @endif
                         <button type="button" wire:click="togglePublish({{ $product->id }})"
                                 class="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition {{ $product->status === 'published'
                                     ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800'
@@ -344,4 +362,101 @@
             </a>
         </div>
     </div>
+
+    {{-- ───────── purchase confirm modal (نردبان محصول — v0.25.0) ───────── --}}
+    <x-modal-panel open="$wire.buyOpen" max-width="sm" labelledby="buy-bump-title" in-frame
+                   close-js="__ipOpen = false; $wire.closeBuy()">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
+                <h3 id="buy-bump-title" class="flex items-center gap-2 text-sm font-extrabold">
+                    <span class="grid size-8 place-items-center rounded-xl bg-orange-600/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
+                        <x-icon name="rocket" class="size-4" />
+                    </span>
+                    خرید نردبان
+                </h3>
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeBuy()"
+                        class="grid size-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            </div>
+        </x-slot:header>
+
+        <div class="p-5">
+            @if ($buyProduct)
+                <div class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
+                    <span class="block size-14 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
+                        @if ($buyProduct->mainImage)
+                            <img src="{{ $buyProduct->mainImage->url() }}" alt="{{ $buyProduct->name }}" class="size-full object-cover">
+                        @else
+                            <span class="grid size-full place-items-center text-slate-300"><x-icon name="image" class="size-5" /></span>
+                        @endif
+                    </span>
+                    <span class="min-w-0">
+                        <span class="block truncate text-xs font-extrabold">{{ $buyProduct->name }}</span>
+                        <span class="mt-0.5 block text-[10px] text-slate-400">{{ \App\Support\Fmt::money($buyProduct->price) }} تومان</span>
+                    </span>
+                </div>
+
+                <div class="mt-4">
+                    <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">طرح نردبان را انتخاب کنید</span>
+                    <div class="mt-1.5 grid gap-2">
+                        @foreach ($bumpPlans as $plan)
+                            <button type="button" wire:click="setBuyPlan({{ $plan->id }})"
+                                    class="flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 transition {{ $buyPlan?->id === $plan->id
+                                        ? 'border-orange-500 bg-orange-50 shadow-sm dark:border-orange-700 dark:bg-orange-950/30'
+                                        : 'border-slate-200 hover:border-orange-300 dark:border-slate-700' }}">
+                                <span class="flex min-w-0 items-center gap-2 text-start">
+                                    <span class="grid size-8 shrink-0 place-items-center rounded-lg {{ $buyPlan?->id === $plan->id ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400' }}">
+                                        <x-icon name="rocket" class="size-4" />
+                                    </span>
+                                    <span class="min-w-0">
+                                        <span class="block truncate text-[11px] font-extrabold">{{ $plan->title }}</span>
+                                        <span class="block text-[9px] text-slate-400">{{ $plan->daysLabel() }} در صدر صفحهٔ اول</span>
+                                    </span>
+                                </span>
+                                <span class="shrink-0 text-[11px] font-black text-orange-600 dark:text-orange-400">{{ \App\Support\Fmt::money($plan->price) }}</span>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs dark:border-slate-800 dark:bg-slate-800/50">
+                    <div class="flex justify-between py-1">
+                        <span class="text-slate-400">هزینهٔ طرح انتخابی</span>
+                        <span class="font-extrabold text-orange-600 dark:text-orange-400">{{ \App\Support\Fmt::money($buyPlan?->price ?? 0) }}</span>
+                    </div>
+                    <div class="flex justify-between py-1">
+                        <span class="text-slate-400">موجودی فعلی</span>
+                        <span class="font-bold">{{ \App\Support\Fmt::money($walletBalance) }}</span>
+                    </div>
+                    <div class="mt-1 flex justify-between border-t border-dashed border-slate-200 pt-2 dark:border-slate-700">
+                        <span class="text-slate-400">پس از خرید</span>
+                        <span class="font-bold">{{ \App\Support\Fmt::money(max(0, $walletBalance - (int) ($buyPlan?->price ?? 0))) }}</span>
+                    </div>
+                </div>
+
+                <p class="mt-3 rounded-xl bg-orange-50 px-3 py-2 text-[10px] leading-5 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300">
+                    محصول در نوار «نردبان‌ها» صدر صفحهٔ اول نمایش داده می‌شود. اگر همین محصول نردبان فعال داشته باشد، روزهای جدید به انتهای آن اضافه می‌شوند.
+                </p>
+
+                @if ($errors->has('buy'))
+                    <p class="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-[10px] font-bold text-rose-600 dark:bg-rose-950/30 dark:text-rose-300">{{ $errors->first('buy') }}</p>
+                @endif
+
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <button type="button" x-on:click="__ipOpen = false; $wire.closeBuy()"
+                            class="rounded-2xl border border-slate-200 py-3 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                        انصراف
+                    </button>
+                    <button type="button" wire:click="confirmBuy" wire:loading.attr="disabled" wire:target="confirmBuy" {{ ($buyPlan === null || $walletBalance < (int) ($buyPlan?->price ?? 0)) ? 'disabled' : '' }}
+                            class="rounded-2xl py-3 text-xs font-extrabold transition active:scale-[.98] disabled:opacity-50 {{ $buyPlan !== null && $walletBalance >= (int) ($buyPlan?->price ?? 0) ? 'bg-gradient-to-l from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/25' : 'bg-slate-200 text-slate-400 dark:bg-slate-800' }}">
+                        پرداخت و فعال‌سازی
+                    </button>
+                </div>
+                @if ($buyPlan !== null && $walletBalance < (int) $buyPlan->price)
+                    <p class="mt-2 text-center text-[10px] font-bold text-amber-600 dark:text-amber-400">موجودی کافی نیست — از کیف پول شارژ کنید یا طرح ارزان‌تری انتخاب کنید.</p>
+                @endif
+            @endif
+        </div>
+    </x-modal-panel>
 </div>
