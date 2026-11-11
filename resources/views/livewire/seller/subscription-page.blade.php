@@ -59,7 +59,7 @@
                         <span>{{ $commissionLabel }}</span>
                     </div>
                     @if (auth('seller')->user()?->hasCommissionOverride())
-                        <p class="mt-1 text-[9px] text-amber-100/80">این نرخ به‌صورت اختصاصی برای شما توسط مدیر تعیین شده — خرید پلن آن را تغییر نمی‌دهد.</p>
+                        <p class="mt-1 text-[9px] text-amber-100/80">این نرخ از «کمیسیون اختصاصی» شما می‌آید — خرید پلنِ دارای نرخ ویژه، آن را به‌روز می‌کند.</p>
                     @elseif ($active && $active->commissionOverride() === null && $active->plan)
                         <p class="mt-1 text-[9px] text-amber-100/80">پلن فعلی نرخ ویژه‌ای تعیین نکرده؛ نرخ سراسری ملاک است.</p>
                     @endif
@@ -169,17 +169,28 @@
         @endif
     </div>
 
-    {{-- ───────── purchase confirm modal ───────── --}}
-    @if ($buyOpen && $buyPlan)
-        <div class="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 backdrop-blur-sm sm:items-center" x-data x-on:click.prevent="false" wire:key="buy-modal-{{ $buyPlan->id }}">
-            <div class="w-full max-w-[430px] rounded-t-3xl bg-white p-5 shadow-2xl dark:bg-slate-900 sm:rounded-3xl">
-                <div class="mb-3 flex items-center justify-between">
-                    <h3 class="text-sm font-extrabold">تأیید خرید اشتراک</h3>
-                    <button type="button" wire:click="closeBuy" class="grid size-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
-                        <x-icon name="x" class="size-4" />
-                    </button>
-                </div>
+    {{-- ───────── purchase confirm modal (standard modal-panel — v0.23.0
+         fix: the hand-rolled fixed-inset markup stretched edge-to-edge and
+         its close buttons were unreachable) ───────── --}}
+    <x-modal-panel open="$wire.buyOpen" max-width="sm" labelledby="buy-plan-title" in-frame
+                   close-js="__ipOpen = false; $wire.closeBuy()">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
+                <h3 id="buy-plan-title" class="flex items-center gap-2 text-sm font-extrabold">
+                    <span class="grid size-8 place-items-center rounded-xl bg-amber-600/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+                        <x-icon name="crown" class="size-4" />
+                    </span>
+                    تأیید خرید اشتراک
+                </h3>
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeBuy()"
+                        class="grid size-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            </div>
+        </x-slot:header>
 
+        <div class="p-5">
+            @if ($buyPlan)
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs dark:border-slate-800 dark:bg-slate-800/50">
                     <div class="flex justify-between py-1">
                         <span class="text-slate-400">پلن</span>
@@ -213,6 +224,9 @@
                     @else
                         پلن بلافاصله فعال می‌شود و مزایا از همین حالت اعمال می‌شوند.
                     @endif
+                    @if ($buyPlan->hasCommissionOverride())
+                        کمیسیونِ این پلن ({{ $buyPlan->commissionLabel() }}) به‌عنوان «کمیسیون اختصاصی» شما ثبت می‌شود.
+                    @endif
                 </p>
 
                 @if ($errors->has('buy'))
@@ -220,15 +234,18 @@
                 @endif
 
                 <div class="mt-4 grid grid-cols-2 gap-2">
-                    <button type="button" wire:click="closeBuy" class="rounded-2xl border border-slate-200 py-3 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                    <button type="button" x-on:click="__ipOpen = false; $wire.closeBuy()"
+                            class="rounded-2xl border border-slate-200 py-3 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
                         انصراف
                     </button>
-                    <button type="button" wire:click="confirmBuy" {{ $walletBalance < (int) $buyPlan->price ? 'disabled' : '' }}
-                            class="rounded-2xl py-3 text-xs font-extrabold transition active:scale-[.98] {{ $walletBalance >= (int) $buyPlan->price ? 'bg-gradient-to-l from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/25' : 'bg-slate-200 text-slate-400 dark:bg-slate-800' }}">
+                    <button type="button" wire:click="confirmBuy" wire:loading.attr="disabled" wire:target="confirmBuy" {{ $walletBalance < (int) $buyPlan->price ? 'disabled' : '' }}
+                            class="rounded-2xl py-3 text-xs font-extrabold transition active:scale-[.98] disabled:opacity-50 {{ $walletBalance >= (int) $buyPlan->price ? 'bg-gradient-to-l from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/25' : 'bg-slate-200 text-slate-400 dark:bg-slate-800' }}">
                         پرداخت و فعال‌سازی
                     </button>
                 </div>
-            </div>
+            @else
+                <p class="py-6 text-center text-xs text-slate-400">در حال آماده‌سازی…</p>
+            @endif
         </div>
-    @endif
+    </x-modal-panel>
 </div>

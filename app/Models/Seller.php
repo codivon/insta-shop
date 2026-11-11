@@ -35,6 +35,21 @@ class Seller extends Authenticatable
         return $this->hasMany(SellerSubscription::class);
     }
 
+    /** Does this seller currently hold ANY active entitlement (plan, trial or gift)? */
+    public function hasActiveSubscription(): bool
+    {
+        return $this->subscriptions()
+            ->where('ends_at', '>', now())
+            ->exists();
+    }
+
+    /* ───────────────── bump — نردبان (v0.23.0) ───────────────── */
+
+    public function bumps(): HasMany
+    {
+        return $this->hasMany(ProductBump::class);
+    }
+
     /* ───────────────── commission (79 + 22.0) ───────────────── */
 
     /** Whether the seller has a PERSONAL commission override. */

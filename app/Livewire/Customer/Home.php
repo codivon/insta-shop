@@ -8,6 +8,8 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Favorite;
 use App\Models\Product;
+use App\Models\ProductBump;
+use App\Models\SellerSubscription;
 use App\Models\Shop;
 use App\Models\Story;
 use App\Models\StoryView;
@@ -189,6 +191,83 @@ class Home extends Component
         return Banner::query()->homeBanners()->get();
     }
 
+    /* ───────── v0.23.0 — نردبان + اولویت نمایش (boost) ───────── */
+
+    /**
+     * «نردبان‌ها» — products whose seller bought a RUNNING bump window:
+     * they render in the dedicated strip at the very top of the home page
+     * (Divar-style). Expired bumps drop out by date, no cron needed.
+     */
+    public function getBumpProductsProperty(): Collection
+    {
+        return ProductBump::homeStrip(10);
+    }
+
+    /**
+     * shop_id => boost tier of the shop's seller ACTIVE plan (0/1/2).
+     * Plans with boost_level > 0 sell «اولویت نمایش در صفحهٔ اصلی» — the
+     * strongest tier wins when a seller somehow holds several rows.
+     * Runs once per render; the result is tiny (only boosted sellers).
+     */
+    private function boostTiersByShopId(): array
+    {
+        $sellerTiers = SellerSubscription::query()
+            ->where('ends_at', '>', now())
+            ->whereHas('plan', fn ($q) => $q->where('boost_level', '>', 0))
+            ->with('plan:id,boost_level')
+            ->get(['seller_id', 'plan_id'])
+            ->groupBy('seller_id')
+            ->map(fn ($rows) => (int) $rows->max(fn ($row) => (int) ($row->plan?->boost_level ?? 0)));
+
+        if ($sellerTiers->isEmpty()) {
+            return [];
+        }
+
+        return Shop::query()
+            ->whereIn('seller_id', $sellerTiers->keys())
+            ->get(['id', 'seller_id'])
+            ->mapWithKeys(fn (Shop $shop) => [$shop->id => $sellerTiers[$shop->seller_id] ?? 0])
+            ->all();
+    }
+
+    /** Daily rotation seed — stable for a whole day (pagination-safe), rotates every day so heavy tiers share the front. */
+    private function rotationSeed(): int
+    {
+        return (int) now()->format('z'); // day of year (0..365)
+    }
+
+    /** Sort shops: boost tier desc → daily rotation → newest (PHP-side, portable, no pagination involved). */
+    private function sortShopsByBoost(Collection $shops): Collection
+    {
+        $tiers = $this->boostTiersByShopId();
+
+        if ($tiers === []) {
+            return $shops;
+        }
+
+        $seed = $this->rotationSeed();
+
+        return $shops->sort(function (Shop $a, Shop $b) use ($tiers, $seed) {
+            $tierA = $tiers[$a->id] ?? 0;
+            $tierB = $tiers[$b->id] ?? 0;
+
+            if ($tierA !== $tierB) {
+                return $tierB <=> $tierA;
+            }
+
+            // Fair rotation INSIDE a tier: many boosted shops share the
+            // front — every day each shop drifts one bucket forward.
+            $bucketA = ($a->id + $seed) % 5;
+            $bucketB = ($b->id + $seed) % 5;
+
+            if ($bucketA !== $bucketB) {
+                return $bucketA <=> $bucketB;
+            }
+
+            return $b->id <=> $a->id;
+        })->values();
+    }
+
     /** Basalam-style «خرید بر اساس دسته‌بندی» grid — first 7 root categories. */
     public function getTopCategoriesProperty(): Collection
     {
@@ -220,8 +299,10 @@ class Home extends Component
             ->whereHas('publishedProducts')
             ->withCount(['publishedProducts as products_count'])
             ->latest()
-            ->limit(8)
+            ->limit(20) // wide candidate pool — the boost ordering narrows it below
             ->get();
+
+        $shops = $this->sortShopsByBoost($shops)->take(8);
 
         return $shops->map(function (Shop $shop) {
             $shop->spotlight_products = $shop->publishedProducts()
@@ -236,11 +317,13 @@ class Home extends Component
 
     public function getShopsProperty(): Collection
     {
-        return Shop::query()
+        $shops = Shop::query()
             ->publiclyVisible()
             ->withCount(['publishedProducts as products_count'])
             ->latest()
             ->get();
+
+        return $this->sortShopsByBoost($shops);
     }
 
     public function getProductsProperty(): Collection
@@ -303,6 +386,7 @@ class Home extends Component
             'flashProducts' => $this->flashProducts,
             'spotlightShops' => $this->spotlightShops,
             'searchShops' => $this->searchShops,
+            'bumpProducts' => $this->bumpProducts,
         ])->title('فروشگاه InstaShop');
     }
 
@@ -347,9 +431,49 @@ class Home extends Component
             'popular' => $query->orderByDesc('views'),
             'cheap' => $query->orderBy('price'),
             'expensive' => $query->orderByDesc('price'),
-            default => $query->latest(),
+            // v0.23.0 — default feed: boosted shops' products FIRST
+            // (plan benefit «اولویت نمایش در صفحهٔ اصلی»), then a daily
+            // fair rotation inside every tier, then newest. The expression
+            // is deterministic per day → infinite-scroll pagination stays
+            // consistent. Explicit customer sorts (price/views) win over
+            // the paid boost — customer intent beats merchandising.
+            default => $this->applyBoostOrdering($query),
         };
 
         return $query;
+    }
+
+    /** SQL ordering: boost tier desc → daily rotation bucket → newest (portable CASE, SQLite + MySQL). */
+    private function applyBoostOrdering(Builder $query): Builder
+    {
+        $tiers = $this->boostTiersByShopId();
+
+        if ($tiers === []) {
+            return $query->latest();
+        }
+
+        $tier2 = array_keys(array_filter($tiers, fn ($t) => $t === 2));
+        $tier1 = array_keys(array_filter($tiers, fn ($t) => $t === 1));
+        $seed = $this->rotationSeed();
+
+        $cases = '';
+
+        if ($tier2 !== []) {
+            $cases .= 'case when shop_id in ('.implode(',', array_fill(0, count($tier2), '?')).') then 2 ';
+        } else {
+            $cases .= 'case when 1 = 0 then 2 ';
+        }
+
+        if ($tier1 !== []) {
+            $cases .= 'when shop_id in ('.implode(',', array_fill(0, count($tier1), '?')).') then 1 ';
+        }
+
+        $cases .= 'else 0 end';
+
+        // ids are server-generated integers — safe to inline in the rotation
+        $bindings = [...$tier2, ...$tier1, $seed];
+
+        return $query
+            ->orderByRaw($cases.' desc, ((shop_id * 7 + ?) % 5) asc, id desc', $bindings);
     }
 }

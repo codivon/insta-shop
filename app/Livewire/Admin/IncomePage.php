@@ -130,6 +130,8 @@ class IncomePage extends Component
             'payout' => (int) $rows->sum('payout'),
             'orders' => $orders->count(),
             'subscription' => (int) $subs->sum('price_paid'),
+            // v0.23.0 — «جمع همهٔ درآمد» = commissions received + subscription sales
+            'total' => (int) $rows->sum('commission_amount') + (int) $subs->sum('price_paid'),
         ];
     }
 
@@ -143,29 +145,44 @@ class IncomePage extends Component
         };
     }
 
-    /** 14-day chart of received commissions. */
+    /** 14-day STACKED revenue chart (v0.23.0): commissions + subscription sales per day. */
     public function getChartProperty(): Collection
     {
         $from = Carbon::today()->subDays(13);
 
+        $window = [$from->copy()->startOfDay(), now()];
+
         $orders = Order::query()
             ->where('status', 'paid')
             ->whereNotNull('commissions')
-            ->whereBetween('paid_at', [$from->copy()->startOfDay(), now()])
+            ->whereBetween('paid_at', $window)
             ->get(['paid_at', 'commissions']);
 
-        $byDay = $orders->groupBy(fn ($order) => $order->paid_at?->format('Y-m-d'))
+        $commissionByDay = $orders->groupBy(fn ($order) => $order->paid_at?->format('Y-m-d'))
             ->map(fn ($dayOrders) => (int) $dayOrders
                 ->flatMap(fn ($order) => collect($order->commissions ?? []))
                 ->filter(fn (array $row) => $this->shopId === 0 || (int) $row['shop_id'] === $this->shopId)
                 ->sum('commission_amount'));
 
-        return collect(range(0, 13))->map(function (int $i) use ($from, $byDay) {
+        $subscriptionByDay = SellerSubscription::query()
+            ->where('price_paid', '>', 0)
+            ->whereBetween('created_at', $window)
+            ->when($this->shopId > 0, fn ($q) => $q->whereHas('seller.shop', fn ($shop) => $shop->where('id', $this->shopId)))
+            ->get(['created_at', 'price_paid'])
+            ->groupBy(fn ($row) => $row->created_at?->format('Y-m-d'))
+            ->map(fn ($rows) => (int) $rows->sum('price_paid'));
+
+        return collect(range(0, 13))->map(function (int $i) use ($from, $commissionByDay, $subscriptionByDay) {
             $day = $from->copy()->addDays($i);
+            $key = $day->format('Y-m-d');
+            $commission = (int) ($commissionByDay[$key] ?? 0);
+            $subscription = (int) ($subscriptionByDay[$key] ?? 0);
 
             return [
                 'label' => $day->locale('fa')->minDayName.' '.Fmt::toFa($day->day),
-                'commission' => (int) ($byDay[$day->format('Y-m-d')] ?? 0),
+                'commission' => $commission,
+                'subscription' => $subscription,
+                'total' => $commission + $subscription,
             ];
         });
     }

@@ -35,6 +35,35 @@
     </div>
 
     {{-- ── totals ── --}}
+    {{-- v0.23.0 — hero: «جمع همهٔ درآمد» (کمیسیون + فروش اشتراک) --}}
+    <div class="relative overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-l from-amber-50 via-white to-white p-5 shadow-sm dark:border-amber-900/60 dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+                <span class="grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-xl shadow-amber-600/25">
+                    <x-icon name="coins" class="size-7" />
+                </span>
+                <div>
+                    <div class="flex items-center gap-2 text-xs font-extrabold text-amber-700 dark:text-amber-300">
+                        جمع همهٔ درآمد پلتفرم
+                        <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">کمیسیون + اشتراک</span>
+                    </div>
+                    <div class="mt-1 text-3xl font-black tracking-tight text-amber-600 dark:text-amber-400">{{ \App\Support\Fmt::money($totals['total']) }}</div>
+                    <div class="mt-0.5 text-[10px] font-semibold text-slate-400">تومان — در بازهٔ انتخاب‌شده</div>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-4 text-xs">
+                <span class="flex items-center gap-1.5 font-bold text-slate-500 dark:text-slate-300">
+                    <span class="size-2.5 rounded-sm bg-gradient-to-t from-amber-500 to-amber-300"></span>
+                    کمیسیون: {{ \App\Support\Fmt::moneyShort($totals['commission']) }}
+                </span>
+                <span class="flex items-center gap-1.5 font-bold text-slate-500 dark:text-slate-300">
+                    <span class="size-2.5 rounded-sm bg-gradient-to-t from-violet-600 to-violet-400"></span>
+                    اشتراک: {{ \App\Support\Fmt::moneyShort($totals['subscription']) }}
+                </span>
+            </div>
+        </div>
+    </div>
+
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
         @foreach ([
             ['label' => 'کمیسیون دریافتی', 'value' => \App\Support\Fmt::money($totals['commission']), 'icon' => 'coins', 'tone' => 'from-amber-500 to-orange-600'],
@@ -55,23 +84,48 @@
         @endforeach
     </div>
 
-    {{-- ── chart ── --}}
+    {{-- ── chart — stacked: subscription (violet) + commission (amber) ── --}}
     <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-800 dark:bg-slate-900">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-2">
             <h3 class="flex items-center gap-2 text-xs font-extrabold">
                 <x-icon name="trending-up" class="size-4 text-primary-500" />
-                کمیسیون ۱۴ روز اخیر
+                درآمد ۱۴ روز اخیر
             </h3>
-            <span class="text-[10px] font-bold text-slate-400">مجموع: {{ \App\Support\Fmt::money($chart->sum('commission')) }}</span>
+            <div class="flex items-center gap-3">
+                <span class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                    <span class="size-2.5 rounded-sm bg-gradient-to-t from-amber-500 to-amber-300"></span>
+                    کمیسیون
+                </span>
+                <span class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                    <span class="size-2.5 rounded-sm bg-gradient-to-t from-violet-600 to-violet-400"></span>
+                    اشتراک
+                </span>
+                <span class="text-[10px] font-bold text-slate-400">مجموع: {{ \App\Support\Fmt::money($chart->sum('total')) }}</span>
+            </div>
         </div>
 
-        @php $maxTotal = max($chart->max('commission'), 1); @endphp
-        <div class="mt-4 flex h-40 items-end gap-1.5" dir="ltr">
+        @php $maxTotal = max($chart->max('total'), 1); @endphp
+        <div class="mt-4 flex h-44 items-end gap-1.5" dir="ltr">
             @foreach ($chart as $bar)
                 <div class="group flex flex-1 flex-col items-center gap-1">
-                    <div class="w-full rounded-t-md bg-gradient-to-t from-amber-500 to-amber-300 transition-all group-hover:from-amber-600"
-                         style="height: {{ max(4, round($bar['commission'] / $maxTotal * 130)) }}px"
-                         title="{{ $bar['label'] }} — {{ \App\Support\Fmt::money($bar['commission']) }}"></div>
+                    {{-- stacked column: violet subscription under amber commission --}}
+                    <div class="flex w-full flex-col justify-end" style="height: 150px;" title="{{ $bar['label'] }} — جمع {{ \App\Support\Fmt::money($bar['total']) }} (کمیسیون {{ \App\Support\Fmt::money($bar['commission']) }} / اشتراک {{ \App\Support\Fmt::money($bar['subscription']) }})">
+                        @php
+                            $subH = (int) round($bar['subscription'] / $maxTotal * 150);
+                            $comH = (int) round($bar['commission'] / $maxTotal * 150);
+                        @endphp
+                        @if ($bar['commission'] > 0)
+                            <div class="w-full rounded-t-md bg-gradient-to-t from-amber-500 to-amber-300 transition-all group-hover:from-amber-600"
+                                 style="height: {{ max(3, $comH) }}px"></div>
+                        @endif
+                        @if ($bar['subscription'] > 0)
+                            <div class="w-full {{ $bar['commission'] > 0 ? '' : 'rounded-t-md' }} bg-gradient-to-t from-violet-600 to-violet-400 transition-all group-hover:from-violet-700"
+                                 style="height: {{ max(3, $subH) }}px"></div>
+                        @endif
+                        @if ($bar['total'] === 0)
+                            <div class="w-full rounded-t-md bg-slate-100 dark:bg-slate-800" style="height: 3px"></div>
+                        @endif
+                    </div>
                     <span class="text-[8.5px] font-bold text-slate-400">{{ $bar['label'] }}</span>
                 </div>
             @endforeach

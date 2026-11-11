@@ -28,6 +28,7 @@ class SmsTemplates
     public const GROUPS = [
         'orders' => ['سفارش‌ها', 'bag'],
         'auth' => ['ورود و احراز', 'message'],
+        'subscription' => ['اشتراک و نردبان', 'crown'],
     ];
 
     /** Legacy view fallback for keys that predate the templates table. */

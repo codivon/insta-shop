@@ -45,6 +45,8 @@ class PlansPage extends Component
 
     public string $commissionValue = '0';
 
+    public string $boostLevel = '0'; // 0 = بدون اولویت | 1 = عادی | 2 = ویژه
+
     public bool $isActive = true;
 
     public string $sort = '0';
@@ -69,6 +71,7 @@ class PlansPage extends Component
             $this->price = (string) $plan->price;
             $this->commissionType = $plan->hasCommissionOverride() ? (string) $plan->commission_type : '';
             $this->commissionValue = (string) ($plan->commission_value ?? 0);
+            $this->boostLevel = (string) $plan->boost_level;
             $this->isActive = $plan->is_active;
             $this->sort = (string) $plan->sort;
         }
@@ -80,6 +83,15 @@ class PlansPage extends Component
     {
         $this->formOpen = false;
         $this->resetForm();
+    }
+
+    /** Open the create modal (distinct action so the modal never fights the edit toggle). */
+    public function openCreate(): void
+    {
+        $this->resetForm();
+        $this->editingId = null;
+        $this->formOpen = true;
+        $this->resetErrorBag();
     }
 
     public function updatedCommissionType(): void
@@ -134,13 +146,14 @@ class PlansPage extends Component
             'price' => (int) $this->price,
             'commission_type' => $this->commissionType !== '' ? $this->commissionType : null,
             'commission_value' => $this->commissionType !== '' ? (int) $this->commissionValue : null,
+            'boost_level' => (int) $this->boostLevel,
             'is_active' => $this->isActive,
             'sort' => (int) $this->sort,
         ];
 
         if ($this->editingId !== null) {
             $plan = Plan::query()->findOrFail($this->editingId);
-            $before = $plan->only(['title', 'tagline', 'duration_days', 'price', 'commission_type', 'commission_value', 'is_active', 'sort']);
+            $before = $plan->only(['title', 'tagline', 'duration_days', 'price', 'commission_type', 'commission_value', 'boost_level', 'is_active', 'sort']);
             $plan->update($payload);
             ActivityLogger::log('plan.updated', 'پلن اشتراک «'.$plan->title.'» ویرایش شد', subject: $plan, before: $before, after: $payload);
             $this->dispatch('panel-toast', message: 'پلن ذخیره شد. ✅', type: 'success');
@@ -164,6 +177,7 @@ class PlansPage extends Component
         $this->price = '0';
         $this->commissionType = '';
         $this->commissionValue = '0';
+        $this->boostLevel = '0';
         $this->isActive = true;
         $this->sort = '0';
         $this->resetErrorBag();
@@ -184,6 +198,7 @@ class PlansPage extends Component
                 'min:0',
                 $this->commissionType === 'percent' ? 'max:100' : 'max:999999999999',
             ],
+            'boostLevel' => ['required', 'integer', 'in:0,1,2'],
             'isActive' => ['boolean'],
             'sort' => ['required', 'integer', 'min:0', 'max:9999'],
         ];
@@ -207,12 +222,18 @@ class PlansPage extends Component
 
     public function render()
     {
+        $plans = Plan::query()->orderBy('sort')->orderBy('id')->get();
+
         return view('livewire.admin.plans-page', [
-            'plans' => Plan::query()->orderBy('sort')->orderBy('id')->get(),
+            'plans' => $plans,
             'subscriptionCounts' => SellerSubscription::query()
                 ->selectRaw('plan_id, count(*) as total')
                 ->groupBy('plan_id')
                 ->pluck('total', 'plan_id'),
+            'activeSubs' => SellerSubscription::query()->where('ends_at', '>', now())->count(),
+            'subsRevenue' => (int) SellerSubscription::query()->where('price_paid', '>', 0)->sum('price_paid'),
+            'boostOptions' => Plan::boostOptions(),
+            'formPlan' => $this->editingId !== null && $this->formOpen ? Plan::query()->find($this->editingId) : null,
         ])->title('پلن‌های اشتراک')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — پلن‌های اشتراک']);
     }

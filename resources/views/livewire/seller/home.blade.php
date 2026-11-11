@@ -87,6 +87,21 @@
             </a>
         @endif
 
+        {{-- ── bump shortcut (v0.23.0 — نردبان) ── --}}
+        <a href="{{ route('seller.bump') }}" wire:navigate
+           class="mt-2.5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition active:scale-[.99] dark:border-slate-800 dark:bg-slate-900">
+            <span class="flex items-center gap-2.5">
+                <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-md shadow-orange-500/25">
+                    <x-icon name="rocket" class="size-4" />
+                </span>
+                <span>
+                    <span class="block text-xs font-extrabold">نردبان</span>
+                    <span class="block text-[10px] text-slate-400">محصولت را مدتی در صدر صفحهٔ اول نشان بده</span>
+                </span>
+            </span>
+            <x-icon name="chevron-left" class="size-4 text-slate-400" />
+        </a>
+
         {{-- ── greeting hero with real stats ── --}}
         <div class="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary-700 via-primary-600 to-primary-500 p-5 text-white shadow-xl shadow-primary-600/25">
             <div class="pointer-events-none absolute inset-0 opacity-20" aria-hidden="true">

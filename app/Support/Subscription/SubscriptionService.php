@@ -91,6 +91,17 @@ final class SubscriptionService
             'note' => $note,
         ]);
 
+        // v0.23.0 — «کمیسیون پلن، در کمیسیون اختصاصی فروشنده بنشیند»:
+        // whatever commission the plan carries (percent / fixed — or NO
+        // override = back to the global rate) is written into the seller's
+        // PERSONAL override so the admin sees the effective rate in
+        // «ویرایش فروشنده» and the resolved rate can never drift from the
+        // plan the seller actually paid for.
+        $seller->forceFill([
+            'commission_type' => $plan->hasCommissionOverride() ? $plan->commission_type : null,
+            'commission_value' => $plan->hasCommissionOverride() ? (int) $plan->commission_value : null,
+        ])->save();
+
         foreach ($replaced as $old) {
             $old->forceFill([
                 'ends_at' => now(),

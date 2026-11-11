@@ -16,6 +16,8 @@ class WalletTransaction extends Model
 
     public const TYPE_PLAN = 'plan'; // v0.22.0 — خرید اشتراک از کیف پول
 
+    public const TYPE_BUMP = 'bump'; // v0.23.0 — خرید نردبان محصول از کیف پول
+
     public const STATUS_DONE = 'done';
 
     public const STATUS_PENDING = 'pending';
@@ -50,10 +52,10 @@ class WalletTransaction extends Model
         return $this->type === self::TYPE_WITHDRAWAL;
     }
 
-    /** Whether this row SPENDS wallet money (withdrawals + plan purchases). */
+    /** Whether this row SPENDS wallet money (withdrawals + plan/bump purchases). */
     public function isSpend(): bool
     {
-        return $this->type === self::TYPE_WITHDRAWAL || $this->type === self::TYPE_PLAN;
+        return in_array($this->type, [self::TYPE_WITHDRAWAL, self::TYPE_PLAN, self::TYPE_BUMP], true);
     }
 
     /** Persian label of the transaction type. */
@@ -62,6 +64,7 @@ class WalletTransaction extends Model
         return match ($this->type) {
             self::TYPE_DEPOSIT => 'واریز فروش',
             self::TYPE_PLAN => 'خرید اشتراک',
+            self::TYPE_BUMP => 'خرید نردبان',
             default => 'درخواست برداشت',
         };
     }
@@ -97,6 +100,7 @@ class WalletTransaction extends Model
         return match ($this->type) {
             self::TYPE_DEPOSIT => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
             self::TYPE_PLAN => 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300',
+            self::TYPE_BUMP => 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300',
             default => 'bg-slate-100 text-slate-700 dark:bg-slate-950/60 dark:text-slate-300',
         };
     }

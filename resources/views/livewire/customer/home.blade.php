@@ -128,6 +128,44 @@
                 </div>
             @endif
 
+            {{-- ── نردبان‌ها (v0.23.0 — Divar-style top strip) ──
+                 products whose seller bought a running bump window;
+                 the strip only renders while at least one bump is alive. --}}
+            @if ($bumpProducts->isNotEmpty())
+                <div class="mt-5 overflow-hidden rounded-2xl border border-orange-200 bg-gradient-to-l from-orange-50 to-amber-50/50 shadow-sm dark:border-orange-900/60 dark:from-orange-950/20 dark:to-amber-950/10" aria-label="نردبان‌ها">
+                    <div class="flex items-center justify-between px-3.5 pt-2.5">
+                        <span class="flex items-center gap-1.5 text-xs font-black text-orange-700 dark:text-orange-300">
+                            <span class="grid size-6 place-items-center rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-sm">
+                                <x-icon name="rocket" class="size-3.5" />
+                            </span>
+                            نردبان‌ها
+                        </span>
+                        <span class="text-[9.5px] font-bold text-orange-600/70 dark:text-orange-400/70">نمایش در صدر صفحهٔ اول</span>
+                    </div>
+
+                    <div class="scroll-slim flex gap-2.5 overflow-x-auto p-2.5">
+                        @foreach ($bumpProducts as $bumpProduct)
+                            <a href="{{ $bumpProduct->publicUrl() }}" wire:navigate wire:key="bump-{{ $bumpProduct->id }}"
+                               class="group w-28 shrink-0 overflow-hidden rounded-xl border border-orange-200/70 bg-white p-1.5 shadow-sm transition hover:shadow-md active:scale-95 dark:border-orange-900/50 dark:bg-slate-900">
+                                <div class="relative grid aspect-square place-items-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+                                    @if ($bumpProduct->mainImage)
+                                        <img src="{{ $bumpProduct->mainImage->url() }}" alt="{{ $bumpProduct->name }}" loading="lazy" class="size-full object-cover transition duration-300 group-hover:scale-105">
+                                    @else
+                                        <x-icon name="package" class="size-8 text-slate-300 dark:text-slate-600" />
+                                    @endif
+                                    <span class="absolute end-1 top-1 rounded-full bg-gradient-to-l from-orange-500 to-amber-500 px-1.5 py-0.5 text-[8px] font-black text-white shadow">نردبان</span>
+                                </div>
+                                <p class="mt-1.5 line-clamp-1 px-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300">{{ $bumpProduct->name }}</p>
+                                <div class="mt-0.5 flex items-baseline gap-1.5 px-0.5 pb-0.5">
+                                    <span class="text-[11px] font-black text-orange-600 dark:text-orange-400">{{ \App\Support\Fmt::moneyShort($bumpProduct->price) }}</span>
+                                    <span class="text-[8.5px] font-bold text-slate-400">تومان</span>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             {{-- ── Basalam-style category grid (۷ دستهٔ اصلی + همه) ── --}}
             @if ($topCategories->isNotEmpty())
                 <div class="mt-5">

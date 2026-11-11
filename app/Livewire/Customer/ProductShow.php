@@ -45,7 +45,29 @@ class ProductShow extends Component
             })
             ->first();
 
-        abort_if(! $shop, 404);
+        if ($shop === null) {
+            // v0.23.0 — an approved+active shop whose subscription ENDED
+            // must not 404 its product links: bounce the visitor to the
+            // storefront, which renders the friendly «اشتراک فروشنده به
+            // پایان رسیده» page (anything else stays a clean 404).
+            $closed = Shop::query()
+                ->where('status', 'active')
+                ->whereHas('seller', fn ($s) => $s->where('status', 'approved'))
+                ->where(function ($query) use ($handle) {
+                    $query
+                        ->whereHas('seller', fn ($s) => $s->whereRaw('lower(instagram_username) = ?', [$handle]))
+                        ->orWhereRaw('lower(instagram_username) = ?', [$handle]);
+                })
+                ->first();
+
+            if ($closed !== null && $closed->isClosedForSubscription()) {
+                $this->redirect(route('shop.storefront', ['instagram' => $handle]), navigate: true);
+
+                return;
+            }
+
+            abort(404);
+        }
 
         // Slug first; legacy rows without a slug answer to «p{id}».
         $product = Product::query()

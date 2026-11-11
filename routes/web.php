@@ -61,6 +61,7 @@ use App\Livewire\Customer\Support\TicketsPage as CustomerTicketsPage;
 use App\Livewire\Seller\AttributeManager;
 use App\Livewire\Seller\Auth\PhoneAuth;
 use App\Livewire\Seller\BankCardsPage;
+use App\Livewire\Seller\BumpPage;
 use App\Livewire\Seller\DiscountForm;
 use App\Livewire\Seller\DiscountIndex;
 use App\Livewire\Seller\FilteringManager;
@@ -253,6 +254,9 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
         // ── Subscription plans (اشتراک و ارتقا — v0.22.0) ──
         Route::get('/subscription', SubscriptionPage::class)->name('subscription');
+
+        // ── Product bumps (نردبان — v0.23.0, Divar-style top placement) ──
+        Route::get('/bump', BumpPage::class)->name('bump');
 
         // ── Bank cards (profile + wallet destination accounts) ──
         Route::get('/cards', BankCardsPage::class)->name('cards');

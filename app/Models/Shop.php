@@ -95,11 +95,29 @@ class Shop extends Model
         return $this->status === 'active' && $this->seller?->status === 'approved';
     }
 
+    /**
+     * v0.23.0 — «فروشگاه بسته به‌خاطر اتمام اشتراک»؟ The shop answers the
+     * usual visibility rules (active + approved seller) but its seller has
+     * NO active subscription any more: the storefront still resolves so the
+     * customer sees the «اشتراک فروشنده به پایان رسیده» page instead of a
+     * bare 404, while every LISTING (home, search, sliders) hides it via
+     * scopePubliclyVisible.
+     */
+    public function isClosedForSubscription(): bool
+    {
+        return $this->isPublic() && ! $this->seller->hasActiveSubscription();
+    }
+
     /** Query scope: shops the customer app is allowed to show. */
     public function scopePubliclyVisible(Builder $query): Builder
     {
+        // v0.23.0 — the seller must ALSO hold an active subscription
+        // (plan / trial / admin gift): «هر کسی که اشتراک نداشت، فروشگاهش
+        // باز نمی‌شود». Expiry is by date, so this never drifts.
         return $query->where('status', 'active')
-            ->whereHas('seller', fn (Builder $q) => $q->where('status', 'approved'));
+            ->whereHas('seller', fn (Builder $q) => $q
+                ->where('status', 'approved')
+                ->whereHas('subscriptions', fn (Builder $s) => $s->where('ends_at', '>', now())));
     }
 
     /**

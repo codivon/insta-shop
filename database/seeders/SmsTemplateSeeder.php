@@ -52,6 +52,15 @@ class SmsTemplateSeeder extends Seeder
                 'variables' => ['order_number', 'reason'],
                 'sample' => ['order_number' => 'ORD-1042', 'reason' => 'انصراف فروشنده'],
             ],
+
+            /* ─────────────── اشتراک و نردبان (subscription) ─────────────── */
+
+            [
+                'key' => 'subscription.reminder', 'title' => 'یادآوری پایان اشتراک (روزانه)', 'group' => 'subscription',
+                'body' => "{$app}\nاشتراک «{plan}» شما به‌زودی تمام می‌شود — {days} روز باقی مانده (تا {date}).\nبرای تمدید و ادامهٔ فروش به پنل فروشنده سر بزنید.",
+                'variables' => ['plan', 'days', 'date'],
+                'sample' => ['plan' => 'پلن ماهانه', 'days' => '۷', 'date' => '۱۴۰۵/۰۹/۰۱'],
+            ],
         ];
 
         foreach ($templates as $t) {

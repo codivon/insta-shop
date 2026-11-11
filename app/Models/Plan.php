@@ -20,9 +20,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * commission_type = null means «طبق نرخ سراسری» — the plan sells the
  * duration itself and leaves the rate to the global setting.
  */
-#[Fillable(['title', 'tagline', 'features', 'duration_days', 'price', 'commission_type', 'commission_value', 'is_active', 'sort'])]
+#[Fillable(['title', 'tagline', 'features', 'duration_days', 'price', 'commission_type', 'commission_value', 'boost_level', 'is_active', 'sort'])]
 class Plan extends Model
 {
+    /** Home-page display priority tiers («اولویت نمایش در صفحهٔ اصلی»). */
+    public const BOOST_NONE = 0;
+
+    public const BOOST_NORMAL = 1;
+
+    public const BOOST_SPECIAL = 2;
+
     protected function casts(): array
     {
         return [
@@ -30,6 +37,7 @@ class Plan extends Model
             'duration_days' => 'integer',
             'price' => 'integer',
             'commission_value' => 'integer',
+            'boost_level' => 'integer',
             'is_active' => 'boolean',
             'sort' => 'integer',
         ];
@@ -58,6 +66,26 @@ class Plan extends Model
     public function durationLabel(): string
     {
         return Fmt::toFa($this->duration_days).' روزه';
+    }
+
+    /** Human boost line for cards/forms. */
+    public function boostLabel(): string
+    {
+        return match ($this->boost_level) {
+            self::BOOST_SPECIAL => 'اولویت ویژه در صفحهٔ اصلی',
+            self::BOOST_NORMAL => 'اولویت عادی در صفحهٔ اصلی',
+            default => 'بدون اولویت نمایش',
+        };
+    }
+
+    /** Boost options for the admin form + labels. */
+    public static function boostOptions(): array
+    {
+        return [
+            self::BOOST_NONE => 'بدون اولویت',
+            self::BOOST_NORMAL => 'اولویت عادی',
+            self::BOOST_SPECIAL => 'اولویت ویژه',
+        ];
     }
 
     /** Sellable plans for the seller panel — active, cheapest-durations first by sort. */

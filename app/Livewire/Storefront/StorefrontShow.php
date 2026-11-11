@@ -34,6 +34,9 @@ class StorefrontShow extends Component
 {
     public Shop $shop;
 
+    /** v0.23.0 — the shop resolves but its seller has NO active subscription: render the «اشتراک به پایان رسیده» page. */
+    public bool $closed = false;
+
     /* ── URL-persisted filters ── */
     #[Url(as: 'cat')]
     public int $catId = 0;
@@ -74,7 +77,11 @@ class StorefrontShow extends Component
         abort_if($handle === '', 404);
 
         // Resolve by the seller's (immutable) instagram handle first,
-        // then the shop mirror. Only publicly visible shops answer.
+        // then the shop mirror. Only publicly visible shops answer —
+        // EXCEPT the subscription-closed case: an approved+active shop
+        // whose seller lost their subscription still resolves so the
+        // visitor sees the friendly «اشتراک فروشنده به پایان رسیده»
+        // page instead of a bare 404 (v0.23.0).
         $shop = Shop::query()
             ->publiclyVisible()
             ->where(function (Builder $query) use ($handle) {
@@ -84,7 +91,29 @@ class StorefrontShow extends Component
             })
             ->first();
 
-        abort_if(! $shop, 404);
+        if ($shop === null) {
+            // Same base rules as publiclyVisible (active shop + approved
+            // seller) but WITHOUT the subscription gate — then confirm the
+            // closed reason, so anything else stays a clean 404.
+            $shop = Shop::query()
+                ->where('status', 'active')
+                ->whereHas('seller', fn (Builder $s) => $s->where('status', 'approved'))
+                ->where(function (Builder $query) use ($handle) {
+                    $query
+                        ->whereHas('seller', fn (Builder $s) => $s->whereRaw('lower(instagram_username) = ?', [$handle]))
+                        ->orWhereRaw('lower(instagram_username) = ?', [$handle]);
+                })
+                ->first();
+
+            abort_if(! $shop, 404);
+
+            abort_if(! $shop->isClosedForSubscription(), 404); // hidden for OTHER reasons → still 404
+
+            $this->shop = $shop;
+            $this->closed = true;
+
+            return;
+        }
 
         $this->shop = $shop;
     }
@@ -649,6 +678,13 @@ class StorefrontShow extends Component
 
     public function render()
     {
+        if ($this->closed) {
+            return view('livewire.storefront.storefront-closed', [
+                'shop' => $this->shop,
+                'handle' => $this->shop->storefrontHandle(),
+            ])->title($this->shop->name);
+        }
+
         return view('livewire.storefront.storefront-show', [
             'stats' => $this->stats,
             'categories' => $this->categories,

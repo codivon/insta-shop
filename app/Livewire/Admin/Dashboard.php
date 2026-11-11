@@ -9,9 +9,11 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Seller;
+use App\Models\SellerSubscription;
 use App\Models\Shop;
 use App\Models\Story;
 use App\Models\StoryView;
+use App\Support\Fmt;
 use App\Support\SchemaReady;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -210,7 +212,6 @@ class Dashboard extends Component
             if (! SchemaReady::check('story_views')) {
                 return [];
             }
-
             $from = Carbon::today()->subDays(13);
 
             $rows = StoryView::query()
@@ -255,6 +256,94 @@ class Dashboard extends Component
         });
     }
 
+    /* ───────── v0.23.0 — درآمد پلتفرم (اعداد + نمودار) ───────── */
+
+    /**
+     * Platform revenue totals: received commissions (paid orders) +
+     * subscription sales. All-time for the hero number, last 30 days for
+     * the trend hint. Plain array → JSON-cache friendly.
+     */
+    public function getRevenueProperty(): array
+    {
+        return $this->cached('revenue', function (): array {
+            $commission = Order::query()
+                ->where('status', 'paid')
+                ->whereNotNull('commissions')
+                ->get(['commissions'])
+                ->sum(fn ($order) => (int) collect($order->commissions ?? [])->sum('commission_amount'));
+
+            $subscription = (int) SellerSubscription::query()->where('price_paid', '>', 0)->sum('price_paid');
+
+            $from30 = Carbon::today()->subDays(29)->startOfDay();
+
+            $commission30 = Order::query()
+                ->where('status', 'paid')
+                ->whereNotNull('commissions')
+                ->whereBetween('paid_at', [$from30, now()])
+                ->get(['commissions'])
+                ->sum(fn ($order) => (int) collect($order->commissions ?? [])->sum('commission_amount'));
+
+            $subscription30 = (int) SellerSubscription::query()
+                ->where('price_paid', '>', 0)
+                ->whereBetween('created_at', [$from30, now()])
+                ->sum('price_paid');
+
+            return [
+                'total' => (int) $commission + $subscription,
+                'commission' => (int) $commission,
+                'subscription' => $subscription,
+                'total30' => (int) $commission30 + $subscription30,
+            ];
+        });
+    }
+
+    /** 14-day STACKED revenue chart (commission + subscription), cached like the other charts. */
+    public function getRevenueChartProperty(): Collection
+    {
+        return collect($this->cached('revenueChart', function (): array {
+            $from = Carbon::today()->subDays(13);
+            $window = [$from->copy()->startOfDay(), now()];
+
+            $commissionByDay = Order::query()
+                ->where('status', 'paid')
+                ->whereNotNull('commissions')
+                ->whereBetween('paid_at', $window)
+                ->get(['paid_at', 'commissions'])
+                ->groupBy(fn ($order) => $order->paid_at?->format('Y-m-d'))
+                ->map(fn ($dayOrders) => (int) $dayOrders
+                    ->flatMap(fn ($order) => collect($order->commissions ?? []))
+                    ->sum('commission_amount'));
+
+            $subscriptionByDay = SellerSubscription::query()
+                ->where('price_paid', '>', 0)
+                ->whereBetween('created_at', $window)
+                ->get(['created_at', 'price_paid'])
+                ->groupBy(fn ($row) => $row->created_at?->format('Y-m-d'))
+                ->map(fn ($rows) => (int) $rows->sum('price_paid'));
+
+            $out = [];
+
+            for ($i = 0; $i < 14; $i++) {
+                $day = $from->copy()->addDays($i);
+                $key = $day->toDateString();
+                $dayName = $day->locale('fa')->minDayName;
+                $commission = (int) ($commissionByDay[$key] ?? 0);
+                $subscription = (int) ($subscriptionByDay[$key] ?? 0);
+
+                $out[] = [
+                    'label' => $dayName.' '.Fmt::toFa($day->day),
+                    'short' => mb_substr($dayName, 0, 1),
+                    'commission' => $commission,
+                    'subscription' => $subscription,
+                    'total' => $commission + $subscription,
+                    'today' => $i === 13,
+                ];
+            }
+
+            return $out;
+        }));
+    }
+
     /** Active home visuals (hero slides + banner cards) for the dashboard tile. */
     public function getBannersProperty(): int
     {
@@ -284,6 +373,8 @@ class Dashboard extends Component
             'banners' => $this->banners,
             'recentOrders' => $this->recentOrders,
             'recentActivities' => $this->recentActivities(),
+            'revenue' => $this->revenue,
+            'revenueChart' => $this->revenueChart,
         ])->title('داشبورد مدیریت')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — داشبورد']);
     }

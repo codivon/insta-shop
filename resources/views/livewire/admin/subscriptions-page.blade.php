@@ -135,90 +135,97 @@
         @endif
     </div>
 
-    {{-- ── grant modal ── --}}
-    @if ($grantOpen)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" wire:key="grant-modal">
-            <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl dark:bg-slate-900">
-                <div class="mb-3 flex items-center justify-between">
-                    <h3 class="text-sm font-extrabold">اعطای اشتراک به فروشنده</h3>
-                    <button type="button" wire:click="closeGrant" class="grid size-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
-                        <x-icon name="x" class="size-4" />
-                    </button>
-                </div>
+    {{-- ── grant modal (standard modal-panel — v0.23.0 fix: the hand-rolled
+         fixed-inset markup had no reliable height cap/scroll and its close
+         buttons were unreachable on some devices) ── --}}
+    <x-modal-panel open="$wire.grantOpen" max-width="lg" labelledby="grant-modal-title" z-class="z-[75]"
+                   close-js="__ipOpen = false; $wire.closeGrant()">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
+                <h3 id="grant-modal-title" class="flex items-center gap-2 text-sm font-extrabold">
+                    <span class="grid size-8 place-items-center rounded-xl bg-amber-600/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+                        <x-icon name="crown" class="size-4" />
+                    </span>
+                    اعطای اشتراک به فروشنده
+                </h3>
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeGrant()"
+                        class="grid size-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            </div>
+        </x-slot:header>
 
-                <div class="space-y-3">
-                    {{-- seller picker --}}
-                    <div class="rounded-2xl border border-slate-200 p-3 dark:border-slate-700">
-                        <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">فروشنده *</span>
-                        @if ($grantSellerId)
-                            @php $picked = \App\Models\Seller::find($grantSellerId); @endphp
-                            <div class="mt-2 flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 dark:bg-emerald-950/30">
-                                <span class="text-xs font-extrabold text-emerald-700 dark:text-emerald-300">{{ $picked?->full_name ?: 'فروشنده #'.\App\Support\Fmt::toFa($grantSellerId) }} @if($picked?->instagram_username) (&#64;{{ $picked->instagram_username }}) @endif</span>
-                                <button type="button" wire:click="$set('grantSellerId', null)" class="text-[10px] font-bold text-rose-500">تغییر</button>
-                            </div>
-                        @else
-                            <input type="text" wire:model.live="grantSellerQuery" placeholder="جستجو: نام، آیدی یا موبایل…"
-                                   class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
-                            <div class="mt-2 max-h-44 space-y-1 overflow-y-auto">
-                                @forelse ($sellerOptions as $option)
-                                    <button type="button" wire:click="pickSeller({{ $option->id }})"
-                                            class="flex w-full items-center justify-between rounded-xl border border-slate-100 px-3 py-2 text-start text-[11px] font-bold transition hover:border-primary-300 hover:bg-primary-50 dark:border-slate-800 dark:hover:border-primary-800 dark:hover:bg-primary-950/20">
-                                        <span>{{ $option->full_name ?: 'فروشنده #'.\App\Support\Fmt::toFa($option->id) }} @if($option->instagram_username) (&#64;{{ $option->instagram_username }}) @endif</span>
-                                        <span class="text-[10px] font-semibold text-slate-400" dir="ltr">{{ $option->phone }}</span>
-                                    </button>
-                                @empty
-                                    <p class="py-2 text-center text-[10px] text-slate-400">فروشنده‌ای یافت نشد.</p>
-                                @endforelse
-                            </div>
-                        @endif
-                        @error('grantSellerId') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+        <div class="space-y-3 p-5">
+            {{-- seller picker --}}
+            <div class="rounded-2xl border border-slate-200 p-3 dark:border-slate-700">
+                <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">فروشنده *</span>
+                @if ($grantSellerId)
+                    @php $picked = \App\Models\Seller::find($grantSellerId); @endphp
+                    <div class="mt-2 flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 dark:bg-emerald-950/30">
+                        <span class="text-xs font-extrabold text-emerald-700 dark:text-emerald-300">{{ $picked?->full_name ?: 'فروشنده #'.\App\Support\Fmt::toFa($grantSellerId) }} @if($picked?->instagram_username) (&#64;{{ $picked->instagram_username }}) @endif</span>
+                        <button type="button" wire:click="$set('grantSellerId', null)" class="text-[10px] font-bold text-rose-500">تغییر</button>
                     </div>
+                @else
+                    <input type="text" wire:model.live="grantSellerQuery" placeholder="جستجو: نام، آیدی یا موبایل…"
+                           class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                    <div class="scroll-slim mt-2 max-h-44 space-y-1 overflow-y-auto">
+                        @forelse ($sellerOptions as $option)
+                            <button type="button" wire:click="pickSeller({{ $option->id }})"
+                                    class="flex w-full items-center justify-between rounded-xl border border-slate-100 px-3 py-2 text-start text-[11px] font-bold transition hover:border-primary-300 hover:bg-primary-50 dark:border-slate-800 dark:hover:border-primary-800 dark:hover:bg-primary-950/20">
+                                <span>{{ $option->full_name ?: 'فروشنده #'.\App\Support\Fmt::toFa($option->id) }} @if($option->instagram_username) (&#64;{{ $option->instagram_username }}) @endif</span>
+                                <span class="text-[10px] font-semibold text-slate-400" dir="ltr">{{ $option->phone }}</span>
+                            </button>
+                        @empty
+                            <p class="py-2 text-center text-[10px] text-slate-400">فروشنده‌ای یافت نشد.</p>
+                        @endforelse
+                    </div>
+                @endif
+                @error('grantSellerId') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </div>
 
-                    {{-- plan picker --}}
-                    <label class="block">
-                        <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">پلن *</span>
-                        <select wire:model="grantPlanId"
-                                class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
-                            <option value="">— انتخاب پلن —</option>
-                            @foreach ($plans as $plan)
-                                <option value="{{ $plan->id }}">{{ $plan->title }} — {{ $plan->durationLabel() }} — {{ \App\Support\Fmt::money($plan->price) }}</option>
-                            @endforeach
-                        </select>
-                        @error('grantPlanId') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-                    </label>
+            {{-- plan picker --}}
+            <label class="block">
+                <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">پلن *</span>
+                <select wire:model="grantPlanId"
+                        class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                    <option value="">— انتخاب پلن —</option>
+                    @foreach ($plans as $plan)
+                        <option value="{{ $plan->id }}">{{ $plan->title }} — {{ $plan->durationLabel() }} — {{ \App\Support\Fmt::money($plan->price) }}</option>
+                    @endforeach
+                </select>
+                @error('grantPlanId') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </label>
 
-                    {{-- price --}}
-                    <label class="block">
-                        <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">مبلغ دریافتی (تومان) — ۰ یا خالی = هدیه/رایگان</span>
-                        <input type="number" min="0" wire:model="grantPrice" placeholder="مبلغی که واقعاً دریافت کرده‌اید (مثلاً کارت‌به‌کارت)"
-                               class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
-                        @error('grantPrice') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-                    </label>
+            {{-- price --}}
+            <label class="block">
+                <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">مبلغ دریافتی (تومان) — ۰ یا خالی = هدیه/رایگان</span>
+                <input type="number" min="0" wire:model="grantPrice" placeholder="مبلغی که واقعاً دریافت کرده‌اید (مثلاً کارت‌به‌کارت)"
+                       class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                @error('grantPrice') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </label>
 
-                    <label class="block">
-                        <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">توضیح (اختیاری)</span>
-                        <input type="text" wire:model="grantNote" maxlength="200" placeholder="مثلاً: پرداخت کارت‌به‌کارت مورخ…"
-                               class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
-                        @error('grantNote') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
-                    </label>
+            <label class="block">
+                <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">توضیح (اختیاری)</span>
+                <input type="text" wire:model="grantNote" maxlength="200" placeholder="مثلاً: پرداخت کارت‌به‌کارت مورخ…"
+                       class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                @error('grantNote') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </label>
 
-                    <p class="rounded-xl bg-slate-50 px-3 py-2 text-[10px] leading-5 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
-                        اگر همین پلن از قبل فعال باشد، {{ \App\Support\Fmt::toFa(optional($plans->firstWhere('id', (int) $grantPlanId))->duration_days ?? 0) }} روز به انتهای آن اضافه می‌شود (تمدید).
-                        پلن دیگر → اشتراک فعلی بسته و پلن جدید فوراً فعال می‌شود. فروشنده اعلان می‌گیرد.
-                    </p>
-                </div>
+            <p class="rounded-xl bg-slate-50 px-3 py-2 text-[10px] leading-5 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                اگر همین پلن از قبل فعال باشد، {{ \App\Support\Fmt::toFa(optional($plans->firstWhere('id', (int) $grantPlanId))->duration_days ?? 0) }} روز به انتهای آن اضافه می‌شود (تمدید).
+                پلن دیگر → اشتراک فعلی بسته و پلن جدید فوراً فعال می‌شود. کمیسیونِ پلن در «کمیسیون اختصاصی» فروشنده ثبت و فروشنده اعلان می‌گیرد.
+            </p>
 
-                <div class="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-                    <button type="button" wire:click="closeGrant"
-                            class="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
-                        انصراف
-                    </button>
-                    <button type="button" wire:click="submitGrant" wire:loading.attr="disabled" wire:target="submitGrant"
-                            class="rounded-xl bg-amber-500 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-amber-500/25 transition hover:bg-amber-600 active:scale-95 disabled:opacity-50">
-                        فعال‌سازی اشتراک
-                    </button>
-                </div>
+            <div class="flex items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeGrant()"
+                        class="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                    انصراف
+                </button>
+                <button type="button" wire:click="submitGrant" wire:loading.attr="disabled" wire:target="submitGrant"
+                        class="rounded-xl bg-amber-500 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-amber-500/25 transition hover:bg-amber-600 active:scale-95 disabled:opacity-50">
+                    فعال‌سازی اشتراک
+                </button>
             </div>
         </div>
-    @endif
+    </x-modal-panel>
 </div>

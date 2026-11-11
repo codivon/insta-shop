@@ -98,6 +98,67 @@
         @endforeach
     </div>
 
+    {{-- ── v0.23.0 — platform revenue: hero number + 14-day stacked chart ── --}}
+    <div class="min-w-0 rounded-2xl border border-amber-200 bg-white p-5 shadow-sm dark:border-amber-900/60 dark:bg-slate-900" data-testid="revenue-card">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+                <span class="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-xl shadow-amber-600/25">
+                    <x-icon name="coins" class="size-6" />
+                </span>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2 text-xs font-extrabold text-amber-700 dark:text-amber-300">
+                        درآمد پلتفرم (کمیسیون + اشتراک)
+                        <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">از ابتدا</span>
+                    </div>
+                    <div class="mt-1 text-2xl font-black tracking-tight text-amber-600 dark:text-amber-400">{{ \App\Support\Fmt::money($revenue['total']) }}</div>
+                    <div class="mt-0.5 text-[10px] font-semibold text-slate-400">
+                        تومان — ۳۰ روز اخیر: {{ \App\Support\Fmt::moneyShort($revenue['total30']) }}
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-4 text-[11px] font-bold">
+                <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-300">
+                    <span class="size-2.5 rounded-sm bg-gradient-to-t from-amber-500 to-amber-300"></span>
+                    کمیسیون: {{ \App\Support\Fmt::moneyShort($revenue['commission']) }}
+                </span>
+                <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-300">
+                    <span class="size-2.5 rounded-sm bg-gradient-to-t from-violet-600 to-violet-400"></span>
+                    اشتراک: {{ \App\Support\Fmt::moneyShort($revenue['subscription']) }}
+                </span>
+                <a href="{{ route('admin.income') }}" wire:navigate class="flex items-center gap-1 text-primary-600 hover:text-primary-700 dark:text-primary-400">
+                    گزارش کامل
+                    <x-icon name="chevron-left" class="size-3.5" />
+                </a>
+            </div>
+        </div>
+
+        {{-- stacked bars: violet subscription + amber commission --}}
+        <div class="mt-4 flex h-28 items-end gap-1.5" dir="ltr">
+            @php $maxRev = max($revenueChart->max('total'), 1); @endphp
+            @foreach ($revenueChart as $bar)
+                <div class="group flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                    <div class="flex w-full min-w-0 flex-1 flex-col justify-end" title="{{ $bar['label'] }} — جمع {{ \App\Support\Fmt::moneyShort($bar['total']) }} تومان (کمیسیون {{ \App\Support\Fmt::moneyShort($bar['commission']) }} / اشتراک {{ \App\Support\Fmt::moneyShort($bar['subscription']) }})">
+                        @if ($bar['commission'] > 0)
+                            <div class="w-full rounded-t-md bg-gradient-to-t from-amber-500 to-amber-300 transition-all group-hover:from-amber-600"
+                                 style="height: {{ max(3, (int) round($bar['commission'] / $maxRev * 92)) }}px"></div>
+                        @endif
+                        @if ($bar['subscription'] > 0)
+                            <div class="w-full {{ $bar['commission'] > 0 ? '' : 'rounded-t-md' }} bg-gradient-to-t from-violet-600 to-violet-400 transition-all group-hover:from-violet-700"
+                                 style="height: {{ max(3, (int) round($bar['subscription'] / $maxRev * 92)) }}px"></div>
+                        @endif
+                        @if ($bar['total'] === 0)
+                            <div class="w-full rounded-t-md bg-slate-100 dark:bg-slate-800" style="height: 3px"></div>
+                        @endif
+                    </div>
+                    <span class="w-full min-w-0 truncate text-center text-[9px] font-bold {{ $bar['today'] ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400' }}">
+                        <span class="sm:hidden">{{ $bar['short'] }}</span>
+                        <span class="hidden sm:inline">{{ $bar['label'] }}</span>
+                    </span>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
     <div class="grid gap-6 xl:grid-cols-5">
 
         {{-- ── 14-day story views chart ── min-w-0: a grid item must be

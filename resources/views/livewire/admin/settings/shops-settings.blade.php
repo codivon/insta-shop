@@ -110,5 +110,32 @@
                 </p>
             </div>
         </div>
+
+        {{-- نرخ روزانهٔ نردبان (v0.23.0) --}}
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 lg:col-span-2">
+            <div class="flex items-start gap-3">
+                <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
+                    <x-icon name="rocket" class="size-5" />
+                </span>
+                <div>
+                    <h3 class="text-sm font-extrabold">نردبان (نمایش در صدر صفحهٔ اول)</h3>
+                    <p class="mt-1 text-[11px] leading-5 text-slate-400">
+                        فروشنده برای یک محصول به مدت مشخص «نردبان» می‌خرد (مثل دیوار) و محصولش در نوار «نردبان‌ها» صدر صفحهٔ اول نمایش داده می‌شود. نرخ روزانه را اینجا تعیین کنید؛ ۰ یعنی نردبان خاموش است.
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-4 flex flex-wrap items-end gap-4">
+                <label class="block">
+                    <span class="mb-1.5 block text-[11px] font-bold text-slate-500 dark:text-slate-400">نرخ هر روز نردبان (تومان) — ۰ = خاموش</span>
+                    <input type="number" min="0" wire:model.blur="bumpPricePerDay" placeholder="مثلاً 15000"
+                           class="w-48 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-semibold outline-none transition focus:border-primary-400 dark:border-slate-700 dark:bg-slate-800">
+                    @error('bumpPricePerDay') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                </label>
+                <p class="rounded-xl bg-slate-50 px-3 py-2.5 text-[10px] font-semibold leading-5 text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
+                    مثال: با نرخ ۱۵٬۰۰۰ تومان، نردبان ۷ روزه = ۱۰۵٬۰۰۰ تومان که از کیف پول فروشنده کسر می‌شود.
+                </p>
+            </div>
+        </div>
     </div>
 </div>
