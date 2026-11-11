@@ -24,6 +24,12 @@
                 {{ session('wallet-flash') }}
             </div>
         @endif
+        @if (session('wallet-deposit-error'))
+            <div class="mb-3 flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-bold text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300" x-data x-init="setTimeout(() => $el.remove(), 5000)">
+                <x-icon name="triangle-alert" class="size-4 shrink-0" />
+                {{ session('wallet-deposit-error') }}
+            </div>
+        @endif
 
         {{-- ───────── Balance hero card ───────── --}}
         <div class="relative overflow-hidden rounded-2xl bg-gradient-to-bl from-primary-700 via-primary-600 to-primary-500 p-5 text-white shadow-xl shadow-primary-600/25">
@@ -48,12 +54,33 @@
                 </span>
             </div>
 
-            <button type="button" wire:click="openWithdraw" @click="true"
-                    class="relative mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-3 text-xs font-extrabold text-primary-700 shadow-lg transition hover:bg-primary-50 active:scale-[.98]">
-                <x-icon name="arrow-up-left" class="size-4" />
-                درخواست برداشت
-            </button>
+            <div class="relative mt-4 grid grid-cols-2 gap-2">
+                <button type="button" wire:click="openDeposit"
+                        class="flex items-center justify-center gap-1.5 rounded-2xl bg-white py-3 text-xs font-extrabold text-primary-700 shadow-lg transition hover:bg-primary-50 active:scale-[.98]">
+                    <x-icon name="arrow-down-left" class="size-4" />
+                    واریز به کیف پول
+                </button>
+                <button type="button" wire:click="openWithdraw" @click="true"
+                        class="flex items-center justify-center gap-1.5 rounded-2xl border border-white/40 bg-white/10 py-3 text-xs font-extrabold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[.98]">
+                    <x-icon name="arrow-up-left" class="size-4" />
+                    درخواست برداشت
+                </button>
+            </div>
         </div>
+
+        {{-- pending gateway deposits (v0.24.0) --}}
+        @foreach ($pendingDeposits as $pendingDeposit)
+            <div class="mt-3 flex items-center justify-between gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 dark:border-amber-900 dark:bg-amber-950/20" wire:key="pending-deposit-{{ $pendingDeposit->id }}">
+                <span class="flex items-center gap-2 text-[10.5px] font-bold text-amber-700 dark:text-amber-300">
+                    <x-icon name="clock" class="size-4 shrink-0" />
+                    واریز در انتظار پرداخت — {{ \App\Support\Fmt::money($pendingDeposit->amount) }} تومان از درگاه {{ ($depositGateways[$pendingDeposit->gateway] ?? $pendingDeposit->gateway) }}
+                </span>
+                <a href="{{ route('seller.wallet.deposit.go', $pendingDeposit) }}"
+                   class="shrink-0 rounded-xl bg-amber-600 px-3 py-1.5 text-[10px] font-extrabold text-white shadow-sm transition hover:bg-amber-700">
+                    ادامه پرداخت
+                </a>
+            </div>
+        @endforeach
 
         {{-- ───────── bank cards quick access ───────── --}}
         <a href="{{ route('seller.cards') }}" wire:navigate
@@ -381,6 +408,83 @@
             </form>
         </x-modal-panel>
     </div>
+
+    {{-- ═══════════════════ DEPOSIT MODAL (واریز از درگاه — v0.24.0) ═══════════════════ --}}
+    <x-modal-panel open="$wire.depositOpen" max-width="sm" labelledby="deposit-modal-title" in-frame
+                   close-js="__ipOpen = false; $wire.closeDeposit()">
+        <x-slot:header>
+            <div class="flex items-center justify-between px-5 py-4">
+                <h3 id="deposit-modal-title" class="flex items-center gap-2 text-sm font-extrabold">
+                    <span class="grid size-8 place-items-center rounded-xl bg-emerald-600/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                        <x-icon name="arrow-down-left" class="size-4" />
+                    </span>
+                    واریز به کیف پول
+                </h3>
+                <button type="button" x-on:click="__ipOpen = false; $wire.closeDeposit()"
+                        class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="بستن">
+                    <x-icon name="x" class="size-4" />
+                </button>
+            </div>
+        </x-slot:header>
+
+        <form wire:submit="submitDeposit" class="space-y-4 px-5 py-5">
+            <label class="block">
+                <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">مبلغ واریز (تومان) <span class="text-rose-500">*</span></span>
+                <input type="text" inputmode="numeric" dir="ltr" wire:model="depositAmount" placeholder="200000"
+                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-xs font-extrabold outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-800">
+                <div class="mt-1.5 flex flex-wrap gap-1.5">
+                    @foreach ([100000 => '۱۰ هزار', 200000 => '۲۰ هزار', 500000 => '۵۰ هزار'] as $quickAmount => $quickLabel)
+                        <button type="button" wire:click="$set('depositAmount', '{{ $quickAmount }}')"
+                                class="rounded-full border border-slate-200 px-2.5 py-1 text-[9.5px] font-bold text-slate-500 transition hover:border-emerald-300 hover:text-emerald-600 dark:border-slate-700 dark:text-slate-300">
+                            {{ $quickLabel }} تومان
+                        </button>
+                    @endforeach
+                </div>
+                @error('depositAmount') <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </label>
+
+            <div>
+                <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">درگاه پرداخت</span>
+                <div class="grid gap-2">
+                    @forelse ($depositGateways as $gatewayKey => $gatewayLabel)
+                        <label class="flex cursor-pointer items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-bold transition {{ $depositGateway === $gatewayKey
+                            ? 'border-emerald-400 bg-emerald-50/70 dark:border-emerald-700 dark:bg-emerald-950/30'
+                            : 'border-slate-200 bg-white hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-800' }}">
+                            <span class="flex items-center gap-2">
+                                <input type="radio" value="{{ $gatewayKey }}" wire:model="depositGateway" class="accent-emerald-600">
+                                {{ $gatewayLabel }}
+                            </span>
+                            <x-icon name="shield" class="size-4 {{ $depositGateway === $gatewayKey ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600' }}" />
+                        </label>
+                    @empty
+                        <p class="rounded-xl bg-amber-50 px-3 py-2 text-[10.5px] font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                            درگاه پرداختی تنظیم نشده — از مدیر بخواهید درگاه را در «تنظیمات ← درگاه پرداخت» فعال کند.
+                        </p>
+                    @endforelse
+                </div>
+                @error('depositGateway') <p class="mt-1.5 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+            </div>
+
+            @if ($depositAmount !== '' && (int) $depositAmount >= 10000)
+                <div class="rounded-2xl bg-slate-50 px-3.5 py-2.5 text-[11px] dark:bg-slate-800/60">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400">مبلغ واریز</span>
+                        <span class="font-black text-emerald-600 dark:text-emerald-400">{{ \App\Support\Fmt::money((int) $depositAmount) }} تومان</span>
+                    </div>
+                </div>
+            @endif
+
+            <button type="submit" wire:loading.attr="disabled" wire:target="submitDeposit"
+                    class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-bold text-white shadow-md shadow-emerald-600/25 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+                <span wire:loading wire:target="submitDeposit" class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                پرداخت و بازگشت از درگاه
+            </button>
+
+            <p class="text-center text-[9.5px] leading-5 text-slate-400">
+                پس از پرداخت در درگاه، مبلغ به‌صورت خودکار به کیف پول شما اضافه می‌شود و در «گردش حساب» با عنوان «واریز فروش» ثبت می‌گردد.
+            </p>
+        </form>
+    </x-modal-panel>
 
     {{-- ═══════════════════ TRANSACTION DETAILS MODAL ═══════════════════ --}}
     <x-modal-panel open="$wire.detailId !== null" max-width="sm" labelledby="tx-detail-title" in-frame

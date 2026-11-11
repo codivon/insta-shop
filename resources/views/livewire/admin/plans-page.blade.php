@@ -82,6 +82,11 @@
                             <span class="text-[10px] font-bold text-slate-400">تومان</span>
                         </div>
                         <div class="flex flex-wrap items-center justify-end gap-1">
+                            @if ($plan->isOneTime())
+                                <span class="rounded-lg bg-fuchsia-50 px-2 py-1 text-[9px] font-black text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300" title="هر فروشنده فقط یک بار می‌تواند این پلن را بخرد">
+                                    یک‌بارمصرف
+                                </span>
+                            @endif
                             <span class="rounded-lg bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
                                 {{ $plan->commission_type === 'percent' ? '٪'.\App\Support\Fmt::toFa($plan->commission_value) : ($plan->commission_type === 'fixed' ? \App\Support\Fmt::moneyShort($plan->commission_value).' ت' : 'نرخ سراسری') }}
                             </span>
@@ -259,6 +264,14 @@
                             @error('sort') <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
                         </label>
                     </div>
+
+                    <label class="flex cursor-pointer items-start justify-between gap-2 rounded-xl border border-fuchsia-200 bg-fuchsia-50/60 px-3 py-2.5 dark:border-fuchsia-800 dark:bg-fuchsia-950/20">
+                        <span>
+                            <span class="block text-[11px] font-extrabold text-slate-600 dark:text-slate-300">خرید یک‌بار مصرف (بدون تمدید)</span>
+                            <span class="mt-0.5 block text-[9.5px] leading-4 text-slate-400">هر فروشنده فقط یک بار می‌تواند این پلن را بخرد — بعد از آن دیگر قابل خرید نیست (دکمهٔ خریدش قفل می‌شود).</span>
+                        </span>
+                        <input type="checkbox" wire:model="oneTime" class="mt-0.5 size-4 shrink-0 accent-fuchsia-600">
+                    </label>
 
                     <label class="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/40">
                         <span class="text-[11px] font-extrabold text-slate-600 dark:text-slate-300">فعال (قابل خرید فروشندگان)</span>

@@ -3,6 +3,7 @@
 namespace App\Livewire\Seller;
 
 use App\Livewire\Concerns\NotifiesOnValidation;
+use App\Models\BumpPlan;
 use App\Models\Product;
 use App\Models\ProductBump;
 use App\Models\Wallet;
@@ -14,10 +15,15 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Seller — «نردبان» (v0.23.0, Divar-style): pick a published product,
- * choose a duration and pay from the wallet to keep it at the very top
- * of the home page for that window. Renewal while running extends the
- * current bump from its ends_at (BumpService::grant stacking rules).
+ * Seller — «نردبان» (v0.24.0, plan-based): pick a published product,
+ * choose ONE of the admin-defined bump plans («مثلاً ۱۰ روز با قیمت X»)
+ * and pay from the wallet to keep it at the very top of the home page
+ * for that window. Renewal while running extends the current bump from
+ * its ends_at (BumpService::grant stacking rules).
+ *
+ * When the admin's master toggle is OFF («تنظیمات فروشگاه‌ها»), the whole
+ * section is hidden from the seller panel (home strip) and this page
+ * shows a friendly disabled state.
  */
 #[Layout('layouts.seller-slot')]
 class BumpPage extends Component
@@ -29,21 +35,25 @@ class BumpPage extends Component
 
     public ?int $buyProductId = null;
 
-    public int $buyDays = 7;
+    public ?int $buyPlanId = null;
 
     public string $productQuery = '';
 
     public function openBuy(int $productId): void
     {
+        if (! BumpService::enabled()) {
+            return;
+        }
+
         $product = $this->bumpableProducts->firstWhere('id', $productId);
 
-        if ($product === null || BumpService::pricePerDay() <= 0) {
+        if ($product === null) {
             return;
         }
 
         $this->resetErrorBag();
         $this->buyProductId = $productId;
-        $this->buyDays = 7;
+        $this->buyPlanId = BumpService::plans()->first()?->id;
         $this->buyOpen = true;
     }
 
@@ -51,13 +61,14 @@ class BumpPage extends Component
     {
         $this->buyOpen = false;
         $this->buyProductId = null;
+        $this->buyPlanId = null;
         $this->productQuery = '';
         $this->resetErrorBag();
     }
 
-    public function setBuyDays(int $days): void
+    public function setBuyPlan(int $planId): void
     {
-        $this->buyDays = max(1, min(90, $days));
+        $this->buyPlanId = BumpService::plans()->contains('id', $planId) ? $planId : $this->buyPlanId;
     }
 
     /** Confirm modal → debit the wallet and start/extend the bump. */
@@ -69,13 +80,15 @@ class BumpPage extends Component
             ? Product::query()->where('shop_id', $seller->shop?->id)->find($this->buyProductId)
             : null;
 
-        if ($seller === null || $product === null) {
+        $plan = BumpPlan::query()->where('is_active', true)->find($this->buyPlanId);
+
+        if ($seller === null || $product === null || $plan === null) {
             $this->closeBuy();
 
             return;
         }
 
-        [$ok, $row, $error] = BumpService::purchaseFromWallet($seller, $product, $this->buyDays);
+        [$ok, $row, $error] = BumpService::purchaseFromWallet($seller, $product, $plan);
 
         if (! $ok) {
             $this->addError('buy', $error ?? 'خرید نردبان انجام نشد.');
@@ -85,13 +98,14 @@ class BumpPage extends Component
 
         ActivityLogger::log(
             'bump.purchased',
-            'فروشنده @'.($seller->instagram_username ?: $seller->phone).' محصول «'.$product->name.'» را '.Fmt::toFa($this->buyDays).' روز نردبان کرد — '.Fmt::money($row->price_paid),
+            'فروشنده @'.($seller->instagram_username ?: $seller->phone).' محصول «'.$product->name.'» را با طرح «'.$plan->title.'» ('.$plan->daysLabel().') نردبان کرد — '.Fmt::money($row->price_paid),
             subject: $row,
-            after: ['product_id' => $product->id, 'days' => $this->buyDays, 'ends_at' => $row->ends_at->toDateTimeString()],
+            after: ['product_id' => $product->id, 'bump_plan_id' => $plan->id, 'ends_at' => $row->ends_at->toDateTimeString()],
         );
 
         $this->buyOpen = false;
         $this->buyProductId = null;
+        $this->buyPlanId = null;
         $this->productQuery = '';
 
         session()->flash('bump-flash', 'نردبان «'.$product->name.'» فعال شد 🚀 مبلغ از کیف پول شما کسر شد.');
@@ -121,10 +135,10 @@ class BumpPage extends Component
             ->get(['id', 'shop_id', 'name', 'price', 'compare_at_price']);
     }
 
-    /** Price preview of the confirm modal. */
-    public function getBuyPriceProperty(): int
+    /** The plan chosen in the confirm modal (for the price preview). */
+    public function getBuyPlanProperty(): ?BumpPlan
     {
-        return BumpService::priceForDays($this->buyDays);
+        return $this->buyPlanId !== null ? BumpPlan::query()->find($this->buyPlanId) : null;
     }
 
     public function render()
@@ -148,14 +162,14 @@ class BumpPage extends Component
         $wallet = $seller ? Wallet::ensureForSeller($seller->id) : null;
 
         return view('livewire.seller.bump-page', [
+            'enabled' => BumpService::enabled(),
+            'plans' => BumpService::plans(),
             'active' => $active,
             'history' => $history,
-            'perDay' => BumpService::pricePerDay(),
-            'packages' => BumpService::packages(),
             'products' => $this->bumpableProducts,
             'walletBalance' => (int) ($wallet?->balance ?? 0),
             'buyProduct' => $this->buyProductId ? Product::query()->with('mainImage')->find($this->buyProductId) : null,
-            'buyPrice' => $this->buyPrice,
+            'buyPlan' => $this->buyPlan,
         ])->title('نردبان');
     }
 }

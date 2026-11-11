@@ -9,20 +9,21 @@ use App\Support\ActivityLogger;
 use Livewire\Component;
 
 /**
- * Admin — «تنظیمات فروشگاه‌ها» (batch 79 + v0.22.0):
+ * Admin — «تنظیمات فروشگاه‌ها» (batch 79 + v0.22.0 + v0.24.0):
  *   • تایید خودکار فروشنده — new sellers skip the pending queue;
  *   • کمیسیون سراسری — percent (٪ of each shop's goods total) or fixed
  *     (تومان flat per shop per order); sellers may override it personally
  *     from their own edit modal (SellersIndex);
- *   • دورهٔ آزمایشی اشتراک (v0.22.0) — shops.subscription_trial_days:
- *     every freshly-approved seller gets a one-time free subscription
- *     period (e.g. «۳ ماه رایگان») — the plan FEE is waived, the
- *     commission resolution stays normal.
- *   • نرخ روزانهٔ نردبان (v0.23.0) — shops.bump_price_per_day: the
- *     Divar-style product bump price per day; ۰ = the whole bump
- *     feature is OFF (seller page shows it as disabled).
+ *   • نردبان — ONE master toggle (روشن/خاموش) ONLY (client: «در بخش
+ *     نردبان فقط خاموش روشن باشد») — all bump PRICING lives in the
+ *     dedicated «طرح‌های نردبان» page (BumpPlan rows), not here.
+ *
+ * RETIRED in v0.24.0: دورهٔ آزمایشی اشتراک (shops.subscription_trial_days)
+ * — the client found it useless; no new trial is ever minted and the
+ * setting is no longer written. Old trial rows in history keep rendering.
+ *
  * Stored as settings group "shops": auto_approve_seller / commission_type /
- * commission_value / subscription_trial_days / bump_price_per_day.
+ * commission_value / bump_enabled.
  * Default commission = صفر.
  */
 class ShopsSettings extends Component
@@ -38,9 +39,7 @@ class ShopsSettings extends Component
 
     public string $commissionValue = '0';
 
-    public string $trialDays = '0';
-
-    public string $bumpPricePerDay = '0';
+    public bool $bumpEnabled = false;
 
     public function mount(): void
     {
@@ -48,8 +47,7 @@ class ShopsSettings extends Component
         $this->commissionType = (string) Setting::get('shops.commission_type', 'percent');
         $this->commissionType = in_array($this->commissionType, ['percent', 'fixed'], true) ? $this->commissionType : 'percent';
         $this->commissionValue = (string) (int) Setting::get('shops.commission_value', 0);
-        $this->trialDays = (string) (int) Setting::get('shops.subscription_trial_days', 0);
-        $this->bumpPricePerDay = (string) (int) Setting::get('shops.bump_price_per_day', 0);
+        $this->bumpEnabled = (bool) Setting::get('shops.bump_enabled', false);
     }
 
     public function updatedCommissionType(): void
@@ -68,8 +66,7 @@ class ShopsSettings extends Component
                 'min:0',
                 $this->commissionType === 'percent' ? 'max:100' : 'max:999999999999',
             ],
-            'trialDays' => ['required', 'integer', 'min:0', 'max:365'],
-            'bumpPricePerDay' => ['required', 'integer', 'min:0', 'max:999999999999'],
+            'bumpEnabled' => ['boolean'],
         ];
     }
 
@@ -80,13 +77,6 @@ class ShopsSettings extends Component
             'commissionValue.integer' => 'مقدار کمیسیون باید عدد باشد.',
             'commissionValue.min' => 'کمیسیون نمی‌تواند منفی باشد.',
             'commissionValue.max' => 'درصد کمیسیون حداکثر ۱۰۰ است.',
-            'trialDays.required' => 'مدت دورهٔ آزمایشی را وارد کنید (۰ = خاموش).',
-            'trialDays.integer' => 'مدت دورهٔ آزمایشی باید عدد باشد.',
-            'trialDays.min' => 'مدت نمی‌تواند منفی باشد.',
-            'trialDays.max' => 'حداکثر ۳۶۵ روز.',
-            'bumpPricePerDay.required' => 'نرخ روزانهٔ نردبان را وارد کنید (۰ = خاموش).',
-            'bumpPricePerDay.integer' => 'نرخ نردبان باید عدد باشد.',
-            'bumpPricePerDay.min' => 'نرخ نمی‌تواند منفی باشد.',
         ];
     }
 
@@ -98,8 +88,7 @@ class ShopsSettings extends Component
             'shops.auto_approve_seller' => $this->autoApprove ? '1' : '0',
             'shops.commission_type' => $this->commissionType,
             'shops.commission_value' => (int) $this->commissionValue,
-            'shops.subscription_trial_days' => (int) $this->trialDays,
-            'shops.bump_price_per_day' => (int) $this->bumpPricePerDay,
+            'shops.bump_enabled' => $this->bumpEnabled ? '1' : '0',
         ];
 
         $snapshot = ActivityLogger::settingsSnapshot(array_keys($pairs));
@@ -107,10 +96,9 @@ class ShopsSettings extends Component
         Setting::set('shops.auto_approve_seller', $this->autoApprove, 'boolean');
         Setting::set('shops.commission_type', $this->commissionType, 'text');
         Setting::set('shops.commission_value', (int) $this->commissionValue, 'number');
-        Setting::set('shops.subscription_trial_days', (int) $this->trialDays, 'number');
-        Setting::set('shops.bump_price_per_day', (int) $this->bumpPricePerDay, 'number');
+        Setting::set('shops.bump_enabled', $this->bumpEnabled, 'boolean');
 
-        ActivityLogger::logSettingsChanged('تنظیمات فروشگاه‌ها (تایید خودکار، کمیسیون، دورهٔ آزمایشی و نرخ نردبان) ویرایش شد', $snapshot, $pairs);
+        ActivityLogger::logSettingsChanged('تنظیمات فروشگاه‌ها (تایید خودکار، کمیسیون سراسری و کلید نردبان) ویرایش شد', $snapshot, $pairs);
 
         $this->dispatch('panel-toast', message: 'تنظیمات فروشگاه‌ها ذخیره شد. ✅', type: 'success');
     }

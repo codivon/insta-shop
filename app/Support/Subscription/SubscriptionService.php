@@ -5,10 +5,8 @@ namespace App\Support\Subscription;
 use App\Models\Plan;
 use App\Models\Seller;
 use App\Models\SellerSubscription;
-use App\Models\Setting;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
-use App\Support\Fmt;
 use App\Support\JDate;
 use App\Support\SellerNotifier;
 use Illuminate\Support\Facades\DB;
@@ -25,10 +23,9 @@ use Illuminate\Support\Facades\DB;
  *                                  از همین حالت فعال می‌شود.
  *   purchaseFromWallet() → خرید از کیف پول فروشنده (اکشن اتمیک:
  *                          قفل ردیف کیف پول، کسر موجودی، ثبت تراکنش
- *                          «plan» و سپس grant — یا همه یا هیچ).
+ *                          «plan» و سپس grant — یا همه یا هیچ). پلنِ
+ *                          «یک‌بارمصرف» فقط یک بار قابل خرید است.
  *   grantAdmin()         → اعطای دستی مدیر (رایگان/هدیه یا مبلغ دلخواه).
- *   startTrial()         → دورهٔ آزمایشی خودکار فروشندگان تازه‌تأیید
- *                          (تنظیم shops.subscription_trial_days).
  *   revoke()             → لغو: ends_at بسته می‌شود، تاریخچه می‌ماند.
  *
  * Design notes:
@@ -38,6 +35,9 @@ use Illuminate\Support\Facades\DB;
  *    «خرید اشتراک» دیده شود (عیناً مثل برداشت، مبلغ کم می‌شود).
  *  • یادآوری پایان اشتراک (۳ روز مانده) جداگانه در
  *    subscriptions:remind اجرا می‌شود؛ این سرویس با reminded_at کاری ندارد.
+ *  • v0.24.0 — the auto «دورهٔ آزمایشی» machinery is RETIRED (client:
+ *    «دورهٔ آزمایشی اشتراک کاربردی ندارد») — old trial rows in the
+ *    history keep rendering, nothing mints new ones.
  */
 final class SubscriptionService
 {
@@ -116,11 +116,22 @@ final class SubscriptionService
 
     /**
      * Seller self-service purchase: debit the wallet and activate the
-     * plan atomically. Returns [ok, subscription|null] — ok=false means
-     * insufficient balance (never throws for that case).
+     * plan atomically. Returns [ok, subscription|null, error|null] —
+     * ok=false carries a Persian reason (insufficient balance,
+     * one-time plan already owned…).
      */
     public static function purchaseFromWallet(Seller $seller, Plan $plan): array
     {
+        // «خرید یک‌بار مصرف (بدون تمدید)» — checked BEFORE money moves;
+        // any row (running or expired) with this plan id counts as bought.
+        if ($plan->isOneTime()
+            && SellerSubscription::query()
+                ->where('seller_id', $seller->id)
+                ->where('plan_id', $plan->id)
+                ->exists()) {
+            return [false, null, 'این پلن «یک‌بارمصرف» است و شما قبلاً یک بار آن را خریداری کرده‌اید — فقط یک خرید ممکن است.'];
+        }
+
         [$ok, $row] = DB::transaction(function () use ($seller, $plan) {
             $wallet = Wallet::query()
                 ->where('seller_id', $seller->id)
@@ -151,11 +162,13 @@ final class SubscriptionService
             return [true, self::grant($seller, $plan, $price, SellerSubscription::SOURCE_WALLET)];
         });
 
-        if ($ok && $row !== null) {
-            self::notifyActivated($seller, $row, 'پلن «'.$plan->title.'» با پرداخت از کیف پول فعال شد 🎉');
+        if (! $ok) {
+            return [false, null, 'موجودی کیف پول شما برای این پلن کافی نیست.'];
         }
 
-        return [$ok, $row];
+        self::notifyActivated($seller, $row, 'پلن «'.$plan->title.'» با پرداخت از کیف پول فعال شد 🎉');
+
+        return [true, $row, null];
     }
 
     /* ───────────────────────── admin grant ───────────────────────── */
@@ -171,52 +184,6 @@ final class SubscriptionService
         self::notifyActivated($seller, $row, $pricePaid > 0
             ? 'پلن «'.$plan->title.'» برای شما فعال شد ✅'
             : 'پلن «'.$plan->title.'» به‌صورت هدیه برای شما فعال شد 🎁');
-
-        return $row;
-    }
-
-    /* ───────────────────────── trial ───────────────────────── */
-
-    /**
-     * Auto trial for freshly-approved sellers. Fires ONLY when the admin
-     * configured shops.subscription_trial_days > 0 AND the seller has
-     * never had any subscription row (a one-time gift per seller).
-     * Commission during the trial stays the resolved default — the trial
-     * waives the PLAN FEE, not the commission.
-     */
-    public static function startTrial(Seller $seller): ?SellerSubscription
-    {
-        $days = (int) Setting::get('shops.subscription_trial_days', 0);
-
-        if ($days <= 0) {
-            return null;
-        }
-
-        $hasAny = SellerSubscription::query()->where('seller_id', $seller->id)->exists();
-
-        if ($hasAny) {
-            return null;
-        }
-
-        $row = SellerSubscription::query()->create([
-            'seller_id' => $seller->id,
-            'plan_id' => null,
-            'starts_at' => now(),
-            'ends_at' => now()->addDays($days),
-            'price_paid' => 0,
-            'source' => SellerSubscription::SOURCE_TRIAL,
-            'is_trial' => true,
-        ]);
-
-        SellerNotifier::notify(
-            $seller,
-            'subscription.status',
-            'دورهٔ آزمایشی '.Fmt::toFa($days).' روزه فعال شد 🎁',
-            'تا پایان این دوره، هزینهٔ پلن از شما گرفته نمی‌شود. برای دیدن پلن‌ها به «اشتراک و ارتقا» سر بزنید.',
-            route('seller.subscription'),
-            'crown',
-            $row,
-        );
 
         return $row;
     }

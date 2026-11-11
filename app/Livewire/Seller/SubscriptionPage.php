@@ -41,6 +41,17 @@ class SubscriptionPage extends Component
             return;
         }
 
+        // one-time plan already bought → the seller can never buy it again
+        if ($plan->isOneTime()
+            && SellerSubscription::query()
+                ->where('seller_id', (int) auth('seller')->id())
+                ->where('plan_id', $planId)
+                ->exists()) {
+            $this->addError('buy', 'این پلن «یک‌بارمصرف» است و شما قبلاً یک بار آن را خریداری کرده‌اید.');
+
+            return;
+        }
+
         $this->resetErrorBag();
         $this->buyPlanId = $planId;
         $this->buyOpen = true;
@@ -66,10 +77,10 @@ class SubscriptionPage extends Component
             return;
         }
 
-        [$ok, $row] = SubscriptionService::purchaseFromWallet($seller, $plan);
+        [$ok, $row, $error] = SubscriptionService::purchaseFromWallet($seller, $plan);
 
         if (! $ok) {
-            $this->addError('buy', 'موجودی کیف پول شما برای این پلن کافی نیست. با فروش بیشتر، کیف پول‌تان شارژ می‌شود — یا با پشتیبانی تماس بگیرید.');
+            $this->addError('buy', $error ?? 'موجودی کیف پول شما برای این پلن کافی نیست. با فروش بیشتر، کیف پول‌تان شارژ می‌شود — یا با پشتیبانی تماس بگیرید.');
 
             return;
         }
@@ -112,10 +123,17 @@ class SubscriptionPage extends Component
 
         $wallet = $seller ? Wallet::ensureForSeller($seller->id) : null;
 
+        // one-time plans the seller has EVER bought — their buy button is locked
+        $ownedPlanIds = SellerSubscription::query()
+            ->where('seller_id', (int) $seller?->id)
+            ->whereNotNull('plan_id')
+            ->pluck('plan_id');
+
         return view('livewire.seller.subscription-page', [
             'active' => $active,
             'history' => $history,
             'plans' => Plan::sellable(),
+            'ownedPlanIds' => $ownedPlanIds,
             'walletBalance' => (int) ($wallet?->balance ?? 0),
             'commissionLabel' => $commissionType === 'fixed'
                 ? Fmt::money($commissionValue).' ثابت به‌ازای هر سفارش'

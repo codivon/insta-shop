@@ -104,19 +104,21 @@
                     <x-icon name="chevron-left" class="size-3.5" />
                 </span>
             </a>
-            <a href="{{ route('seller.bump') }}" wire:navigate
-               class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                <span class="flex items-center gap-2.5 text-xs font-bold">
-                    <span class="grid size-9 place-items-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
-                        <x-icon name="rocket" class="size-4.5" />
+            @if ($bumpEnabled)
+                <a href="{{ route('seller.bump') }}" wire:navigate
+                   class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <span class="flex items-center gap-2.5 text-xs font-bold">
+                        <span class="grid size-9 place-items-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
+                            <x-icon name="rocket" class="size-4.5" />
+                        </span>
+                        نردبان
                     </span>
-                    نردبان
-                </span>
-                <span class="flex items-center gap-1 text-[10px] text-slate-400">
-                    محصولت را در صدر صفحهٔ اول ببر
-                    <x-icon name="chevron-left" class="size-3.5" />
-                </span>
-            </a>
+                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                        محصولت را در صدر صفحهٔ اول ببر
+                        <x-icon name="chevron-left" class="size-3.5" />
+                    </span>
+                </a>
+            @endif
             <a href="{{ route('seller.reports') }}" wire:navigate
                class="flex w-full items-center justify-between p-4 text-right transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <span class="flex items-center gap-2.5 text-xs font-bold">

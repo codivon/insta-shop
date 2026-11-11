@@ -18,7 +18,7 @@ use Illuminate\Support\Carbon;
  * its current ends_at (BumpService), so the row is both the entitlement
  * and the auditable ledger.
  */
-#[Fillable(['seller_id', 'product_id', 'starts_at', 'ends_at', 'price_paid', 'source', 'note'])]
+#[Fillable(['seller_id', 'product_id', 'starts_at', 'ends_at', 'price_paid', 'bump_plan_id', 'source', 'note'])]
 class ProductBump extends Model
 {
     public const SOURCE_WALLET = 'wallet'; // خرید از کیف پول
@@ -42,6 +42,12 @@ class ProductBump extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /** The «طرح نردبان» this purchase rode on (null = the retired flat-rate era). */
+    public function bumpPlan(): BelongsTo
+    {
+        return $this->belongsTo(BumpPlan::class);
     }
 
     /** Is this bump still running? */

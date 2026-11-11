@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\PushSubscription;
 use App\Models\Shop;
 use App\Models\Story;
+use App\Support\Bump\BumpService;
 use App\Support\Fmt;
 use App\Support\JDate;
 use Carbon\CarbonImmutable;
@@ -83,6 +84,7 @@ class Home extends Component
             'stats' => $stats,
             'storefrontUrl' => $this->storefrontUrl,
             'activeSubscription' => $seller?->activeSubscription(),
+            'bumpEnabled' => BumpService::enabled(),
             'chart' => $chart['series'],
             'chartTotal' => $chart['total'],
             'chartOrders' => $chart['orders'],

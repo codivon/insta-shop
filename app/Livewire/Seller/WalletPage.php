@@ -6,12 +6,14 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\BankCard;
 use App\Models\Shop;
 use App\Models\Wallet;
+use App\Models\WalletDeposit;
 use App\Models\WalletTransaction;
 use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
 use App\Support\Banking;
 use App\Support\Fmt;
 use App\Support\JDate;
+use App\Support\Payments\PaymentService;
 use App\Support\Wallet\WalletService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
@@ -57,6 +59,13 @@ class WalletPage extends Component
     public bool $withdrawOpen = false;
 
     public string $withdrawAmount = '';
+
+    /* ── deposit modal (v0.24.0 — واریز از درگاه پرداخت) ── */
+    public bool $depositOpen = false;
+
+    public string $depositAmount = '';
+
+    public string $depositGateway = '';
 
     /* ── transaction details modal ── */
     public ?int $detailId = null;
@@ -146,6 +155,77 @@ class WalletPage extends Component
     public function updatedWithdrawAmount(mixed $value): void
     {
         $this->withdrawAmount = Fmt::toLatin((string) $value);
+    }
+
+    /* ───────────────────────── deposit modal (واریز از درگاه) ───────────────────────── */
+
+    public function openDeposit(): void
+    {
+        $this->resetErrorBag();
+        $this->depositAmount = '';
+        $this->depositGateway = array_key_first(PaymentService::availableGateways()) ?? '';
+        $this->depositOpen = true;
+    }
+
+    public function closeDeposit(): void
+    {
+        $this->depositOpen = false;
+        $this->depositAmount = '';
+        $this->resetErrorBag();
+    }
+
+    public function updatedDepositAmount(mixed $value): void
+    {
+        $this->depositAmount = Fmt::toLatin((string) $value);
+    }
+
+    /**
+     * Create the PENDING deposit row and hand the browser to the gateway
+     * (WalletDepositGo renders the redirection form). The wallet is
+     * credited ONLY after the gateway callback verifies.
+     */
+    public function submitDeposit()
+    {
+        $gateways = PaymentService::availableGateways();
+
+        $this->validateWithToast(fn () => $this->validate([
+            'depositAmount' => ['required', 'integer', 'min:10000', 'max:999999999'],
+            'depositGateway' => ['required', 'in:'.implode(',', array_keys($gateways))],
+        ], [
+            'depositAmount.required' => 'مبلغ واریز را وارد کنید.',
+            'depositAmount.integer' => 'مبلغ واریز باید عدد باشد.',
+            'depositAmount.min' => 'حداقل مبلغ واریز ۱۰٬۰۰۰ تومان است.',
+            'depositAmount.max' => 'مبلغ واریز بیش از حد مجاز است.',
+            'depositGateway.required' => 'درگاه پرداخت را انتخاب کنید.',
+            'depositGateway.in' => 'درگاه انتخابی در دسترس نیست.',
+        ]));
+
+        $seller = auth('seller')->user();
+        $wallet = $seller ? Wallet::ensureForSeller($seller->id) : null;
+
+        if (! $wallet) {
+            $this->addError('depositAmount', 'ابتدا وارد حساب فروشنده شوید.');
+
+            return;
+        }
+
+        $deposit = WalletDeposit::query()->create([
+            'seller_id' => $seller->id,
+            'wallet_id' => $wallet->id,
+            'amount' => (int) $this->depositAmount,
+            'gateway' => $this->depositGateway,
+            'status' => WalletDeposit::STATUS_PENDING,
+        ]);
+
+        ActivityLogger::log(
+            'wallet.deposit.requested',
+            'فروشنده @'.($seller->instagram_username ?: $seller->phone).' برای شارژ '.Fmt::money($deposit->amount).' تومان کیف پول، درگاه '.$gateways[$deposit->gateway].' را انتخاب کرد',
+            subject: $deposit,
+            after: ['amount' => (int) $deposit->amount, 'gateway' => $deposit->gateway],
+        );
+
+        // full-page hand-off to the gateway (renders the redirection form)
+        return $this->redirect(route('seller.wallet.deposit.go', $deposit), navigate: false);
     }
 
     public function submitWithdraw(): void
@@ -488,6 +568,13 @@ class WalletPage extends Component
             'txTotal' => $txTotal,
             'txChart' => $this->txChart($wallet->id, $this->chartMode, $chartFrom, $chartTo),
             'txDetail' => $this->txDetail,
+            'depositGateways' => PaymentService::availableGateways(),
+            'pendingDeposits' => WalletDeposit::query()
+                ->where('wallet_id', $wallet->id)
+                ->where('status', WalletDeposit::STATUS_PENDING)
+                ->orderByDesc('id')
+                ->limit(3)
+                ->get(),
             'cards' => BankCard::query()
                 ->where('seller_id', auth('seller')->id())
                 ->orderByDesc('is_default')

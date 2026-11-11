@@ -127,16 +127,25 @@
                 </ul>
 
                 <button type="button" wire:click="openBuy({{ $plan->id }})"
-                        class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-xs font-extrabold transition active:scale-[.98] {{ $affordable ? 'bg-gradient-to-l from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/25 hover:from-amber-600 hover:to-amber-700' : 'bg-slate-200 text-slate-400 dark:bg-slate-800' }}">
-                    <x-icon name="crown" class="size-4" />
-                    @if ($isCurrentActive)
+                        @if ($plan->isOneTime() && $ownedPlanIds->contains($plan->id)) disabled @endif
+                        class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-xs font-extrabold transition active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-60 {{ $plan->isOneTime() && $ownedPlanIds->contains($plan->id) ? 'bg-slate-100 text-slate-400 dark:bg-slate-800/60' : ($affordable ? 'bg-gradient-to-l from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/25 hover:from-amber-600 hover:to-amber-700' : 'bg-slate-200 text-slate-400 dark:bg-slate-800') }}">
+                    @if ($plan->isOneTime() && $ownedPlanIds->contains($plan->id))
+                        <x-icon name="lock" class="size-4" />
+                        خریداری‌شده — این پلن یک‌بارمصرف است
+                    @elseif ($isCurrentActive)
+                        <x-icon name="crown" class="size-4" />
                         تمدید این پلن
                     @elseif ($affordable)
+                        <x-icon name="crown" class="size-4" />
                         خرید از کیف پول — {{ \App\Support\Fmt::money($plan->price) }}
                     @else
+                        <x-icon name="crown" class="size-4" />
                         موجودی کافی نیست
                     @endif
                 </button>
+                @if ($plan->isOneTime())
+                    <p class="mt-2 text-center text-[9px] font-bold text-fuchsia-600 dark:text-fuchsia-400">خرید یک‌بارمصرف — فقط یک بار قابل خرید است، بدون تمدید.</p>
+                @endif
             </div>
         @empty
             <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900">

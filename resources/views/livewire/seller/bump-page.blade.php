@@ -44,10 +44,6 @@
 
                 <div class="mt-4 rounded-2xl bg-white/15 px-3 py-2.5 backdrop-blur">
                     <div class="flex items-center justify-between text-[11px] font-bold">
-                        <span class="text-orange-100">نرخ نردبان</span>
-                        <span>{{ \App\Support\Fmt::money($perDay) }} برای هر روز</span>
-                    </div>
-                    <div class="mt-1.5 flex items-center justify-between text-[11px] font-bold">
                         <span class="text-orange-100">موجودی کیف پول شما</span>
                         <span>{{ \App\Support\Fmt::money($walletBalance) }}</span>
                     </div>
@@ -55,7 +51,7 @@
             </div>
         </div>
 
-        @if ($perDay <= 0)
+        @if (! $enabled)
             <div class="mt-3 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-[11px] font-semibold leading-5 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
                 <x-icon name="info" class="mt-0.5 size-4 shrink-0" />
                 نردبان فعلاً توسط مدیر فعال نشده است. بعداً سر بزنید.
@@ -63,7 +59,7 @@
         @endif
 
         {{-- ───────── pick a product ───────── --}}
-        @if ($perDay > 0)
+        @if ($enabled)
             <h2 class="mt-5 mb-2 flex items-center gap-2 text-xs font-extrabold text-slate-500 dark:text-slate-400">
                 <x-icon name="sparkles" class="size-4 text-orange-500" />
                 نردبان کردن یک محصول
@@ -183,29 +179,32 @@
                 </div>
 
                 <div class="mt-4">
-                    <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">مدت نردبان</span>
-                    <div class="mt-1.5 grid grid-cols-4 gap-2">
-                        @foreach ($packages as $days => $price)
-                            <button type="button" wire:click="setBuyDays({{ $days }})"
-                                    class="rounded-xl border px-2 py-2.5 text-center transition {{ $buyDays === $days
-                                        ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm dark:border-orange-700 dark:bg-orange-950/30 dark:text-orange-300'
-                                        : 'border-slate-200 text-slate-500 hover:border-orange-300 dark:border-slate-700 dark:text-slate-300' }}">
-                                <span class="block text-[11px] font-extrabold">{{ \App\Support\Fmt::toFa($days) }} روز</span>
-                                <span class="mt-0.5 block text-[9px] font-bold opacity-80">{{ \App\Support\Fmt::moneyShort($price) }}</span>
+                    <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">طرح نردبان را انتخاب کنید</span>
+                    <div class="mt-1.5 grid gap-2">
+                        @foreach ($plans as $plan)
+                            <button type="button" wire:click="setBuyPlan({{ $plan->id }})"
+                                    class="flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 transition {{ $buyPlan?->id === $plan->id
+                                        ? 'border-orange-500 bg-orange-50 shadow-sm dark:border-orange-700 dark:bg-orange-950/30'
+                                        : 'border-slate-200 hover:border-orange-300 dark:border-slate-700' }}">
+                                <span class="flex min-w-0 items-center gap-2 text-start">
+                                    <span class="grid size-8 shrink-0 place-items-center rounded-lg {{ $buyPlan?->id === $plan->id ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400' }}">
+                                        <x-icon name="rocket" class="size-4" />
+                                    </span>
+                                    <span class="min-w-0">
+                                        <span class="block truncate text-[11px] font-extrabold">{{ $plan->title }}</span>
+                                        <span class="block text-[9px] text-slate-400">{{ $plan->daysLabel() }} در صدر صفحهٔ اول</span>
+                                    </span>
+                                </span>
+                                <span class="shrink-0 text-[11px] font-black text-orange-600 dark:text-orange-400">{{ \App\Support\Fmt::money($plan->price) }}</span>
                             </button>
                         @endforeach
                     </div>
-                    <label class="mt-2 block">
-                        <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">یا روز دلخواه (۱ تا ۹۰)</span>
-                        <input type="number" min="1" max="90" wire:model.live="buyDays"
-                               class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm focus:border-orange-400 focus:outline-none dark:border-slate-700 dark:bg-slate-800">
-                    </label>
                 </div>
 
                 <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs dark:border-slate-800 dark:bg-slate-800/50">
                     <div class="flex justify-between py-1">
-                        <span class="text-slate-400">هزینهٔ {{ \App\Support\Fmt::toFa($buyDays) }} روز</span>
-                        <span class="font-extrabold text-orange-600 dark:text-orange-400">{{ \App\Support\Fmt::money($buyPrice) }}</span>
+                        <span class="text-slate-400">هزینهٔ طرح انتخابی</span>
+                        <span class="font-extrabold text-orange-600 dark:text-orange-400">{{ \App\Support\Fmt::money($buyPlan?->price ?? 0) }}</span>
                     </div>
                     <div class="flex justify-between py-1">
                         <span class="text-slate-400">موجودی فعلی</span>
@@ -213,7 +212,7 @@
                     </div>
                     <div class="mt-1 flex justify-between border-t border-dashed border-slate-200 pt-2 dark:border-slate-700">
                         <span class="text-slate-400">پس از خرید</span>
-                        <span class="font-bold">{{ \App\Support\Fmt::money(max(0, $walletBalance - $buyPrice)) }}</span>
+                        <span class="font-bold">{{ \App\Support\Fmt::money(max(0, $walletBalance - (int) ($buyPlan?->price ?? 0))) }}</span>
                     </div>
                 </div>
 
@@ -230,11 +229,14 @@
                             class="rounded-2xl border border-slate-200 py-3 text-xs font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
                         انصراف
                     </button>
-                    <button type="button" wire:click="confirmBuy" wire:loading.attr="disabled" wire:target="confirmBuy" {{ $walletBalance < $buyPrice ? 'disabled' : '' }}
-                            class="rounded-2xl py-3 text-xs font-extrabold transition active:scale-[.98] disabled:opacity-50 {{ $walletBalance >= $buyPrice ? 'bg-gradient-to-l from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/25' : 'bg-slate-200 text-slate-400 dark:bg-slate-800' }}">
+                    <button type="button" wire:click="confirmBuy" wire:loading.attr="disabled" wire:target="confirmBuy" {{ ($buyPlan === null || $walletBalance < (int) ($buyPlan?->price ?? 0)) ? 'disabled' : '' }}
+                            class="rounded-2xl py-3 text-xs font-extrabold transition active:scale-[.98] disabled:opacity-50 {{ $buyPlan !== null && $walletBalance >= (int) ($buyPlan?->price ?? 0) ? 'bg-gradient-to-l from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/25' : 'bg-slate-200 text-slate-400 dark:bg-slate-800' }}">
                         پرداخت و فعال‌سازی
                     </button>
                 </div>
+                @if ($buyPlan !== null && $walletBalance < (int) $buyPlan->price)
+                    <p class="mt-2 text-center text-[10px] font-bold text-amber-600 dark:text-amber-400">موجودی کافی نیست — از کیف پول شارژ کنید یا طرح ارزان‌تری انتخاب کنید.</p>
+                @endif
             @endif
         </div>
     </x-modal-panel>

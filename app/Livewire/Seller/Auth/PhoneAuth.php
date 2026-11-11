@@ -9,7 +9,6 @@ use App\Services\OtpService;
 use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
 use App\Support\Phone;
-use App\Support\Subscription\SubscriptionService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -212,13 +211,6 @@ class PhoneAuth extends Component
                 // (v0.20.0) dead key removed — last_login_at is not fillable;
                 // the real write happens via forceFill below on first login.
             ]);
-
-            // (v0.22.0) دورهٔ آزمایشی اشتراک: an auto-approved seller never
-            // passes through the admin's approve() below, so the one-time
-            // trial fires right here (no-op when the setting is 0/off).
-            if ($autoApproved) {
-                SubscriptionService::startTrial($seller);
-            }
 
             ActivityLogger::log(
                 'seller.new',

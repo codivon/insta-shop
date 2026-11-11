@@ -42,10 +42,10 @@
         <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center gap-2 text-[11px] font-bold text-slate-400">
                 <span class="grid size-8 place-items-center rounded-xl bg-primary-50 text-primary-500 dark:bg-primary-950/50 dark:text-primary-400"><x-icon name="timer" class="size-4" /></span>
-                دورهٔ آزمایشی خودکار
+                تمدیدشده‌ها
             </div>
-            <div class="mt-2 text-xl font-black">{{ \App\Support\Fmt::toFa($stats['trial_days']) }} <span class="text-xs font-bold text-slate-400">روز</span></div>
-            <div class="text-[10px] text-slate-400">در «تنظیمات ← تنظیمات فروشگاه‌ها»</div>
+            <div class="mt-2 text-xl font-black">{{ \App\Support\Fmt::toFa($stats['renewals']) }}</div>
+            <div class="text-[10px] text-slate-400">مجموع همهٔ خریدها از ابتدا</div>
         </div>
     </div>
 

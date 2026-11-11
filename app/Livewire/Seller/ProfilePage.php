@@ -6,6 +6,7 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\BankCard;
 use App\Models\Order;
 use App\Models\Wallet;
+use App\Support\Bump\BumpService;
 use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -52,6 +53,7 @@ class ProfilePage extends Component
             'shop' => $this->seller()?->shop,
             'stats' => $this->stats,
             'joinedAt' => $this->joinedAt,
+            'bumpEnabled' => BumpService::enabled(),
         ])->title('پروفایل');
     }
 

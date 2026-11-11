@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * commission_type = null means «طبق نرخ سراسری» — the plan sells the
  * duration itself and leaves the rate to the global setting.
  */
-#[Fillable(['title', 'tagline', 'features', 'duration_days', 'price', 'commission_type', 'commission_value', 'boost_level', 'is_active', 'sort'])]
+#[Fillable(['title', 'tagline', 'features', 'duration_days', 'price', 'commission_type', 'commission_value', 'boost_level', 'one_time', 'is_active', 'sort'])]
 class Plan extends Model
 {
     /** Home-page display priority tiers («اولویت نمایش در صفحهٔ اصلی»). */
@@ -38,9 +38,26 @@ class Plan extends Model
             'price' => 'integer',
             'commission_value' => 'integer',
             'boost_level' => 'integer',
+            'one_time' => 'boolean',
             'is_active' => 'boolean',
             'sort' => 'integer',
         ];
+    }
+
+    /**
+     * «خرید یک‌بار مصرف (بدون تمدید)» — the seller can buy this plan
+     * exactly ONCE (v0.24.0): enforcement lives in
+     * SubscriptionService::purchaseFromWallet; admin grants stay free.
+     */
+    public function isOneTime(): bool
+    {
+        return (bool) $this->one_time;
+    }
+
+    /** Short badge line for plan cards. */
+    public function oneTimeLabel(): string
+    {
+        return 'خرید یک‌بار مصرف';
     }
 
     /** Whether this plan defines a SPECIAL commission rate. */

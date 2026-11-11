@@ -7,7 +7,6 @@ use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\Plan;
 use App\Models\Seller;
 use App\Models\SellerSubscription;
-use App\Models\Setting;
 use App\Support\ActivityLogger;
 use App\Support\Fmt;
 use App\Support\Subscription\SubscriptionService;
@@ -196,7 +195,7 @@ class SubscriptionsPage extends Component
             'active_sellers' => $activeSellers,
             'without' => max(0, $sellersTotal - $activeSellers),
             'revenue' => $revenue,
-            'trial_days' => (int) Setting::get('shops.subscription_trial_days', 0),
+            'renewals' => SellerSubscription::query()->count(),
         ];
     }
 

@@ -47,6 +47,8 @@ class PlansPage extends Component
 
     public string $boostLevel = '0'; // 0 = بدون اولویت | 1 = عادی | 2 = ویژه
 
+    public bool $oneTime = false; // v0.24.0 — خرید یک‌بارمصرف (بدون تمدید)
+
     public bool $isActive = true;
 
     public string $sort = '0';
@@ -72,6 +74,7 @@ class PlansPage extends Component
             $this->commissionType = $plan->hasCommissionOverride() ? (string) $plan->commission_type : '';
             $this->commissionValue = (string) ($plan->commission_value ?? 0);
             $this->boostLevel = (string) $plan->boost_level;
+            $this->oneTime = $plan->isOneTime();
             $this->isActive = $plan->is_active;
             $this->sort = (string) $plan->sort;
         }
@@ -147,13 +150,14 @@ class PlansPage extends Component
             'commission_type' => $this->commissionType !== '' ? $this->commissionType : null,
             'commission_value' => $this->commissionType !== '' ? (int) $this->commissionValue : null,
             'boost_level' => (int) $this->boostLevel,
+            'one_time' => $this->oneTime,
             'is_active' => $this->isActive,
             'sort' => (int) $this->sort,
         ];
 
         if ($this->editingId !== null) {
             $plan = Plan::query()->findOrFail($this->editingId);
-            $before = $plan->only(['title', 'tagline', 'duration_days', 'price', 'commission_type', 'commission_value', 'boost_level', 'is_active', 'sort']);
+            $before = $plan->only(['title', 'tagline', 'duration_days', 'price', 'commission_type', 'commission_value', 'boost_level', 'one_time', 'is_active', 'sort']);
             $plan->update($payload);
             ActivityLogger::log('plan.updated', 'پلن اشتراک «'.$plan->title.'» ویرایش شد', subject: $plan, before: $before, after: $payload);
             $this->dispatch('panel-toast', message: 'پلن ذخیره شد. ✅', type: 'success');
@@ -178,6 +182,7 @@ class PlansPage extends Component
         $this->commissionType = '';
         $this->commissionValue = '0';
         $this->boostLevel = '0';
+        $this->oneTime = false;
         $this->isActive = true;
         $this->sort = '0';
         $this->resetErrorBag();
@@ -199,6 +204,7 @@ class PlansPage extends Component
                 $this->commissionType === 'percent' ? 'max:100' : 'max:999999999999',
             ],
             'boostLevel' => ['required', 'integer', 'in:0,1,2'],
+            'oneTime' => ['boolean'],
             'isActive' => ['boolean'],
             'sort' => ['required', 'integer', 'min:0', 'max:9999'],
         ];

@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\PushSubscriptionController;
 use App\Http\Controllers\Auth\PanelLogout;
 use App\Http\Controllers\PwaController;
 use App\Http\Controllers\Seller\ProductFileDownload;
+use App\Http\Controllers\Seller\WalletDepositCallback;
+use App\Http\Controllers\Seller\WalletDepositGo;
 use App\Http\Controllers\Shop\PaymentCallback;
 use App\Http\Controllers\Shop\PaymentRedirect;
 use App\Livewire\Admin\Access\AdminsIndex;
@@ -14,6 +16,7 @@ use App\Livewire\Admin\ActivityPage;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Admin\BackupsPage;
 use App\Livewire\Admin\BannersPage;
+use App\Livewire\Admin\BumpPlansPage;
 use App\Livewire\Admin\CategoriesPage as AdminCategoriesPage;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\Developer\DeveloperSettings;
@@ -160,6 +163,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin.no-store')->group(func
         Route::get('/plans', PlansPage::class)->name('plans');
         Route::get('/subscriptions', SubscriptionsPage::class)->name('subscriptions');
 
+        // ── Bump plans (طرح‌های نردبان — v0.24.0, dedicated page) ──
+        Route::get('/bump-plans', BumpPlansPage::class)->name('bump.plans');
+
         // ── Finance center: financial reports + settlements + withdrawals ──
         Route::get('/finance', FinancePage::class)->name('finance');
         Route::get('/settlements', SettlementsPage::class)->name('settlements');
@@ -258,6 +264,11 @@ Route::prefix('seller')->name('seller.')->group(function () {
         // ── Product bumps (نردبان — v0.23.0, Divar-style top placement) ──
         Route::get('/bump', BumpPage::class)->name('bump');
 
+        // ── Wallet deposit via payment gateway (v0.24.0) ──
+        Route::get('/wallet/deposit/{deposit}/go', WalletDepositGo::class)
+            ->whereNumber('deposit')
+            ->name('wallet.deposit.go');
+
         // ── Bank cards (profile + wallet destination accounts) ──
         Route::get('/cards', BankCardsPage::class)->name('cards');
 
@@ -295,6 +306,15 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
         Route::post('/logout', PanelLogout::class)->name('logout');
     });
+
+    /*
+     | Gateway callback for WALLET DEPOSITS — public (banks redirect
+     | browsers here; the deposit is identified by id + its stored gateway
+     | reference and an HMAC token, not by the session).
+     */
+    Route::match(['get', 'post'], '/wallet/deposit/callback', WalletDepositCallback::class)
+        ->middleware('throttle:60,1')
+        ->name('wallet.deposit.callback');
 });
 
 /*
