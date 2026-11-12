@@ -8,13 +8,15 @@ use App\Models\OrderItem;
 use App\Models\Seller;
 use App\Models\Setting;
 use App\Models\Shop;
+use App\Support\Phone;
 
 /**
  * پرداخت تسهیمی (split payment) — سهم فروشنده مستقیماً از درگاه به
  * مقصد بانکی او می‌رود، نه از طریق کیف پول.
  *
- * RESEARCH (v0.27.0) — among the gateways wired into this project, only
- * two expose a real, documented split/settlement API at PURCHASE time:
+ * RESEARCH (v0.27.0 / v0.28.0) — among the gateways wired into this
+ * project, exactly three expose a real, documented split/settlement API
+ * at PURCHASE time:
  *
  *   • payping       → POST /v3/pay/shared with items[] = {amount (toman),
  *                     userIdentity, description} — the recipient is the
@@ -25,14 +27,26 @@ use App\Models\Shop;
  *                     does not match total amount», 483 «unregistered iban»,
  *                     491 «too many settlement destinations», 578 «no
  *                     default sharing») proves the server-side API.
+ *   • sep           → the SEP (سامان) token request documented in the
+ *                     official guide «راهنمای تراکنش تسویه به چند حساب»
+ *                     (v1.0, خرداد ۱۴۰۱): SettlementIbanInfo[] = {IBAN,
+ *                     Amount (ریال), PurchaseID} — max 9 destinations,
+ *                     PurchaseID = 30 zeros for normal (non-government)
+ *                     settlements.
  *
  * Every other gateway (novinopay, sadad, behpardakht, parsian, irankish,
- * pasargad, sepehr, sep) has NO documented purchase-time split parameter —
+ * pasargad, sepehr) has NO documented purchase-time split parameter —
  * for them the toggle is never offered and the money always takes the
  * wallet path.
  *
  * The toggle lives in the admin panel (تنظیمات درگاه) as
  * settings «payment.{gateway}.split_enabled».
+ *
+ * BANK-CARD GATE (v0.28.0 — client request): a split purchase only
+ * happens when EVERY seller of the order has completed their bank-cards
+ * section (حداقل یک کارت ثبت‌شده) — a seller without any card always
+ * takes the wallet path, which per the ONE-path rule below means the
+ * WHOLE order goes through the wallet.
  *
  * FAIL-SAFE: PaymentService falls back to the standard flow (wallet
  * settlement) whenever a split purchase dies before creating a gateway
@@ -46,12 +60,23 @@ final class SplitPlan
     public const CAPABLE = [
         'payping' => 'از طریق «پرداخت اشتراکی» پی‌پینگ (v3/pay/shared) — سهم هر فروشگاه به هویت ثبت‌شدهٔ او در پی‌پینگ (شماره موبایل فروشنده) واریز می‌شود.',
         'asanpardakht' => 'از طریق سرویس تسهیم آسان‌پرداخت در درخواست توکن — شبا هر فروشنده باید پیشاپیش در پنل آسان‌پرداخت ثبت و تأیید شده باشد.',
+        'sep' => 'از طریق پارامتر SettlementIbanInfo در درخواست توکن سپ (سامان) — مستند رسمی «تراکنش تسویه به چند حساب»؛ شبای فروشندگان باید در پنل سامان برای تسویهٔ چندحسابی مجاز شده باشد و هر تراکنش حداکثر ۹ مقصد می‌پذیرد.',
     ];
 
     /** Driver classes swapped in at purchase time (vendor stays untouched). */
     public const SPLIT_DRIVER_MAP = [
         'payping' => Drivers\SplitPayping::class,
         'asanpardakht' => Drivers\SplitAsanpardakht::class,
+        'sep' => Drivers\SplitSep::class,
+    ];
+
+    /**
+     * Per-gateway ceiling on split destinations (SEP guide: «حداکثر طول
+     * آرایه ۹ می‌باشد») — an order with more shops than the ceiling takes
+     * the wallet path as a whole.
+     */
+    private const MAX_SHARES = [
+        'sep' => 9,
     ];
 
     public static function capable(string $gateway): bool
@@ -124,6 +149,13 @@ final class SplitPlan
                 return null;
             }
 
+            // v0.28.0 — الزام کارت بانکی: without at least ONE registered
+            // card the seller's money has no reliable bank destination →
+            // the WHOLE order takes the wallet path (never a partial split).
+            if (! self::sellerHasBankCard($seller)) {
+                return null;
+            }
+
             $itemsTotal = max(0, (int) $share->total);
             $commission = $itemsTotal > 0 && $seller ? $seller->commissionFor($itemsTotal) : 0;
             $payout = max(0, $itemsTotal - $commission);
@@ -158,6 +190,12 @@ final class SplitPlan
             return null; // nothing to split (all-commission order) — standard flow
         }
 
+        $max = self::MAX_SHARES[$gateway] ?? null;
+
+        if ($max !== null && count($plan) > $max) {
+            return null; // gateway's split-array limit exceeded — wallet path
+        }
+
         return [
             'gateway' => $gateway,
             'shares' => $plan,
@@ -165,15 +203,27 @@ final class SplitPlan
     }
 
     /**
+     * BANK-CARD GATE (v0.28.0): split payment is only allowed for sellers
+     * who completed the bank-cards section of their panel (حداقل یک کارت).
+     */
+    public static function sellerHasBankCard(Seller $seller): bool
+    {
+        return BankCard::query()->where('seller_id', $seller->id)->exists();
+    }
+
+    /**
      * PayPing shared payment identifies the recipient by the identity the
      * seller registered at PayPing — for sellers that is their login
-     * mobile (09xxxxxxxxx).
+     * mobile in the LOCAL 09xxxxxxxxx form. The DB stores the E.164-ish
+     * 989xxxxxxxxx (Phone::normalize) — convert before matching
+     * (v0.28.0 BUGFIX: the raw stored value never matched ^09\d{9}$, so
+     * the payping split silently ALWAYS fell back to the wallet path).
      */
     private static function paypingIdentity(Seller $seller): ?string
     {
-        $phone = trim((string) $seller->phone);
+        $local = Phone::toLocal(trim((string) $seller->phone));
 
-        return preg_match('/^09\d{9}$/', $phone) === 1 ? $phone : null;
+        return preg_match('/^09\d{9}$/', $local) === 1 ? $local : null;
     }
 
     /** The seller's default bank card's sheba (falls back to any card with one). */

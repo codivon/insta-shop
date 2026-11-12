@@ -8,8 +8,10 @@ use App\Models\Setting;
 use App\Support\Fmt;
 use App\Support\Payments\Drivers\SplitAsanpardakht;
 use App\Support\Payments\Drivers\SplitPayping;
+use App\Support\Payments\Drivers\SplitSep;
 use Shetabit\Multipay\Drivers\Asanpardakht\Asanpardakht;
 use Shetabit\Multipay\Drivers\Payping\Payping;
+use Shetabit\Multipay\Drivers\SEP\SEP;
 use Shetabit\Multipay\Invoice;
 use Shetabit\Multipay\Receipt;
 use Shetabit\Multipay\RedirectionForm;
@@ -76,10 +78,12 @@ class PaymentService
      * v0.27.0 — پرداخت تسهیمی: the driver classes swapped in when the
      * admin toggle turns split payment ON for a capable gateway (the
      * vendor package stays untouched — the swap rides config('payment.map')).
+     * v0.28.0 — sep joins the club (مستند «تراکنش تسویه به چند حساب»).
      */
     public const SPLIT_DRIVER_MAP = [
         'payping' => SplitPayping::class,
         'asanpardakht' => SplitAsanpardakht::class,
+        'sep' => SplitSep::class,
     ];
 
     /**
@@ -91,6 +95,7 @@ class PaymentService
     private const VENDOR_DRIVER_MAP = [
         'payping' => Payping::class,
         'asanpardakht' => Asanpardakht::class,
+        'sep' => SEP::class,
     ];
 
     public static function activeGateway(): string
@@ -111,13 +116,83 @@ class PaymentService
     }
 
     /**
-     * Gateways the CUSTOMER may choose from at checkout: the local test
-     * gateway is always there; a real gateway shows up once ANY credential
-     * for it is saved (admin settings panel or .env config).
+     * Gateways the CUSTOMER may choose from at checkout (v0.28.0): the
+     * admin panel now toggles each gateway ON/OFF (چند درگاه هم‌زمان) —
+     * a gateway is offered when it is ENABLED and actually configured
+     * (credentials saved in the panel or .env); the local test gateway
+     * only exists in local environments.
+     *
+     * FAIL-OPEN legacy fallback: when NO gateway is explicitly enabled
+     * (a pre-toggle install before the first save), the old behavior
+     * applies — any gateway holding credentials stays available so a
+     * running store never loses its checkout.
      *
      * @return array<string, string> key → Persian label
      */
     public static function availableGateways(): array
+    {
+        $enabled = [];
+
+        foreach (self::GATEWAYS as $key => $label) {
+            if (! self::isEnabled($key)) {
+                continue;
+            }
+
+            if ($key !== 'local' && ! self::hasCredentials($key)) {
+                continue; // enabled but unconfigured — would die at purchase
+            }
+
+            $enabled[$key] = $label;
+        }
+
+        if ($enabled !== []) {
+            return $enabled;
+        }
+
+        // Legacy behavior (pre-multi-gateway installs): credentials decide.
+        return self::credentialedGateways();
+    }
+
+    /** The admin toggle for a gateway — settings payment.{g}.enabled. */
+    public static function isEnabled(string $gateway): bool
+    {
+        if ($gateway === 'local') {
+            return self::localGatewayAllowed()
+                && Setting::get('payment.local.enabled', '1') === '1';
+        }
+
+        $stored = Setting::get("payment.{$gateway}.enabled");
+
+        if ($stored !== null) {
+            return $stored === '1';
+        }
+
+        /*
+         * Legacy default (before the toggles existed): a gateway counted
+         * as usable when it held credentials or was the active one — keep
+         * that state until the admin saves the panel once.
+         */
+        return $gateway === self::activeGateway() || self::hasCredentials($gateway);
+    }
+
+    /** Does the gateway have ANY credential (settings DB or .env config)? */
+    public static function hasCredentials(string $gateway): bool
+    {
+        foreach (self::CREDENTIAL_FIELDS[$gateway] ?? [] as $field => $_) {
+            if (trim((string) Setting::get("payment.{$gateway}.{$field}", '')) !== '') {
+                return true;
+            }
+
+            if (trim((string) data_get(config('payment.drivers.'.$gateway, []), $field, '')) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** The PRE-multi-gateway rule: a gateway exists when it holds credentials. */
+    private static function credentialedGateways(): array
     {
         $available = [];
 
@@ -319,6 +394,8 @@ class PaymentService
      * Translate the split plan into the payload each gateway's driver
      * expects on the invoice:
      *   • payping      → splitItems  (amounts in تومان + userIdentity);
+     *   • sep          → splitSettlements (amounts in تومان, converted to
+     *     ریال inside the driver + PurchaseID = 30 zeros);
      *   • asanpardakht → splitServices (amounts in تومان, converted to
      *     ریال inside the driver + iban).
      */
@@ -331,6 +408,17 @@ class PaymentService
                 'amount' => (int) $share['amount'],
                 'userIdentity' => (string) $share['destination'],
                 'description' => 'سهم فروشگاه '.$share['shop_name'].' از سفارش #'.$code,
+            ], $splitPlan['shares']));
+
+            return;
+        }
+
+        if ($gateway === 'sep') {
+            // مستند سپ «تراکنش تسویه به چند حساب»: IBAN + Amount (ریال داخل
+            // درایور) + PurchaseID (تسویهٔ عادی = ۳۰ کاراکتر صفر داخل درایور).
+            $invoice->detail('splitSettlements', array_map(static fn (array $share): array => [
+                'iban' => (string) $share['destination'],
+                'amount' => (int) $share['amount'],
             ], $splitPlan['shares']));
 
             return;

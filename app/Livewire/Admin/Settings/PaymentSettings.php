@@ -3,24 +3,25 @@
 namespace App\Livewire\Admin\Settings;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
-use App\Models\PaymentLog;
 use App\Models\Setting;
 use App\Support\ActivityLogger;
+use App\Support\Fmt;
 use App\Support\Payments\PaymentService;
 use App\Support\Payments\SplitPlan;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Admin — payment gateway settings: pick the active gateway and fill its
- * credentials (stored in the settings table, env values as fallback).
+ * Admin — payment gateway settings, v0.28.0 redesign (نمونهٔ مشتری):
+ * a list of expandable gateway ROWS — each row toggles its gateway
+ * ON/OFF (چند درگاه می‌توانند هم‌زمان فعال باشند؛ مشتری در صفحه پرداخت
+ * بین درگاه‌های فعال انتخاب می‌کند), carries its own credentials + the
+ * split (تسهیم) panel inside, supports checkbox bulk enable/disable,
+ * row sorting and the trash that clears a gateway's saved credentials.
  *
- * v0.27.0 — پرداخت تسهیمی: split-capable gateways (payping,
- * asanpardakht) get an extra toggle — ON = the seller's share goes
- * DIRECTLY to the seller's bank destination through the gateway's split
- * API; OFF (default) = the seller's share is credited to the in-app
- * wallet after verification.
+ * The DEFAULT gateway (پیش‌فرض) is what checkout preselects and what
+ * wallet deposits fall back to. «تراکنش‌های بانکی» moved to the
+ * standalone admin.payment.logs page (v0.28.0).
  */
 #[Layout('layouts.admin-slot')]
 class PaymentSettings extends Component
@@ -29,19 +30,31 @@ class PaymentSettings extends Component
 
     protected static string $permission = 'admin.settings.payment';
 
+    /** The DEFAULT gateway — preselected at checkout + wallet deposits. */
     public string $gateway = 'local';
 
     /** @var array<string, string> nested: fields[gateway][field] */
     public array $fields = [];
 
+    /** @var array<string, bool> per-gateway ON/OFF toggles (multi-enable). */
+    public array $enabled = [];
+
     /** @var array<string, bool> split toggles per split-capable gateway */
     public array $split = [];
+
+    /** Row ordering — the «جدیدترین»-style dropdown of the reference design. */
+    public string $sort = 'default';
+
+    /** @var list<string> rows picked with the leading checkboxes (bulk actions). */
+    public array $selected = [];
 
     public function mount(): void
     {
         $this->gateway = PaymentService::activeGateway();
 
         foreach (PaymentService::GATEWAYS as $name => $label) {
+            $this->enabled[$name] = PaymentService::isEnabled($name);
+
             foreach (PaymentService::CREDENTIAL_FIELDS[$name] ?? [] as $field => $fieldLabel) {
                 $this->fields[$name][$field] = (string) Setting::get("payment.{$name}.{$field}", '');
             }
@@ -52,6 +65,64 @@ class PaymentSettings extends Component
         }
     }
 
+    /** Sorted gateway map — default order / enabled-first / disabled-first. */
+    public function getSortedGatewaysProperty(): array
+    {
+        $gateways = PaymentService::GATEWAYS;
+
+        $pick = fn (bool $want): array => array_filter(
+            $gateways,
+            fn (string $label, string $key): bool => (bool) ($this->enabled[$key] ?? false) === $want,
+            ARRAY_FILTER_USE_BOTH,
+        );
+
+        return match ($this->sort) {
+            'enabled' => $pick(true) + $pick(false),
+            'disabled' => $pick(false) + $pick(true),
+            default => $gateways,
+        };
+    }
+
+    /** How many toggles are ON (local counts only where it is allowed). */
+    public function getEnabledCountProperty(): int
+    {
+        $count = 0;
+
+        foreach (PaymentService::GATEWAYS as $name => $_) {
+            if (($this->enabled[$name] ?? false) && ($name !== 'local' || PaymentService::localGatewayAllowed())) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /** Bulk actions on the checked rows — state only; «ذخیره تنظیمات» persists. */
+    public function bulkEnable(): void
+    {
+        $this->applyBulk(true);
+    }
+
+    public function bulkDisable(): void
+    {
+        $this->applyBulk(false);
+    }
+
+    private function applyBulk(bool $on): void
+    {
+        foreach ($this->selected as $name) {
+            if (array_key_exists($name, PaymentService::GATEWAYS)) {
+                $this->enabled[$name] = $on;
+            }
+        }
+
+        $this->selected = [];
+
+        session()->flash('admin-payment-flash', $on
+            ? 'درگاه‌های انتخاب‌شده روشن شدند — برای ثبت نهایی، «ذخیره تنظیمات» را بزنید.'
+            : 'درگاه‌های انتخاب‌شده خاموش شدند — برای ثبت نهایی، «ذخیره تنظیمات» را بزنید.');
+    }
+
     public function save(): void
     {
         if (! array_key_exists($this->gateway, PaymentService::GATEWAYS)) {
@@ -60,10 +131,40 @@ class PaymentSettings extends Component
             return;
         }
 
-        $pairs = ['payment.gateway' => $this->gateway];
+        $pairs = [];
 
-        foreach (PaymentService::CREDENTIAL_FIELDS[$this->gateway] ?? [] as $field => $fieldLabel) {
-            $pairs["payment.{$this->gateway}.{$field}"] = trim((string) ($this->fields[$this->gateway][$field] ?? ''));
+        /*
+         * The default gateway must itself be enabled; when the admin just
+         * switched its toggle off, the first enabled gateway takes over.
+         */
+        $default = $this->gateway;
+
+        if (! ($this->enabled[$default] ?? false)) {
+            $firstEnabled = collect(PaymentService::GATEWAYS)
+                ->keys()
+                ->first(fn (string $name): bool => (bool) ($this->enabled[$name] ?? false)
+                    && ($name !== 'local' || PaymentService::localGatewayAllowed()));
+
+            $default = $firstEnabled ?? $this->gateway;
+        }
+
+        $pairs['payment.gateway'] = $default;
+
+        // ON/OFF toggles of EVERY gateway (multi-enable is the point).
+        foreach (PaymentService::GATEWAYS as $name => $label) {
+            $pairs["payment.{$name}.enabled"] = ! empty($this->enabled[$name]) ? '1' : '0';
+        }
+
+        // Credentials of EVERY gateway — only actually-changed values are
+        // written (keeps the settings table and the activity log clean).
+        foreach (PaymentService::GATEWAYS as $name => $label) {
+            foreach (PaymentService::CREDENTIAL_FIELDS[$name] ?? [] as $field => $fieldLabel) {
+                $value = trim((string) ($this->fields[$name][$field] ?? ''));
+
+                if ($value !== (string) Setting::get("payment.{$name}.{$field}", '')) {
+                    $pairs["payment.{$name}.{$field}"] = $value;
+                }
+            }
         }
 
         // تسهیم toggles — ALL capable gateways are persisted together so
@@ -76,6 +177,11 @@ class PaymentSettings extends Component
 
         Setting::setMany($pairs);
 
+        $enabledLabels = collect(PaymentService::GATEWAYS)
+            ->filter(fn (string $label, string $name): bool => (bool) ($this->enabled[$name] ?? false)
+                && ($name !== 'local' || PaymentService::localGatewayAllowed()))
+            ->implode(', ');
+
         $splitNote = collect($pairs)
             ->filter(fn ($value, $key) => str_ends_with($key, '.split_enabled'))
             ->map(fn ($value, $key) => (PaymentService::GATEWAYS[explode('.', $key)[1]] ?? $key)
@@ -83,31 +189,49 @@ class PaymentSettings extends Component
             ->implode('، ');
 
         ActivityLogger::logSettingsChanged(
-            'تنظیمات درگاه پرداخت ویرایش شد (درگاه فعال: '.PaymentService::GATEWAYS[$this->gateway].')'
+            'تنظیمات درگاه پرداخت ویرایش شد (پیش‌فرض: '.PaymentService::GATEWAYS[$default]
+            .' — فعال: '.($enabledLabels !== '' ? $enabledLabels : 'هیچ').')'
             .($splitNote !== '' ? ' — پرداخت تسهیمی: '.$splitNote : ''),
             $snapshot,
             $pairs,
         );
 
-        session()->flash('admin-payment-flash', 'تنظیمات پرداخت ذخیره شد؛ درگاه فعال اکنون «'.PaymentService::GATEWAYS[$this->gateway].'» است.');
+        $this->gateway = $default;
+
+        session()->flash('admin-payment-flash', $enabledLabels !== ''
+            ? 'تنظیمات ذخیره شد؛ درگاه پیش‌فرض «'.PaymentService::GATEWAYS[$default].'» است و '
+            .Fmt::fa($this->enabledCount).' درگاه فعال، مشتری در صفحه پرداخت انتخاب می‌کند.'
+            : 'تنظیمات ذخیره شد؛ اما هیچ درگاه فعالی وجود ندارد — مشتری نمی‌تواند آنلاین پرداخت کند.');
     }
 
-    public function getLogsProperty(): Collection
+    /** Trash a gateway row → clears its saved credentials (env stays). */
+    public function deleteCredentials(string $name): void
     {
-        return PaymentLog::query()->with('order:id,status')->latest('id')->limit(12)->get();
-    }
+        $fields = array_keys(PaymentService::CREDENTIAL_FIELDS[$name] ?? []);
 
-    /** Human-readable payment-log event label. */
-    public function eventLabel(string $event): string
-    {
-        return match ($event) {
-            'purchase' => 'درخواست پرداخت',
-            'redirect' => 'هدایت به درگاه',
-            'precheck_failed' => 'عدم تأیید مقدماتی',
-            'verify_ok' => 'تأیید پرداخت',
-            'verify_failed' => 'خطای تأیید',
-            default => $event,
-        };
+        if ($fields === []) {
+            return;
+        }
+
+        $snapshot = ActivityLogger::settingsSnapshot(
+            array_map(fn (string $field): string => "payment.{$name}.{$field}", $fields),
+        );
+
+        foreach ($fields as $field) {
+            Setting::forget("payment.{$name}.{$field}");
+            $this->fields[$name][$field] = '';
+        }
+
+        ActivityLogger::logSettingsChanged(
+            'اعتبارنامه‌های ذخیره‌شدهٔ درگاه «'.PaymentService::GATEWAYS[$name].'» حذف شد',
+            $snapshot,
+            array_fill_keys(
+                array_map(fn (string $field): string => "payment.{$name}.{$field}", $fields),
+                '',
+            ),
+        );
+
+        session()->flash('admin-payment-flash', 'اعتبارنامه‌های ذخیره‌شدهٔ «'.PaymentService::GATEWAYS[$name].'» پاک شد (مقادیر فایل env همچنان معتبرند).');
     }
 
     public function render()
@@ -116,7 +240,6 @@ class PaymentSettings extends Component
             'gateways' => PaymentService::GATEWAYS,
             'fields' => PaymentService::CREDENTIAL_FIELDS,
             'splitCapable' => SplitPlan::CAPABLE,
-            'logs' => $this->logs,
         ])->title('تنظیمات درگاه پرداخت')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — تنظیمات درگاه']);
     }

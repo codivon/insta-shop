@@ -28,6 +28,7 @@ use App\Livewire\Admin\LocationsPage;
 use App\Livewire\Admin\Notifications\NotificationsPage;
 use App\Livewire\Admin\OrderShow;
 use App\Livewire\Admin\OrdersIndex;
+use App\Livewire\Admin\PaymentLogsPage;
 use App\Livewire\Admin\PlansPage;
 use App\Livewire\Admin\ProductForm as AdminProductForm;
 use App\Livewire\Admin\ProductsIndex;
@@ -208,6 +209,10 @@ Route::prefix('admin')->name('admin.')->middleware('admin.no-store')->group(func
         Route::get('/settings/sms/templates', SmsTemplatesCenter::class)->name('settings.sms.templates');
         Route::get('/settings/payment', fn () => redirect()->route('admin.settings', ['tab' => 'payment']))
             ->name('settings.payment');
+
+        // ── تراکنش‌های بانکی: STANDALONE section (v0.28.0) — the payment
+        //    events feed moved OUT of the gateway settings page.
+        Route::get('/payment-logs', PaymentLogsPage::class)->name('payment.logs');
         Route::get('/settings/stories', fn () => redirect()->route('admin.settings', ['tab' => 'stories']))
             ->name('settings.stories');
 

@@ -31,6 +31,15 @@
         @endif
 
         {{-- ───────── add CTA ───────── --}}
+        @if ($cards->count() === 0)
+            {{-- v0.28.0 — الزام کارت بانکی برای پرداخت تسهیمی --}}
+            <div class="mb-3 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[11px] font-semibold leading-5 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+                <x-icon name="git-fork" class="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                    اگر مدیر فروشگاه «پرداخت تسهیمی» را فعال کند، سهم فروش شما هنگام خرید مستقیماً از درگاه بانکی به شبا یا حساب شما واریز می‌شود؛ برای اینکه این مسیر برای فروشگاه شما کار کند، حداقل یک کارت بانکی ثبت کنید. فروشگاهی که کارتی نداشته باشد، سهمش به‌صورت خودکار به کیف پولش واریز می‌شود.
+                </span>
+            </div>
+        @endif
         <button type="button" wire:click="openAdd"
                 class="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary-300 bg-primary-50/60 py-3.5 text-xs font-extrabold text-primary-600 transition hover:border-primary-400 hover:bg-primary-50 active:scale-[.98] dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300 dark:hover:bg-primary-950/50">
             <x-icon name="plus" class="size-4" />

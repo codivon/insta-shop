@@ -85,6 +85,7 @@
                     ['route' => 'admin.slider',              'icon' => 'image',       'label' => 'اسلایدر اصلی', 'match' => 'admin.slider',    'badge' => null],
                     ['route' => 'admin.banners',             'icon' => 'layout-grid', 'label' => 'بنرها',      'match' => 'admin.banners',       'badge' => null],
                     ['route' => 'admin.income',              'icon' => 'coins',       'label' => 'درآمد',      'match' => 'admin.income',        'badge' => null],
+                    ['route' => 'admin.payment.logs',        'icon' => 'list',        'label' => 'تراکنش‌های بانکی', 'match' => 'admin.payment.logs', 'badge' => null],
                     ['route' => 'admin.plans',               'icon' => 'crown',       'label' => 'پلن‌های اشتراک', 'match' => 'admin.plans',      'badge' => null],
                     ['route' => 'admin.bump.plans',          'icon' => 'rocket',      'label' => 'طرح‌های نردبان', 'match' => 'admin.bump.plans', 'badge' => null],
                     ['route' => 'admin.subscriptions',       'icon' => 'timer',       'label' => 'اشتراک فروشندگان', 'match' => 'admin.subscriptions', 'badge' => null],
