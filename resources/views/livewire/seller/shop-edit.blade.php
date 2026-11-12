@@ -297,6 +297,29 @@
                         </div>
                     @endforeach
                 </div>
+
+                {{-- ── محصولات مستثنی اقساطی (v0.32.0) — فقط وقتی حداقل یک روش اقساطی فعال است ── --}}
+                @if ($this->hasAnyBnplEnabled)
+                    <a href="{{ route('seller.installment.products') }}" wire:navigate
+                       class="mt-3 flex items-center justify-between gap-2 rounded-xl border border-violet-200 bg-violet-50/60 px-3.5 py-3 transition hover:border-violet-300 active:scale-[.99] dark:border-violet-900 dark:bg-violet-950/30"
+                       aria-label="مدیریت محصولات مستثنی اقساطی">
+                        <span class="flex min-w-0 items-center gap-2.5">
+                            <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-950/60 dark:text-violet-300">
+                                <x-icon name="shield-off" class="size-4" />
+                            </span>
+                            <span class="min-w-0">
+                                <span class="block text-[11px] font-extrabold text-violet-700 dark:text-violet-300">محصولات مستثنی اقساطی</span>
+                                <span class="mt-0.5 block truncate text-[9.5px] font-semibold text-violet-500 dark:text-violet-400">محصولاتی که نمی‌خواهید اقساطی فروخته شوند — با جستجو و فیلتر</span>
+                            </span>
+                        </span>
+                        <span class="flex shrink-0 items-center gap-2">
+                            @if ($this->excludedCount > 0)
+                                <span class="rounded-full bg-violet-600 px-2 py-0.5 text-[9px] font-extrabold text-white">{{ \App\Support\Fmt::toFa($this->excludedCount) }}</span>
+                            @endif
+                            <x-icon name="chevron-left" class="size-3.5 text-violet-400" />
+                        </span>
+                    </a>
+                @endif
             </div>
         @endif
 

@@ -3,6 +3,7 @@
 namespace App\Livewire\Seller;
 
 use App\Livewire\Concerns\NotifiesOnValidation;
+use App\Models\InstallmentExclusion;
 use App\Models\SellerBnplSetting;
 use App\Models\Setting;
 use App\Models\Shop;
@@ -132,6 +133,30 @@ class ShopEdit extends Component
                 ],
             );
         }
+    }
+
+    /**
+     * v0.32.0 — «محصولات مستثنی اقساطی» entry (the link inside the BNPL
+     * card) only appears when the seller actually enabled at least ONE
+     * installment gateway («وقتی روش پرداخت اقساطی از سمت فروشنده فعال
+     * هست») — the live opt-in state, so it appears the moment a toggle
+     * flips on, even before the form is saved.
+     */
+    public function getHasAnyBnplEnabledProperty(): bool
+    {
+        foreach ($this->bnplEnabled as $enabled) {
+            if ($enabled) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** v0.32.0 — how many of THIS seller's products are excluded right now. */
+    public function getExcludedCountProperty(): int
+    {
+        return count(InstallmentExclusion::idsForSeller((int) auth('seller')->id()));
     }
 
     protected function shop(): Shop

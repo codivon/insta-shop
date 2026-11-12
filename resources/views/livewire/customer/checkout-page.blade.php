@@ -465,7 +465,7 @@
                                 </span>
                             </p>
                             <p class="mb-2.5 rounded-xl bg-violet-50 px-3 py-2 text-[9.5px] font-semibold leading-4 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300">
-                                قسط اول هنگام خرید از درگاه پرداخت می‌شود و باقی اقساط را در پنل خود درگاه می‌پردازید؛ کارمزدِ اقساطِ هر فروشگاه (در صورت تعیین) به جمع کالاها اضافه می‌شود و شامل هزینهٔ ارسال نیست.
+                                قسط اول هنگام خرید از درگاه پرداخت می‌شود و باقی اقساط را در پنل خود درگاه می‌پردازید؛ کارمزدِ اقساطِ هر فروشگاه (در صورت تعیین) به جمع کالاها اضافه می‌شود و شامل هزینهٔ ارسال نیست. اگر فروشگاه یا محصولی از سبد شما اقساطی را پشتیبانی نکند، هنگام انتخاب روش به‌صورت خودکار اعلام می‌شود.
                             </p>
 
                             <div class="space-y-2.5" role="radiogroup" aria-label="انتخاب روش پرداخت اقساطی">
@@ -473,10 +473,12 @@
                                     @php
                                         $bnplInstallments = \App\Support\Payments\PaymentService::bnplInstallments($key);
                                         $bnplFee = (int) ($bnplFees[$key] ?? 0);
+                                        $bnplIssue = $bnplIssues[$key] ?? null;
+                                        $bnplBlocked = (bool) ($bnplIssue['blocked'] ?? false);
                                     @endphp
                                     <label wire:key="bnpl-{{ $key }}"
                                            class="group flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-3 transition hover:border-violet-300 has-[:checked]:border-violet-500 has-[:checked]:bg-violet-50/60 has-[:checked]:shadow-lg has-[:checked]:shadow-violet-600/10 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-violet-700 dark:has-[:checked]:border-violet-600 dark:has-[:checked]:bg-violet-950/40">
-                                        <input type="radio" name="gateway" value="{{ $key }}" wire:model="gateway" class="sr-only"
+                                        <input type="radio" name="gateway" value="{{ $key }}" wire:model.live="gateway" class="sr-only"
                                                aria-label="پرداخت اقساطی با {{ $label }}">
 
                                         <span class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-100 bg-white p-1 shadow-sm transition group-has-[:checked]:border-violet-200 dark:border-slate-800 dark:bg-slate-800 dark:group-has-[:checked]:border-violet-800">
@@ -484,22 +486,37 @@
                                         </span>
 
                                         <span class="min-w-0 flex-1">
-                                            <span class="flex items-center gap-2">
+                                            <span class="flex flex-wrap items-center gap-2">
                                                 <span class="truncate text-[12.5px] font-extrabold">{{ $label }}</span>
                                                 <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[8.5px] font-extrabold text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">
                                                     {{ \App\Support\Fmt::fa($bnplInstallments) }} قسط
                                                 </span>
+                                                @if ($bnplBlocked)
+                                                    <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[8.5px] font-extrabold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                                                        <x-icon name="alert" class="size-2.5" />
+                                                        پشتیبانی کامل نیست
+                                                    </span>
+                                                @endif
                                             </span>
                                             <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9.5px] font-bold">
-                                                <span class="flex items-center gap-1 text-slate-400 dark:text-slate-500">
-                                                    <x-icon name="calendar" class="size-3 shrink-0" />
-                                                    قسط اول در خرید — باقی اقساط در پنل {{ $label }}
-                                                </span>
+                                                @if ($bnplBlocked)
+                                                    <button type="button"
+                                                            x-on:click="$wire.gateway = '{{ $key }}'"
+                                                            class="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-600 transition hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/70">
+                                                        <x-icon name="info" class="size-3 shrink-0" />
+                                                        مشاهده موارد ناسازگار
+                                                    </button>
+                                                @else
+                                                    <span class="flex items-center gap-1 text-slate-400 dark:text-slate-500">
+                                                        <x-icon name="calendar" class="size-3 shrink-0" />
+                                                        قسط اول در خرید — باقی اقساط در پنل {{ $label }}
+                                                    </span>
+                                                @endif
                                                 @if ($bnplFee > 0)
                                                     <span class="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300">
                                                         + کارمزد اقساط {{ \App\Support\Fmt::money($bnplFee) }}
                                                     </span>
-                                                @else
+                                                @elseif (! $bnplBlocked)
                                                     <span class="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
                                                         بدون کارمزد
                                                     </span>
@@ -774,5 +791,130 @@
             </button>
         </div>
     </form>
+</x-modal-panel>
+
+    {{-- ═══════════════ عدم پشتیبانی کامل خرید اقساطی — مودال اعلام موارد ناسازگار (v0.32.0) ═══════════════
+         وقتی مشتری روش اقساطی را انتخاب می‌کند و سبد او را کامل پوشش نمی‌دهد (فروشگاهی که درگاه را
+         فعال نکرده یا محصولی که فروشنده آن را از خرید اقساطی مستثنی کرده)، همین‌جا با اسم و لیست
+         محصولات اعلام می‌شود؛ با «حذف موارد ناسازگار» یک‌ضرب از سبد خارج و پرداخت اقساطی ممکن می‌شود. ═══════════════ --}}
+    @php $bnplIssue = $bnplIssues[$gateway] ?? null; @endphp
+    <x-modal-panel open="$wire.showBnplEligibility" maxWidth="md" zClass="z-[80]" wire:key="ck-bnpl-issue"
+               labelledby="bnpl-issue-title"
+               closeJs="__ipOpen = false; $wire.showBnplEligibility = false">
+
+    <x-slot:header>
+        <div class="flex items-center justify-between px-4 py-3">
+            <h2 id="bnpl-issue-title" class="flex items-center gap-2 text-xs font-extrabold">
+                <span class="grid size-8 place-items-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300">
+                    <x-icon name="alert" class="size-4" />
+                </span>
+                پرداخت اقساطی برای کل سبد فعال نیست
+            </h2>
+            <button type="button" class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-rose-500 dark:hover:bg-slate-800"
+                    x-on:click="__ipOpen = false; $wire.showBnplEligibility = false" aria-label="بستن">
+                <x-icon name="x" class="size-4" />
+            </button>
+        </div>
+    </x-slot:header>
+
+    <div class="max-h-[62dvh] space-y-4 overflow-y-auto scroll-slim p-4">
+        @if ($bnplIssue !== null && $gateway !== '' && \App\Support\Payments\PaymentService::isBnplGateway($gateway))
+            <p class="rounded-xl bg-amber-50 px-3 py-2.5 text-[10.5px] font-bold leading-5 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                روش «{{ \App\Support\Payments\PaymentService::BNPL_GATEWAYS[$gateway] }}» نمی‌تواند کل سبد شما را اقساطی پرداخت کند. موارد زیر با این روش سازگار نیستند:
+            </p>
+
+            {{-- ── فروشگاه‌هایی که این درگاه را فعال نکرده‌اند ── --}}
+            @if (count($bnplIssue['shops']) > 0)
+                <div>
+                    <p class="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold text-slate-600 dark:text-slate-300">
+                        <x-icon name="store" class="size-3.5 text-rose-500" />
+                        فروشگاه‌های بدون پشتیبانی این روش
+                        <span class="ms-auto rounded-full bg-rose-100 px-2 py-0.5 text-[9px] font-extrabold text-rose-600 dark:bg-rose-950/60 dark:text-rose-300">
+                            {{ \App\Support\Fmt::toFa(count($bnplIssue['shops'])) }}
+                        </span>
+                    </p>
+                    <div class="space-y-2">
+                        @foreach ($bnplIssue['shops'] as $issueShop)
+                            <div class="rounded-2xl border border-rose-200 bg-rose-50/60 p-3 dark:border-rose-900/70 dark:bg-rose-950/20" wire:key="bnpl-issue-shop-{{ $issueShop['id'] }}">
+                                <div class="flex items-center gap-2">
+                                    <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-white text-rose-500 shadow-sm dark:bg-slate-900">
+                                        <x-icon name="store" class="size-3.5" />
+                                    </span>
+                                    <span class="min-w-0 flex-1 truncate text-[11px] font-extrabold">{{ $issueShop['name'] }}</span>
+                                    <span class="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-[8.5px] font-extrabold text-rose-600 dark:bg-rose-950/60 dark:text-rose-300">اقساطی را فعال نکرده</span>
+                                </div>
+                                <div class="mt-2 flex flex-wrap gap-1.5">
+                                    @foreach ($issueShop['items'] as $issueItem)
+                                        <span class="inline-flex max-w-full items-center gap-1 rounded-lg bg-white px-2 py-1 text-[9.5px] font-bold text-slate-600 ring-1 ring-rose-100 dark:bg-slate-900 dark:text-slate-300 dark:ring-rose-900/60" wire:key="bnpl-issue-item-{{ $issueShop['id'] }}-{{ $issueItem['id'] }}">
+                                            <span class="truncate">{{ $issueItem['name'] }}</span>
+                                            @if ($issueItem['qty'] > 1)
+                                                <span class="shrink-0 text-rose-500">× {{ \App\Support\Fmt::toFa($issueItem['qty']) }}</span>
+                                            @endif
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            {{-- ── محصولات مستثنی‌شده از خرید اقساطی ── --}}
+            @if (count($bnplIssue['products']) > 0)
+                <div>
+                    <p class="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold text-slate-600 dark:text-slate-300">
+                        <x-icon name="shield-off" class="size-3.5 text-amber-500" />
+                        محصولات مستثنی از خرید اقساطی
+                        <span class="ms-auto rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-extrabold text-amber-600 dark:bg-amber-950/60 dark:text-amber-300">
+                            {{ \App\Support\Fmt::toFa(count($bnplIssue['products'])) }}
+                        </span>
+                    </p>
+                    <div class="space-y-1.5">
+                        @foreach ($bnplIssue['products'] as $issueProduct)
+                            <div class="flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50/60 p-2.5 dark:border-amber-900/70 dark:bg-amber-950/20" wire:key="bnpl-issue-product-{{ $issueProduct['id'] }}">
+                                <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-white text-amber-500 shadow-sm dark:bg-slate-900">
+                                    <x-icon name="shield-off" class="size-3.5" />
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate text-[11px] font-extrabold">{{ $issueProduct['name'] }}</span>
+                                    <span class="mt-0.5 block text-[9px] font-semibold text-amber-600/90 dark:text-amber-400/90">از فروشگاه «{{ $issueProduct['shop'] }}» — فروشنده این محصول را از خرید اقساطی مستثنی کرده است</span>
+                                </span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            <p class="flex items-start gap-1.5 rounded-xl bg-slate-100 px-3 py-2.5 text-[10px] font-semibold leading-5 text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
+                <x-icon name="info" class="mt-0.5 size-3.5 shrink-0" />
+                <span>برای پرداخت اقساطی می‌توانید این موارد را از سبد حذف کنید؛ یا برای کل سفارش از درگاه‌های معمولی استفاده کنید.</span>
+            </p>
+        @else
+            {{-- محتوا دیگر مرتبط نیست (سبد تغییر کرده) --}}
+            <p class="rounded-xl bg-emerald-50 px-3 py-3 text-[11px] font-bold text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300">
+                سبد شما هم‌اکنون برای پرداخت اقساطی مشکلی ندارد. ✅
+            </p>
+        @endif
+    </div>
+
+    <div class="flex gap-2 border-t border-slate-100 p-4 dark:border-slate-800">
+        @if ($bnplIssue !== null && ($bnplIssue['shops'] !== [] || $bnplIssue['products'] !== []))
+            <button type="button" wire:click="removeIneligibleItems" wire:loading.attr="disabled" wire:target="removeIneligibleItems"
+                    class="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-violet-600 py-3 text-[11px] font-extrabold text-white shadow-lg shadow-violet-600/25 transition hover:bg-violet-700 active:scale-95 disabled:opacity-60">
+                <span wire:loading.remove wire:target="removeIneligibleItems" class="flex items-center gap-1.5">
+                    <x-icon name="trash" class="size-3.5" />
+                    حذف موارد ناسازگار از سبد
+                </span>
+                <span wire:loading wire:target="removeIneligibleItems" class="flex items-center gap-1.5">
+                    <span class="inline-block size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                    در حال حذف…
+                </span>
+            </button>
+        @endif
+        <button type="button" x-on:click="__ipOpen = false; $wire.showBnplEligibility = false"
+                class="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-[11px] font-extrabold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800">
+            متوجه شدم
+        </button>
+    </div>
 </x-modal-panel>
 </div>

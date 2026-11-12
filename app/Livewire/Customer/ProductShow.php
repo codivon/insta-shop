@@ -5,6 +5,7 @@ namespace App\Livewire\Customer;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Favorite;
+use App\Models\InstallmentExclusion;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductVariantValue;
@@ -517,6 +518,12 @@ class ProductShow extends Component
             $setting = SellerBnplSetting::forSeller($gateway, (int) $sellerId);
 
             if (! $setting || ! $setting->enabled || ! $setting->show_on_product) {
+                continue;
+            }
+
+            // v0.32.0 — the seller pulled THIS product out of installment
+            // selling (محصولات مستثنی) — no gateway may advertise it
+            if (InstallmentExclusion::isExcluded((int) $sellerId, (int) $this->product->id)) {
                 continue;
             }
 

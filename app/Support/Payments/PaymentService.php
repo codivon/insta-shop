@@ -298,50 +298,12 @@ class PaymentService
     }
 
     /**
-     * BNPL gateways available to THIS cart: admin enabled ∧ credentialed ∧
-     * EVERY seller with items in the cart opted in (one seller without the
-     * gateway removes it for the whole cart — an installment payment can
-     * never split between gateway/wallet flows).
-     *
-     * @param  array<int, int|null>  $sellerIds  seller ids of the cart shops
-     * @return array<string, string>
+     * The BNPL surcharge ONE shop adds for a gateway (0 when not opted in).
+     * v0.32.0 — checkout lists a gateway when at least ONE seller opted in
+     * (see CheckoutPage::bnplIssues for the eligibility analysis); this fee
+     * is always computed on the shop's ELIGIBLE goods, so excluded lines
+     * never carry a surcharge.
      */
-    public static function bnplGatewaysForSellers(array $sellerIds): array
-    {
-        $admin = self::availableBnplGateways();
-
-        if ($admin === []) {
-            return [];
-        }
-
-        $sellerIds = array_values(array_unique(array_filter(array_map('intval', $sellerIds))));
-
-        if ($sellerIds === []) {
-            return [];
-        }
-
-        $rows = SellerBnplSetting::query()
-            ->whereIn('seller_id', $sellerIds)
-            ->where('enabled', true)
-            ->get();
-
-        $available = [];
-
-        foreach (array_keys($admin) as $gateway) {
-            $everySellerIn = collect($sellerIds)->every(
-                fn (int $sellerId): bool => $rows
-                    ->contains(fn (SellerBnplSetting $row): bool => $row->seller_id === $sellerId && $row->gateway === $gateway),
-            );
-
-            if ($everySellerIn) {
-                $available[$gateway] = $admin[$gateway];
-            }
-        }
-
-        return $available;
-    }
-
-    /** The BNPL surcharge ONE shop adds for a gateway (0 when not opted in). */
     public static function bnplFeeForShop(string $gateway, ?int $sellerId, int $itemsTotal): int
     {
         $setting = SellerBnplSetting::forSeller($gateway, $sellerId);

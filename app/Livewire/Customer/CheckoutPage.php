@@ -8,9 +8,11 @@ use App\Models\City;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\Discount;
+use App\Models\InstallmentExclusion;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Province;
+use App\Models\SellerBnplSetting;
 use App\Models\Shop;
 use App\Support\ActivityLogger;
 use App\Support\AdminNotifier;
@@ -89,6 +91,31 @@ class CheckoutPage extends Component
 
     /** shop_id → chosen payment gateway key (in-active gateway = default). */
     public string $gateway = '';
+
+    /**
+     * v0.32.0 — the «عدم پشتیبانی خرید اقساطی» modal. It opens itself when
+     * the customer picks an installment gateway the cart can NOT fully ride
+     * (a shop without the opt-in, or an excluded product) and lists the
+     * offenders with a one-click removal.
+     */
+    public bool $showBnplEligibility = false;
+
+    /**
+     * v0.32.0 — the installment radio cards sync live, so the moment a
+     * blocked gateway is picked this hook opens the eligibility modal IN
+     * THE SAME request that carries the selection (no Alpine/deferred
+     * race — the modal body always matches the selected gateway).
+     */
+    public function updatedGateway(string $value): void
+    {
+        if (! PaymentService::isBnplGateway($value)) {
+            return;
+        }
+
+        if (($this->bnplIssues[$value]['blocked'] ?? false) === true) {
+            $this->showBnplEligibility = true;
+        }
+    }
 
     public function mount(): void
     {
@@ -681,6 +708,23 @@ class CheckoutPage extends Component
         $bnplFeeTotal = 0;
 
         if ($bnplGateway !== null) {
+            /*
+             * v0.32.0 — the eligibility gate: the cart can only ride an
+             * installment gateway when EVERY shop enabled it and NO product
+             * was excluded by its seller. Otherwise the modal opens with the
+             * offenders named (فروشگاه X روش اقساطی را فعال نکرده / محصول Y
+             * جزو کالاهای اقساطی نیست) and the order never reaches a gateway.
+             */
+            $issue = $this->bnplIssues[$bnplGateway] ?? null;
+
+            if ($issue !== null && $issue['blocked']) {
+                $this->showBnplEligibility = true;
+                $this->addError('gateway', 'همهٔ فروشگاه‌ها و محصولات این سبد از پرداخت اقساطی پشتیبانی نمی‌کنند.');
+                $this->dispatch('panel-toast', message: 'برای پرداخت اقساطی، ابتدا موارد ناسازگار را از سبد حذف کنید.');
+
+                return;
+            }
+
             $goodsTotal = (int) $this->shopGroups->sum(fn ($group): int => (int) $group['subtotal']);
 
             if (! PaymentService::bnplAmountEligible($bnplGateway, $goodsTotal)) {
@@ -925,26 +969,142 @@ class CheckoutPage extends Component
     }
 
     /**
-     * v0.30.0 — درگاه‌های اقساطی usable for THIS cart: admin enabled ∧
-     * credentials ∧ EVERY cart seller opted in (فعال‌سازی از پنل فروشنده).
-     * v0.31.0 — the cart's GOODS total (never shipping) must also sit
-     * inside each gateway's min/max window (سقف اعتباری واقعی درگاه‌ها).
+     * v0.30.0 — درگاه‌های اقساطی usable for THIS cart. v0.32.0 — the rule
+     * changed: the section shows when AT LEAST ONE cart seller opted in
+     * (before: EVERY seller), so a partially-supported cart still gets the
+     * choice — and the eligibility modal names the shops that did not
+     * enable the gateway plus the products the seller excluded (محصولات
+     * مستثنی). The offenders ride bnplIssues; placeOrder blocks them.
      *
      * @return array<string, string> gateway → Persian label
      */
     public function getBnplGatewaysProperty(): array
     {
-        $goodsTotal = (int) $this->shopGroups->sum(fn ($group): int => (int) $group['subtotal']);
+        $gateways = [];
 
-        return collect(PaymentService::bnplGatewaysForSellers($this->cartSellerIds()))
-            ->filter(fn (string $label, string $gateway): bool => PaymentService::bnplAmountEligible($gateway, $goodsTotal))
-            ->all();
+        foreach (array_keys($this->bnplIssues) as $gateway) {
+            $gateways[$gateway] = PaymentService::BNPL_GATEWAYS[$gateway];
+        }
+
+        return $gateways;
+    }
+
+    /**
+     * v0.32.0 — the per-gateway eligibility analysis of the CURRENT cart,
+     * the single source of truth behind the section, the card chips, the
+     * fee rows and the modal.
+     *
+     * A gateway is LISTED when the admin enabled it (and credentialed it)
+     * and at least ONE cart seller opted in; it is BLOCKED for payment when
+     * some cart shops never opted in, or the seller excluded products from
+     * installment selling. The amount window (v0.31.0) rides the ELIGIBLE
+     * subtotal — what remains AFTER the customer removes the offenders —
+     * so a cart that would fit post-removal still shows the choice.
+     *
+     * @return array<string, array{blocked: bool, shops: list<array{id: int, name: string, items: list<array{id: int, name: string, qty: int}>}>, products: list<array{id: int, name: string, shop: string}>, eligibleSubtotal: int, fee: int}>
+     */
+    public function getBnplIssuesProperty(): array
+    {
+        $admin = PaymentService::availableBnplGateways();
+
+        if ($admin === [] || $this->shopGroups->isEmpty()) {
+            return [];
+        }
+
+        $sellerIds = $this->cartSellerIds();
+
+        if ($sellerIds === []) {
+            return [];
+        }
+
+        // ONE query: the enabled opt-ins of every cart seller
+        $optins = SellerBnplSetting::query()
+            ->whereIn('seller_id', $sellerIds)
+            ->where('enabled', true)
+            ->get();
+
+        // ONE query: which cart products their seller excluded (مستثنی)
+        $excludedPairs = InstallmentExclusion::excludedPairs(
+            $this->items->map(fn ($item): ?int => $item->product?->id)->filter()->map(fn ($id): int => (int) $id)->all(),
+        );
+
+        $issues = [];
+
+        foreach (array_keys($admin) as $gateway) {
+            $shops = [];
+            $products = [];
+            $eligibleSubtotal = 0;
+            $feeTotal = 0;
+
+            foreach ($this->shopGroups as $group) {
+                $sellerId = $group['shop']?->seller_id;
+                $in = $sellerId !== null && $optins->contains(
+                    fn (SellerBnplSetting $row): bool => $row->seller_id === (int) $sellerId && $row->gateway === $gateway,
+                );
+
+                if ($in) {
+                    // the shop opted in — only its NON-excluded lines ride
+                    $eligibleLines = $group['items']->filter(
+                        fn ($item): bool => ! in_array($sellerId.':'.$item->product?->id, $excludedPairs, true),
+                    );
+
+                    $groupEligible = (int) $eligibleLines->sum(fn ($item) => $item->lineTotal());
+                    $eligibleSubtotal += $groupEligible;
+                    $feeTotal += PaymentService::bnplFeeForShop($gateway, (int) $sellerId, $groupEligible);
+
+                    // the excluded lines get NAMED in the modal
+                    $group['items']
+                        ->filter(fn ($item): bool => in_array($sellerId.':'.$item->product?->id, $excludedPairs, true))
+                        ->each(function ($item) use (&$products, $group): void {
+                            $products[] = [
+                                'id' => (int) $item->product->id,
+                                'name' => (string) $item->product->name,
+                                'shop' => (string) $group['shop']->name,
+                            ];
+                        });
+                } else {
+                    // the shop never enabled this gateway — every line off-limits
+                    $shops[] = [
+                        'id' => (int) $group['shop']->id,
+                        'name' => (string) $group['shop']->name,
+                        'items' => $group['items']->map(fn ($item): array => [
+                            'id' => (int) $item->product?->id,
+                            'name' => (string) ($item->product?->name ?? ''),
+                            'qty' => (int) $item->quantity,
+                        ])->all(),
+                    ];
+                }
+            }
+
+            // NO cart seller opted in for this gateway → hidden entirely
+            // (when that holds for EVERY gateway, the whole section vanishes)
+            if (count($shops) === $this->shopGroups->count()) {
+                continue;
+            }
+
+            // the window check rides the eligible subtotal — the amount the
+            // cart carries once the customer removes the offenders
+            if (! PaymentService::bnplAmountEligible($gateway, $eligibleSubtotal)) {
+                continue;
+            }
+
+            $issues[$gateway] = [
+                'blocked' => $shops !== [] || $products !== [],
+                'shops' => $shops,
+                'products' => $products,
+                'eligibleSubtotal' => $eligibleSubtotal,
+                'fee' => $feeTotal,
+            ];
+        }
+
+        return $issues;
     }
 
     /**
      * v0.30.0 — the TOTAL installment surcharge per gateway (each cart
-     * seller adds their own percent/fixed fee on their OWN goods — the
-     * sum rides the PRODUCTS total and never touches the shipping).
+     * seller adds their own percent/fixed fee on their OWN eligible goods
+     * — v0.32.0: excluded lines never carry a fee). The sum rides the
+     * PRODUCTS total and never touches the shipping.
      *
      * @return array<string, int> gateway → fee total in Toman
      */
@@ -952,14 +1112,100 @@ class CheckoutPage extends Component
     {
         $fees = [];
 
-        foreach (array_keys($this->bnplGateways) as $gateway) {
-            $fees[$gateway] = $this->shopGroups
-                ->sum(fn ($group): int => $group['shop']?->seller_id
-                    ? PaymentService::bnplFeeForShop($gateway, (int) $group['shop']->seller_id, (int) $group['subtotal'])
-                    : 0);
+        foreach ($this->bnplIssues as $gateway => $issue) {
+            $fees[$gateway] = (int) $issue['fee'];
         }
 
         return $fees;
+    }
+
+    /**
+     * v0.32.0 — «حذف موارد ناسازگار» from the eligibility modal: every
+     * line the selected installment gateway can NOT carry (the shops that
+     * never opted in + the excluded products) leaves the cart in one click,
+     * the discount re-syncs and the same gateway becomes payable.
+     */
+    public function removeIneligibleItems(): void
+    {
+        $customer = $this->customer();
+
+        if (! $customer || ! PaymentService::isBnplGateway($this->gateway)) {
+            $this->showBnplEligibility = false;
+
+            return;
+        }
+
+        $issue = $this->bnplIssues[$this->gateway] ?? null;
+
+        if ($issue === null || ! $issue['blocked']) {
+            $this->showBnplEligibility = false;
+
+            return;
+        }
+
+        $offendingProductIds = [];
+
+        foreach ($issue['shops'] as $shop) {
+            foreach ($shop['items'] as $item) {
+                $offendingProductIds[] = (int) $item['id'];
+            }
+        }
+
+        foreach ($issue['products'] as $product) {
+            $offendingProductIds[] = (int) $product['id'];
+        }
+
+        $offendingProductIds = array_values(array_unique(array_filter($offendingProductIds)));
+
+        if ($offendingProductIds !== []) {
+            $customer->cart?->items()
+                ->whereHas('product', fn ($query) => $query->whereIn('products.id', $offendingProductIds))
+                ->delete();
+
+            // Livewire caches computed properties FOR THE WHOLE REQUEST —
+            // bnplIssues was materialised pre-deletion (to find the
+            // offenders), so every cart-derived computed must be dropped
+            // or the render would show the OLD cart (stale chips/fees).
+            $this->forgetCartComputeds();
+
+            // the header badge follows the fresh cart size
+            $this->dispatch('cart-changed', count: $customer->cart?->countDistinct() ?? 0);
+        }
+
+        $this->showBnplEligibility = false;
+
+        // the removed lines may have carried the applied discount — re-sync
+        if ($this->discountApplied) {
+            [, $amount] = $this->resolveDiscount();
+            $this->dispatch('discount-updated', amount: $amount);
+        }
+
+        $this->dispatch('panel-toast', message: 'محصولات ناسازگار با پرداخت اقساطی از سبد حذف شدند. ✅', type: 'success');
+    }
+
+    /**
+     * v0.32.0 — drop every cart-derived computed cache. Livewire caches
+     * computed properties for the whole request; any method that MUTATES
+     * the cart must clear them or the same-request render shows the old
+     * cart (the stale BNPL chips after «حذف موارد ناسازگار»).
+     */
+    private function forgetCartComputeds(): void
+    {
+        unset(
+            $this->items,
+            $this->validItems,
+            $this->shopGroups,
+            $this->total,
+            $this->units,
+            $this->shippingCost,
+            $this->hasPayOnDelivery,
+            $this->liveDiscount,
+            $this->discountShop,
+            $this->payable,
+            $this->bnplIssues,
+            $this->bnplGateways,
+            $this->bnplFees,
+        );
     }
 
     /** Seller ids behind the cart shops (for the BNPL availability rule). */
@@ -1001,6 +1247,7 @@ class CheckoutPage extends Component
             'gateways' => $this->gateways,
             'bnplGateways' => $this->bnplGateways,
             'bnplFees' => $this->bnplFees,
+            'bnplIssues' => $this->bnplIssues,
             'addresses' => $this->addresses,
             'selectedAddress' => $this->selectedAddress,
             'newProvinces' => $this->newProvinces,

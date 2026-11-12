@@ -73,6 +73,7 @@ use App\Livewire\Seller\DiscountIndex;
 use App\Livewire\Seller\FilteringManager;
 use App\Livewire\Seller\GuidePage;
 use App\Livewire\Seller\Home;
+use App\Livewire\Seller\InstallmentProducts;
 use App\Livewire\Seller\Notifications\NotificationsPage as SellerNotificationsPage;
 use App\Livewire\Seller\OrdersPage as SellerOrdersPage;
 use App\Livewire\Seller\ProductForm;
@@ -261,6 +262,11 @@ Route::prefix('seller')->name('seller.')->group(function () {
         // ── Phase 3: My Shop (catalog management) ──
         Route::get('/shop', ShopIndex::class)->name('shop');
         Route::get('/shop/edit', ShopEdit::class)->name('shop.edit');
+
+        // ── محصولات مستثنی اقساطی (v0.32.0) — products pulled OUT of
+        // installment selling; only meaningful once a BNPL gateway is on ──
+        Route::get('/installment-products', InstallmentProducts::class)->name('installment.products');
+
         Route::get('/shop/attributes', AttributeManager::class)->name('shop.attributes');
         Route::get('/products/create', ProductForm::class)->name('products.create');
         Route::get('/products/{product}/edit', ProductForm::class)->name('products.edit');
