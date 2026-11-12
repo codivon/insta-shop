@@ -520,6 +520,13 @@ class ProductShow extends Component
                 continue;
             }
 
+            // v0.31.0 — the badge only shows when THIS product's price sits
+            // inside the gateway's min/max window (سقف اعتباری درگاه) — a
+            // 3,000,000-cap gateway never advertises a 5M installment plan.
+            if (! PaymentService::bnplAmountEligible($gateway, (int) $this->displayPrice)) {
+                continue;
+            }
+
             $installments = PaymentService::bnplInstallments($gateway);
             $per = (int) ceil(max(0, $this->displayPrice + $setting->feeFor($this->displayPrice)) / max(1, $installments));
 

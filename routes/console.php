@@ -91,11 +91,13 @@ Schedule::command('subscriptions:remind')
 |--------------------------------------------------------------------------
 |
 | `bnpl:settle` deposits every PENDING bnpl_settlements row whose due
-| date has arrived into the seller wallet — the monthly rhythm of the
+| date has arrived into the seller wallet — the periodic rhythm of the
 | installment gateways (دیجی‌پی / اسنپ‌پی / ترب‌پی settle their merchants
-| monthly). The due date was frozen at payment time as the next
-| occurrence of the gateway's configured settlement day; the admin can
-| also deposit any row manually from the «تسویه اقساطی» section.
+| on a contract schedule). The due date was frozen at payment time as
+| the next occurrence of the gateway's configured settlement day pushed
+| by its frequency (هر ماه / هر ۲ ماه / هر ۳ ماه). v0.31.0: ONLY
+| auto-mode gateways ride this cron — «دستی» gateways wait for the
+| admin's manual/bulk deposit from the «تسویه اقساطی» section.
 |
 */
 Schedule::command('bnpl:settle')

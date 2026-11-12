@@ -41,7 +41,7 @@ class BnplSettlementsPage extends Component
     /** 'all' | gateway key */
     public string $gateway = 'all';
 
-    /** 'all' | 'pending' | 'paid' | 'canceled' */
+    /** 'all' | 'pending' | 'overdue' | 'paid' | 'canceled' */
     public string $status = 'all';
 
     /** free search: order id / seller name */
@@ -89,6 +89,35 @@ class BnplSettlementsPage extends Component
         }
     }
 
+    /**
+     * v0.31.0 — واریز گروهی: deposit EVERY pending settlement whose due
+     * date has arrived (ALL gateways — even manual-mode ones, because the
+     * admin clicked the button on purpose). Shares the same atomic engine
+     * as the cron; each row lands with the «واریز گروهی توسط مدیر» note.
+     */
+    public function depositDueNow(): void
+    {
+        $deposited = 0;
+        $amount = 0;
+
+        BnplSettlement::query()
+            ->where('status', 'pending')
+            ->whereDate('due_date', '<=', today())
+            ->orderBy('due_date')
+            ->chunkById(200, function ($rows) use (&$deposited, &$amount): void {
+                foreach ($rows as $row) {
+                    if (BnplSettlements::deposit($row, manual: true, note: 'واریز گروهی توسط مدیر')) {
+                        $deposited++;
+                        $amount += (int) $row->amount;
+                    }
+                }
+            });
+
+        session()->flash('bnpl-admin-flash', $deposited > 0
+            ? Fmt::fa($deposited).' تسویهٔ سررسیدشده واریز شد — مجموع '.Fmt::money($amount).' به کیف پول فروشندگان.'
+            : 'هیچ تسویهٔ سررسیدشده‌ای برای واریز گروهی وجود ندارد.');
+    }
+
     /** لغو تسویه — mark canceled (refunded/canceled order) with a note. */
     public function cancelSettlement(int $id, string $note = ''): void
     {
@@ -105,7 +134,7 @@ class BnplSettlementsPage extends Component
             : 'این تسویه دیگر در انتظار نیست.');
     }
 
-    /** Totals for the summary chips (pending / paid / canceled per scope). */
+    /** Totals for the summary chips (pending / overdue / paid per scope). */
     public function getStatsProperty(): array
     {
         $base = BnplSettlement::query()
@@ -116,6 +145,8 @@ class BnplSettlementsPage extends Component
             'pending_amount' => (int) (clone $base)->where('status', 'pending')->sum('amount'),
             'paid_amount' => (int) (clone $base)->where('status', 'paid')->sum('amount'),
             'due_now_count' => (clone $base)->where('status', 'pending')->whereDate('due_date', '<=', today())->count(),
+            'overdue_count' => (clone $base)->where('status', 'pending')->whereDate('due_date', '<', today())->count(),
+            'overdue_amount' => (int) (clone $base)->where('status', 'pending')->whereDate('due_date', '<', today())->sum('amount'),
         ];
     }
 
@@ -124,7 +155,12 @@ class BnplSettlementsPage extends Component
         return BnplSettlement::query()
             ->with(['order:id,status,total_amount,bnpl_gateway,bnpl_fee', 'seller:id,phone,instagram_username,full_name', 'wallet:id,seller_id,balance'])
             ->when($this->gateway !== 'all', fn ($q) => $q->where('gateway', $this->gateway))
-            ->when($this->status !== 'all', fn ($q) => $q->where('status', $this->status))
+            ->when(in_array($this->status, ['pending', 'paid', 'canceled'], true), fn ($q) => $q->where('status', $this->status))
+            // v0.31.0 — «معوق»: pending AND past its due date (the cron of
+            // manual-mode gateways will NEVER take these — admin decides).
+            ->when($this->status === 'overdue', fn ($q) => $q
+                ->where('status', 'pending')
+                ->whereDate('due_date', '<', today()))
             ->when(trim($this->search) !== '', function ($q): void {
                 $term = trim($this->search);
 
@@ -154,9 +190,17 @@ class BnplSettlementsPage extends Component
             'bnplGateways' => PaymentService::BNPL_GATEWAYS,
             'statuses' => [
                 'pending' => 'در انتظار تسویه',
+                'overdue' => 'معوق (گذشته از سررسید)',
                 'paid' => 'واریز شده',
                 'canceled' => 'لغو شده',
             ],
+            // v0.31.0 — gateways in MANUAL mode (the cron never touches
+            // their rows → the table shows a «تسویهٔ دستی» hint chip).
+            'manualGateways' => collect(PaymentService::BNPL_GATEWAYS)
+                ->keys()
+                ->filter(fn (string $g): bool => PaymentService::bnplSettlementMode($g) === 'manual')
+                ->values()
+                ->all(),
         ])->title('تسویه اقساطی')
             ->layout('layouts.admin-slot', ['breadcrumb' => 'مدیریت کل — تسویه اقساطی']);
     }

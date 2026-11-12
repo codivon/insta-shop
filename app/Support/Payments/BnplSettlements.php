@@ -13,6 +13,7 @@ use App\Support\Fmt;
 use App\Support\JDate;
 use App\Support\SellerNotifier;
 use App\Support\Wallet\WalletService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /**
@@ -140,18 +141,26 @@ final class BnplSettlements
     }
 
     /**
-     * The NEXT occurrence of the gateway's configured settlement day
-     * strictly after the purchase — «خرید ۲۵ → روزِ ۱ ماه بعد»؛ «خرید ۵،
-     * روزِ ۱۰ → روزِ ۱۰ همین ماه». Day is clamped to 1..29 (no month is
-     * shorter than 29 days, so the date never overflows).
+     * v0.31.0 — the due date of a BNPL settlement: the NEXT occurrence of
+     * the gateway's configured settlement day strictly after the purchase
+     * («خرید ۲۵ → روزِ ۱ ماه بعد»؛ «خرید ۵، روزِ ۱۰ → روزِ ۱۰ همین ماه»),
+     * pushed (frequency − 1) months further by the gateway's settlement
+     * frequency (هر ۲ ماه یک‌بار → +۱ ماه دیگر). Day is clamped to 1..29
+     * (no month is shorter than 29 days, so the date never overflows) and
+     * addMonthNoOverflow keeps even a day-29 purchase inside its months.
      */
     public static function nextSettlementDate(string $gateway, Carbon $purchasedAt): Carbon
     {
         $day = PaymentService::bnplSettlementDay($gateway);
+        $frequency = PaymentService::bnplSettlementFrequency($gateway);
 
         $due = $purchasedAt->copy()->startOfDay()->day($day);
 
-        return $due->greaterThan($purchasedAt->copy()->startOfDay()) ? $due : $due->addMonthNoOverflow();
+        if (! $due->greaterThan($purchasedAt->copy()->startOfDay())) {
+            $due = $due->addMonthNoOverflow();
+        }
+
+        return $frequency > 1 ? $due->addMonthNoOverflow($frequency - 1) : $due;
     }
 
     /**
@@ -220,8 +229,29 @@ final class BnplSettlements
     }
 
     /**
-     * The daily cron sweep: every PENDING settlement whose due date has
-     * arrived (due_date <= today) gets deposited. Returns [deposited, amount].
+     * v0.31.0 — the AUTO settlement sweep query: PENDING settlements whose
+     * due date has arrived (due_date <= today) that belong to gateways in
+     * AUTO mode. Manual-mode gateways are NEVER touched by the cron — the
+     * admin deposits their rows by hand («واریز دستی» / «واریز گروهی») —
+     * and the bnpl:settle dry-run counts exactly this scope.
+     */
+    public static function autoDueQuery(): Builder
+    {
+        $autoGateways = collect(PaymentService::BNPL_GATEWAYS)
+            ->keys()
+            ->filter(fn (string $gateway): bool => PaymentService::bnplSettlementMode($gateway) === 'auto')
+            ->values();
+
+        return BnplSettlement::query()
+            ->whereIn('gateway', $autoGateways->all())
+            ->where('status', 'pending')
+            ->whereDate('due_date', '<=', today());
+    }
+
+    /**
+     * The daily cron sweep: every PENDING settlement of AUTO-mode gateways
+     * whose due date has arrived (due_date <= today) gets deposited.
+     * Returns [deposited, amount].
      *
      * @return array{0: int, 1: int}
      */
@@ -230,9 +260,7 @@ final class BnplSettlements
         $deposited = 0;
         $amount = 0;
 
-        BnplSettlement::query()
-            ->where('status', 'pending')
-            ->whereDate('due_date', '<=', today())
+        self::autoDueQuery()
             ->with(['order:id,bnpl_gateway,bnpl_fee'])
             ->orderBy('due_date')
             ->chunkById(200, function ($rows) use (&$deposited, &$amount): void {

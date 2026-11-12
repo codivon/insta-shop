@@ -20,7 +20,10 @@ use Illuminate\Console\Command;
  * deposits every pending settlement whose due_date has arrived — the due
  * date was computed at payment time as the NEXT occurrence of the
  * admin-configured settlement day (payment.{gateway}.settlement_day) of
- * that gateway — into the seller wallet with a TYPE_BNPL ledger entry.
+ * that gateway, pushed further by its settlement frequency
+ * (هر ماه / هر ۲ ماه / هر ۳ ماه) — into the seller wallet with a TYPE_BNPL
+ * ledger entry. v0.31.0: only gateways whose settlement MODE is «خودکار»
+ * ride this cron; «دستی» gateways wait for the admin's manual deposit.
  *
  * The admin can also deposit any pending row by hand (واریز دستی) from
  * the «تسویه اقساطی» admin section — both paths share
@@ -37,18 +40,23 @@ class BnplSettleCommand extends Command
 
     public function handle(): int
     {
-        $dueCount = BnplSettlement::query()
-            ->where('status', 'pending')
-            ->whereDate('due_date', '<=', today())
-            ->count();
+        // v0.31.0 — manual-mode gateways are NEVER swept by the cron; the
+        // dry-run/count mirrors exactly what the live sweep will do.
+        $dueQuery = BnplSettlements::autoDueQuery();
 
-        $dueSum = (int) BnplSettlement::query()
-            ->where('status', 'pending')
-            ->whereDate('due_date', '<=', today())
-            ->sum('amount');
+        $dueCount = (clone $dueQuery)->count();
+        $dueSum = (int) (clone $dueQuery)->sum('amount');
 
         if ($dueCount === 0) {
-            $this->line('هیچ تسویهٔ اقساطی سررسیدشده‌ای وجود ندارد.');
+            $manualPending = BnplSettlement::query()
+                ->where('status', 'pending')
+                ->whereDate('due_date', '<=', today())
+                ->count();
+
+            $this->line($manualPending > 0
+                ? 'هیچ تسویهٔ اقساطیِ سررسیدشده‌ای برای درگاه‌های «خودکار» وجود ندارد ('
+                    .Fmt::fa($manualPending).' مورد از درگاه‌های «دستی» منتظر واریز مدیر است).'
+                : 'هیچ تسویهٔ اقساطی سررسیدشده‌ای وجود ندارد.');
 
             return self::SUCCESS;
         }

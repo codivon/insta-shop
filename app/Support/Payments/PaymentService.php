@@ -371,6 +371,92 @@ class PaymentService
     }
 
     /**
+     * v0.31.0 — the settlement FREQUENCY of a BNPL gateway: every 1, 2 or 3
+     * months (هر ماه / هر ۲ ماه / هر ۳ ماه). The due date of a settlement is
+     * the next occurrence of the settlement day AFTER the purchase, pushed
+     * (frequency − 1) months further — a 2-month policy on day 10 settles a
+     * purchase of day 12 on the 10th of the month AFTER next.
+     */
+    public static function bnplSettlementFrequency(string $gateway): int
+    {
+        $value = (int) Setting::get("payment.{$gateway}.settlement_frequency_months", '1');
+
+        return in_array($value, [1, 2, 3], true) ? $value : 1;
+    }
+
+    /**
+     * v0.31.0 — the settlement MODE of a BNPL gateway: «auto» rides the
+     * daily cron (bnpl:settle deposits every due row of the gateway) while
+     * «manual» leaves EVERY row for the admin's «واریز دستی» in the
+     * تسویه اقساطی section. Manual-mode rows show a «دستی» hint so the
+     * admin knows the cron will never touch them.
+     */
+    public static function bnplSettlementMode(string $gateway): string
+    {
+        $value = (string) Setting::get("payment.{$gateway}.settlement_mode", 'auto');
+
+        return $value === 'manual' ? 'manual' : 'auto';
+    }
+
+    /** Persian label of the settlement mode (چیپ‌های تنظیمات و جدول تسویه). */
+    public static function bnplSettlementModeLabel(string $gateway): string
+    {
+        return self::bnplSettlementMode($gateway) === 'manual' ? 'دستی' : 'خودکار';
+    }
+
+    /** «هر ماه / هر ۲ ماه / هر ۳ ماه» — the frequency chip of the policy line. */
+    public static function bnplSettlementFrequencyLabel(string $gateway): string
+    {
+        return match (self::bnplSettlementFrequency($gateway)) {
+            2 => 'هر ۲ ماه یک‌بار',
+            3 => 'هر ۳ ماه یک‌بار',
+            default => 'هر ماه',
+        };
+    }
+
+    /** The full policy line shown to sellers/admins: «هر ماه، روزِ ۱ — خودکار». */
+    public static function bnplSettlementPolicyLabel(string $gateway): string
+    {
+        return self::bnplSettlementFrequencyLabel($gateway).', روزِ '
+            .Fmt::fa(self::bnplSettlementDay($gateway)).' — '
+            .self::bnplSettlementModeLabel($gateway);
+    }
+
+    /** v0.31.0 — minimum GOODS amount a cart needs for a BNPL gateway (۰ = بدون محدودیت). */
+    public static function bnplMinAmount(string $gateway): int
+    {
+        $value = (int) Setting::get("payment.{$gateway}.min_amount", '0');
+
+        return max(0, $value);
+    }
+
+    /** v0.31.0 — maximum GOODS amount a BNPL gateway accepts (۰ = بی‌نهایت). */
+    public static function bnplMaxAmount(string $gateway): int
+    {
+        $value = (int) Setting::get("payment.{$gateway}.max_amount", '0');
+
+        return max(0, $value);
+    }
+
+    /**
+     * v0.31.0 — is this GOODS total inside the gateway's min/max window?
+     * The BNPL gateways carry real credit limits (e.g. دیجی‌پی تا ۵۰ میلیون
+     * تومان) — a cart outside the window never shows the gateway at
+     * checkout and placeOrder re-checks it server-side.
+     */
+    public static function bnplAmountEligible(string $gateway, int $itemsTotal): bool
+    {
+        $min = self::bnplMinAmount($gateway);
+        $max = self::bnplMaxAmount($gateway);
+
+        if ($min > 0 && $itemsTotal < $min) {
+            return false;
+        }
+
+        return ! ($max > 0 && $itemsTotal > $max);
+    }
+
+    /**
      * Mock mode of a BNPL gateway — rides the vendor LOCAL test driver so
      * the whole installment flow is testable end-to-end without a merchant
      * contract. SECURITY: the flag only ever bites inside local

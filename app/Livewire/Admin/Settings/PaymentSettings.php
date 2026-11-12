@@ -3,17 +3,14 @@
 namespace App\Livewire\Admin\Settings;
 
 use App\Livewire\Admin\Concerns\GuardsPermissions;
+use App\Livewire\Admin\Concerns\InteractsWithGatewayIcons;
 use App\Models\Setting;
 use App\Support\ActivityLogger;
 use App\Support\Fmt;
-use App\Support\ImagePayload;
-use App\Support\Payments\GatewayIcons;
 use App\Support\Payments\PaymentService;
 use App\Support\Payments\SplitPlan;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\WithFileUploads;
 
 /**
  * Admin — payment gateway settings, v0.28.0 redesign (نمونهٔ مشتری):
@@ -26,12 +23,18 @@ use Livewire\WithFileUploads;
  * The DEFAULT gateway (پیش‌فرض) is what checkout preselects and what
  * wallet deposits fall back to. «تراکنش‌های بانکی» moved to the
  * standalone admin.payment.logs page (v0.28.0).
+ *
+ * v0.31.0 — the installment (BNPL) trio moved OUT of this page into the
+ * dedicated «تنظیمات پرداخت اقساطی» section (admin.bnpl.settings) with
+ * its own credentials + installments + settlement policy (frequency /
+ * day / auto-manual) + amount window + icons; this page only keeps a
+ * small pointer card. BNPL gateways were NEVER default-able here anyway.
  */
 #[Layout('layouts.admin-slot')]
 class PaymentSettings extends Component
 {
     use GuardsPermissions;
-    use WithFileUploads;
+    use InteractsWithGatewayIcons;
 
     protected static string $permission = 'admin.settings.payment';
 
@@ -47,30 +50,11 @@ class PaymentSettings extends Component
     /** @var array<string, bool> split toggles per split-capable gateway */
     public array $split = [];
 
-    /** v0.30.0 — per-BNPL-gateway knobs: اقساط نمایشی (۲–۱۲). */
-    public array $bnplInstallments = [];
-
-    /** v0.30.0 — روزِ ماهِ واریز تسویه‌های اقساطی به کیف پول فروشنده (۱–۲۹). */
-    public array $bnplSettlementDay = [];
-
-    /** v0.30.0 — شبیه‌ساز محلی هر درگاه اقساطی (فقط محیط توسعه اثر دارد). */
-    public array $bnplMock = [];
-
     /** Row ordering — the «جدیدترین»-style dropdown of the reference design. */
     public string $sort = 'default';
 
     /** @var list<string> rows picked with the leading checkboxes (bulk actions). */
     public array $selected = [];
-
-    /**
-     * v0.29.0 — custom gateway ICONS (قابل تغییر): iconFiles[gateway] holds
-     * the live Livewire temp upload; each pick is validated + stored
-     * IMMEDIATELY (updated() hook below) — it does not wait for «ذخیره
-     * تنظیمات» so the preview refreshes in place.
-     *
-     * @var array<string, mixed>
-     */
-    public array $iconFiles = [];
 
     public function mount(): void
     {
@@ -82,19 +66,6 @@ class PaymentSettings extends Component
             foreach (PaymentService::CREDENTIAL_FIELDS[$name] ?? [] as $field => $fieldLabel) {
                 $this->fields[$name][$field] = (string) Setting::get("payment.{$name}.{$field}", '');
             }
-        }
-
-        // v0.30.0 — the BNPL trio hydrates the same way + its extra knobs
-        foreach (PaymentService::BNPL_GATEWAYS as $name => $label) {
-            $this->enabled[$name] = PaymentService::isEnabled($name);
-
-            foreach (PaymentService::BNPL_CREDENTIAL_FIELDS[$name] ?? [] as $field => $fieldLabel) {
-                $this->fields[$name][$field] = (string) Setting::get("payment.{$name}.{$field}", '');
-            }
-
-            $this->bnplInstallments[$name] = (string) PaymentService::bnplInstallments($name);
-            $this->bnplSettlementDay[$name] = (string) PaymentService::bnplSettlementDay($name);
-            $this->bnplMock[$name] = PaymentService::bnplMockEnabled($name);
         }
 
         foreach (array_keys(SplitPlan::CAPABLE) as $name) {
@@ -210,35 +181,6 @@ class PaymentSettings extends Component
             $pairs["payment.{$name}.split_enabled"] = ! empty($this->split[$name]) ? '1' : '0';
         }
 
-        /*
-         * v0.30.0 — the BNPL trio: enabled toggles + credentials + the
-         * installments/settlement-day/mock knobs, all persisted together.
-         * NOTE: BNPL gateways NEVER become the default gateway (the default
-         * is a DIRECT gateway — wallet deposits must never offer installments).
-         */
-        foreach (PaymentService::BNPL_GATEWAYS as $name => $label) {
-            $pairs["payment.{$name}.enabled"] = ! empty($this->enabled[$name]) ? '1' : '0';
-            $pairs["payment.{$name}.installments"] = (string) (
-                ((int) ($this->bnplInstallments[$name] ?? 4)) >= 2 && ((int) ($this->bnplInstallments[$name] ?? 4)) <= 12
-                    ? (int) ($this->bnplInstallments[$name] ?? 4)
-                    : 4
-            );
-            $pairs["payment.{$name}.settlement_day"] = (string) (
-                ((int) ($this->bnplSettlementDay[$name] ?? 1)) >= 1 && ((int) ($this->bnplSettlementDay[$name] ?? 1)) <= 29
-                    ? (int) ($this->bnplSettlementDay[$name] ?? 1)
-                    : 1
-            );
-            $pairs["payment.{$name}.mock"] = (! empty($this->bnplMock[$name]) && PaymentService::localGatewayAllowed()) ? '1' : '0';
-
-            foreach (PaymentService::BNPL_CREDENTIAL_FIELDS[$name] ?? [] as $field => $fieldLabel) {
-                $value = trim((string) ($this->fields[$name][$field] ?? ''));
-
-                if ($value !== (string) Setting::get("payment.{$name}.{$field}", '')) {
-                    $pairs["payment.{$name}.{$field}"] = $value;
-                }
-            }
-        }
-
         $snapshot = ActivityLogger::settingsSnapshot(array_keys($pairs));
 
         Setting::setMany($pairs);
@@ -270,92 +212,10 @@ class PaymentSettings extends Component
             : 'تنظیمات ذخیره شد؛ اما هیچ درگاه فعالی وجود ندارد — مشتری نمی‌تواند آنلاین پرداخت کند.');
     }
 
-    /**
-     * v0.29.0 — a file was picked for an icon upload: iconFiles.{gateway}
-     * → validate + persist right away (PNG/JPG/WebP only — SVG custom
-     * icons are refused BY DESIGN: an SVG on a web-served disk is an XSS
-     * vector, the bundled brand tiles stay repo-owned and trusted).
-     */
-    public function updated(string $property, mixed $value): void
-    {
-        if (! str_starts_with($property, 'iconFiles.')) {
-            return;
-        }
-
-        $gateway = substr($property, strlen('iconFiles.'));
-
-        if (array_key_exists($gateway, PaymentService::GATEWAYS + PaymentService::BNPL_GATEWAYS)) {
-            $this->storeIcon($gateway, $value);
-        }
-    }
-
-    public function storeIcon(string $gateway, mixed $file): void
-    {
-        $this->validate([
-            "iconFiles.{$gateway}" => ['bail', 'required', 'file', 'max:2048', 'mimes:png,jpg,jpeg,webp', ImagePayload::rule()],
-        ]);
-
-        if (! $file instanceof TemporaryUploadedFile) {
-            return;
-        }
-
-        $extension = strtolower((string) ($file->getClientOriginalExtension() ?: ''));
-
-        if (! in_array($extension, GatewayIcons::ALLOWED_EXTENSIONS, true)) {
-            $extension = match ($file->getMimeType()) {
-                'image/jpeg' => 'jpg',
-                'image/webp' => 'webp',
-                default => 'png',
-            };
-        }
-
-        $contents = (string) file_get_contents($file->getRealPath());
-
-        $path = GatewayIcons::store($gateway, $extension, $contents);
-
-        $snapshot = ActivityLogger::settingsSnapshot([GatewayIcons::settingKey($gateway)]);
-
-        ActivityLogger::logSettingsChanged(
-            'آیکون درگاه «'.(PaymentService::GATEWAYS[$gateway] ?? PaymentService::BNPL_GATEWAYS[$gateway] ?? $gateway).'» تغییر کرد (بارگذاری تصویر سفارشی)',
-            $snapshot,
-            [GatewayIcons::settingKey($gateway) => $path],
-        );
-
-        unset($this->iconFiles[$gateway]); // clear the picker for the next upload
-
-        session()->flash('admin-payment-flash', 'آیکون «'.(PaymentService::GATEWAYS[$gateway] ?? PaymentService::BNPL_GATEWAYS[$gateway] ?? $gateway).'» به‌روزرسانی شد — در پنل مدیریت و صفحهٔ پرداخت نمایش داده می‌شود.');
-    }
-
-    /** Delete a gateway's CUSTOM icon → falls back to its bundled brand tile. */
-    public function removeIcon(string $gateway): void
-    {
-        if (! GatewayIcons::hasCustom($gateway)) {
-            return;
-        }
-
-        $snapshot = ActivityLogger::settingsSnapshot([GatewayIcons::settingKey($gateway)]);
-
-        GatewayIcons::deleteCustom($gateway);
-
-        ActivityLogger::logSettingsChanged(
-            'آیکون سفارشی درگاه «'.(PaymentService::GATEWAYS[$gateway] ?? PaymentService::BNPL_GATEWAYS[$gateway] ?? $gateway).'» حذف شد — بازگشت به آیکون پیش‌فرض درگاه',
-            $snapshot,
-            [GatewayIcons::settingKey($gateway) => ''],
-        );
-
-        unset($this->iconFiles[$gateway]);
-
-        session()->flash('admin-payment-flash', 'آیکون سفارشی «'.(PaymentService::GATEWAYS[$gateway] ?? PaymentService::BNPL_GATEWAYS[$gateway] ?? $gateway).'» حذف شد — آیکون پیش‌فرض درگاه بازگشت.');
-    }
-
     /** Trash a gateway row → clears its saved credentials (env stays). */
     public function deleteCredentials(string $name): void
     {
-        $fields = array_keys(
-            PaymentService::CREDENTIAL_FIELDS[$name]
-                ?? PaymentService::BNPL_CREDENTIAL_FIELDS[$name]
-                ?? [],
-        );
+        $fields = array_keys(PaymentService::CREDENTIAL_FIELDS[$name] ?? []);
 
         if ($fields === []) {
             return;
@@ -371,7 +231,7 @@ class PaymentSettings extends Component
         }
 
         ActivityLogger::logSettingsChanged(
-            'اعتبارنامه‌های ذخیره‌شدهٔ درگاه «'.(PaymentService::GATEWAYS[$name] ?? PaymentService::BNPL_GATEWAYS[$name] ?? $name).'» حذف شد',
+            'اعتبارنامه‌های ذخیره‌شدهٔ درگاه «'.(PaymentService::GATEWAYS[$name] ?? $name).'» حذف شد',
             $snapshot,
             array_fill_keys(
                 array_map(fn (string $field): string => "payment.{$name}.{$field}", $fields),
@@ -379,15 +239,13 @@ class PaymentSettings extends Component
             ),
         );
 
-        session()->flash('admin-payment-flash', 'اعتبارنامه‌های ذخیره‌شدهٔ «'.(PaymentService::GATEWAYS[$name] ?? PaymentService::BNPL_GATEWAYS[$name] ?? $name).'» پاک شد (مقادیر فایل env همچنان معتبرند).');
+        session()->flash('admin-payment-flash', 'اعتبارنامه‌های ذخیره‌شدهٔ «'.(PaymentService::GATEWAYS[$name] ?? $name).'» پاک شد (مقادیر فایل env همچنان معتبرند).');
     }
 
     public function render()
     {
         return view('livewire.admin.settings.payment-settings', [
             'gateways' => PaymentService::GATEWAYS,
-            'bnplGateways' => PaymentService::BNPL_GATEWAYS,
-            'bnplFields' => PaymentService::BNPL_CREDENTIAL_FIELDS,
             'fields' => PaymentService::CREDENTIAL_FIELDS,
             'splitCapable' => SplitPlan::CAPABLE,
             'mockAllowed' => PaymentService::localGatewayAllowed(),

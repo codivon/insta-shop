@@ -222,7 +222,7 @@
                     پرداخت اقساطی — خرید حالا، پرداخت بعداً
                 </h3>
                 <p class="mt-1.5 rounded-xl bg-violet-50 px-3 py-2 text-[10px] font-semibold leading-5 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300">
-                    با فعال‌سازی هر روش، مشتری می‌تواند محصولات شما را اقساطی بخرد (قسط اول هنگام خرید از درگاه پرداخت می‌شود و باقی اقساط را در پنل خودِ درگاه می‌پردازد). چون تسویهٔ این درگاه‌ها <b>سرِ ماه</b> انجام می‌شود، مبلغ فروش شما پس از تسویهٔ درگاه به کیف پول واریز می‌شود. اگر برای این روش کارمزد تعیین کنید، هنگام پرداخت اقساطی به جمع کالاها اضافه می‌شود و شامل هزینهٔ ارسال نیست.
+                    با فعال‌سازی هر روش، مشتری می‌تواند محصولات شما را اقساطی بخرد (قسط اول هنگام خرید از درگاه پرداخت می‌شود و باقی اقساط را در پنل خودِ درگاه می‌پردازد). مبلغ فروش شما پس از تسویهٔ دوره‌ای درگاه به کیف پول واریز می‌شود — دوره و روزِ تسویهٔ هر روش را مدیر در «تنظیمات پرداخت اقساطی» تعیین می‌کند (همان‌طور که زیر هر روش نوشته شده). اگر برای این روش کارمزد تعیین کنید، هنگام پرداخت اقساطی به جمع کالاها اضافه می‌شود و شامل هزینهٔ ارسال نیست.
                 </p>
 
                 <div class="mt-3 space-y-3">
@@ -239,10 +239,10 @@
                                             {{ \App\Support\Fmt::fa(\App\Support\Payments\PaymentService::bnplInstallments($bnplKey)) }} قسط
                                         </span>
                                     </div>
-                                    <div class="mt-0.5 text-[9.5px] font-semibold text-slate-400">تسویه‌های این روش سرِ ماه به کیف پول شما واریز می‌شود</div>
+                                    <div class="mt-0.5 text-[9.5px] font-semibold text-slate-400">تسویه: {{ \App\Support\Payments\PaymentService::bnplSettlementPolicyLabel($bnplKey) }} — پس از تسویه به کیف پول شما واریز می‌شود</div>
                                 </div>
                                 <label class="relative inline-flex shrink-0 cursor-pointer items-center">
-                                    <input type="checkbox" wire:model="bnplEnabled.{{ $bnplKey }}" class="peer sr-only">
+                                    <input id="bnpl-enabled-{{ $bnplKey }}" type="checkbox" wire:model.live="bnplEnabled.{{ $bnplKey }}" class="peer sr-only">
                                     <span class="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-violet-600 dark:bg-slate-600"></span>
                                     <span class="absolute right-0.5 top-0.5 size-5 rounded-full bg-white shadow transition peer-checked:-translate-x-5"></span>
                                     <span class="sr-only">فعال‌سازی خرید اقساطی با {{ $bnplLabel }}</span>
@@ -259,7 +259,7 @@
                                             <span class="mt-0.5 block text-[9px] leading-4 text-slate-400">بج کوچک «امکان خرید اقساطی با {{ $bnplLabel }}» زیر قیمتِ هر محصول شما نمایش داده می‌شود.</span>
                                         </span>
                                         <span class="flex shrink-0 items-center gap-2">
-                                            <input type="checkbox" wire:model="bnplShowProduct.{{ $bnplKey }}" class="size-4 rounded-md border-slate-300 text-violet-600 transition focus:ring-violet-500/30 dark:border-slate-600 dark:bg-slate-800">
+                                            <input id="bnpl-show-{{ $bnplKey }}" type="checkbox" wire:model="bnplShowProduct.{{ $bnplKey }}" class="size-4 rounded-md border-slate-300 text-violet-600 transition focus:ring-violet-500/30 dark:border-slate-600 dark:bg-slate-800">
                                         </span>
                                     </label>
 
@@ -269,7 +269,7 @@
                                         <div class="mt-2 grid grid-cols-3 gap-2">
                                             <label class="col-span-1">
                                                 <span class="sr-only">نوع کارمزد</span>
-                                                <select wire:model="bnplFeeType.{{ $bnplKey }}"
+                                                <select id="bnpl-fee-type-{{ $bnplKey }}" wire:model="bnplFeeType.{{ $bnplKey }}"
                                                         class="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-2 py-2.5 text-[10.5px] font-bold outline-none transition focus:border-violet-500 dark:border-slate-700 dark:bg-slate-800">
                                                     <option value="none">بدون کارمزد</option>
                                                     <option value="percent">درصدی (٪)</option>
@@ -278,7 +278,7 @@
                                             </label>
                                             <label class="col-span-2 @if(($bnplFeeType[$bnplKey] ?? 'none') === 'none') hidden @endif">
                                                 <span class="sr-only">مقدار کارمزد</span>
-                                                <input type="text" inputmode="numeric" dir="ltr" wire:model="bnplFeeValue.{{ $bnplKey }}"
+                                                <input id="bnpl-fee-value-{{ $bnplKey }}" type="text" inputmode="numeric" dir="ltr" wire:model="bnplFeeValue.{{ $bnplKey }}"
                                                        placeholder="{{ ($bnplFeeType[$bnplKey] ?? 'none') === 'percent' ? 'مثلاً ۵' : 'مثلاً 20000' }}"
                                                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-center text-[11px] font-bold outline-none transition placeholder:text-slate-400 focus:border-violet-500 dark:border-slate-700 dark:bg-slate-800">
                                             </label>

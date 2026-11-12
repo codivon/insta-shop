@@ -673,12 +673,28 @@ class CheckoutPage extends Component
          * v0.30.0 — the BNPL surcharge is recomputed SERVER-SIDE (never
          * trusted from the browser) and frozen into the order: per-shop
          * breakdown for the monthly settlements + the grand total.
+         * v0.31.0 — a BNPL gateway picked from a stale tab whose cart
+         * slipped OUT of the gateway's min/max window is rejected here.
          */
         $bnplGateway = PaymentService::isBnplGateway($this->gateway) ? $this->gateway : null;
         $bnplFees = [];
         $bnplFeeTotal = 0;
 
         if ($bnplGateway !== null) {
+            $goodsTotal = (int) $this->shopGroups->sum(fn ($group): int => (int) $group['subtotal']);
+
+            if (! PaymentService::bnplAmountEligible($bnplGateway, $goodsTotal)) {
+                [$min, $max] = [PaymentService::bnplMinAmount($bnplGateway), PaymentService::bnplMaxAmount($bnplGateway)];
+                $window = ($min > 0 ? 'حداقل '.Fmt::money($min) : '')
+                    .($min > 0 && $max > 0 ? ' و ' : '')
+                    .($max > 0 ? 'حداکثر '.Fmt::money($max) : '');
+
+                $this->addError('gateway', 'مبلغ کالاهای سبد شما خارج از محدودهٔ مجاز پرداخت اقساطی است ('.$window.'); درگاه دیگری انتخاب کنید.');
+                $this->dispatch('panel-toast', message: 'مبلغ سبد خارج از محدودهٔ پرداخت اقساطی با '.PaymentService::BNPL_GATEWAYS[$bnplGateway].' است.');
+
+                return;
+            }
+
             foreach ($this->shopGroups as $group) {
                 $fee = $group['shop']?->seller_id
                     ? PaymentService::bnplFeeForShop($bnplGateway, (int) $group['shop']->seller_id, (int) $group['subtotal'])
@@ -911,12 +927,18 @@ class CheckoutPage extends Component
     /**
      * v0.30.0 — درگاه‌های اقساطی usable for THIS cart: admin enabled ∧
      * credentials ∧ EVERY cart seller opted in (فعال‌سازی از پنل فروشنده).
+     * v0.31.0 — the cart's GOODS total (never shipping) must also sit
+     * inside each gateway's min/max window (سقف اعتباری واقعی درگاه‌ها).
      *
      * @return array<string, string> gateway → Persian label
      */
     public function getBnplGatewaysProperty(): array
     {
-        return PaymentService::bnplGatewaysForSellers($this->cartSellerIds());
+        $goodsTotal = (int) $this->shopGroups->sum(fn ($group): int => (int) $group['subtotal']);
+
+        return collect(PaymentService::bnplGatewaysForSellers($this->cartSellerIds()))
+            ->filter(fn (string $label, string $gateway): bool => PaymentService::bnplAmountEligible($gateway, $goodsTotal))
+            ->all();
     }
 
     /**

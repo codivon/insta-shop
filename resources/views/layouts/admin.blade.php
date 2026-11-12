@@ -87,6 +87,7 @@
                     ['route' => 'admin.income',              'icon' => 'coins',       'label' => 'درآمد',      'match' => 'admin.income',        'badge' => null],
                     ['route' => 'admin.payment.logs',        'icon' => 'list',        'label' => 'تراکنش‌های بانکی', 'match' => 'admin.payment.logs', 'badge' => null],
                     ['route' => 'admin.bnpl.settlements',    'icon' => 'calendar-clock', 'label' => 'تسویه اقساطی', 'match' => 'admin.bnpl.settlements', 'badge' => null],
+                    ['route' => 'admin.bnpl.settings',       'icon' => 'sliders',        'label' => 'تنظیمات اقساط', 'match' => 'admin.bnpl.settings', 'badge' => null],
                     ['route' => 'admin.plans',               'icon' => 'crown',       'label' => 'پلن‌های اشتراک', 'match' => 'admin.plans',      'badge' => null],
                     ['route' => 'admin.bump.plans',          'icon' => 'rocket',      'label' => 'طرح‌های نردبان', 'match' => 'admin.bump.plans', 'badge' => null],
                     ['route' => 'admin.subscriptions',       'icon' => 'timer',       'label' => 'اشتراک فروشندگان', 'match' => 'admin.subscriptions', 'badge' => null],

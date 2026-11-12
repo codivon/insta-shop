@@ -18,22 +18,42 @@
                 تسویه اقساطی
             </h1>
             <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                تراکنش‌های درگاه‌های اقساطی (دیجی‌پی / اسنپ‌پی / ترب‌پی) — سهم هر فروشگاه از سفارش‌های اقساطی، سررسید واریز ماهانه و وضعیت پرداخت. کران روزانه (۰۶:۰۰) مواردِ سررسیدشده را خودکار واریز می‌کند و می‌توانید هر مورد را دستی واریز یا لغو کنید.
+                تراکنش‌های درگاه‌های اقساطی (دیجی‌پی / اسنپ‌پی / ترب‌پی) — سهم هر فروشگاه از سفارش‌های اقساطی، سررسید و وضعیت پرداخت. هر درگاه دورهٔ تسویهٔ خودش را دارد (هر ماه / هر ۲ ماه / هر ۳ ماه) و اگر حالت تسویه‌اش «خودکار» باشد، کران روزانه (۰۶:۰۰) موارد سررسیدشده را واریز می‌کند — درگاه‌های «دستی» فقط با واریز مدیر جابه‌جا می‌شوند.
             </p>
+        </div>
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
+            <a href="{{ route('admin.bnpl.settings') }}" wire:navigate
+               class="inline-flex items-center gap-1.5 rounded-xl border border-violet-300 bg-white px-3 py-2 text-[11px] font-bold text-violet-600 shadow-sm transition hover:bg-violet-50 dark:border-violet-800 dark:bg-slate-900 dark:text-violet-300 dark:hover:bg-violet-950/40">
+                <x-icon name="settings" class="size-3.5" />
+                تنظیمات اقساط
+            </a>
+            @if ($stats['due_now_count'] > 0)
+                <button type="button" wire:click="depositDueNow"
+                        wire:confirm="همهٔ {{ \App\Support\Fmt::fa($stats['due_now_count']) }} تسویهٔ سررسیدشده همین حالا به کیف پول فروشندگان واریز شود؟"
+                        class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-emerald-700">
+                    <x-icon name="wallet" class="size-3.5" />
+                    واریز گروهی سررسیدشده‌ها ({{ \App\Support\Fmt::fa($stats['due_now_count']) }})
+                </button>
+            @endif
         </div>
     </div>
 
     {{-- ── stats chips ── --}}
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/30">
             <div class="text-[10px] font-bold text-amber-600 dark:text-amber-300">در انتظار تسویه</div>
             <div class="mt-1 text-lg font-black text-amber-700 dark:text-amber-200">{{ \App\Support\Fmt::money($stats['pending_amount']) }}</div>
             <div class="text-[9.5px] font-bold text-amber-500/80">{{ \App\Support\Fmt::fa($stats['pending_count']) }} مورد</div>
         </div>
         <div class="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 dark:border-violet-900 dark:bg-violet-950/30">
-            <div class="text-[10px] font-bold text-violet-600 dark:text-violet-300">سررسیدشده (هنوز واریز نشده)</div>
+            <div class="text-[10px] font-bold text-violet-600 dark:text-violet-300">سررسیدشده (کران واریز می‌کند)</div>
             <div class="mt-1 text-lg font-black text-violet-700 dark:text-violet-200">{{ \App\Support\Fmt::fa($stats['due_now_count']) }} مورد</div>
-            <div class="text-[9.5px] font-bold text-violet-500/80">کران بعدی: فردا ۰۶:۰۰ یا واریز دستی</div>
+            <div class="text-[9.5px] font-bold text-violet-500/80">فقط درگاه‌های «خودکار» — دستی‌ها با مدیر</div>
+        </div>
+        <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 dark:border-rose-900 dark:bg-rose-950/30">
+            <div class="text-[10px] font-bold text-rose-600 dark:text-rose-300">معوق (گذشته از سررسید)</div>
+            <div class="mt-1 text-lg font-black text-rose-700 dark:text-rose-200">{{ \App\Support\Fmt::money($stats['overdue_amount']) }}</div>
+            <div class="text-[9.5px] font-bold text-rose-500/80">{{ \App\Support\Fmt::fa($stats['overdue_count']) }} مورد — با فیلتر «معوق» ببینید</div>
         </div>
         <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/30">
             <div class="text-[10px] font-bold text-emerald-600 dark:text-emerald-300">جمع واریز شده</div>
@@ -105,6 +125,11 @@
                             <span class="rounded-full px-2 py-0.5 text-[9.5px] font-extrabold {{ $row->statusClasses() }}">{{ $row->statusLabel() }}</span>
                             @if ($row->manual && $row->status === 'paid')
                                 <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-extrabold text-slate-500 dark:bg-slate-800 dark:text-slate-400">دستی</span>
+                            @endif
+                            @if ($row->status === 'pending' && in_array($row->gateway, $manualGateways, true))
+                                <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-extrabold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300" title="حالت تسویهٔ این درگاه «دستی» است — کران واریز نمی‌کند">
+                                    <x-icon name="edit" class="size-2.5" /> تسویهٔ دستی
+                                </span>
                             @endif
                             @if ($dueToday)
                                 <span class="rounded-full bg-rose-100 px-2 py-0.5 text-[9px] font-extrabold text-rose-600 dark:bg-rose-950/60 dark:text-rose-300">سررسید گذشته</span>

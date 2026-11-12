@@ -16,6 +16,7 @@ use App\Livewire\Admin\ActivityPage;
 use App\Livewire\Admin\Auth\Login;
 use App\Livewire\Admin\BackupsPage;
 use App\Livewire\Admin\BannersPage;
+use App\Livewire\Admin\Bnpl\BnplSettingsPage;
 use App\Livewire\Admin\BnplSettlementsPage;
 use App\Livewire\Admin\BumpPlansPage;
 use App\Livewire\Admin\CategoriesPage as AdminCategoriesPage;
@@ -219,6 +220,11 @@ Route::prefix('admin')->name('admin.')->middleware('admin.no-store')->group(func
         //    settlement ledger of the BNPL gateways (دیجی‌پی/اسنپ‌پی/ترب‌پی)
         //    + واریز دستی + وضعیت کران.
         Route::get('/bnpl-settlements', BnplSettlementsPage::class)->name('bnpl.settlements');
+
+        // ── تنظیمات پرداخت اقساطی: STANDALONE section (v0.31.0) — the
+        //    per-gateway policy cards (دورهٔ تسویهٔ هر ۱/۲/۳ ماه + روزِ ماه +
+        //    خودکار/دستی + پنجرهٔ مبلغ + مدارک + آیکون).
+        Route::get('/bnpl-settings', BnplSettingsPage::class)->name('bnpl.settings');
         Route::get('/settings/stories', fn () => redirect()->route('admin.settings', ['tab' => 'stories']))
             ->name('settings.stories');
 
