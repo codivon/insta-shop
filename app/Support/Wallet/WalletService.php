@@ -10,6 +10,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Support\Banking;
 use App\Support\Fmt;
+use App\Support\Payments\SplitPlan;
 use App\Support\SellerNotifier;
 use Illuminate\Support\Facades\DB;
 
@@ -28,7 +29,17 @@ use Illuminate\Support\Facades\DB;
  */
 final class WalletService
 {
-    /** Credit the shops of a paid order (called inside finalizePaid). */
+    /**
+     * Credit the shops of a paid order (called inside finalizePaid).
+     *
+     * v0.27.0 — پرداخت تسهیمی: when the order's seller shares were settled
+     * DIRECTLY to the sellers' bank destinations through the gateway's
+     * split API (orders.split_payment), the money NEVER entered the
+     * platform account — so no wallet deposit happens; the settlement
+     * snapshot is still persisted (settlement=sheba) so the admin income
+     * reports stay complete, and the seller gets an explicit
+     * «واریز مستقیم به شبا» notification.
+     */
     public static function creditOrder(Order $order): void
     {
         // Query OrderItem DIRECTLY — the Order::items() relation appends
@@ -44,6 +55,7 @@ final class WalletService
             ->get();
 
         $snapshot = [];
+        $split = (bool) $order->split_payment;
 
         foreach ($shares as $share) {
             $shopId = (int) $share->shop_id;
@@ -73,9 +85,38 @@ final class WalletService
                 'commission_value' => (int) $commissionValue,
                 'commission_amount' => $commission,
                 'payout' => $payout,
+                // v0.27.0 — split orders record WHERE the payout went
+                ...($split ? ['settlement' => 'sheba', 'sheba' => $seller !== null
+                    ? SplitPlan::sellerDestination(self::splitGateway($order), $seller)
+                    : null] : []),
             ];
 
             if ($payout <= 0) {
+                continue;
+            }
+
+            if ($split) {
+                // تسهیم: the share left the gateway directly for the
+                // seller's bank destination — no wallet entry, only the
+                // explicit notification (idempotent like the deposit one).
+                $gateway = self::splitGateway($order);
+                $destinationRaw = $seller !== null ? SplitPlan::sellerDestination($gateway, $seller) : null;
+
+                $destination = $destinationRaw !== null && $destinationRaw !== ''
+                    ? ($gateway === 'payping' ? $destinationRaw : Banking::formatSheba($destinationRaw))
+                    : 'حساب تسهیم شما در درگاه';
+
+                SellerNotifier::notify(
+                    $sellerId,
+                    'wallet.deposit',
+                    'واریز مستقیم به حساب شما 💳 '.Fmt::money($payout),
+                    'سهم فروش از سفارش #'.self::orderCode($order).' (کالا: '.Fmt::money($itemsTotal)
+                        .($commission > 0 ? ' — کمیسیون: '.Fmt::money($commission) : '')
+                        .') مستقیماً از درگاه پرداخت به '.$destination.' واریز شد.',
+                    route('seller.orders'),
+                    'wallet',
+                );
+
                 continue;
             }
 
@@ -271,5 +312,11 @@ final class WalletService
     public static function orderCode(Order $order): string
     {
         return str_pad((string) $order->id, 5, '0', STR_PAD_LEFT);
+    }
+
+    /** The gateway that carried a (possibly split) order's payment. */
+    private static function splitGateway(Order $order): string
+    {
+        return (string) ($order->gateway !== '' && $order->gateway !== null ? $order->gateway : 'asanpardakht');
     }
 }

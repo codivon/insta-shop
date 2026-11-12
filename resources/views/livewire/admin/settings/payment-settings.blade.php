@@ -34,11 +34,14 @@
                             <x-icon name="credit-card" class="size-4 {{ $gateway === $name ? 'text-primary-600' : 'text-slate-400' }}" />
                             {{ $label }}
                         </span>
-                        <span class="text-[10px] text-slate-400">
+                        <span class="flex items-center gap-1.5 text-[10px] text-slate-400">
                             @if ($name === 'local')
                                 بدون نیاز به حساب بانکی (تست)
                             @elseif ($credCount > 0)
                                 {{ \App\Support\Fmt::fa($credCount) }} فیلد اعتبارنامه
+                            @endif
+                            @if (array_key_exists($name, $splitCapable))
+                                <span class="rounded-full bg-amber-100 px-2 py-0.5 font-bold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">تسهیم دارد</span>
                             @endif
                         </span>
                         @if ($gateway === $name)
@@ -82,6 +85,48 @@
                 </div>
             @endif
 
+            {{-- ── پرداخت تسهیمی (split-capable gateways only) ── --}}
+            @if (array_key_exists($gateway, $splitCapable))
+                <div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900 dark:bg-amber-950/20">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-start gap-3">
+                            <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">
+                                <x-icon name="git-fork" class="size-5" />
+                            </span>
+                            <div>
+                                <h3 class="text-sm font-extrabold">پرداخت تسهیمی (واریز مستقیم به فروشنده)</h3>
+                                <p class="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                                    {{ $splitCapable[$gateway] }}
+                                </p>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex shrink-0 cursor-pointer items-center">
+                            <input type="checkbox" wire:model.live="split.{{ $gateway }}" class="peer sr-only">
+                            <span class="h-6 w-11 rounded-full bg-slate-200 transition peer-checked:bg-amber-500 dark:bg-slate-700"></span>
+                            <span class="absolute start-0.5 top-0.5 size-5 rounded-full bg-white shadow transition peer-checked:start-[1.375rem]"></span>
+                        </label>
+                    </div>
+
+                    <div class="mt-4 grid gap-2 text-[11px] font-semibold leading-5 sm:grid-cols-2">
+                        <div class="flex items-start gap-2 rounded-xl border border-dashed border-amber-300 bg-white/70 px-3 py-2.5 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                            <x-icon name="circle-check" class="mt-0.5 size-3.5 shrink-0" />
+                            <span><b>روشن:</b> سهم هر فروشگاه (کالا منهای کمیسیون) هنگام پرداخت، مستقیماً از درگاه به مقصد بانکی او می‌رود؛ فقط کمیسیون و هزینهٔ ارسال نزد پلتفرم می‌ماند.</span>
+                        </div>
+                        <div class="flex items-start gap-2 rounded-xl border border-dashed border-slate-300 bg-white/70 px-3 py-2.5 text-slate-600 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-300">
+                            <x-icon name="wallet" class="mt-0.5 size-3.5 shrink-0" />
+                            <span><b>خاموش:</b> کل مبلغ به حساب درگاهِ پلتفرم می‌رود و سهم فروشنده پس از تأیید پرداخت به کیف پول او واریز می‌شود (روش پیش‌فرض).</span>
+                        </div>
+                    </div>
+
+                    <p class="mt-3 flex items-start gap-2 text-[10px] leading-5 text-slate-500 dark:text-slate-400">
+                        <x-icon name="info" class="mt-0.5 size-3.5 shrink-0" />
+                        <span>
+                            مقصد تسهیم هر فروشنده از «کارت بانکی پیش‌فرض» او (شبا) یا موبایل ثبت‌شده‌اش خوانده می‌شود؛ اگر فروشنده‌ای مقصد تسهیم نداشته باشد، سهمِ کل سفارش برای همهٔ فروشگاه‌ها به‌صورت خودکار مسیر کیف پول می‌رود. اگر درگاه پرداخت تسهیم را رد کند، سفارش به‌صورت خودکار با روش معمولی ادامه می‌یابد.
+                        </span>
+                    </p>
+                </div>
+            @endif
+
             <div class="mt-5 flex items-center gap-3">
                 <button type="button" wire:click="save" wire:loading.attr="disabled"
                         class="inline-flex items-center gap-2 rounded-2xl bg-primary-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition hover:bg-primary-700 disabled:opacity-60">
@@ -103,6 +148,7 @@
             <ul class="mt-4 space-y-3 text-[11px] leading-6 text-slate-500 dark:text-slate-400">
                 <li class="flex gap-2"><x-icon name="check" class="mt-0.5 size-3.5 shrink-0 text-emerald-500" /> درگاه‌ها با پکیج shetabit/payment وصل شده‌اند؛ تغییر درگاه فوراً روی پرداخت‌های جدید اعمال می‌شود.</li>
                 <li class="flex gap-2"><x-icon name="check" class="mt-0.5 size-3.5 shrink-0 text-emerald-500" /> سفارش‌های در جریان (pending) با همان درگاهی که از آن رفته‌اند verify می‌شوند.</li>
+                <li class="flex gap-2"><x-icon name="check" class="mt-0.5 size-3.5 shrink-0 text-emerald-500" /> فقط پی‌پینگ و آسان‌پرداخت درگاه‌های تسهیم‌دار هستند؛ برای بقیه درگاه‌ها سهم فروشنده همیشه به کیف پول واریز می‌شود.</li>
                 <li class="flex gap-2"><x-icon name="check" class="mt-0.5 size-3.5 shrink-0 text-emerald-500" /> تاریخچه کامل تلاش‌های پرداخت در جدول پایین و در جزئیات هر سفارش قابل بررسی است.</li>
                 <li class="flex gap-2"><x-icon name="alert" class="mt-0.5 size-3.5 shrink-0 text-amber-500" /> پیش از سوییچ به درگاه واقعی، با مبلغ کم تست بگیرید.</li>
             </ul>

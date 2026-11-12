@@ -64,6 +64,10 @@ return [
             'merchantId' => env('PAYPING_MERCHANT_ID', ''),
             'callbackUrl' => '/shop/payment/callback',
             'description' => 'خرید از InstaShop',
+            // v0.27.0 — پرداخت تسهیمی: the shared-payment endpoint of the
+            // official v3 API (POST /v3/pay/shared); used only when the
+            // admin turns the split toggle on.
+            'apiSharedPurchaseUrl' => 'https://api.payping.ir/v3/pay/shared/',
         ],
 
         'sadad' => [

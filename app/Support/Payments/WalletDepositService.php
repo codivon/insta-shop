@@ -77,8 +77,13 @@ class WalletDepositService
         $invoice->amount(max(1, (int) $deposit->amount));
         $invoice->detail('orderId', 'DEP-'.$deposit->id);
 
-        $manager = Payment::config(PaymentService::runtimeDriversConfig($gateway))
-            ->via($gateway)
+        // Credentials ride config('payment') — see PaymentService::
+        // applyRuntimeConfig's docblock (the old Payment::config() approach
+        // was silently dropped by shetabit's via()). Deposits are
+        // platform-bound money — never split.
+        PaymentService::applyRuntimeConfig($gateway);
+
+        $manager = Payment::via($gateway)
             ->callbackUrl(self::callbackUrl($deposit));
 
         try {
@@ -132,9 +137,10 @@ class WalletDepositService
             request()->merge(['transactionId' => (string) $deposit->gateway_ref]);
         }
 
+        PaymentService::applyRuntimeConfig($gateway);
+
         try {
-            $receipt = Payment::config(PaymentService::runtimeDriversConfig($gateway))
-                ->via($gateway)
+            $receipt = Payment::via($gateway)
                 ->amount($deposit->amount)
                 ->transactionId((string) $deposit->gateway_ref)
                 ->verify();

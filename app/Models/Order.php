@@ -36,6 +36,7 @@ class Order extends Model
             'shipping_cost' => 'integer',
             'discount_amount' => 'integer',
             'items_count' => 'integer',
+            'split_payment' => 'boolean',
             'shipments' => 'array',
             'commissions' => 'array',
             'paid_at' => 'datetime',

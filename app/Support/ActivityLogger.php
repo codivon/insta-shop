@@ -38,6 +38,8 @@ final class ActivityLogger
         'sms.api_key' => 'کلید API پیامک',
         'sms.sender' => 'شماره فرستنده',
         'payment.gateway' => 'درگاه پرداخت',
+        'payment.payping.split_enabled' => 'پرداخت تسهیمی پی‌پینگ (واریز مستقیم به فروشنده)',
+        'payment.asanpardakht.split_enabled' => 'پرداخت تسهیمی آسان‌پرداخت (واریز مستقیم به فروشنده)',
         'payment.zarinpal.merchantId' => 'مرچنت زرین‌پال',
         'payment.zibal.merchantId' => 'مرچنت زیبال',
         'payment.novinopay.merchantId' => 'مرچنت نوین‌پی',

@@ -5,6 +5,11 @@ namespace App\Support\Payments;
 use App\Models\Order;
 use App\Models\PaymentLog;
 use App\Models\Setting;
+use App\Support\Fmt;
+use App\Support\Payments\Drivers\SplitAsanpardakht;
+use App\Support\Payments\Drivers\SplitPayping;
+use Shetabit\Multipay\Drivers\Asanpardakht\Asanpardakht;
+use Shetabit\Multipay\Drivers\Payping\Payping;
 use Shetabit\Multipay\Invoice;
 use Shetabit\Multipay\Receipt;
 use Shetabit\Multipay\RedirectionForm;
@@ -67,6 +72,27 @@ class PaymentService
         'sep' => ['terminalId' => 'شماره ترمینال سپ الکترونیک'],
     ];
 
+    /**
+     * v0.27.0 — پرداخت تسهیمی: the driver classes swapped in when the
+     * admin toggle turns split payment ON for a capable gateway (the
+     * vendor package stays untouched — the swap rides config('payment.map')).
+     */
+    public const SPLIT_DRIVER_MAP = [
+        'payping' => SplitPayping::class,
+        'asanpardakht' => SplitAsanpardakht::class,
+    ];
+
+    /**
+     * The ORIGINAL vendor classes — applyRuntimeConfig always writes an
+     * EXPLICIT map entry so a split-off call restores the vendor driver
+     * even when an earlier split-on call already swapped it (the config
+     * repository lives for the whole request).
+     */
+    private const VENDOR_DRIVER_MAP = [
+        'payping' => Payping::class,
+        'asanpardakht' => Asanpardakht::class,
+    ];
+
     public static function activeGateway(): string
     {
         $gateway = (string) Setting::get('payment.gateway', 'local');
@@ -120,11 +146,24 @@ class PaymentService
     }
 
     /**
-     * Build the "drivers" config block with credentials from the settings
-     * merged over config/payment.php (env-backed defaults). We must pass
-     * the WHOLE drivers map because shetabit's config() replaces keys.
+     * CRITICAL FIX (v0.27.0): the gateway's credentials reach the driver
+     * ONLY through the Laravel config repository.
+     *
+     * Proven at runtime: shetabit's Payment::config() merges into its
+     * INTERNAL $settings, and via() then REPLACES $settings with
+     * driverConfig() = merge(package defaults, config('payment').drivers)
+     * — so the previous approach (Payment::config(['drivers' => …])) was
+     * silently DROPPING every admin-panel credential before the driver
+     * was ever built (only «local», which needs none, kept working).
+     *
+     * This method merges the DB settings over the env-backed config and
+     * writes them back to config('payment.drivers') — the container binds
+     * a FRESH Payment instance per resolve, whose constructor snapshots
+     * config('payment'), so via() now hands the real credentials to the
+     * driver. The same channel swaps the DRIVER CLASS for split payment
+     * (config('payment.map')) — the vendor package stays untouched.
      */
-    public static function runtimeDriversConfig(string $gateway): array
+    public static function applyRuntimeConfig(string $gateway, bool $split = false): void
     {
         $drivers = (array) config('payment.drivers', []);
 
@@ -136,12 +175,26 @@ class PaymentService
             }
         }
 
-        return ['drivers' => $drivers];
+        config()->set('payment.drivers', $drivers);
+
+        if (isset(self::SPLIT_DRIVER_MAP[$gateway])) {
+            config()->set(
+                'payment.map.'.$gateway,
+                $split ? self::SPLIT_DRIVER_MAP[$gateway] : self::VENDOR_DRIVER_MAP[$gateway],
+            );
+        }
     }
 
     /**
      * Purchase the order through the active gateway and return the
      * redirection form that sends the customer to the gateway page.
+     *
+     * v0.27.0 — پرداخت تسهیمی: when the gateway is split-capable, the
+     * admin toggle is ON and every shop of the order has a split
+     * destination, the seller shares ride the gateway's split API and the
+     * wallet credit is skipped at finalization. A failed split purchase
+     * (before any gateway transaction exists) falls back to the standard
+     * flow instead of killing the checkout.
      *
      * @throws Throwable when the gateway refuses the purchase
      */
@@ -162,24 +215,71 @@ class PaymentService
             throw new \RuntimeException('درگاه آزمایشی روی سرور عملیاتی غیرفعال است — از پنل مدیریت یک درگاه واقعی تنظیم کنید.');
         }
 
+        $splitPlan = SplitPlan::forOrder($order, $gateway);
+
+        try {
+            return self::startPurchase($order, $gateway, $splitPlan);
+        } catch (Throwable $splitError) {
+            /*
+             * FAIL-SAFE تسهیم: the split attempt died before ANY gateway
+             * transaction existed (gateway_ref still null) → retry the
+             * standard flow so the customer is never stranded at checkout;
+             * sellers simply take the wallet path for this order.
+             */
+            if ($splitPlan === null || $order->refresh()->gateway_ref !== null) {
+                throw $splitError;
+            }
+
+            PaymentLog::record($order, $gateway, 'split_fallback', null, (int) $order->total_amount, true,
+                'پرداخت تسهیمی ناموفق بود — ادامه با روش معمولی (سهم فروشندگان به کیف پول واریز می‌شود): '.$splitError->getMessage());
+        }
+
+        return self::startPurchase($order, $gateway, null);
+    }
+
+    /**
+     * The single purchase attempt — one gateway handshake with (or
+     * without) the split payload.
+     *
+     * @param  array{gateway: string, shares: list<array{shop_id: int, shop_name: string, seller_id: int, destination: string, amount: int, items_total: int}>}|null  $splitPlan
+     */
+    private static function startPurchase(Order $order, string $gateway, ?array $splitPlan): RedirectionForm
+    {
+        // One shared manager instance: purchase() and pay() must see the
+        // same invoice — the container binds a fresh instance per resolve,
+        // so never split this chain across facade calls. Credentials ride
+        // config('payment') (applyRuntimeConfig) — see its docblock.
+        self::applyRuntimeConfig($gateway, $splitPlan !== null);
+
         $invoice = new Invoice;
         $invoice->amount($order->total_amount);
         $invoice->detail('orderId', (string) $order->id);
 
-        // One shared manager instance: purchase() and pay() must see the
-        // same invoice — the container binds a fresh instance per resolve,
-        // so never split this chain across facade calls. The runtime
-        // drivers config carries credentials saved from the admin panel.
-        $manager = Payment::config(self::runtimeDriversConfig($gateway))
-            ->via($gateway)
+        if ($splitPlan !== null) {
+            self::attachSplitDetails($invoice, $gateway, $order, $splitPlan);
+        }
+
+        $manager = Payment::via($gateway)
             ->callbackUrl(self::callbackUrl($order));
 
         try {
-            $manager->purchase($invoice, function ($driver, string $transactionId) use ($order, $gateway): void {
-                $order->forceFill(['gateway' => $gateway, 'gateway_ref' => $transactionId])->save();
+            $manager->purchase($invoice, function ($driver, string $transactionId) use ($order, $gateway, $splitPlan): void {
+                $order->forceFill([
+                    'gateway' => $gateway,
+                    'gateway_ref' => $transactionId,
+                    'split_payment' => $splitPlan !== null,
+                ])->save();
             });
         } catch (Throwable $e) {
-            PaymentLog::record($order, $gateway, 'purchase', null, (int) $order->total_amount, false, $e->getMessage());
+            PaymentLog::record(
+                $order,
+                $gateway,
+                $splitPlan !== null ? 'split_purchase' : 'purchase',
+                null,
+                (int) $order->total_amount,
+                false,
+                $e->getMessage(),
+            );
 
             throw $e;
         }
@@ -189,11 +289,13 @@ class PaymentService
         PaymentLog::record(
             $order,
             $gateway,
-            'redirect',
+            $splitPlan !== null ? 'split_redirect' : 'redirect',
             (string) $order->gateway_ref,
             (int) $order->total_amount,
             true,
-            'redirecting customer to gateway',
+            $splitPlan !== null
+                ? 'تسهیم فعال — سهم '.Fmt::fa(count($splitPlan['shares'])).' فروشگاه مستقیماً به مقصد تسهیم واریز می‌شود'
+                : 'redirecting customer to gateway',
         );
 
         $form = $manager->pay();
@@ -211,6 +313,34 @@ class PaymentService
         }
 
         return $form;
+    }
+
+    /**
+     * Translate the split plan into the payload each gateway's driver
+     * expects on the invoice:
+     *   • payping      → splitItems  (amounts in تومان + userIdentity);
+     *   • asanpardakht → splitServices (amounts in تومان, converted to
+     *     ریال inside the driver + iban).
+     */
+    private static function attachSplitDetails(Invoice $invoice, string $gateway, Order $order, array $splitPlan): void
+    {
+        $code = str_pad((string) $order->id, 5, '0', STR_PAD_LEFT);
+
+        if ($gateway === 'payping') {
+            $invoice->detail('splitItems', array_map(static fn (array $share): array => [
+                'amount' => (int) $share['amount'],
+                'userIdentity' => (string) $share['destination'],
+                'description' => 'سهم فروشگاه '.$share['shop_name'].' از سفارش #'.$code,
+            ], $splitPlan['shares']));
+
+            return;
+        }
+
+        $invoice->detail('splitServices', array_map(static fn (array $share): array => [
+            'serviceName' => (string) $share['shop_name'],
+            'amount' => (int) $share['amount'],
+            'iban' => (string) $share['destination'],
+        ], $splitPlan['shares']));
     }
 
     /**
@@ -240,9 +370,12 @@ class PaymentService
             request()->merge(['transactionId' => (string) $order->gateway_ref]);
         }
 
+        // Same credentials channel as purchase (see applyRuntimeConfig's
+        // docblock — verify() must see the DB credentials too).
+        self::applyRuntimeConfig($gateway);
+
         try {
-            $receipt = Payment::config(self::runtimeDriversConfig($gateway))
-                ->via($gateway)
+            $receipt = Payment::via($gateway)
                 ->amount($order->total_amount)
                 ->transactionId((string) $order->gateway_ref)
                 ->verify();
