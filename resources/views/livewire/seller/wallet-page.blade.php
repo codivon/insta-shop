@@ -447,14 +447,20 @@
                 <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">درگاه پرداخت</span>
                 <div class="grid gap-2">
                     @forelse ($depositGateways as $gatewayKey => $gatewayLabel)
-                        <label class="flex cursor-pointer items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-bold transition {{ $depositGateway === $gatewayKey
+                        <label class="group flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-[11px] font-bold transition {{ $depositGateway === $gatewayKey
                             ? 'border-emerald-400 bg-emerald-50/70 dark:border-emerald-700 dark:bg-emerald-950/30'
                             : 'border-slate-200 bg-white hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-800' }}">
-                            <span class="flex items-center gap-2">
-                                <input type="radio" value="{{ $gatewayKey }}" wire:model="depositGateway" class="accent-emerald-600">
-                                {{ $gatewayLabel }}
+                            <span class="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-100 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                                @include('partials.gateway-logo', ['gateway' => $gatewayKey])
                             </span>
-                            <x-icon name="shield" class="size-4 {{ $depositGateway === $gatewayKey ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600' }}" />
+                            <span class="min-w-0 flex-1 truncate">{{ $gatewayLabel }}</span>
+                            <input type="radio" value="{{ $gatewayKey }}" wire:model="depositGateway" class="sr-only">
+                            <span class="grid size-4.5 shrink-0 place-items-center rounded-full border-2 {{ $depositGateway === $gatewayKey
+                                ? 'border-emerald-500 bg-emerald-500'
+                                : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-transparent' }}" aria-hidden="true">
+                                <x-icon name="check" class="size-2.5 {{ $depositGateway === $gatewayKey ? 'text-white' : 'opacity-0' }}" />
+                            </span>
+                            <x-icon name="shield" class="size-4 shrink-0 {{ $depositGateway === $gatewayKey ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600' }}" />
                         </label>
                     @empty
                         <p class="rounded-xl bg-amber-50 px-3 py-2 text-[10.5px] font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">

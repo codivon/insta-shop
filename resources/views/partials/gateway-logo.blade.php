@@ -1,13 +1,21 @@
 {{-- ─────────────────────────────────────────────────────────
-  Payment-gateway brand tile (24px-ish logo, inline — no remote
-  assets). Rendered inside the checkout gateway cards.
+  Payment-gateway brand tile (v0.29.0) — icon resolution:
+    1. custom upload   (admin panel, public disk — see GatewayIcons)
+    2. bundled brand SVG (public/images/gateways/{gateway}.svg)
+    3. gradient-letter fallback (for a slug with neither file)
   $gateway: local | zarinpal | zibal | novinopay | payping | sadad |
             behpardakht | parsian | irankish | pasargad |
-            asanpardakht | sepehr | sep
+            asanpardakht | sepehr | sep | saman | idpay | payir | toman
 ───────────────────────────────────────────────────────────── --}}
 @php $gateway = $gateway ?? 'local'; @endphp
 
-@if ($gateway === 'zarinpal')
+@php $gatewayIconUrl = \App\Support\Payments\GatewayIcons::customUrl($gateway)
+    ?? \App\Support\Payments\GatewayIcons::defaultUrl($gateway); @endphp
+
+@if ($gatewayIconUrl !== null)
+    <img src="{{ $gatewayIconUrl }}" alt="آیکون درگاه پرداخت" loading="lazy" decoding="async"
+         class="size-full object-contain">
+@elseif ($gateway === 'zarinpal')
     <span class="grid size-full place-items-center rounded-lg bg-gradient-to-br from-amber-300 to-yellow-500 text-sm font-black text-white shadow-inner" title="زرین‌پال">Z</span>
 @elseif ($gateway === 'zibal')
     <span class="grid size-full place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-700 text-sm font-black text-white shadow-inner" title="زیبال">ژ</span>
@@ -31,6 +39,14 @@
     <span class="grid size-full place-items-center rounded-lg bg-gradient-to-br from-cyan-400 to-teal-700 text-sm font-black text-white shadow-inner" title="سپهر (بانک صادرات)">س</span>
 @elseif ($gateway === 'sep')
     <span class="grid size-full place-items-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-700 text-sm font-black text-white shadow-inner" title="سپ الکترونیک">س</span>
+@elseif ($gateway === 'saman')
+    <span class="grid size-full place-items-center rounded-lg bg-gradient-to-br from-blue-400 to-indigo-600 text-sm font-black text-white shadow-inner" title="درگاه سامان">س</span>
+@elseif ($gateway === 'idpay')
+    <span class="grid size-full place-items-center rounded-lg bg-gradient-to-br from-pink-400 to-rose-600 text-sm font-black text-white shadow-inner" title="آیدی‌پی">آ</span>
+@elseif ($gateway === 'payir')
+    <span class="grid size-full place-items-center rounded-lg bg-gradient-to-br from-teal-400 to-emerald-700 text-sm font-black text-white shadow-inner" title="پی.آی‌آر">پی</span>
+@elseif ($gateway === 'toman')
+    <span class="grid size-full place-items-center rounded-lg bg-gradient-to-br from-slate-600 to-slate-900 text-sm font-black text-white shadow-inner" title="درگاه تومان">ت</span>
 @else
     <span class="grid size-full place-items-center rounded-lg bg-gradient-to-br from-slate-200 to-slate-400 text-slate-600 shadow-inner dark:from-slate-700 dark:to-slate-800 dark:text-slate-300" title="درگاه آزمایشی">
         <x-icon name="credit-card" class="size-5" />

@@ -397,32 +397,51 @@
                         @endif
                     </div>
 
-                    {{-- ── درگاه پرداخت ── --}}
+                    {{-- ── درگاه پرداخت (v0.29.0 redesign: مرتب، آیکون رسمی هر درگاه، اسم کامل) ── --}}
                     @if (count($gateways) > 0)
                         <div wire:key="ck-gateways" class="mt-4">
                             <p class="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold">
                                 <x-icon name="credit-card" class="size-3.5 text-primary-500" />
                                 درگاه پرداخت
                                 <span class="text-rose-500">*</span>
+                                <span class="ms-auto rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-extrabold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                    {{ \App\Support\Fmt::fa(count($gateways)) }} درگاه فعال
+                                </span>
                             </p>
 
-                            <div class="grid grid-cols-2 gap-2 {{ count($gateways) > 3 ? 'sm:grid-cols-3' : '' }}" role="radiogroup" aria-label="انتخاب درگاه پرداخت">
+                            <div class="space-y-2.5" role="radiogroup" aria-label="انتخاب درگاه پرداخت">
                                 @foreach ($gateways as $key => $label)
-                                    @php $gwPicked = $gateway === $key; @endphp
-                                    <label class="relative block cursor-pointer" wire:key="gw-{{ $key }}">
-                                        <input type="radio" name="gateway" value="{{ $key }}" wire:model="gateway" class="peer sr-only">
-                                        <span class="flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-3 transition hover:border-primary-300 peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500/30 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:border-primary-600 dark:peer-checked:bg-primary-950/40">
-                                            <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
-                                                @include('partials.gateway-logo', ['gateway' => $key])
+                                    @php $gwIsDefault = $key === \App\Support\Payments\PaymentService::activeGateway(); @endphp
+                                    <label wire:key="gw-{{ $key }}"
+                                           class="group flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-3 transition hover:border-primary-300 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50/60 has-[:checked]:shadow-lg has-[:checked]:shadow-primary-600/10 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-primary-700 dark:has-[:checked]:border-primary-600 dark:has-[:checked]:bg-primary-950/40">
+                                        <input type="radio" name="gateway" value="{{ $key }}" wire:model="gateway" class="sr-only"
+                                               aria-label="پرداخت با {{ $label }}">
+
+                                        {{-- آیکون رسمی/سفارشی درگاه --}}
+                                        <span class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-100 bg-white p-1 shadow-sm transition group-has-[:checked]:border-primary-200 dark:border-slate-800 dark:bg-slate-800 dark:group-has-[:checked]:border-primary-800">
+                                            @include('partials.gateway-logo', ['gateway' => $key])
+                                        </span>
+
+                                        <span class="min-w-0 flex-1">
+                                            <span class="flex items-center gap-2">
+                                                <span class="truncate text-[12.5px] font-extrabold">{{ $label }}</span>
+                                                @if ($gwIsDefault)
+                                                    <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-600 px-2 py-0.5 text-[8.5px] font-extrabold text-white">
+                                                        <x-icon name="star" class="size-2.5" />
+                                                        پیش‌فرض
+                                                    </span>
+                                                @endif
                                             </span>
-                                            <span class="min-w-0 flex-1">
-                                                <span class="block truncate text-[11px] font-extrabold">{{ $label }}</span>
-                                                <span class="mt-0.5 block text-[8.5px] font-bold text-slate-400">پرداخت امن آنلاین</span>
+                                            <span class="mt-1 flex items-center gap-1 text-[9.5px] font-bold text-slate-400 dark:text-slate-500">
+                                                <x-icon name="shield" class="size-3 shrink-0" />
+                                                پرداخت امن آنلاین — انتقال به سایت بانک
                                             </span>
-                                            <span class="grid size-4 shrink-0 place-items-center rounded-full border-2 border-slate-300 transition peer-checked:border-primary-600 dark:border-slate-600"
-                                                  aria-hidden="true">
-                                                <span class="size-2 rounded-full bg-primary-600 opacity-0 transition peer-checked:opacity-100"></span>
-                                            </span>
+                                        </span>
+
+                                        {{-- radio indicator --}}
+                                        <span class="grid size-5 shrink-0 place-items-center rounded-full border-2 border-slate-300 bg-white transition group-has-[:checked]:border-primary-600 group-has-[:checked]:bg-primary-600 dark:border-slate-600"
+                                              aria-hidden="true">
+                                            <x-icon name="check" class="size-3 text-white opacity-0 transition group-has-[:checked]:opacity-100" />
                                         </span>
                                     </label>
                                 @endforeach

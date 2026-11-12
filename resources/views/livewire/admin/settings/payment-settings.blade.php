@@ -180,6 +180,53 @@
                 <div x-show="open" x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="-translate-y-1 opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-cloak
                      class="border-t border-slate-100 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-950/30">
 
+                    {{-- ── آیکون درگاه (v0.29.0): پیش‌فرض = آیکون رسمی، قابل تغییر با بارگذاری تصویر ── --}}
+                    <div class="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <span class="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-100 bg-white p-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
+                            @include('partials.gateway-logo', ['gateway' => $name])
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <h4 class="flex flex-wrap items-center gap-1.5 text-xs font-extrabold">
+                                <x-icon name="image" class="size-3.5 text-primary-500" />
+                                آیکون درگاه
+                                @if (\App\Support\Payments\GatewayIcons::hasCustom($name))
+                                    <span class="rounded-full bg-primary-100 px-2 py-0.5 text-[9px] font-extrabold text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">تصویر سفارشی</span>
+                                @else
+                                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-extrabold text-slate-500 dark:bg-slate-800 dark:text-slate-400">آیکون رسمی درگاه</span>
+                                @endif
+                            </h4>
+                            <p class="mt-1 text-[10px] leading-4 text-slate-500 dark:text-slate-400">
+                                پیش‌فرض، آیکون رسمی «{{ $label }}» است — می‌توانید تصویر دلخواه بارگذاری کنید تا هم اینجا و هم در صفحهٔ پرداخت (checkout) نمایش داده شود (PNG، JPG یا WebP — حداکثر ۲ مگابایت).
+                            </p>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-2">
+                            <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-primary-700"
+                                   title="بارگذاری تصویر آیکون">
+                                <x-icon name="image-plus" class="size-3.5" />
+                                {{ \App\Support\Payments\GatewayIcons::hasCustom($name) ? 'تغییر آیکون' : 'بارگذاری آیکون' }}
+                                <input type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="sr-only"
+                                       wire:model="iconFiles.{{ $name }}">
+                                <span class="sr-only">انتخاب تصویر آیکون برای {{ $label }}</span>
+                            </label>
+                            @if (\App\Support\Payments\GatewayIcons::hasCustom($name))
+                                <button type="button" wire:click="removeIcon('{{ $name }}')"
+                                        wire:confirm="آیکون سفارشی «{{ $label }}» حذف شود و آیکون رسمی درگاه بازگردد؟"
+                                        class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-500 transition hover:border-rose-300 hover:text-rose-600 dark:border-slate-700 dark:bg-slate-900"
+                                        title="حذف تصویر سفارشی">
+                                    <x-icon name="rotate" class="size-3.5" />
+                                    بازگشت به پیش‌فرض
+                                </button>
+                            @endif
+                            <span wire:loading wire:target="iconFiles.{{ $name }}" class="inline-flex items-center gap-1.5 text-[10px] font-bold text-primary-500">
+                                <x-icon name="rotate" class="size-3.5 animate-spin" />
+                                در حال بارگذاری…
+                            </span>
+                        </div>
+                        @error('iconFiles.'.$name)
+                            <p class="w-full text-[10px] font-bold text-rose-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     @if ($gwTest)
                         <div class="rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 p-4 text-xs font-semibold leading-6 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
                             درگاه آزمایشی: صفحهٔ پرداخت ساختگی با دکمه‌های «پرداخت موفق» و «انصراف» — هیچ پول واقعی جابه‌جا نمی‌شود و فقط در محیط توسعه کار می‌کند. برای راه‌اندازی واقعی، یکی از درگاه‌های بانکی را روشن کنید و مدارکش را تکمیل نمایید.

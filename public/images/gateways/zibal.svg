@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="zibal">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A855F7"/>
+      <stop offset="1" stop-color="#6B21A8"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="30" fill="url(#g)"/>
+  <circle cx="106" cy="20" r="42" fill="#ffffff" opacity="0.10"/>
+  <circle cx="14" cy="114" r="46" fill="#000000" opacity="0.10"/>
+    <text x="64" y="82" text-anchor="middle" font-family="Vazirmatn, Segoe UI, Tahoma, Arial, sans-serif" font-size="56" font-weight="800" fill="#ffffff">ژ</text>
+  <text x="64" y="107" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700" letter-spacing="2" fill="#ffffff" opacity="0.8">ZIBAL</text>
+</svg>
