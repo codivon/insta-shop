@@ -25,8 +25,16 @@ class PaymentService
         'local' => 'درگاه آزمایشی (محلی)',
         'zarinpal' => 'زرین‌پال',
         'zibal' => 'زیبال',
-        'behpardakht' => 'بانک ملت',
-        'sep' => 'درگاه سپ',
+        'novinopay' => 'نوین‌پی',
+        'payping' => 'پی‌پینگ',
+        'sadad' => 'سداد (بانک ملی)',
+        'behpardakht' => 'به‌پرداخت (بانک ملت)',
+        'parsian' => 'پارسیان',
+        'irankish' => 'ایران‌کیش',
+        'pasargad' => 'پاسارگاد',
+        'asanpardakht' => 'آسان‌پرداخت',
+        'sepehr' => 'سپهر (بانک صادرات)',
+        'sep' => 'سپ الکترونیک (سامان)',
     ];
 
     /**
@@ -38,8 +46,25 @@ class PaymentService
         'local' => [],
         'zarinpal' => ['merchantId' => 'مرچنت‌کد زرین‌پال'],
         'zibal' => ['merchantId' => 'مرچنت‌کد زیبال'],
-        'behpardakht' => ['terminalId' => 'شماره ترمینال', 'username' => 'نام کاربری', 'password' => 'رمز عبور'],
-        'sep' => ['terminalId' => 'شماره ترمینال'],
+        'novinopay' => ['merchantId' => 'مرچنت‌کد نوین‌پی'],
+        'payping' => ['merchantId' => 'کد اختصاصی پی‌پینگ (Bearer Token)'],
+        'sadad' => ['key' => 'کلید سداد (Key)', 'merchantId' => 'مرچنت‌کد سداد', 'terminalId' => 'شماره ترمینال سداد'],
+        'behpardakht' => ['terminalId' => 'شماره ترمینال به‌پرداخت', 'username' => 'نام کاربری به‌پرداخت', 'password' => 'رمز عبور به‌پرداخت'],
+        'parsian' => ['merchantId' => 'مرچنت‌کد پارسیان (Login Account)'],
+        'irankish' => [
+            'terminalId' => 'شماره ترمینال ایران‌کیش',
+            'password' => 'رمز عبور ایران‌کیش',
+            'acceptorId' => 'شناسه پذیرنده ایران‌کیش (Acceptor ID)',
+            'pubKey' => 'کلید عمومی RSA ایران‌کیش (Public Key)',
+        ],
+        'pasargad' => ['userName' => 'نام کاربری پاسارگاد', 'password' => 'رمز عبور پاسارگاد', 'terminalCode' => 'کد ترمینال پاسارگاد'],
+        'asanpardakht' => [
+            'username' => 'نام کاربری آسان‌پرداخت',
+            'password' => 'رمز عبور آسان‌پرداخت',
+            'merchantConfigID' => 'شناسه پیکربندی پذیرنده (Merchant Config ID)',
+        ],
+        'sepehr' => ['terminalId' => 'شماره ترمینال سپهر (صادرات)'],
+        'sep' => ['terminalId' => 'شماره ترمینال سپ الکترونیک'],
     ];
 
     public static function activeGateway(): string

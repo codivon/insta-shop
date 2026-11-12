@@ -54,6 +54,63 @@ return [
             'description' => 'خرید از InstaShop',
         ],
 
+        'novinopay' => [
+            'merchantId' => env('NOVINOPAY_MERCHANT_ID', ''),
+            'callbackUrl' => '/shop/payment/callback',
+            'description' => 'خرید از InstaShop',
+        ],
+
+        'payping' => [
+            'merchantId' => env('PAYPING_MERCHANT_ID', ''),
+            'callbackUrl' => '/shop/payment/callback',
+            'description' => 'خرید از InstaShop',
+        ],
+
+        'sadad' => [
+            'key' => env('SADAD_KEY', ''),
+            'merchantId' => env('SADAD_MERCHANT_ID', ''),
+            'terminalId' => env('SADAD_TERMINAL_ID', ''),
+            'callbackUrl' => '/shop/payment/callback',
+            'description' => 'خرید از InstaShop',
+        ],
+
+        'parsian' => [
+            'merchantId' => env('PARSIAN_MERCHANT_ID', ''),
+            'callbackUrl' => '/shop/payment/callback',
+            'description' => 'خرید از InstaShop',
+        ],
+
+        'irankish' => [
+            'terminalId' => env('IRANKISH_TERMINAL_ID', ''),
+            'password' => env('IRANKISH_PASSWORD', ''),
+            'acceptorId' => env('IRANKISH_ACCEPTOR_ID', ''),
+            'pubKey' => env('IRANKISH_PUBLIC_KEY', ''),
+            'callbackUrl' => '/shop/payment/callback',
+            'description' => 'خرید از InstaShop',
+        ],
+
+        'pasargad' => [
+            'userName' => env('PASARGAD_USERNAME', ''),
+            'password' => env('PASARGAD_PASSWORD', ''),
+            'terminalCode' => env('PASARGAD_TERMINAL_CODE', ''),
+            'callbackUrl' => '/shop/payment/callback',
+            'description' => 'خرید از InstaShop',
+        ],
+
+        'asanpardakht' => [
+            'username' => env('ASANPARDAKHT_USERNAME', ''),
+            'password' => env('ASANPARDAKHT_PASSWORD', ''),
+            'merchantConfigID' => env('ASANPARDAKHT_MERCHANT_CONFIG_ID', ''),
+            'callbackUrl' => '/shop/payment/callback',
+            'description' => 'خرید از InstaShop',
+        ],
+
+        'sepehr' => [
+            'terminalId' => env('SEPEHR_TERMINAL_ID', ''),
+            'callbackUrl' => '/shop/payment/callback',
+            'description' => 'خرید از InstaShop',
+        ],
+
         'sep' => [
             'terminalId' => env('SEP_TERMINAL_ID', ''),
             'callbackUrl' => '/shop/payment/callback',

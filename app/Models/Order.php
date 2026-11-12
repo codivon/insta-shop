@@ -6,6 +6,7 @@ use App\Support\AdminNotifier;
 use App\Support\Fmt;
 use App\Support\IranCalendar;
 use App\Support\JDate;
+use App\Support\Payments\PaymentService;
 use App\Support\SellerNotifier;
 use App\Support\Wallet\WalletService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -315,14 +316,14 @@ class Order extends Model
     /** Human-friendly gateway name for receipts. */
     public function gatewayLabel(): string
     {
-        return match ($this->gateway) {
-            'zarinpal' => 'زرین‌پال',
-            'idpay' => 'آیدی‌پی',
-            'zibal' => 'زیبال',
-            'behpardakht' => 'بانک ملت',
-            'sep' => 'درگاه سپ',
-            default => 'درگاه آزمایشی (محلی)',
-        };
+        // PaymentService::GATEWAYS is the single source of truth (v0.26.0 —
+        // the 9 new shetabit gateways must render everywhere automatically).
+        return PaymentService::GATEWAYS[$this->gateway]
+            ?? match ($this->gateway) {
+                'idpay' => 'آیدی‌پی', // legacy rows from before multipay v3
+                null, '' => 'درگاه آزمایشی (محلی)',
+                default => (string) $this->gateway,
+            };
     }
 
     /* ───────────────────────── Shipment lifecycle ───────────────────── */

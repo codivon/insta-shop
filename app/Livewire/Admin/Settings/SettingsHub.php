@@ -100,7 +100,7 @@ class SettingsHub extends Component
             'payment' => [
                 'icon' => 'credit-card',
                 'label' => 'درگاه پرداخت',
-                'description' => 'زرین‌پال و اعتبارنامه درگاه',
+                'description' => '۱۲ درگاه بانکی و اعتبارنامه‌ها (زرین‌پال، زیبال، سداد، به‌پرداخت، پارسیان…)',
                 'perm' => 'admin.settings.payment',
             ],
             'shops' => [

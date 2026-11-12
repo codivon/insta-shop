@@ -122,10 +122,10 @@
             </span>
             <h3 class="mt-4 text-lg font-extrabold">پرداخت امن با درگاه‌های ایرانی</h3>
             <p class="mt-2 text-sm leading-7 text-slate-500 dark:text-slate-400">
-                زرین‌پال، زیبال، بانک ملت، سپ و آیدی‌پی — درگاه از پنل مدیریت انتخاب و در چند دقیقه وصل می‌شود.
+                از زرین‌پال و زیبال تا سداد، به‌پرداخت، پارسیان، ایران‌کیش، پاسارگاد و آسان‌پرداخت — ۱۲ درگاه آماده؛ درگاه از پنل مدیریت انتخاب و در چند دقیقه وصل می‌شود.
             </p>
             <div class="mt-4 flex flex-wrap gap-2">
-                @foreach (['زرین‌پال', 'زیبال', 'بانک ملت', 'سپ', 'آیدی‌پی'] as $g)
+                @foreach (['زرین‌پال', 'زیبال', 'نوین‌پی', 'پی‌پینگ', 'سداد (ملی)', 'به‌پرداخت (ملت)', 'پارسیان', 'ایران‌کیش', 'پاسارگاد', 'آسان‌پرداخت', 'سپهر (صادرات)', 'سپ'] as $g)
                     <span class="rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-extrabold text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">{{ $g }}</span>
                 @endforeach
             </div>

@@ -38,7 +38,29 @@ final class ActivityLogger
         'sms.api_key' => 'کلید API پیامک',
         'sms.sender' => 'شماره فرستنده',
         'payment.gateway' => 'درگاه پرداخت',
-        'payment.zarinpal_merchant' => 'مرچنت زرین‌پال',
+        'payment.zarinpal.merchantId' => 'مرچنت زرین‌پال',
+        'payment.zibal.merchantId' => 'مرچنت زیبال',
+        'payment.novinopay.merchantId' => 'مرچنت نوین‌پی',
+        'payment.payping.merchantId' => 'کد اختصاصی پی‌پینگ',
+        'payment.sadad.key' => 'کلید سداد',
+        'payment.sadad.merchantId' => 'مرچنت سداد',
+        'payment.sadad.terminalId' => 'ترمینال سداد',
+        'payment.behpardakht.terminalId' => 'ترمینال به‌پرداخت',
+        'payment.behpardakht.username' => 'نام کاربری به‌پرداخت',
+        'payment.behpardakht.password' => 'رمز عبور به‌پرداخت',
+        'payment.parsian.merchantId' => 'مرچنت پارسیان',
+        'payment.irankish.terminalId' => 'ترمینال ایران‌کیش',
+        'payment.irankish.password' => 'رمز عبور ایران‌کیش',
+        'payment.irankish.acceptorId' => 'شناسه پذیرنده ایران‌کیش',
+        'payment.irankish.pubKey' => 'کلید عمومی ایران‌کیش',
+        'payment.pasargad.userName' => 'نام کاربری پاسارگاد',
+        'payment.pasargad.password' => 'رمز عبور پاسارگاد',
+        'payment.pasargad.terminalCode' => 'کد ترمینال پاسارگاد',
+        'payment.asanpardakht.username' => 'نام کاربری آسان‌پرداخت',
+        'payment.asanpardakht.password' => 'رمز عبور آسان‌پرداخت',
+        'payment.asanpardakht.merchantConfigID' => 'پیکربندی پذیرندهٔ آسان‌پرداخت',
+        'payment.sepehr.terminalId' => 'ترمینال سپهر',
+        'payment.sep.terminalId' => 'ترمینال سپ الکترونیک',
         'shops.auto_approve_seller' => 'تایید خودکار فروشنده',
         'shops.commission_type' => 'نوع کمیسیون',
         'shops.commission_value' => 'مقدار کمیسیون',
@@ -184,7 +206,8 @@ final class ActivityLogger
     /** API keys / merchants / secrets must never appear in the log. */
     protected static function isSensitiveKey(string $key): bool
     {
-        return (bool) preg_match('/(api_key|secret|merchant|token|password|mobile|username_key)/i', $key);
+        // .key$ → the Sadad OAuth/AES key، pubkey → the IranKish RSA key
+        return (bool) preg_match('/(api_key|secret|merchant|token|password|mobile|username_key|pubkey|\.key$)/i', $key);
     }
 
     protected static function requestIp(): ?string

@@ -56,15 +56,22 @@
                     <h3 class="text-xs font-extrabold">اعتبارنامه «{{ $gateways[$gateway] }}»</h3>
                     <div class="mt-3 grid gap-3 sm:grid-cols-2">
                         @foreach ($fields[$gateway] as $fieldKey => $fieldLabel)
-                            <label class="block">
+                            <label class="block {{ $fieldKey === 'pubKey' ? 'sm:col-span-2' : '' }}">
                                 <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">
                                     {{ $fieldLabel }}
                                     <span class="text-[9px] font-normal text-slate-400">(خالی = استفاده از env)</span>
                                 </span>
-                                <input type="{{ str_contains($fieldKey, 'password') ? 'password' : 'text' }}"
-                                       wire:model="fields.{{ $gateway }}.{{ $fieldKey }}"
-                                       dir="ltr" autocomplete="off"
-                                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm transition focus:border-primary-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                                @if ($fieldKey === 'pubKey')
+                                    {{-- کلید عمومی RSA چندخطی است — input یک‌خطی newlineها را از بین می‌برد --}}
+                                    <textarea rows="4" wire:model="fields.{{ $gateway }}.{{ $fieldKey }}"
+                                              dir="ltr" autocomplete="off" spellcheck="false"
+                                              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono text-[11px] leading-5 shadow-sm transition focus:border-primary-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800"></textarea>
+                                @else
+                                    <input type="{{ str_contains($fieldKey, 'password') ? 'password' : 'text' }}"
+                                           wire:model="fields.{{ $gateway }}.{{ $fieldKey }}"
+                                           dir="ltr" autocomplete="off"
+                                           class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs shadow-sm transition focus:border-primary-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800">
+                                @endif
                             </label>
                         @endforeach
                     </div>
