@@ -354,6 +354,34 @@
             <span class="rounded-xl bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-400 dark:bg-slate-800">قیمت واحد</span>
         </div>
 
+        {{-- ── امکان خرید اقساطی (v0.30.0 — بج کوچک مدرن مثل نمونهٔ اسنپ‌پی) ── --}}
+        @if (count($this->bnplShowcase) > 0)
+            <div class="mt-3 space-y-2">
+                @foreach ($this->bnplShowcase as $bnpl)
+                    <div class="flex items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/60 p-3 dark:border-violet-900/60 dark:bg-violet-950/25"
+                         wire:key="bnpl-badge-{{ $bnpl['gateway'] }}">
+                        <span class="grid size-12 shrink-0 place-items-center rounded-xl bg-white p-1 shadow-sm dark:bg-slate-800">
+                            @include('partials.gateway-logo', ['gateway' => $bnpl['gateway']])
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-1.5 text-xs font-extrabold text-slate-700 dark:text-slate-200">
+                                امکان خرید اقساطی با {{ $bnpl['label'] }}
+                            </div>
+                            <div class="mt-1 flex flex-wrap items-center gap-x-1.5 text-[10.5px] font-bold text-violet-600 dark:text-violet-300">
+                                <span>پرداخت در {{ \App\Support\Fmt::fa($bnpl['installments']) }} قسط {{ str_contains($bnpl['feeLabel'], 'بدون') ? 'بدون کارمزد' : '' }}</span>
+                                <span aria-hidden="true">·</span>
+                                <span>هر قسط از {{ \App\Support\Fmt::fa($bnpl['per']) }} تومان</span>
+                            </div>
+                            @if (! str_contains($bnpl['feeLabel'], 'بدون'))
+                                <div class="mt-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">با {{ $bnpl['feeLabel'] }} — فقط هنگام پرداخت اقساطی</div>
+                            @endif
+                        </div>
+                        <x-icon name="calendar-clock" class="size-4 shrink-0 text-violet-400" />
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
         {{-- ── تب توضیحات / مشخصات ── --}}
         @php
             $specGroups = collect($product->specifications ?? [])->filter(

@@ -207,6 +207,54 @@
             </div>
         </div>
 
+        {{-- ───────── تسویه‌های اقساطی در انتظار واریز (v0.30.0 — کم‌رنگ/disable) ───────── --}}
+        @if (count($bnplPending) > 0)
+            <div class="mt-5" wire:key="bnpl-pending-block">
+                <h3 class="flex items-center justify-between text-sm font-extrabold">
+                    <span class="flex items-center gap-2">
+                        <x-icon name="calendar-clock" class="size-4 text-violet-500" />
+                        تسویه‌های اقساطی در انتظار واریز
+                    </span>
+                    <span class="rounded-full bg-violet-100 px-2.5 py-1 text-[10px] font-bold text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">
+                        {{ \App\Support\Fmt::fa(count($bnplPending)) }} مورد
+                    </span>
+                </h3>
+                <p class="mt-1.5 rounded-xl bg-violet-50 px-3 py-2 text-[9.5px] font-semibold leading-5 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300">
+                    پرداخت‌های اقساطی (دیجی‌پی / اسنپ‌پی / ترب‌پی) هنوز به کیف پول واریز نشده‌اند — مبلغ هر سفارش بعد از تسویهٔ خودِ درگاه، در روز سررسید به‌صورت خودکار واریز می‌شود.
+                </p>
+
+                <div class="mt-3 space-y-2">
+                    @foreach ($bnplPending as $bnplRow)
+                        <div wire:key="bnpl-pending-{{ $bnplRow->id }}"
+                             class="flex items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 p-3 opacity-70 dark:border-slate-700 dark:bg-slate-800/50"
+                             aria-disabled="true">
+                            <span class="grid size-10 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white p-1 opacity-80 grayscale dark:border-slate-700 dark:bg-slate-900">
+                                @include('partials.gateway-logo', ['gateway' => $bnplRow->gateway])
+                            </span>
+
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="truncate text-[11px] font-extrabold text-slate-500 dark:text-slate-400">
+                                        پرداخت سفارش #{{ \App\Support\Fmt::fa($bnplRow->order?->id ?? $bnplRow->order_id) }} با {{ $bnplRow->gatewayLabel() }}
+                                    </span>
+                                </div>
+                                <div class="mt-0.5 truncate text-[9.5px] font-semibold text-slate-400">
+                                    بعد از تسویه {{ $bnplRow->gatewayLabel() }} به کیف پول شما واریز می‌شود — سررسید: {{ $bnplRow->dueDateFa() }}
+                                </div>
+                            </div>
+
+                            <div class="shrink-0 text-left">
+                                <div class="text-[11.5px] font-black text-slate-400 dark:text-slate-500" dir="ltr">
+                                    +{{ \App\Support\Fmt::money($bnplRow->amount) }}
+                                </div>
+                                <div class="mt-0.5 text-[8.5px] font-bold text-slate-400">در انتظار تسویه درگاه</div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         {{-- ───────── transactions ───────── --}}
         <div class="mt-5 flex items-center justify-between">
             <h3 class="flex items-center gap-2 text-sm font-extrabold">

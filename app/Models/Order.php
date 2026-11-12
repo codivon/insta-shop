@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
     'receiver_name', 'delivery_phone', 'delivery_address', 'postal_code',
     'gateway', 'gateway_ref', 'receipt_ref', 'paid_at',
     'shipment_status', 'tracking_code', 'shipment_status_at',
+    'bnpl_gateway', 'bnpl_fee', 'bnpl_fees',
 ])]
 class Order extends Model
 {
@@ -41,6 +42,8 @@ class Order extends Model
             'commissions' => 'array',
             'paid_at' => 'datetime',
             'shipment_status_at' => 'datetime',
+            'bnpl_fee' => 'integer',
+            'bnpl_fees' => 'array',
         ];
     }
 
@@ -78,6 +81,15 @@ class Order extends Model
      *   discount       → ?Discount applied (its used_count is bumped here)
      *   discount_amount→ computed discount in Toman
      */
+    /**
+     * v0.30.0 — BNPL payload of $checkout (درگاه‌های اقساطی):
+     *   bnpl_gateway → the installment gateway the customer picked
+     *   bnpl_fees    → {shop_id: fee} — each seller's surcharge frozen at
+     *                  checkout so the monthly settlements always match
+     *                  what the customer paid
+     *   bnpl_fee     → Σ bnpl_fees — rides the PRODUCTS total (never the
+     *                  shipping, client request)
+     */
     public static function createFromCart(Customer $customer, array $delivery, string $gateway, array $checkout = []): ?self
     {
         $cart = $customer->cart;
@@ -111,7 +123,23 @@ class Order extends Model
             ? max(0, (int) ($checkout['discount_amount'] ?? 0))
             : 0;
 
-        $order = DB::transaction(function () use ($customer, $delivery, $gateway, $lines, $shipping, $discount, $discountAmount, $checkout) {
+        /* v0.30.0 — the installment surcharge (validated server-side by the
+         * caller): only a KNOWN BNPL gateway carries it, the per-shop map
+         * is re-clamped to non-negative ints and the grand total recomputed
+         * from it (never trusted from the wire). */
+        $bnplGateway = array_key_exists((string) ($checkout['bnpl_gateway'] ?? ''), PaymentService::BNPL_GATEWAYS)
+            ? (string) $checkout['bnpl_gateway']
+            : null;
+
+        $bnplFees = [];
+
+        foreach ((array) ($checkout['bnpl_fees'] ?? []) as $shopId => $fee) {
+            $bnplFees[(int) $shopId] = max(0, (int) $fee);
+        }
+
+        $bnplFeeTotal = array_sum($bnplFees);
+
+        $order = DB::transaction(function () use ($customer, $delivery, $gateway, $lines, $shipping, $discount, $discountAmount, $bnplGateway, $bnplFees, $bnplFeeTotal, $checkout) {
             /*
              * SECURITY (v0.21.0): the discount is CLAIMED atomically while
              * holding the discount row lock. The old code blindly did
@@ -157,7 +185,7 @@ class Order extends Model
             $order = static::query()->create([
                 'customer_id' => $customer->id,
                 'status' => 'pending',
-                'total_amount' => max(0, (int) $lines->sum(fn ($line) => $line['unit_price'] * $line['quantity']) + $shipping - $appliedAmount),
+                'total_amount' => max(0, (int) $lines->sum(fn ($line) => $line['unit_price'] * $line['quantity']) + $bnplFeeTotal + $shipping - $appliedAmount),
                 'shipping_cost' => $shipping,
                 'discount_amount' => $appliedAmount,
                 'discount_code' => $claimedDiscount?->code,
@@ -168,6 +196,9 @@ class Order extends Model
                 'delivery_address' => (string) $delivery['delivery_address'],
                 'postal_code' => $delivery['postal_code'] ?? null,
                 'gateway' => $gateway,
+                'bnpl_gateway' => $bnplGateway,
+                'bnpl_fees' => $bnplFees !== [] ? $bnplFees : null,
+                'bnpl_fee' => $bnplFeeTotal,
             ]);
 
             $order->items()->createMany($lines->all());
@@ -317,14 +348,22 @@ class Order extends Model
     /** Human-friendly gateway name for receipts. */
     public function gatewayLabel(): string
     {
-        // PaymentService::GATEWAYS is the single source of truth (v0.26.0 —
-        // the 9 new shetabit gateways must render everywhere automatically).
+        // PaymentService::GATEWAYS + BNPL_GATEWAYS are the single source of
+        // truth (v0.30.0 — the BNPL trio renders everywhere automatically).
         return PaymentService::GATEWAYS[$this->gateway]
+            ?? PaymentService::BNPL_GATEWAYS[$this->gateway]
             ?? match ($this->gateway) {
                 'idpay' => 'آیدی‌پی', // legacy rows from before multipay v3
                 null, '' => 'درگاه آزمایشی (محلی)',
                 default => (string) $this->gateway,
             };
+    }
+
+    /** v0.30.0 — was this order paid through an installment (BNPL) gateway? */
+    public function isBnpl(): bool
+    {
+        return (string) $this->bnpl_gateway !== ''
+            && array_key_exists((string) $this->bnpl_gateway, PaymentService::BNPL_GATEWAYS);
     }
 
     /* ───────────────────────── Shipment lifecycle ───────────────────── */

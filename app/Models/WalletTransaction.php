@@ -18,6 +18,8 @@ class WalletTransaction extends Model
 
     public const TYPE_BUMP = 'bump'; // v0.23.0 — خرید نردبان محصول از کیف پول
 
+    public const TYPE_BNPL = 'bnpl'; // v0.30.0 — تسویهٔ ماهانهٔ سفارش اقساطی (دیجی‌پی/اسنپ‌پی/ترب‌پی)
+
     public const STATUS_DONE = 'done';
 
     public const STATUS_PENDING = 'pending';
@@ -65,6 +67,7 @@ class WalletTransaction extends Model
             self::TYPE_DEPOSIT => 'واریز فروش',
             self::TYPE_PLAN => 'خرید اشتراک',
             self::TYPE_BUMP => 'خرید نردبان',
+            self::TYPE_BNPL => 'تسویه اقساطی',
             default => 'درخواست برداشت',
         };
     }

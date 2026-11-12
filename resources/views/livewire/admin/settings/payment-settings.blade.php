@@ -320,12 +320,194 @@
         @endforeach
     </div>
 
+    {{-- ───────── درگاه‌های پرداخت اقساطی (v0.30.0 — بخش جدا) ───────── --}}
+    <div class="mt-2">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-violet-50/70 px-4 py-3.5 dark:border-violet-900 dark:bg-violet-950/30">
+            <div class="flex items-center gap-3">
+                <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-violet-600/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400">
+                    <x-icon name="calendar-clock" class="size-5.5" />
+                </span>
+                <div>
+                    <h2 class="flex items-center gap-2 text-sm font-extrabold">درگاه‌های پرداخت اقساطی (خرید حالا، پرداخت بعداً)</h2>
+                    <p class="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                        دیجی‌پی، اسنپ‌پی و ترب‌پی واسط‌های پرداخت اقساطی هستند و در صفحهٔ پرداخت در بخش جداگانه نمایش داده می‌شوند — مشتری قسط اول را هنگام خرید می‌پردازد و باقی اقساط را در پنل خودِ درگاه؛ چون تسویهٔ پذیرنده این درگاه‌ها <b>سرِ ماه</b> انجام می‌شود، سهم فروشنده آنی واریز نمی‌شود و از بخش «تسویه اقساطی» (روزِ سررسید) به کیف پول می‌رود.
+                    </p>
+                </div>
+            </div>
+            <a href="{{ route('admin.bnpl.settlements') }}" wire:navigate
+               class="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-violet-300 bg-white px-3 py-2 text-[11px] font-bold text-violet-600 shadow-sm transition hover:bg-violet-50 dark:border-violet-800 dark:bg-slate-900 dark:text-violet-300 dark:hover:bg-violet-950/40">
+                <x-icon name="wallet" class="size-3.5" />
+                تسویه اقساطی
+            </a>
+        </div>
+
+        <div class="space-y-3">
+            @foreach ($bnplGateways as $name => $label)
+                @php
+                    $gwOn = (bool) ($enabled[$name] ?? false);
+                    $gwCreds = $fields[$name] ?? [];
+                    $gwStripe = $gwOn ? 'border-e-violet-500' : 'border-e-transparent';
+                @endphp
+                <div wire:key="bnpl-row-{{ $name }}" x-data="{ open: false }"
+                     class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition dark:border-slate-800 dark:bg-slate-900 border-e-4 {{ $gwStripe }}">
+                    <div class="flex items-center gap-3 p-3.5">
+                        <span class="grid size-11 shrink-0 place-items-center rounded-xl border border-slate-100 bg-white p-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
+                            @include('partials.gateway-logo', ['gateway' => $name])
+                        </span>
+
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <h2 class="text-sm font-extrabold">{{ $label }}</h2>
+                                <span class="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[9.5px] font-extrabold text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">
+                                    <x-icon name="calendar-clock" class="size-2.5" /> اقساطی
+                                </span>
+                                @if ($gwOn)
+                                    <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[9.5px] font-extrabold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">فعال</span>
+                                @else
+                                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[9.5px] font-extrabold text-slate-500 dark:bg-slate-800 dark:text-slate-400">غیرفعال</span>
+                                @endif
+                                @if ((bool) ($bnplMock[$name] ?? false))
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[9.5px] font-extrabold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                                        <x-icon name="alert" class="size-2.5" /> شبیه‌ساز
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9.5px] font-bold text-slate-400">
+                                <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono dark:bg-slate-800">{{ $name }}</code>
+                                <span>تعداد اقساط نمایشی: {{ \App\Support\Fmt::fa(\App\Support\Payments\PaymentService::bnplInstallments($name)) }}</span>
+                                <span>·</span>
+                                <span>روز واریز تسویه: {{ \App\Support\Fmt::fa(\App\Support\Payments\PaymentService::bnplSettlementDay($name)) }} هر ماه</span>
+                                @if ($gwOn && ! \App\Support\Payments\PaymentService::hasCredentials($name))
+                                    <span class="text-amber-500">مدارک ثبت نشده</span>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="flex shrink-0 items-center gap-2">
+                            <button type="button" wire:click="deleteCredentials('{{ $name }}')"
+                                    wire:confirm="اعتبارنامه‌های ذخیره‌شدهٔ «{{ $label }}» از تنظیمات پاک شود؟"
+                                    class="grid size-9 place-items-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/40"
+                                    title="پاک کردن مدارک ذخیره‌شده">
+                                <x-icon name="trash" class="size-4" />
+                            </button>
+                            <button type="button" x-on:click="open = ! open"
+                                    class="grid size-9 place-items-center rounded-xl text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                                    :aria-expanded="open ? 'true' : 'false'" aria-label="جزئیات {{ $label }}">
+                                <x-icon name="chevron-down" class="size-4 transition-transform duration-300" x-bind:class="open ? 'rotate-180' : ''" />
+                            </button>
+                            <label class="relative inline-flex shrink-0 cursor-pointer items-center" title="{{ $gwOn ? 'غیرفعال کردن' : 'فعال کردن' }} {{ $label }}">
+                                <input type="checkbox" wire:model.live="enabled.{{ $name }}" class="peer sr-only">
+                                <span class="h-6 w-11 rounded-full bg-slate-200 transition peer-checked:bg-violet-500 dark:bg-slate-700"></span>
+                                <span class="absolute start-0.5 top-0.5 size-5 rounded-full bg-white shadow transition peer-checked:start-[1.375rem]"></span>
+                                <span class="sr-only">فعال بودن {{ $label }}</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {{-- ── expanded panel ── --}}
+                    <div x-show="open" x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="-translate-y-1 opacity-0" x-transition:enter-end="translate-y-0 opacity-100" x-cloak
+                         class="border-t border-slate-100 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-950/30">
+
+                        {{-- آیکون درگاه (همان مدیریت آیکون v0.29.0) --}}
+                        <div class="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <span class="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-100 bg-white p-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
+                                @include('partials.gateway-logo', ['gateway' => $name])
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h4 class="flex flex-wrap items-center gap-1.5 text-xs font-extrabold">
+                                    <x-icon name="image" class="size-3.5 text-primary-500" />
+                                    آیکون درگاه
+                                    @if (\App\Support\Payments\GatewayIcons::hasCustom($name))
+                                        <span class="rounded-full bg-primary-100 px-2 py-0.5 text-[9px] font-extrabold text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">تصویر سفارشی</span>
+                                    @else
+                                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-extrabold text-slate-500 dark:bg-slate-800 dark:text-slate-400">آیکون رسمی درگاه</span>
+                                    @endif
+                                </h4>
+                                <p class="mt-1 text-[10px] leading-4 text-slate-500 dark:text-slate-400">آیکون اینجا و در کارت‌های اقساطیِ صفحهٔ پرداخت نمایش داده می‌شود (PNG، JPG یا WebP — حداکثر ۲ مگابایت).</p>
+                            </div>
+                            <div class="flex shrink-0 items-center gap-2">
+                                <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-primary-700">
+                                    <x-icon name="image-plus" class="size-3.5" />
+                                    {{ \App\Support\Payments\GatewayIcons::hasCustom($name) ? 'تغییر آیکون' : 'بارگذاری آیکون' }}
+                                    <input type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="sr-only" wire:model="iconFiles.{{ $name }}">
+                                </label>
+                                @if (\App\Support\Payments\GatewayIcons::hasCustom($name))
+                                    <button type="button" wire:click="removeIcon('{{ $name }}')"
+                                            wire:confirm="آیکون سفارشی «{{ $label }}» حذف شود و آیکون رسمی درگاه بازگردد؟"
+                                            class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-500 transition hover:border-rose-300 hover:text-rose-600 dark:border-slate-700 dark:bg-slate-900">
+                                        <x-icon name="rotate" class="size-3.5" />
+                                        بازگشت به پیش‌فرض
+                                    </button>
+                                @endif
+                                <span wire:loading wire:target="iconFiles.{{ $name }}" class="inline-flex items-center gap-1.5 text-[10px] font-bold text-primary-500">
+                                    <x-icon name="rotate" class="size-3.5 animate-spin" />
+                                    در حال بارگذاری…
+                                </span>
+                            </div>
+                            @error('iconFiles.'.$name)
+                                <p class="w-full text-[10px] font-bold text-rose-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- اعتبارنامه‌ها --}}
+                        @if (count($gwCreds) > 0)
+                            <h3 class="mb-3 text-xs font-extrabold">اعتبارنامه‌های «{{ $label }}» <span class="text-[9px] font-normal text-slate-400">(OAuth: Client ID/Secret + نام کاربری/رمز — از پنل پذیرندهٔ درگاه)</span></h3>
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                @foreach ($gwCreds as $fieldKey => $fieldLabel)
+                                    <label class="block">
+                                        <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                                            {{ $fieldLabel }}
+                                            <span class="text-[9px] font-normal text-slate-400">(خالی = استفاده از env)</span>
+                                        </span>
+                                        <input type="{{ str_contains($fieldKey, 'password') || str_contains($fieldKey, 'secret') ? 'password' : 'text' }}"
+                                               wire:model="fields.{{ $name }}.{{ $fieldKey }}"
+                                               dir="ltr" autocomplete="off"
+                                               class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-sm transition focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900">
+                                    </label>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        {{-- تنظیمات اقساطی --}}
+                        <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                            <label class="block">
+                                <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">تعداد اقساط (نمایشی)</span>
+                                <input type="number" min="2" max="12" wire:model="bnplInstallments.{{ $name }}" dir="ltr"
+                                       class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-sm transition focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900">
+                                <span class="mt-1 block text-[9px] font-semibold text-slate-400">در بج اقساط صفحهٔ محصول و کارت‌های پرداخت نمایش داده می‌شود (۲ تا ۱۲ — پیش‌فرض ۴).</span>
+                            </label>
+                            <label class="block">
+                                <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">روز واریز تسویه (هر ماه)</span>
+                                <input type="number" min="1" max="29" wire:model="bnplSettlementDay.{{ $name }}" dir="ltr"
+                                       class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs shadow-sm transition focus:border-primary-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900">
+                                <span class="mt-1 block text-[9px] font-semibold text-slate-400">روزِ ماهی که کرانِ خودکار، تسویه‌های سررسیدشده را به کیف پول فروشنده واریز می‌کند (۱ تا ۲۹ — مثلاً خرید ۲۵‌ماه → تسویه روزِ ۱ ماه بعد).</span>
+                            </label>
+                            <div>
+                                <span class="mb-1.5 block text-[11px] font-bold text-slate-600 dark:text-slate-300">شبیه‌ساز محلی (تست)</span>
+                                <label class="flex items-center justify-between gap-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 px-3 py-2.5 dark:border-amber-800 dark:bg-amber-950/20">
+                                    <span class="text-[10px] font-bold leading-4 text-amber-700 dark:text-amber-300">
+                                        {{ $mockAllowed ? 'صفحهٔ پرداخت ساختگی برای تستِ کاملِ جریان اقساط (فقط محیط توسعه اثر دارد).' : 'فقط در محیط توسعه کار می‌کند — روی سرور عملیاتی نادیده گرفته می‌شود.' }}
+                                    </span>
+                                    <span class="relative shrink-0">
+                                        <input type="checkbox" wire:model="bnplMock.{{ $name }}" class="peer sr-only">
+                                        <span class="block h-6 w-11 rounded-full bg-slate-200 transition peer-checked:bg-amber-500 dark:bg-slate-700"></span>
+                                        <span class="absolute start-0.5 top-0.5 size-5 rounded-full bg-white shadow transition peer-checked:start-[1.375rem]"></span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
     {{-- ── bottom bar: info + save ── --}}
     <div class="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-lg shadow-slate-900/5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
         <p class="flex items-start gap-2 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
             <x-icon name="info" class="mt-0.5 size-3.5 shrink-0 text-primary-500" />
             <span>
-                برای فعال کردن هر درگاه کلیدش را روشن کنید و مدارکش را تکمیل نمایید؛ درگاه ستاره‌دار «پیش‌فرض» است و در صفحهٔ پرداخت پیش‌گزین می‌شود. با فعال بودن چند درگاه، مشتری خودش درگاه را انتخاب می‌کند.
+                برای فعال کردن هر درگاه کلیدش را روشن کنید و مدارکش را تکمیل نمایید؛ درگاه ستاره‌دار «پیش‌فرض» است و در صفحهٔ پرداخت پیش‌گزین می‌شود. با فعال بودن چند درگاه، مشتری خودش درگاه را انتخاب می‌کند — درگاه‌های اقساطی هم باید از پنل فروشنده فعال شده باشند تا در صفحهٔ پرداخت ظاهر شوند.
             </span>
         </p>
         <button type="button" wire:click="save" wire:loading.attr="disabled"

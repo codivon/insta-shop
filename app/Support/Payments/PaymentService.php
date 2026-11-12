@@ -3,15 +3,21 @@
 namespace App\Support\Payments;
 
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\PaymentLog;
+use App\Models\SellerBnplSetting;
 use App\Models\Setting;
 use App\Support\Fmt;
+use App\Support\Payments\Drivers\BnplTorobPay;
 use App\Support\Payments\Drivers\SplitAsanpardakht;
 use App\Support\Payments\Drivers\SplitPayping;
 use App\Support\Payments\Drivers\SplitSep;
 use Shetabit\Multipay\Drivers\Asanpardakht\Asanpardakht;
+use Shetabit\Multipay\Drivers\Digipay\Digipay;
+use Shetabit\Multipay\Drivers\Local\Local;
 use Shetabit\Multipay\Drivers\Payping\Payping;
 use Shetabit\Multipay\Drivers\SEP\SEP;
+use Shetabit\Multipay\Drivers\SnappPay\SnappPay;
 use Shetabit\Multipay\Invoice;
 use Shetabit\Multipay\Receipt;
 use Shetabit\Multipay\RedirectionForm;
@@ -42,6 +48,56 @@ class PaymentService
         'asanpardakht' => 'آسان‌پرداخت',
         'sepehr' => 'سپهر (بانک صادرات)',
         'sep' => 'سپ الکترونیک (سامان)',
+    ];
+
+    /**
+     * v0.30.0 — درگاه‌های پرداخت اقساطی (BNPL) — یک بخش کاملاً جدا:
+     *
+     * دیجی‌پی / اسنپ‌پی / ترب‌پی are BUY-NOW-PAY-LATER gateways — the
+     * customer pays the FIRST installment at checkout and the rest to the
+     * gateway over the following months, while the gateway settles the
+     * MERCHANT monthly. Orders paid here therefore NEVER credit seller
+     * wallets instantly — they create pending BnplSettlement rows instead
+     * (see App\Support\Payments\BnplSettlements).
+     *
+     * These slugs live OUTSIDE GATEWAYS on purpose: checkout shows them in
+     * their own «پرداخت اقساطی» section, the admin panel gets its own
+     * settings section, and wallet DEPOSITS never offer them.
+     *
+     * NOTE the snapppay spelling (double p) — it must match the vendor
+     * shetabit/multipay driver map exactly.
+     */
+    public const BNPL_GATEWAYS = [
+        'digipay' => 'دیجی‌پی',
+        'snapppay' => 'اسنپ‌پی',
+        'torobpay' => 'ترب‌پی',
+    ];
+
+    /**
+     * v0.30.0 — credential fields of the BNPL trio (OAuth password grant:
+     * client_id/client_secret Basic pair + username/password). Stored as
+     * settings "payment.{gateway}.{field}" exactly like the direct
+     * gateways. hasCredentials()/applyRuntimeConfig() read BOTH maps.
+     */
+    public const BNPL_CREDENTIAL_FIELDS = [
+        'digipay' => [
+            'client_id' => 'Client ID دیجی‌پی',
+            'client_secret' => 'Client Secret دیجی‌پی',
+            'username' => 'نام کاربری دیجی‌پی',
+            'password' => 'رمز عبور دیجی‌پی',
+        ],
+        'snapppay' => [
+            'client_id' => 'Client ID اسنپ‌پی',
+            'client_secret' => 'Client Secret اسنپ‌پی',
+            'username' => 'نام کاربری اسنپ‌پی',
+            'password' => 'رمز عبور اسنپ‌پی',
+        ],
+        'torobpay' => [
+            'client_id' => 'Client ID ترب‌پی',
+            'client_secret' => 'Client Secret ترب‌پی',
+            'username' => 'نام کاربری ترب‌پی',
+            'password' => 'رمز عبور ترب‌پی',
+        ],
     ];
 
     /**
@@ -96,6 +152,18 @@ class PaymentService
         'payping' => Payping::class,
         'asanpardakht' => Asanpardakht::class,
         'sep' => SEP::class,
+    ];
+
+    /**
+     * v0.30.0 — the REAL driver classes of the BNPL trio. torobpay rides
+     * our subclass that fixes the vendor's missing RIAL conversion inside
+     * the cartList payload (vendor sends `amount` in RIAL but a TOMAN
+     * cartList — TorobPay cross-checks the two and would reject).
+     */
+    private const BNPL_VENDOR_DRIVER_MAP = [
+        'digipay' => Digipay::class,
+        'snapppay' => SnappPay::class,
+        'torobpay' => BnplTorobPay::class,
     ];
 
     public static function activeGateway(): string
@@ -178,7 +246,7 @@ class PaymentService
     /** Does the gateway have ANY credential (settings DB or .env config)? */
     public static function hasCredentials(string $gateway): bool
     {
-        foreach (self::CREDENTIAL_FIELDS[$gateway] ?? [] as $field => $_) {
+        foreach (self::credentialFieldsFor($gateway) as $field => $_) {
             if (trim((string) Setting::get("payment.{$gateway}.{$field}", '')) !== '') {
                 return true;
             }
@@ -189,6 +257,131 @@ class PaymentService
         }
 
         return false;
+    }
+
+    /** The editable credential fields of one gateway (direct + BNPL maps). */
+    public static function credentialFieldsFor(string $gateway): array
+    {
+        return self::CREDENTIAL_FIELDS[$gateway]
+            ?? self::BNPL_CREDENTIAL_FIELDS[$gateway]
+            ?? [];
+    }
+
+    /**
+     * v0.30.0 — does the slug belong to the installment (BNPL) trio?
+     * These live outside GATEWAYS and follow a completely different money
+     * flow (monthly merchant settlement, no instant wallet credit).
+     */
+    public static function isBnplGateway(string $gateway): bool
+    {
+        return array_key_exists($gateway, self::BNPL_GATEWAYS);
+    }
+
+    /**
+     * BNPL gateways the ADMIN turned on (enabled + credentialed) — the
+     * first layer of the checkout filter; the SELLER opt-ins narrow it
+     * further (see bnplGatewaysForSellers).
+     *
+     * @return array<string, string> key → Persian label
+     */
+    public static function availableBnplGateways(): array
+    {
+        $available = [];
+
+        foreach (self::BNPL_GATEWAYS as $key => $label) {
+            if (self::isEnabled($key) && self::hasCredentials($key)) {
+                $available[$key] = $label;
+            }
+        }
+
+        return $available;
+    }
+
+    /**
+     * BNPL gateways available to THIS cart: admin enabled ∧ credentialed ∧
+     * EVERY seller with items in the cart opted in (one seller without the
+     * gateway removes it for the whole cart — an installment payment can
+     * never split between gateway/wallet flows).
+     *
+     * @param  array<int, int|null>  $sellerIds  seller ids of the cart shops
+     * @return array<string, string>
+     */
+    public static function bnplGatewaysForSellers(array $sellerIds): array
+    {
+        $admin = self::availableBnplGateways();
+
+        if ($admin === []) {
+            return [];
+        }
+
+        $sellerIds = array_values(array_unique(array_filter(array_map('intval', $sellerIds))));
+
+        if ($sellerIds === []) {
+            return [];
+        }
+
+        $rows = SellerBnplSetting::query()
+            ->whereIn('seller_id', $sellerIds)
+            ->where('enabled', true)
+            ->get();
+
+        $available = [];
+
+        foreach (array_keys($admin) as $gateway) {
+            $everySellerIn = collect($sellerIds)->every(
+                fn (int $sellerId): bool => $rows
+                    ->contains(fn (SellerBnplSetting $row): bool => $row->seller_id === $sellerId && $row->gateway === $gateway),
+            );
+
+            if ($everySellerIn) {
+                $available[$gateway] = $admin[$gateway];
+            }
+        }
+
+        return $available;
+    }
+
+    /** The BNPL surcharge ONE shop adds for a gateway (0 when not opted in). */
+    public static function bnplFeeForShop(string $gateway, ?int $sellerId, int $itemsTotal): int
+    {
+        $setting = SellerBnplSetting::forSeller($gateway, $sellerId);
+
+        return ($setting && $setting->enabled) ? $setting->feeFor($itemsTotal) : 0;
+    }
+
+    /** How many installments the product-page banner/checkout hint shows (۲–۱۲). */
+    public static function bnplInstallments(string $gateway): int
+    {
+        $value = (int) Setting::get("payment.{$gateway}.installments", '4');
+
+        return ($value >= 2 && $value <= 12) ? $value : 4;
+    }
+
+    /**
+     * The day of month the shop deposits BNPL settlements to seller wallets
+     * (۱–۲۹ — تیرماه هیچ‌وقت روز ۳۰ ندارد). The cron deposits every pending
+     * settlement whose due date (the NEXT occurrence of this day after the
+     * purchase) has arrived; «خرید ۲۵ ماه → تسویه سرِ ماه».
+     */
+    public static function bnplSettlementDay(string $gateway): int
+    {
+        $value = (int) Setting::get("payment.{$gateway}.settlement_day", '1');
+
+        return ($value >= 1 && $value <= 29) ? $value : 1;
+    }
+
+    /**
+     * Mock mode of a BNPL gateway — rides the vendor LOCAL test driver so
+     * the whole installment flow is testable end-to-end without a merchant
+     * contract. SECURITY: the flag only ever bites inside local
+     * environments (fail-closed in production, exactly like the local
+     * gateway itself).
+     */
+    public static function bnplMockEnabled(string $gateway): bool
+    {
+        return self::isBnplGateway($gateway)
+            && self::localGatewayAllowed()
+            && Setting::get("payment.{$gateway}.mock", '0') === '1';
     }
 
     /** The PRE-multi-gateway rule: a gateway exists when it holds credentials. */
@@ -242,7 +435,7 @@ class PaymentService
     {
         $drivers = (array) config('payment.drivers', []);
 
-        foreach (self::CREDENTIAL_FIELDS[$gateway] ?? [] as $field => $label) {
+        foreach (self::credentialFieldsFor($gateway) as $field => $label) {
             $value = trim((string) Setting::get("payment.{$gateway}.{$field}", ''));
 
             if ($value !== '') {
@@ -257,6 +450,43 @@ class PaymentService
                 'payment.map.'.$gateway,
                 $split ? self::SPLIT_DRIVER_MAP[$gateway] : self::VENDOR_DRIVER_MAP[$gateway],
             );
+        }
+
+        /*
+         * v0.30.0 — BNPL trio: an EXPLICIT map entry for every call (mock
+         * ON → the vendor LOCAL test driver with its friendly sandbox page
+         * labels; OFF → the real driver). Mirrors the split swap pattern:
+         * the config repository lives for the whole request, so the swap
+         * must always be re-stated.
+         */
+        if (self::isBnplGateway($gateway)) {
+            $mock = self::bnplMockEnabled($gateway);
+
+            config()->set(
+                'payment.map.'.$gateway,
+                $mock ? Local::class : self::BNPL_VENDOR_DRIVER_MAP[$gateway],
+            );
+
+            if ($mock) {
+                // the sandbox page renders through the LOCAL form — borrow
+                // its labels/description (callbackUrl is overridden per-order
+                // by ->callbackUrl() AFTER via(), so the local relative URL
+                // here is harmless), then re-brand the page with the BNPL
+                // gateway's own name so the sandbox reads «اسنپ‌پی (شبیه‌ساز)»
+                $label = self::BNPL_GATEWAYS[$gateway];
+
+                $drivers[$gateway] = array_merge(
+                    $drivers[$gateway] ?? [],
+                    (array) config('payment.drivers.local'),
+                    ['callbackUrl' => config('payment.drivers.'.$gateway.'.callbackUrl', '/shop/payment/callback')],
+                    [
+                        'title' => $label.' (شبیه‌ساز)',
+                        'description' => 'شبیه‌ساز درگاه اقساطی '.$label.' — قسط اول هنگام خرید پرداخت می‌شود؛ هیچ پول واقعی جابه‌جا نمی‌شود.',
+                    ],
+                );
+
+                config()->set('payment.drivers', $drivers);
+            }
         }
     }
 
@@ -277,8 +507,9 @@ class PaymentService
     {
         // The gateway the CUSTOMER chose at checkout wins; fall back to the
         // admin-configured default when the order predates that feature or
-        // carries an unknown key.
-        $gateway = $order->gateway && array_key_exists($order->gateway, self::GATEWAYS)
+        // carries an unknown key. v0.30.0 — the BNPL trio is a known choice
+        // too (the order row stores bnpl_gateway separately).
+        $gateway = $order->gateway && array_key_exists($order->gateway, self::GATEWAYS + self::BNPL_GATEWAYS)
             ? $order->gateway
             : self::activeGateway();
 
@@ -290,7 +521,25 @@ class PaymentService
             throw new \RuntimeException('درگاه آزمایشی روی سرور عملیاتی غیرفعال است — از پنل مدیریت یک درگاه واقعی تنظیم کنید.');
         }
 
-        $splitPlan = SplitPlan::forOrder($order, $gateway);
+        /*
+         * v0.30.0 — a BNPL gateway left in MOCK mode never reaches a
+         * production checkout (bnplMockEnabled already fails closed in
+         * production, so a mock-flagged gateway silently falls back to its
+         * REAL driver there — this guard is the loud local-only belt).
+         */
+        if (self::isBnplGateway($gateway)
+            && Setting::get("payment.{$gateway}.mock", '0') === '1'
+            && ! self::localGatewayAllowed()) {
+            PaymentLog::record($order, $gateway, 'purchase_blocked', null, (int) $order->total_amount, false,
+                'mock mode is local-only — refusing to sandbox a real order');
+
+            throw new \RuntimeException('حالت آزمایشی درگاه اقساطی روی سرور عملیاتی غیرفعال است.');
+        }
+
+        // تسهیم is a DIRECT-gateway concept — installment orders always take
+        // the monthly-settlement path (CAPABLE never contains BNPL slugs, but
+        // keep the invariant explicit).
+        $splitPlan = self::isBnplGateway($gateway) ? null : SplitPlan::forOrder($order, $gateway);
 
         try {
             return self::startPurchase($order, $gateway, $splitPlan);
@@ -329,6 +578,10 @@ class PaymentService
         $invoice = new Invoice;
         $invoice->amount($order->total_amount);
         $invoice->detail('orderId', (string) $order->id);
+
+        if (self::isBnplGateway($gateway)) {
+            self::attachBnplDetails($invoice, $gateway, $order);
+        }
 
         if ($splitPlan !== null) {
             self::attachSplitDetails($invoice, $gateway, $order, $splitPlan);
@@ -380,8 +633,10 @@ class PaymentService
          * styled like a real bank gateway) instead of the vendor's plain
          * form. setViewPath is STATIC — set it only for the local driver
          * and reset it for real banks so they keep the default view.
+         * v0.30.0 — a BNPL gateway in MOCK mode rides the local driver and
+         * gets the same sandbox page.
          */
-        if ($gateway === 'local') {
+        if ($gateway === 'local' || (self::isBnplGateway($gateway) && self::bnplMockEnabled($gateway))) {
             RedirectionForm::setViewPath(resource_path('views/vendor/multipay/local-form.php'));
         } else {
             RedirectionForm::setViewPath(RedirectionForm::getDefaultViewPath());
@@ -432,6 +687,150 @@ class PaymentService
     }
 
     /**
+     * v0.30.0 — build the payload the BNPL trio needs on the invoice:
+     * customer mobile + per-shop cart lines (goods + the shop's installment
+     * surcharge − its discount share + its shipping share = what the
+     * customer actually finances at the gateway).
+     *
+     *   • snapppay — REQUIRES a cartList (vendor throws without it) and a
+     *     NUMERIC transactionId (field-observed error 1005 for uuids) → we
+     *     pass detail order_id = time()+order id (unique per attempt,
+     *     numeric). The vendor normalizer converts TOMAN→RIAL.
+     *   • digipay — providerId = invoice uuid (unique per attempt) + an
+     *     optional basketDetailsDto (product codes/names → helps the
+     *     gateway's BNPL approval).
+     *   • torobpay — transactionId = invoice uuid + detail cartItems (our
+     *     BnplTorobPay subclass converts the cartList to RIAL).
+     */
+    private static function attachBnplDetails(Invoice $invoice, string $gateway, Order $order): void
+    {
+        $attempt = (string) time(); // unique per purchase attempt (retries)
+
+        // the customer mobile every BNPL gateway wants (09xx — SnappPay's
+        // driver converts to +98 itself)
+        $phone = (string) $order->delivery_phone;
+
+        if ($phone !== '') {
+            $invoice->detail('phone', $phone);
+        }
+
+        // per-shop cart lines: items + the shop's BNPL fee + its shipping −
+        // its proportional discount share (sums to orders.total_amount)
+        $carts = self::bnplCartLines($order);
+
+        if ($gateway === 'snapppay') {
+            $invoice->detail('order_id', $attempt.$order->id); // NUMERIC, unique per attempt
+
+            $invoice->detail('cartList', array_map(static fn (array $cart): array => [
+                'cartId' => $cart['shop_id'],
+                'totalAmount' => $cart['total'],
+                'shippingAmount' => $cart['shipping'],
+                'taxAmount' => 0,
+                'isShipmentIncluded' => $cart['shipping'] > 0,
+                'isTaxIncluded' => true,
+                'cartItems' => $cart['items'],
+            ], $carts));
+
+            return;
+        }
+
+        if ($gateway === 'digipay') {
+            $invoice->uuid('order-'.$order->id.'-'.$attempt);
+
+            $items = [];
+
+            foreach ($carts as $cart) {
+                foreach ($cart['items'] as $item) {
+                    $items[] = [
+                        'productCode' => (string) $item['id'],
+                        'brand' => (string) ($cart['shop_name'] ?? 'InstaShop'),
+                        'productType' => 1, // durable (1 durable, 2 consumable, 3 service)
+                        'count' => max(1, (int) $item['count']),
+                    ];
+                }
+            }
+
+            $invoice->detail('basketDetailsDto', [
+                'basketId' => 'basket-'.$order->id.'-'.$attempt,
+                'items' => $items,
+            ]);
+
+            return;
+        }
+
+        // torobpay — flat cartItems detail; the driver builds cartList and
+        // converts everything to RIAL (see BnplTorobPay)
+        $invoice->uuid('order-'.$order->id.'-'.$attempt);
+
+        $invoice->detail('cartItems', array_merge(...array_map(
+            static fn (array $cart): array => $cart['items'],
+            $carts,
+        )));
+        $invoice->detail('shipping_amount', (int) $order->shipping_cost);
+        $invoice->detail('is_shipment_included', (int) $order->shipping_cost > 0);
+    }
+
+    /**
+     * Per-shop lines of a BNPL order for the gateway payloads — each cart
+     * carries its goods total, the shop's installment surcharge (orders
+     * .bnpl_fees map), its shipping share and its proportional discount
+     * share, so Σ cart totals == orders.total_amount exactly.
+     *
+     * @return list<array{shop_id: int, shop_name: string, items_total: int, fee: int, shipping: int, discount: int, total: int, items: list<array{id: int, name: string, count: int, amount: int, category: string}>}>
+     */
+    private static function bnplCartLines(Order $order): array
+    {
+        $lines = OrderItem::query()
+            ->where('order_id', $order->id)
+            ->with(['product:id,shop_id,name,category_id'])
+            ->get();
+
+        $fees = (array) ($order->bnpl_fees ?? []);
+        $grand = max(1, (int) $lines->sum(fn ($line) => $line->unit_price * $line->quantity));
+
+        return $lines
+            ->groupBy('shop_id')
+            ->map(function ($shopLines, $shopId) use ($fees, $grand, $order): array {
+                $itemsTotal = (int) $shopLines->sum(fn ($line) => $line->unit_price * $line->quantity);
+                $fee = (int) ($fees[(string) $shopId] ?? $fees[(int) $shopId] ?? 0);
+
+                $shipping = 0;
+
+                foreach ((array) ($order->shipments ?? []) as $entry) {
+                    if ((int) ($entry['shop_id'] ?? 0) === (int) $shopId) {
+                        $shipping = max(0, (int) ($entry['cost'] ?? 0));
+
+                        break;
+                    }
+                }
+
+                $discount = (int) floor(((int) $order->discount_amount) * $itemsTotal / $grand);
+                $shop = $shopLines->first()?->product?->shop;
+
+                $items = $shopLines->map(static fn ($line): array => [
+                    'id' => (int) $line->product_id,
+                    'name' => mb_substr((string) $line->product_name, 0, 60),
+                    'count' => max(1, (int) $line->quantity),
+                    'amount' => (int) $line->unit_price,
+                    'category' => (string) ($line->product?->category?->name ?? 'سایر'),
+                ])->values()->all();
+
+                return [
+                    'shop_id' => (int) $shopId,
+                    'shop_name' => (string) ($shop->name ?? ''),
+                    'items_total' => $itemsTotal,
+                    'fee' => $fee,
+                    'shipping' => $shipping,
+                    'discount' => $discount,
+                    'total' => max(0, $itemsTotal + $fee + $shipping - $discount),
+                    'items' => $items,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * Verify the gateway callback against the order and return the receipt.
      *
      * @throws Throwable on failure (canceled / invalid / previously verified…)
@@ -449,8 +848,13 @@ class PaymentService
          * allowed ONLY where the local gateway itself is allowed (local
          * environments). Production gateways verify cryptographically via
          * their own API and never need it.
+         *
+         * v0.30.0 — a BNPL gateway in MOCK mode rides the very same local
+         * driver, so it gets the same re-injection (and stays local-only).
          */
-        if ($gateway === 'local'
+        $mockBnpl = self::isBnplGateway($gateway) && self::bnplMockEnabled($gateway);
+
+        if (($gateway === 'local' || $mockBnpl)
             && self::localGatewayAllowed()
             && (string) $order->gateway_ref !== ''
             && ! request()->filled('transactionId')
@@ -508,6 +912,36 @@ class PaymentService
             }
         }
 
+        /*
+         * v0.30.0 — TorobPay echoes the financed amount (RIAL) in its verify
+         * response; same fail-closed check as Zibal (the app convention is
+         * TOMAN → ÷10). SnappPay's verify response carries no reliable
+         * amount — its gateway-side check already bound the token to the
+         * purchase amount.
+         */
+        if ($gateway === 'torobpay') {
+            $details = (array) $receipt->getDetails();
+            $paidRial = (int) ($details['response']['amount'] ?? $details['amount'] ?? 0);
+
+            if ($paidRial > 0 && (int) round($paidRial / 10) < (int) $order->total_amount) {
+                PaymentLog::record(
+                    $order,
+                    $gateway,
+                    'verify_amount_mismatch',
+                    (string) $order->gateway_ref,
+                    (int) $order->total_amount,
+                    false,
+                    'torobpay paid amount '.$paidRial.' rial is BELOW the order total '.(int) $order->total_amount.' toman',
+                );
+
+                throw new \RuntimeException('مبلغ پرداخت‌شده با مبلغ سفارش مطابقت ندارد — تراکنش تأیید نشد.');
+            }
+        }
+
+        // BNPL post-verify handshake (SnappPay settle / Digipay deliver) —
+        // operational, NEVER fails the already-verified payment.
+        self::afterBnplVerify($order, $gateway);
+
         PaymentLog::record(
             $order,
             $gateway,
@@ -520,6 +954,75 @@ class PaymentService
         );
 
         return $receipt;
+    }
+
+    /**
+     * v0.30.0 — the BNPL post-verify handshake. Best-effort and
+     * operational: a failure here must NEVER fail an already-verified
+     * payment (the money is taken; the order finalizes regardless).
+     *
+     *   • snapppay — settle() is MANDATORY by end of day («after this step
+     *     you cannot revert»); an unverified/unsettled payment is auto-
+     *     released by the gateway. Called right after verify.
+     *   • digipay — deliver() is MANDATORY for credit purchases
+     *     (callback type 5/13); skipped for wallet/IPG flows.
+     *   • torobpay — the vendor driver has no settle; SETTLE is reached
+     *     through verify per the official plugin (verify → settle is the
+     *     plugin's flow, verify-only leaves the order pending — nothing
+     *     extra to call here until TorobPay ships a settle endpoint in the
+     *     vendor package).
+     */
+    private static function afterBnplVerify(Order $order, string $gateway): void
+    {
+        if (! self::isBnplGateway($gateway) || self::bnplMockEnabled($gateway)) {
+            return; // mock flow needs no gateway handshake
+        }
+
+        try {
+            if ($gateway === 'snapppay') {
+                $invoice = new Invoice;
+                $invoice->amount($order->total_amount);
+                $invoice->transactionId((string) $order->gateway_ref);
+
+                (new SnappPay($invoice, (array) config('payment.drivers.snapppay')))->settle();
+
+                PaymentLog::record($order, $gateway, 'bnpl_settle_ok', (string) $order->gateway_ref,
+                    (int) $order->total_amount, true, 'SnappPay settle انجام شد (نهایی‌سازی تراکنش نزد درگاه)');
+            }
+
+            if ($gateway === 'digipay') {
+                $type = (int) request()->input('type', 0);
+
+                if (in_array($type, [5, 13], true)) { // 5 credit / 13 BNPL — deliver is mandatory
+                    $trackingCode = (string) request()->input('trackingCode', $order->gateway_ref);
+
+                    $invoice = new Invoice;
+                    $invoice->amount($order->total_amount);
+                    $invoice->detail('type', $type);
+                    $invoice->detail('trackingCode', $trackingCode);
+                    $invoice->detail('invoiceNumber', str_pad((string) $order->id, 5, '0', STR_PAD_LEFT).'-'.now()->format('ymd'));
+                    $invoice->detail('deliveryDate', now()->toDateString());
+                    $invoice->detail('products', $order->items->map(
+                        fn ($item): string => mb_substr((string) $item->product_name, 0, 80),
+                    )->values()->all());
+
+                    (new Digipay($invoice, (array) config('payment.drivers.digipay')))->deliver();
+
+                    PaymentLog::record($order, $gateway, 'bnpl_deliver_ok', $trackingCode,
+                        (int) $order->total_amount, true, 'دیجی‌پی deliver ثبت شد (سفارش تحویل‌شده اعلام شد)');
+                }
+            }
+        } catch (Throwable $e) {
+            PaymentLog::record(
+                $order,
+                $gateway,
+                $gateway === 'snapppay' ? 'bnpl_settle_failed' : 'bnpl_deliver_failed',
+                (string) $order->gateway_ref,
+                (int) $order->total_amount,
+                false,
+                'پرداخت وریفای شد اما handshake نهایی درگاه ناموفق بود: '.$e->getMessage(),
+            );
+        }
     }
 
     /**

@@ -214,6 +214,92 @@
             </span>
         </a>
 
+        {{-- ───────── پرداخت اقساطی (v0.30.0 — درگاه‌های اقساطی) ───────── --}}
+        @if (count($bnplGateways) > 0)
+            <div class="mt-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <h3 class="flex items-center gap-2 text-xs font-extrabold">
+                    <span class="grid size-7 place-items-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-400"><x-icon name="calendar-clock" class="size-3.5" /></span>
+                    پرداخت اقساطی — خرید حالا، پرداخت بعداً
+                </h3>
+                <p class="mt-1.5 rounded-xl bg-violet-50 px-3 py-2 text-[10px] font-semibold leading-5 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300">
+                    با فعال‌سازی هر روش، مشتری می‌تواند محصولات شما را اقساطی بخرد (قسط اول هنگام خرید از درگاه پرداخت می‌شود و باقی اقساط را در پنل خودِ درگاه می‌پردازد). چون تسویهٔ این درگاه‌ها <b>سرِ ماه</b> انجام می‌شود، مبلغ فروش شما پس از تسویهٔ درگاه به کیف پول واریز می‌شود. اگر برای این روش کارمزد تعیین کنید، هنگام پرداخت اقساطی به جمع کالاها اضافه می‌شود و شامل هزینهٔ ارسال نیست.
+                </p>
+
+                <div class="mt-3 space-y-3">
+                    @foreach ($bnplGateways as $bnplKey => $bnplLabel)
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-700 dark:bg-slate-800/60">
+                            <div class="flex items-center gap-3">
+                                <span class="grid size-11 shrink-0 place-items-center rounded-xl border border-slate-100 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                                    @include('partials.gateway-logo', ['gateway' => $bnplKey])
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <span class="text-xs font-extrabold">{{ $bnplLabel }}</span>
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[8.5px] font-extrabold text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">
+                                            {{ \App\Support\Fmt::fa(\App\Support\Payments\PaymentService::bnplInstallments($bnplKey)) }} قسط
+                                        </span>
+                                    </div>
+                                    <div class="mt-0.5 text-[9.5px] font-semibold text-slate-400">تسویه‌های این روش سرِ ماه به کیف پول شما واریز می‌شود</div>
+                                </div>
+                                <label class="relative inline-flex shrink-0 cursor-pointer items-center">
+                                    <input type="checkbox" wire:model="bnplEnabled.{{ $bnplKey }}" class="peer sr-only">
+                                    <span class="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-violet-600 dark:bg-slate-600"></span>
+                                    <span class="absolute right-0.5 top-0.5 size-5 rounded-full bg-white shadow transition peer-checked:-translate-x-5"></span>
+                                    <span class="sr-only">فعال‌سازی خرید اقساطی با {{ $bnplLabel }}</span>
+                                </label>
+                            </div>
+
+                            {{-- جزئیات — فقط وقتی روش فعال است --}}
+                            @if ((bool) ($bnplEnabled[$bnplKey] ?? false))
+                                <div class="mt-3 space-y-2.5 border-t border-dashed border-slate-200 pt-3 dark:border-slate-700">
+                                    {{-- نمایش در صفحهٔ محصول --}}
+                                    <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 dark:bg-slate-900">
+                                        <span class="min-w-0">
+                                            <span class="block text-[10.5px] font-bold text-slate-600 dark:text-slate-300">نمایش در صفحهٔ محصول</span>
+                                            <span class="mt-0.5 block text-[9px] leading-4 text-slate-400">بج کوچک «امکان خرید اقساطی با {{ $bnplLabel }}» زیر قیمتِ هر محصول شما نمایش داده می‌شود.</span>
+                                        </span>
+                                        <span class="flex shrink-0 items-center gap-2">
+                                            <input type="checkbox" wire:model="bnplShowProduct.{{ $bnplKey }}" class="size-4 rounded-md border-slate-300 text-violet-600 transition focus:ring-violet-500/30 dark:border-slate-600 dark:bg-slate-800">
+                                        </span>
+                                    </label>
+
+                                    {{-- کارمزد (درصدی یا مبلغ ثابت) --}}
+                                    <div class="rounded-xl bg-white p-3 dark:bg-slate-900">
+                                        <span class="block text-[10.5px] font-bold text-slate-600 dark:text-slate-300">کارمزد خرید اقساطی <span class="text-[9px] font-semibold text-slate-400">— هنگام پرداخت اقساطی به جمع کالاها اضافه می‌شود</span></span>
+                                        <div class="mt-2 grid grid-cols-3 gap-2">
+                                            <label class="col-span-1">
+                                                <span class="sr-only">نوع کارمزد</span>
+                                                <select wire:model="bnplFeeType.{{ $bnplKey }}"
+                                                        class="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-2 py-2.5 text-[10.5px] font-bold outline-none transition focus:border-violet-500 dark:border-slate-700 dark:bg-slate-800">
+                                                    <option value="none">بدون کارمزد</option>
+                                                    <option value="percent">درصدی (٪)</option>
+                                                    <option value="fixed">مبلغ ثابت</option>
+                                                </select>
+                                            </label>
+                                            <label class="col-span-2 @if(($bnplFeeType[$bnplKey] ?? 'none') === 'none') hidden @endif">
+                                                <span class="sr-only">مقدار کارمزد</span>
+                                                <input type="text" inputmode="numeric" dir="ltr" wire:model="bnplFeeValue.{{ $bnplKey }}"
+                                                       placeholder="{{ ($bnplFeeType[$bnplKey] ?? 'none') === 'percent' ? 'مثلاً ۵' : 'مثلاً 20000' }}"
+                                                       class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-center text-[11px] font-bold outline-none transition placeholder:text-slate-400 focus:border-violet-500 dark:border-slate-700 dark:bg-slate-800">
+                                            </label>
+                                        </div>
+                                        <div class="mt-1.5 text-[9px] font-semibold leading-4 text-slate-400">
+                                            @if (($bnplFeeType[$bnplKey] ?? 'none') === 'percent')
+                                                درصد کارمزد (۱ تا ۱۰۰) — مثلاً ۵ یعنی ۵٪ از کالاهای این سفارش
+                                            @elseif (($bnplFeeType[$bnplKey] ?? 'none') === 'fixed')
+                                                مبلغ ثابت به تومان — یک‌بار به‌ازای هر سفارش اقساطیِ شما اضافه می‌شود
+                                            @endif
+                                        </div>
+                                        @error('bnplFeeValue.'.$bnplKey) <p class="mt-1 text-[10px] font-bold text-rose-500">{{ $message }}</p> @enderror
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         {{-- ───────── Pinned actions (fixed at the bottom of the viewport on phones) ───────── --}}
         <div class="sticky bottom-0 z-20 -mx-4 mt-4 flex gap-2 border-t border-slate-200/80 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95">
             <button type="submit"

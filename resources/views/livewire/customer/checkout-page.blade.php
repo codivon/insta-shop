@@ -49,7 +49,10 @@
                       ship: {{ $shippingCost }},
                       post: {{ $hasPayOnDelivery ? 'true' : 'false' }},
                       discount: {{ $liveDiscount[0] }},
-                      get payable() { return Math.max(0, this.total + this.ship - this.discount) },
+                      gw: '{{ $gateway }}',
+                      bnplFees: @js($bnplFees),
+                      get bnplFee() { return Number(this.bnplFees[this.gw] ?? 0) },
+                      get payable() { return Math.max(0, this.total + this.bnplFee + this.ship - this.discount) },
                       fa(n) {
                           return String(Math.max(0, Math.round(Number(n) || 0)))
                               .replace(/\B(?=(\d{3})+(?!\d))/g, '٬')
@@ -57,6 +60,8 @@
                       },
                       recalc() {
                           let s = 0, p = false
+                          const gw = this.$el.querySelector('input[name=gateway]:checked')
+                          if (gw) this.gw = gw.value
                           this.$el.querySelectorAll('input[name^=carrier-]:checked').forEach((r) => {
                               if (r.dataset.postpaid === '1') { p = true; return }
                               s += Number(r.dataset.cost || 0)
@@ -449,11 +454,82 @@
                         </div>
                     @endif
 
+                    {{-- ── درگاه‌های اقساطی (v0.30.0 — بخش کاملاً جدا: خرید حالا، پرداخت بعداً) ── --}}
+                    @if (count($bnplGateways) > 0)
+                        <div wire:key="ck-bnpl" class="mt-4">
+                            <p class="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold">
+                                <x-icon name="calendar-clock" class="size-3.5 text-violet-500" />
+                                پرداخت اقساطی — خرید حالا، پرداخت بعداً
+                                <span class="ms-auto rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-extrabold text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">
+                                    {{ \App\Support\Fmt::fa(count($bnplGateways)) }} روش فعال
+                                </span>
+                            </p>
+                            <p class="mb-2.5 rounded-xl bg-violet-50 px-3 py-2 text-[9.5px] font-semibold leading-4 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300">
+                                قسط اول هنگام خرید از درگاه پرداخت می‌شود و باقی اقساط را در پنل خود درگاه می‌پردازید؛ کارمزدِ اقساطِ هر فروشگاه (در صورت تعیین) به جمع کالاها اضافه می‌شود و شامل هزینهٔ ارسال نیست.
+                            </p>
+
+                            <div class="space-y-2.5" role="radiogroup" aria-label="انتخاب روش پرداخت اقساطی">
+                                @foreach ($bnplGateways as $key => $label)
+                                    @php
+                                        $bnplInstallments = \App\Support\Payments\PaymentService::bnplInstallments($key);
+                                        $bnplFee = (int) ($bnplFees[$key] ?? 0);
+                                    @endphp
+                                    <label wire:key="bnpl-{{ $key }}"
+                                           class="group flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-3 transition hover:border-violet-300 has-[:checked]:border-violet-500 has-[:checked]:bg-violet-50/60 has-[:checked]:shadow-lg has-[:checked]:shadow-violet-600/10 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-violet-700 dark:has-[:checked]:border-violet-600 dark:has-[:checked]:bg-violet-950/40">
+                                        <input type="radio" name="gateway" value="{{ $key }}" wire:model="gateway" class="sr-only"
+                                               aria-label="پرداخت اقساطی با {{ $label }}">
+
+                                        <span class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-100 bg-white p-1 shadow-sm transition group-has-[:checked]:border-violet-200 dark:border-slate-800 dark:bg-slate-800 dark:group-has-[:checked]:border-violet-800">
+                                            @include('partials.gateway-logo', ['gateway' => $key])
+                                        </span>
+
+                                        <span class="min-w-0 flex-1">
+                                            <span class="flex items-center gap-2">
+                                                <span class="truncate text-[12.5px] font-extrabold">{{ $label }}</span>
+                                                <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[8.5px] font-extrabold text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">
+                                                    {{ \App\Support\Fmt::fa($bnplInstallments) }} قسط
+                                                </span>
+                                            </span>
+                                            <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9.5px] font-bold">
+                                                <span class="flex items-center gap-1 text-slate-400 dark:text-slate-500">
+                                                    <x-icon name="calendar" class="size-3 shrink-0" />
+                                                    قسط اول در خرید — باقی اقساط در پنل {{ $label }}
+                                                </span>
+                                                @if ($bnplFee > 0)
+                                                    <span class="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300">
+                                                        + کارمزد اقساط {{ \App\Support\Fmt::money($bnplFee) }}
+                                                    </span>
+                                                @else
+                                                    <span class="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                        بدون کارمزد
+                                                    </span>
+                                                @endif
+                                            </span>
+                                        </span>
+
+                                        <span class="grid size-5 shrink-0 place-items-center rounded-full border-2 border-slate-300 bg-white transition group-has-[:checked]:border-violet-600 group-has-[:checked]:bg-violet-600 dark:border-slate-600"
+                                              aria-hidden="true">
+                                            <x-icon name="check" class="size-3 text-white opacity-0 transition group-has-[:checked]:opacity-100" />
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- ── totals ── --}}
                     <div wire:key="ck-totals" class="mt-4 space-y-1.5 border-t border-dashed border-slate-200 pt-3 text-xs dark:border-slate-700">
                         <div class="flex items-center justify-between text-[10.5px] text-slate-400">
                             <span>جمع کالاها ({{ \App\Support\Fmt::toFa($units) }})</span>
                             <span class="font-bold">{{ \App\Support\Fmt::money($total) }}</span>
+                        </div>
+                        {{-- کارمزد اقساط (v0.30.0): فقط وقتی درگاه اقساطی انتخاب شده — روی جمع کالاها، بدون ارسال --}}
+                        <div class="flex items-center justify-between text-[10.5px] text-violet-600 dark:text-violet-400" x-show="bnplFee > 0" @if (! isset($bnplFees[$gateway])) style="display:none" @endif>
+                            <span class="flex items-center gap-1">
+                                <x-icon name="calendar-clock" class="size-3 shrink-0" />
+                                کارمزد خرید اقساطی
+                            </span>
+                            <span class="font-bold" x-text="'+ ' + fa(bnplFee) + ' تومان'"></span>
                         </div>
                         <div class="flex items-center justify-between text-[10.5px] text-slate-400">
                             <span>هزینه ارسال</span>

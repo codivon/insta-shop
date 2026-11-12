@@ -626,8 +626,8 @@ class CheckoutPage extends Component
             }
         }
 
-        /* ── gateway ── */
-        $available = PaymentService::availableGateways();
+        /* ── gateway ── (v0.30.0: direct + installment groups together) */
+        $available = PaymentService::availableGateways() + $this->bnplGateways;
 
         if ($available !== [] && ! array_key_exists($this->gateway, $available)) {
             $this->gateway = array_key_first($available);
@@ -669,6 +669,26 @@ class CheckoutPage extends Component
             ];
         }
 
+        /*
+         * v0.30.0 — the BNPL surcharge is recomputed SERVER-SIDE (never
+         * trusted from the browser) and frozen into the order: per-shop
+         * breakdown for the monthly settlements + the grand total.
+         */
+        $bnplGateway = PaymentService::isBnplGateway($this->gateway) ? $this->gateway : null;
+        $bnplFees = [];
+        $bnplFeeTotal = 0;
+
+        if ($bnplGateway !== null) {
+            foreach ($this->shopGroups as $group) {
+                $fee = $group['shop']?->seller_id
+                    ? PaymentService::bnplFeeForShop($bnplGateway, (int) $group['shop']->seller_id, (int) $group['subtotal'])
+                    : 0;
+
+                $bnplFees[(int) $group['shop']->id] = $fee;
+                $bnplFeeTotal += $fee;
+            }
+        }
+
         $order = Order::createFromCart($customer, [
             'receiver_name' => trim($this->receiver_name),
             'delivery_phone' => (string) $normalized,
@@ -679,6 +699,9 @@ class CheckoutPage extends Component
             'shipping_cost' => $shippingCost,
             'discount' => $discount,
             'discount_amount' => $discountAmount,
+            'bnpl_gateway' => $bnplGateway,
+            'bnpl_fees' => $bnplFees,
+            'bnpl_fee' => $bnplFeeTotal,
         ]);
 
         if (! $order) {
@@ -690,7 +713,8 @@ class CheckoutPage extends Component
 
         ActivityLogger::log(
             'order.created',
-            'سفارش جدید '.Fmt::fa($order->id).' ثبت شد — مبلغ '.Fmt::money($order->total_amount),
+            'سفارش جدید '.Fmt::fa($order->id).' ثبت شد — مبلغ '.Fmt::money($order->total_amount)
+                .($order->isBnpl() ? ' (پرداخت اقساطی با '.PaymentService::BNPL_GATEWAYS[(string) $order->bnpl_gateway].')' : ''),
             subject: $order,
             after: ['status' => 'pending', 'gateway' => $this->gateway],
         );
@@ -716,7 +740,7 @@ class CheckoutPage extends Component
         $cart = $this->customer()?->cart;
 
         return $cart
-            ? $cart->items()->with(['product.mainImage', 'product.shop:id,name,slug', 'variant.values.attribute', 'variant.values.value'])->get()
+            ? $cart->items()->with(['product.mainImage', 'product.shop:id,name,slug,seller_id', 'variant.values.attribute', 'variant.values.value'])->get()
             : collect();
     }
 
@@ -864,18 +888,67 @@ class CheckoutPage extends Component
             : null;
     }
 
-    /** Payable = items + online shipping − discount. */
+    /** Payable = items + BNPL surcharge + online shipping − discount. */
     public function getPayableProperty(): int
     {
         [$discountAmount] = $this->liveDiscount;
 
-        return max(0, $this->total + $this->shippingCost - $discountAmount);
+        // v0.30.0 — when an installment gateway is picked, the sellers'
+        // surcharge joins the PRODUCTS total (never the shipping)
+        $bnplFee = PaymentService::isBnplGateway($this->gateway)
+            ? (int) ($this->bnplFees[$this->gateway] ?? 0)
+            : 0;
+
+        return max(0, $this->total + $bnplFee + $this->shippingCost - $discountAmount);
     }
 
     /** Gateways actually usable in this installation (credentials present). */
     public function getGatewaysProperty(): array
     {
         return PaymentService::availableGateways();
+    }
+
+    /**
+     * v0.30.0 — درگاه‌های اقساطی usable for THIS cart: admin enabled ∧
+     * credentials ∧ EVERY cart seller opted in (فعال‌سازی از پنل فروشنده).
+     *
+     * @return array<string, string> gateway → Persian label
+     */
+    public function getBnplGatewaysProperty(): array
+    {
+        return PaymentService::bnplGatewaysForSellers($this->cartSellerIds());
+    }
+
+    /**
+     * v0.30.0 — the TOTAL installment surcharge per gateway (each cart
+     * seller adds their own percent/fixed fee on their OWN goods — the
+     * sum rides the PRODUCTS total and never touches the shipping).
+     *
+     * @return array<string, int> gateway → fee total in Toman
+     */
+    public function getBnplFeesProperty(): array
+    {
+        $fees = [];
+
+        foreach (array_keys($this->bnplGateways) as $gateway) {
+            $fees[$gateway] = $this->shopGroups
+                ->sum(fn ($group): int => $group['shop']?->seller_id
+                    ? PaymentService::bnplFeeForShop($gateway, (int) $group['shop']->seller_id, (int) $group['subtotal'])
+                    : 0);
+        }
+
+        return $fees;
+    }
+
+    /** Seller ids behind the cart shops (for the BNPL availability rule). */
+    private function cartSellerIds(): array
+    {
+        return $this->shopGroups
+            ->map(fn ($group): ?int => $group['shop']?->seller_id)
+            ->filter()
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
     }
 
     /** Provinces/cities of the inline «افزودن آدرس» form. */
@@ -904,6 +977,8 @@ class CheckoutPage extends Component
             'payable' => $this->payable,
             'liveDiscount' => $this->liveDiscount,
             'gateways' => $this->gateways,
+            'bnplGateways' => $this->bnplGateways,
+            'bnplFees' => $this->bnplFees,
             'addresses' => $this->addresses,
             'selectedAddress' => $this->selectedAddress,
             'newProvinces' => $this->newProvinces,

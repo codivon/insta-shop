@@ -38,6 +38,9 @@ $brands = [
     'idpay' => ['#F472B6', '#BE123C', 'iD', 'IDPAY', 'text'],
     'payir' => ['#2DD4BF', '#0F766E', 'P', 'PAY.IR', 'text'],
     'toman' => ['#F59E0B', '#1E293B', 'ت', 'TOMAN', 'text'],
+    'digipay' => ['#4D8DFF', '#0038FF', 'دی', 'DIGIPAY', 'text'],
+    'snapppay' => ['#4DA3FF', '#1257C9', 'S', 'SNAPP PAY', 'text-wide'],
+    'torobpay' => ['#9CE76A', '#166534', 'ت', 'TOROBPAY', 'text'],
 ];
 
 $dir = __DIR__.'/../public/images/gateways';

@@ -3,10 +3,12 @@
 namespace App\Livewire\Seller;
 
 use App\Livewire\Concerns\NotifiesOnValidation;
+use App\Models\SellerBnplSetting;
 use App\Models\Setting;
 use App\Models\Shop;
 use App\Support\Fmt;
 use App\Support\ImagePayload;
+use App\Support\Payments\PaymentService;
 use App\Support\Phone;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -43,6 +45,24 @@ class ShopEdit extends Component
 
     public $banner = null;
 
+    /**
+     * v0.30.0 — خرید اقساطی (درگاه‌های اقساطی): the seller's opt-in state
+     * per BNPL gateway — keyed by the gateway slug (dots would nest the
+     * wire bindings, slugs are dot-free).
+     *
+     * @var array<string, bool> gateway → فعال‌سازی
+     */
+    public array $bnplEnabled = [];
+
+    /** @var array<string, bool> gateway → نمایش بج اقساط در تک‌صفحهٔ محصول */
+    public array $bnplShowProduct = [];
+
+    /** @var array<string, string> gateway → none|percent|fixed */
+    public array $bnplFeeType = [];
+
+    /** @var array<string, string> gateway → raw value (latin digits) */
+    public array $bnplFeeValue = [];
+
     public function mount(): void
     {
         $shop = $this->shop();
@@ -56,6 +76,62 @@ class ShopEdit extends Component
         $this->address = (string) $shop->address;
         $this->status = $shop->status;
         $this->showStock = (bool) $shop->show_stock;
+
+        $this->loadBnplSettings((int) $seller->id);
+    }
+
+    /**
+     * v0.30.0 — hydrate the installment opt-ins of this seller. Only the
+     * gateways the ADMIN turned on are offered (the seller can never
+     * enable one the platform has switched off).
+     */
+    protected function loadBnplSettings(int $sellerId): void
+    {
+        foreach (array_keys(PaymentService::availableBnplGateways()) as $gateway) {
+            $setting = SellerBnplSetting::forSeller($gateway, $sellerId);
+
+            $this->bnplEnabled[$gateway] = (bool) $setting?->enabled;
+            $this->bnplShowProduct[$gateway] = (bool) $setting?->show_on_product;
+            $this->bnplFeeType[$gateway] = $setting?->fee_type ?? 'none';
+            $this->bnplFeeValue[$gateway] = $setting && $setting->fee_value > 0
+                ? Fmt::toLatin((string) $setting->fee_value)
+                : '';
+        }
+    }
+
+    /** v0.30.0 — persist the installment opt-ins (called inside save()). */
+    protected function saveBnplSettings(int $sellerId): void
+    {
+        foreach (array_keys(PaymentService::availableBnplGateways()) as $gateway) {
+            $enabled = (bool) ($this->bnplEnabled[$gateway] ?? false);
+            $feeType = (string) ($this->bnplFeeType[$gateway] ?? 'none');
+
+            if (! in_array($feeType, SellerBnplSetting::FEE_TYPES, true)) {
+                $feeType = 'none';
+            }
+
+            // the fee only exists when the seller actually opted in
+            if (! $enabled) {
+                $feeType = 'none';
+            }
+
+            $value = Fmt::toLatin((string) ($this->bnplFeeValue[$gateway] ?? ''));
+            $value = (int) max(0, (int) preg_replace('/[^0-9]/', '', $value) ?: 0);
+
+            if ($feeType === 'none') {
+                $value = 0;
+            }
+
+            SellerBnplSetting::query()->updateOrCreate(
+                ['seller_id' => $sellerId, 'gateway' => $gateway],
+                [
+                    'enabled' => $enabled,
+                    'show_on_product' => $enabled && (bool) ($this->bnplShowProduct[$gateway] ?? false),
+                    'fee_type' => $feeType,
+                    'fee_value' => $value,
+                ],
+            );
+        }
     }
 
     protected function shop(): Shop
@@ -188,6 +264,9 @@ class ShopEdit extends Component
             'show_stock' => $this->showStock,
         ]);
 
+        // v0.30.0 — the installment opt-ins live on the seller
+        $this->saveBnplSettings((int) auth('seller')->user()->id);
+
         if ($this->status === 'paused' && $adminPaused) {
             $this->dispatch('panel-toast', message: 'فعال‌سازی فروشگاه توسط پشتیبانی متوقف شده است — برای رفع توقف با پشتیبانی تماس بگیرید.', type: 'error');
         }
@@ -209,6 +288,7 @@ class ShopEdit extends Component
     {
         return view('livewire.seller.shop-edit', [
             'shop' => $this->shop,
+            'bnplGateways' => PaymentService::availableBnplGateways(),
         ])->title('ویرایش فروشگاه');
     }
 

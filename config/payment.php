@@ -1,5 +1,7 @@
 <?php
 
+use Shetabit\Multipay\Constants\IranCurrency;
+
 /*
 |--------------------------------------------------------------------------
 | InstaShop payment gateways (shetabit/payment)
@@ -119,6 +121,56 @@ return [
             'terminalId' => env('SEP_TERMINAL_ID', ''),
             'callbackUrl' => '/shop/payment/callback',
             'description' => 'خرید از InstaShop',
+        ],
+
+        /* ── v0.30.0 — درگاه‌های اقساطی (BNPL) ───────────────────────────
+         *
+         * OAuth password-grant gateways (client_id/client_secret Basic
+         * pair + username/password) that let the customer pay the FIRST
+         * installment at checkout and settle the MERCHANT monthly — the
+         * app-wide TOMAN amounts are converted to RIAL inside the drivers
+         * via the `currency` enum (×10).
+         *
+         * Credentials normally ride the ADMIN PANEL (settings table)
+         * through PaymentService::applyRuntimeConfig — these env keys are
+         * only fallbacks. The callbackUrl here is a RELATIVE default; the
+         * per-order SIGNED callback URL is injected by
+         * PaymentService::callbackUrl() at purchase time.
+         */
+
+        // دیجی‌پی (Digikala fintech) — vendor default currency is RIAL
+        // which would send TOMAN as RIAL: overridden to TOMAN (×10).
+        'digipay' => [
+            'apiPaymentUrl' => 'https://api.mydigipay.com',
+            'username' => env('DIGIPAY_USERNAME', ''),
+            'password' => env('DIGIPAY_PASSWORD', ''),
+            'client_id' => env('DIGIPAY_CLIENT_ID', ''),
+            'client_secret' => env('DIGIPAY_CLIENT_SECRET', ''),
+            'callbackUrl' => '/shop/payment/callback',
+            'currency' => IranCurrency::TOMAN,
+        ],
+
+        // اسنپ‌پی — the vendor default apiPaymentUrl points at Snapp's
+        // STAGING host: overridden to the production API host.
+        'snapppay' => [
+            'apiPaymentUrl' => 'https://api.snapppay.ir',
+            'username' => env('SNAPPPAY_USERNAME', ''),
+            'password' => env('SNAPPPAY_PASSWORD', ''),
+            'client_id' => env('SNAPPPAY_CLIENT_ID', ''),
+            'client_secret' => env('SNAPPPAY_CLIENT_SECRET', ''),
+            'callbackUrl' => '/shop/payment/callback',
+            'currency' => IranCurrency::TOMAN,
+        ],
+
+        // ترب‌پی — vendor key is api_url (snake_case, not apiPaymentUrl).
+        'torobpay' => [
+            'api_url' => 'https://cpg.torobpay.com',
+            'username' => env('TOROBPAY_USERNAME', ''),
+            'password' => env('TOROBPAY_PASSWORD', ''),
+            'client_id' => env('TOROBPAY_CLIENT_ID', ''),
+            'client_secret' => env('TOROBPAY_CLIENT_SECRET', ''),
+            'callbackUrl' => '/shop/payment/callback',
+            'currency' => IranCurrency::TOMAN,
         ],
 
     ],

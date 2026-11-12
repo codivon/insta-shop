@@ -84,3 +84,21 @@ Schedule::command('subscriptions:remind')
     ->dailyAt('10:00')
     ->name('instashop-subscriptions-remind')
     ->withoutOverlapping(30);
+
+/*
+|--------------------------------------------------------------------------
+| BNPL monthly settlements (v0.30.0 — درگاه‌های اقساطی)
+|--------------------------------------------------------------------------
+|
+| `bnpl:settle` deposits every PENDING bnpl_settlements row whose due
+| date has arrived into the seller wallet — the monthly rhythm of the
+| installment gateways (دیجی‌پی / اسنپ‌پی / ترب‌پی settle their merchants
+| monthly). The due date was frozen at payment time as the next
+| occurrence of the gateway's configured settlement day; the admin can
+| also deposit any row manually from the «تسویه اقساطی» section.
+|
+*/
+Schedule::command('bnpl:settle')
+    ->dailyAt('06:00')
+    ->name('instashop-bnpl-settle')
+    ->withoutOverlapping(30);

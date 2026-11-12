@@ -4,6 +4,7 @@ namespace App\Livewire\Seller;
 
 use App\Livewire\Concerns\NotifiesOnValidation;
 use App\Models\BankCard;
+use App\Models\BnplSettlement;
 use App\Models\Shop;
 use App\Models\Wallet;
 use App\Models\WalletDeposit;
@@ -579,6 +580,17 @@ class WalletPage extends Component
                 ->where('seller_id', auth('seller')->id())
                 ->orderByDesc('is_default')
                 ->orderBy('id')
+                ->get(),
+            // v0.30.0 — تسویه‌های اقساطی در انتظار واریز (دیجی‌پی/اسنپ‌پی/ترب‌پی):
+            // the money is NOT in the wallet yet — these rows render faded
+            // with the «بعد از تسویه {درگاه} به کیف پول شما واریز می‌شود»
+            // promise until the daily cron / admin deposit pays them out.
+            'bnplPending' => BnplSettlement::query()
+                ->where('seller_id', auth('seller')->id())
+                ->where('status', 'pending')
+                ->with('order:id,status,total_amount')
+                ->orderBy('due_date')
+                ->limit(20)
                 ->get(),
         ])->title('کیف پول');
     }

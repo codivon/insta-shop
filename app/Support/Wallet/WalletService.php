@@ -10,6 +10,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Support\Banking;
 use App\Support\Fmt;
+use App\Support\Payments\BnplSettlements;
 use App\Support\Payments\SplitPlan;
 use App\Support\SellerNotifier;
 use Illuminate\Support\Facades\DB;
@@ -42,6 +43,20 @@ final class WalletService
      */
     public static function creditOrder(Order $order): void
     {
+        /*
+         * v0.30.0 — درگاه‌های اقساطی (دیجی‌پی/اسنپ‌پی/ترب‌پی): تسویهٔ پذیرنده
+         * نزد این درگاه‌ها سرِ ماه انجام می‌شود، پس پرداخت هرگز آنی به کیف
+         * پول نمی‌رسد — به‌جای واریز، یک ردیف «در انتظار تسویه» برای هر
+         * فروشگاه ساخته می‌شود که کران روزانه (bnpl:settle) در سررسیدِ
+         * پیکربندی‌شده واریزش می‌کند و در کیف پول فروشنده به‌صورت کم‌رنگ با
+         * پیام «بعد از تسویه … به کیف پول شما واریز می‌شود» دیده می‌شود.
+         */
+        if ($order->isBnpl()) {
+            BnplSettlements::createForOrder($order);
+
+            return;
+        }
+
         // Query OrderItem DIRECTLY — the Order::items() relation appends
         // orderBy('id') which would inject "ORDER BY id" into this GROUP BY
         // aggregate and crash under MySQL 8's ONLY_FULL_GROUP_BY

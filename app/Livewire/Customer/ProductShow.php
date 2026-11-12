@@ -9,7 +9,9 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductVariantValue;
 use App\Models\ProductView;
+use App\Models\SellerBnplSetting;
 use App\Models\Shop;
+use App\Support\Payments\PaymentService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -490,6 +492,47 @@ class ProductShow extends Component
         return $this->selectedVariant
             ? $this->selectedVariant->finalPrice()
             : (int) $this->product->price;
+    }
+
+    /**
+     * v0.30.0 — the «امکان خرید اقساطی» showcase of THIS product: every
+     * BNPL gateway whose admin enablement + the seller's opt-in AND the
+     * «نمایش در صفحهٔ محصول» tick are all on. The per-installment estimate
+     * rides the SAME rule as checkout — goods + the seller's surcharge,
+     * never the shipping (رفتار هماهنگ با checkout).
+     *
+     * @return list<array{gateway: string, label: string, installments: int, per: int, feeLabel: string}>
+     */
+    public function getBnplShowcaseProperty(): array
+    {
+        $sellerId = $this->product->shop?->seller_id;
+
+        if (! $sellerId) {
+            return [];
+        }
+
+        $showcase = [];
+
+        foreach (PaymentService::availableBnplGateways() as $gateway => $label) {
+            $setting = SellerBnplSetting::forSeller($gateway, (int) $sellerId);
+
+            if (! $setting || ! $setting->enabled || ! $setting->show_on_product) {
+                continue;
+            }
+
+            $installments = PaymentService::bnplInstallments($gateway);
+            $per = (int) ceil(max(0, $this->displayPrice + $setting->feeFor($this->displayPrice)) / max(1, $installments));
+
+            $showcase[] = [
+                'gateway' => $gateway,
+                'label' => $label,
+                'installments' => $installments,
+                'per' => $per,
+                'feeLabel' => $setting->feeLabel(),
+            ];
+        }
+
+        return $showcase;
     }
 
     /** Downloadable goods are never stock-limited. */
